@@ -3,7 +3,7 @@ local function get_item_amount(station, item_id)
 end
 
 local function get_valid_train(stations, r_station_i, p_station_i, available_trains)
-	return 0
+	return {}
 end
 
 local function get_distance(stations, r_station_i, p_station_i)
@@ -49,14 +49,6 @@ end
 	}]
 ]]
 
---local function check_train_layouts(station, available_layouts)
---	for _, layout_id in ipairs(available_layouts) do
---		if station.accepted_layouts[layout_id] then
---			return true
---		end
---	end
---	return false
---end
 
 local function icpairs(a, start_i)
 	start_i = start_i%#a + 1
