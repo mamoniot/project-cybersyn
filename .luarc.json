@@ -1,0 +1,20 @@
+{
+    "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
+    "runtime": {
+        "plugin": "C:\\Users\\mmoni\\files\\data\\projects\\factorio\\mtc\\.vscode\\lua\\plugin.lua",
+        "pluginArgs": ["--global-as-class", "--mode=mods", "--mod_name=ltndless"]
+    },
+    "runtime.path": [
+        "?.lua",
+        "?/init.lua",
+        "src/?.lua",
+        "src/scripts/?.lua",
+        "src/?/init.lua",
+        "src/scripts/?/init.lua"
+    ],
+    "runtime.pathStrict": false,
+    "workspace.ignoreSubmodules": false,
+    "workspace": {
+        "useGitIgnore": false
+    }
+}

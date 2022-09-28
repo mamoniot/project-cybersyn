@@ -1,0 +1,8 @@
+{
+    "name": "mtc",
+    "version": "0.0.1",
+    "title": "Many to Many Train Controller",
+    "author": "Mami",
+    "factorio_version": "1.1",
+    "dependencies": ["base"]
+}
