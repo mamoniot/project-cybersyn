@@ -12,6 +12,7 @@
             "manageMod": true,
             "adjustMods": {
                 "debugadapter": true,
+                "flib": true,
                 "mtc": true,
             },
             "disableExtraMods": true
@@ -21,13 +22,25 @@
             "request": "launch",
             "name": "Factorio Mod Debug (Settings & Data)",
             "hookSettings": true,
-            "hookData": true
+            "hookData": true,
+            "adjustMods": {
+                "debugadapter": true,
+                "flib": true,
+                "mtc": true,
+            },
+            "disableExtraMods": true
         },
         {
             "type": "factoriomod",
             "request": "launch",
             "name": "Factorio Mod Debug (Profile)",
-            "hookMode": "profile"
+            "hookMode": "profile",
+            "adjustMods": {
+                "debugadapter": true,
+                "flib": true,
+                "mtc": true,
+            },
+            "disableExtraMods": true
         }
     ]
 }

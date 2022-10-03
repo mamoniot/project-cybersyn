@@ -1,12 +1,6 @@
 {
-    "factorio.package.autoCommitAuthor": "Dessix <dessix@dessix.net>",
+    "factorio.package.autoCommitAuthor": "Mami",
     "factorio.versions": [
-        {
-            "name": "Steam Factorio",
-            "factorioPath": "${userHome}/.local/share/Steam/steamapps/common/Factorio/bin/x64/factorio",
-            "docsPath": "../../../doc-html/runtime-api.json",
-            "configPath": "${userHome}/.factorio/config/config.ini"
-        },
         {
             "name": "Steam",
             "factorioPath": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Factorio\\bin\\x64\\factorio.exe",
