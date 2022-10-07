@@ -38,12 +38,49 @@ station: {
 train: {
 	layout_id: int
 	depot_id: int
+	item_slot_capacity: int
+	fluid_capacity: int
 }
 available_trains: [{
 	layout_id: int
 	capacity: int
 }]
 ]]
+
+local function create_loading_order(station_name, manifest)
+	local condition = {}
+	for _, item in ipairs(manifest) do
+		local cond_type
+		if item.type == "fluid" then
+			cond_type = "fluid_count"
+		else
+			cond_type = "item_count"
+		end
+
+		condition[#condition + 1] = {
+			type = cond_type,
+			compare_type = "and",
+			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
+		}
+	end
+	return {station = station_name, wait_conditions = condition}
+end
+
+local create_unloading_order_condition = {type = "empty", compare_type = "and"}
+local function create_unloading_order(station_name, manifest)
+	return {station = station_name, wait_conditions = create_unloading_order_condition}
+end
+
+local create_inactivity_order_condition = {type = "inactivity", compare_type = "and", ticks = 3}
+local function create_inactivity_order(station_name)
+	return {station = station_name, wait_conditions = create_inactivity_order_condition}
+end
+
+local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 0}}
+local function create_direct_to_station_order(rail, rail_direction)
+	return {wait_conditions = create_direct_to_station_order_condition, rail = rail, rail_direction = rail_direction, temporary = false}
+end
+
 
 
 local function get_signals(stations, station_id)
@@ -54,7 +91,7 @@ local function get_station_dist(stations, id0, id1)
 	return INF
 end
 
-local function get_valid_train(stations, r_station_id, p_station_id, available_trains)
+local function get_valid_train(stations, r_station_id, p_station_id, available_trains, item_type)
 	--NOTE: this code is the critical section for run-time optimization
 	local r_station = stations[r_station_id]
 	local p_station = stations[p_station_id]
@@ -67,11 +104,14 @@ local function get_valid_train(stations, r_station_id, p_station_id, available_t
 	local best_train = nil
 	local best_dist = INF
 
+	local is_fluid = item_type == "fluid"
 	for k, train in pairs(available_trains.all) do
 		--check cargo capabilities
 		--check layout validity for both stations
-		--TODO: add check for correct cargo type
-		if r_station.accepted_layouts[train.layout_id] and p_station.accepted_layouts[train.layout_id] then
+		if
+			((is_fluid and train.fluid_capacity > 0) or (not is_fluid and train.item_slot_capacity > 0))
+			and r_station.accepted_layouts[train.layout_id] and p_station.accepted_layouts[train.layout_id]
+		then
 			--check if exists valid path
 			--check if path is shortest so we prioritize locality
 			local d_to_p_dist = get_station_dist(stations, train.depot_id, p_station_id)
@@ -87,14 +127,12 @@ local function get_valid_train(stations, r_station_id, p_station_id, available_t
 	return best_train, best_dist
 end
 
-local function send_train_between(stations, r_station_id, p_station_id, train, ticks_total)
+local function send_train_between(stations, r_station_id, p_station_id, train, primary_item_name, economy)
 	local r_station = stations[r_station_id]
 	local p_station = stations[p_station_id]
 
 	local requests = {}
-	local orders = {}
-	local has_liquid = false
-	local has_solid = false
+	local manifest = {}
 
 	local r_signals = get_signals(r_station_id)
 	for k, v in pairs(r_signals) do
@@ -114,44 +152,95 @@ local function send_train_between(stations, r_station_id, p_station_id, train, t
 		local item_name = v.signal.name
 		local item_count = v.count
 		local item_type = v.signal.type
-		if item_name and item_type and item_type ~= "virtual" then
+		if item_name and item_type and item_type ~= "virtual" and item_name ~= primary_item_name then
 			local effective_item_count = item_count + p_station.delivery_amount[item_name]
 			if effective_item_count >= p_station.p_threshold then
 				local r = requests[item_name]
 				if r then
-					orders[item_name] = math.min(r, effective_item_count)
-					if item_type == "liquid" then--TODO: here add liquid detection
-						has_liquid = true
+					local item = {name = item_name, count = math.min(r, effective_item_count), type = item_type}
+					if item_name == primary_item_name then
+						manifest[#manifest + 1] = manifest[1]
+						manifest[1] = item
 					else
-						has_solid = true
+						manifest[#manifest + 1] = item
 					end
 				end
 			end
 		end
 	end
 
-	r_station.last_delivery_tick = ticks_total
-	p_station.last_delivery_tick = ticks_total
+	--local total_slots_left = 0
+	--local total_liquid_left = 0
+
+	local i = 1
+	while i <= #manifest do
+		local item = manifest[i]
+		local keep_item = false
+		if item.type == "fluid" then
+			if total_liquid_left > 0 then
+				if item.count > total_liquid_left then
+					item.count = total_liquid_left
+				end
+				total_liquid_left = 0--no liquid merging
+				keep_item = true
+			end
+		elseif total_slots_left > 0 then
+			local stack_size = game.item_prototypes[item.name].stack_size
+			local slots = math.ceil(item.count/stack_size)
+			if slots > total_slots_left then
+				item.count = total_slots_left*stack_size
+			end
+			total_slots_left = total_slots_left - slots
+			keep_item = true
+		end
+		if keep_item then
+			i = i + 1
+		else
+			manifest[i] = manifest[#manifest]
+			manifest[#manifest] = nil
+		end
+	end
+
+	r_station.last_delivery_tick = economy.ticks_total
+	p_station.last_delivery_tick = economy.ticks_total
 
 	r_station.deliveries_total = r_station.deliveries_total + 1
 	p_station.deliveries_total = p_station.deliveries_total + 1
 
-	for item_name, item_count in pairs(orders) do
-		assert(item_count > 0, "main.lua error, transfer amount was not positive")
+	for _, item in ipairs(manifest) do
+		assert(item.count > 0, "main.lua error, transfer amount was not positive")
 
-		r_station.delivery_amount[item_name] = r_station.delivery_amount[item_name] + item_count
-		p_station.delivery_amount[item_name] = p_station.delivery_amount[item_name] - item_count
-		--set train orders
+		r_station.delivery_amount[item.name] = r_station.delivery_amount[item.name] + item.count
+		p_station.delivery_amount[item.name] = p_station.delivery_amount[item.name] - item.count
 
+		local r_stations = economy.r_stations_all[item.name]
+		local p_stations = economy.p_stations_all[item.name]
+		for i, id in ipairs(r_stations) do
+			if id == r_station_id then
+				table.remove(r_stations, i)
+				break
+			end
+		end
+		for i, id in ipairs(p_stations) do
+			if id == p_station_id then
+				table.remove(p_stations, i)
+				break
+			end
+		end
 	end
-
 end
 
 
 function tick(stations, available_trains, ticks_total)
-	local r_stations_all = {}
-	local p_stations_all = {}
-	local all_items = {}
+	local economy = {
+		r_stations_all = {},
+		p_stations_all = {},
+		all_items = {},
+		ticks_total = ticks_total,
+	}
+	local r_stations_all = economy.r_stations_all
+	local p_stations_all = economy.p_stations_all
+	local all_items = economy.all_items
 
 	for station_id, station in pairs(stations) do
 		if station.deliveries_total < station.train_limit then
@@ -203,9 +292,9 @@ function tick(stations, available_trains, ticks_total)
 	end
 
 	local failed_because_missing_trains_total = 0
+	--we do not dispatch more than one train per station per tick
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
 	for _, item_name in icpairs(all_items, ticks_total) do
-		--we do not dispatch more than one train per station per tick
 		local r_stations = r_stations_all[item_name]
 		local p_stations = p_stations_all[item_name]
 
@@ -213,7 +302,10 @@ function tick(stations, available_trains, ticks_total)
 		if #r_stations > 0 and #p_stations > 0 then
 			if #r_stations <= #p_stations then
 				--probably backpressure, prioritize locality
-				for i, r_station_id in icpairs(r_stations, ticks_total) do
+				repeat
+					local i = ticks_total%#r_stations + 1
+					local r_station_id = table.remove(r_stations, i)
+
 					local best = 0
 					local best_train = nil
 					local best_dist = INF
@@ -234,15 +326,17 @@ function tick(stations, available_trains, ticks_total)
 						end
 					end
 					if best > 0 then
-						send_train_between(stations, r_station_id, p_stations[best], best_train)
-						table.remove(p_stations, best)
+						send_train_between(stations, r_station_id, p_stations[best], best_train, item_name, economy)
 					elseif could_have_been_serviced then
 						failed_because_missing_trains_total = failed_because_missing_trains_total + 1
 					end
-				end
+				until #r_stations == 0
 			else
 				--prioritize round robin
-				for j, p_station_id in icpairs(p_stations, ticks_total) do
+				repeat
+					local j = ticks_total%#p_stations + 1
+					local p_station_id = table.remove(p_stations, j)
+
 					local best = 0
 					local best_train = nil
 					local lowest_tick = INF
@@ -264,12 +358,11 @@ function tick(stations, available_trains, ticks_total)
 						end
 					end
 					if best > 0 then
-						send_train_between(stations, r_stations[best], p_station_id, best_train)
-						table.remove(r_stations, best)
+						send_train_between(stations, r_stations[best], p_station_id, best_train, item_name, economy)
 					elseif could_have_been_serviced then
 						failed_because_missing_trains_total = failed_because_missing_trains_total + 1
 					end
-				end
+				until #p_stations == 0
 			end
 		end
 	end
