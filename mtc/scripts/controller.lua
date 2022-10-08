@@ -22,36 +22,6 @@ local function icpairs(a, start_i)
 	end
 end
 
---[[
-station: {
-	deliveries_total: int
-	train_limit: int
-	priority: int
-	last_delivery_tick: int
-	r_threshold: int >= 0
-	p_threshold: int >= 0
-	entity: FactorioStop
-	train_layout: [ [ {
-		[car_type]: true|nil
-	} ] ]
-	accepted_layouts: {
-		[layout_id]: true|nil
-	}
-}
-train: {
-	layout_id: int
-	depot_id: int
-	depot_name: string
-	item_slot_capacity: int
-	fluid_capacity: int
-}
-available_trains: [{
-	layout_id: int
-	capacity: int
-	all: [train]
-}]
-]]
-
 local function create_loading_order(stop, manifest)
 	local condition = {}
 	for _, item in ipairs(manifest) do
@@ -111,7 +81,8 @@ local function get_valid_train(stations, r_station_id, p_station_id, available_t
 	local valid_train_exists = false
 
 	local is_fluid = item_type == "fluid"
-	for k, train in pairs(available_trains.all) do
+	for train_id, _ in pairs(available_trains) do
+		local train = map_data.trains[train_id]
 		--check cargo capabilities
 		--check layout validity for both stations
 		if
@@ -139,7 +110,7 @@ local function get_valid_train(stations, r_station_id, p_station_id, available_t
 	end
 end
 
-local function send_train_between(stations, r_station_id, p_station_id, train, primary_item_name, economy)
+local function send_train_between(stations, r_station_id, p_station_id, train, available_trains, primary_item_name, economy)
 	local r_station = stations[r_station_id]
 	local p_station = stations[p_station_id]
 
@@ -152,7 +123,7 @@ local function send_train_between(stations, r_station_id, p_station_id, train, p
 		local item_count = v.count
 		local item_type = v.signal.type
 		if item_name and item_type and item_type ~= "virtual" then
-			local effective_item_count = item_count + r_station.delivery_amount[item_name]
+			local effective_item_count = item_count + r_station.deliveries[item_name]
 			if -effective_item_count >= r_station.r_threshold then
 				requests[item_name] = -effective_item_count
 			end
@@ -165,7 +136,7 @@ local function send_train_between(stations, r_station_id, p_station_id, train, p
 		local item_count = v.count
 		local item_type = v.signal.type
 		if item_name and item_type and item_type ~= "virtual" then
-			local effective_item_count = item_count + p_station.delivery_amount[item_name]
+			local effective_item_count = item_count + p_station.deliveries[item_name]
 			if effective_item_count >= p_station.p_threshold then
 				local r = requests[item_name]
 				if r then
@@ -222,8 +193,8 @@ local function send_train_between(stations, r_station_id, p_station_id, train, p
 	for _, item in ipairs(manifest) do
 		assert(item.count > 0, "main.lua error, transfer amount was not positive")
 
-		r_station.delivery_amount[item.name] = r_station.delivery_amount[item.name] + item.count
-		p_station.delivery_amount[item.name] = p_station.delivery_amount[item.name] - item.count
+		r_station.deliveries[item.name] = r_station.deliveries[item.name] + item.count
+		p_station.deliveries[item.name] = p_station.deliveries[item.name] - item.count
 
 		local r_stations = economy.r_stations_all[item.name]
 		local p_stations = economy.p_stations_all[item.name]
@@ -240,6 +211,12 @@ local function send_train_between(stations, r_station_id, p_station_id, train, p
 			end
 		end
 	end
+
+	available_trains[train.entity.id] = nil
+	train.status = STATUS_D_TO_P
+	train.p_station_id = p_station_id
+	train.r_station_id = r_station_id
+	train.manifest = manifest
 
 	do
 		local records = {}
@@ -297,7 +274,7 @@ function tick(stations, available_trains, ticks_total)
 			for k, v in pairs(signals) do
 				local item_name = v.signal.name
 				local item_count = v.count
-				local effective_item_count = item_count + station.delivery_amount[item_name]
+				local effective_item_count = item_count + station.deliveries[item_name]
 
 				if -effective_item_count >= station.r_threshold then
 					if r_stations_all[item_name] == nil then
@@ -353,7 +330,7 @@ function tick(stations, available_trains, ticks_total)
 						end
 					end
 					if best > 0 then
-						send_train_between(stations, r_station_id, p_stations[best], best_train, item_name, economy)
+						send_train_between(stations, r_station_id, p_stations[best], best_train, available_trains, item_name, economy)
 					elseif could_have_been_serviced then
 						failed_because_missing_trains_total = failed_because_missing_trains_total + 1
 					end
@@ -385,7 +362,7 @@ function tick(stations, available_trains, ticks_total)
 						end
 					end
 					if best > 0 then
-						send_train_between(stations, r_stations[best], p_station_id, best_train, item_name, economy)
+						send_train_between(stations, r_stations[best], p_station_id, best_train, available_trains, item_name, economy)
 					elseif could_have_been_serviced then
 						failed_because_missing_trains_total = failed_because_missing_trains_total + 1
 					end

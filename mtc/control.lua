@@ -1,4 +1,5 @@
 
 
---require("scripts.controller")
---require("scripts.main")
+require("scripts.global")
+require("scripts.controller")
+require("scripts.main")
