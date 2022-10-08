@@ -1,3 +1,5 @@
+--By Monica Moniot
+local get_distance = require("__flib__.misc").get_distance
 local math = math
 local INF = math.huge
 
@@ -28,6 +30,7 @@ station: {
 	last_delivery_tick: int
 	r_threshold: int >= 0
 	p_threshold: int >= 0
+	entity: FactorioStop
 	train_layout: [ [ {
 		[car_type]: true|nil
 	} ] ]
@@ -38,16 +41,18 @@ station: {
 train: {
 	layout_id: int
 	depot_id: int
+	depot_name: string
 	item_slot_capacity: int
 	fluid_capacity: int
 }
 available_trains: [{
 	layout_id: int
 	capacity: int
+	all: [train]
 }]
 ]]
 
-local function create_loading_order(station_name, manifest)
+local function create_loading_order(stop, manifest)
 	local condition = {}
 	for _, item in ipairs(manifest) do
 		local cond_type
@@ -63,22 +68,22 @@ local function create_loading_order(station_name, manifest)
 			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
 		}
 	end
-	return {station = station_name, wait_conditions = condition}
+	return {station = stop.backer_name, wait_conditions = condition}
 end
 
 local create_unloading_order_condition = {type = "empty", compare_type = "and"}
-local function create_unloading_order(station_name, manifest)
-	return {station = station_name, wait_conditions = create_unloading_order_condition}
+local function create_unloading_order(stop, manifest)
+	return {station = stop.backer_name, wait_conditions = create_unloading_order_condition}
 end
 
 local create_inactivity_order_condition = {type = "inactivity", compare_type = "and", ticks = 3}
-local function create_inactivity_order(station_name)
-	return {station = station_name, wait_conditions = create_inactivity_order_condition}
+local function create_inactivity_order(stop)
+	return {station = stop.backer_name, wait_conditions = create_inactivity_order_condition}
 end
 
 local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 0}}
-local function create_direct_to_station_order(rail, rail_direction)
-	return {wait_conditions = create_direct_to_station_order_condition, rail = rail, rail_direction = rail_direction, temporary = false}
+local function create_direct_to_station_order(stop)
+	return {wait_conditions = create_direct_to_station_order_condition, rail = stop.connected_rail, rail_direction = stop.connected_rail_direction}
 end
 
 
@@ -87,8 +92,8 @@ local function get_signals(stations, station_id)
 	return {}
 end
 
-local function get_station_dist(stations, id0, id1)
-	return INF
+local function get_stop_dist(stop0, stop1)
+	return get_distance(stop0.position, stop1.position)
 end
 
 local function get_valid_train(stations, r_station_id, p_station_id, available_trains, item_type)
@@ -96,13 +101,14 @@ local function get_valid_train(stations, r_station_id, p_station_id, available_t
 	local r_station = stations[r_station_id]
 	local p_station = stations[p_station_id]
 
-	local p_to_r_dist = get_station_dist(stations, p_station_id, r_station_id)
+	local p_to_r_dist = get_stop_dist(p_station.entity, r_station.entity)
 	if p_to_r_dist == INF then
-		return nil, p_to_r_dist
+		return nil, INF
 	end
 
 	local best_train = nil
 	local best_dist = INF
+	local valid_train_exists = false
 
 	local is_fluid = item_type == "fluid"
 	for k, train in pairs(available_trains.all) do
@@ -111,12 +117,14 @@ local function get_valid_train(stations, r_station_id, p_station_id, available_t
 		if
 			((is_fluid and train.fluid_capacity > 0) or (not is_fluid and train.item_slot_capacity > 0))
 			and r_station.accepted_layouts[train.layout_id] and p_station.accepted_layouts[train.layout_id]
+			and train.entity.station
 		then
+			valid_train_exists = true
 			--check if exists valid path
 			--check if path is shortest so we prioritize locality
-			local d_to_p_dist = get_station_dist(stations, train.depot_id, p_station_id)
+			local d_to_p_dist = get_stop_dist(train.entity.station, p_station.entity)
 
-			local dist = d_to_p_dist + p_to_r_dist
+			local dist = d_to_p_dist
 			if dist < best_dist then
 				best_dist = dist
 				best_train = train
@@ -124,7 +132,11 @@ local function get_valid_train(stations, r_station_id, p_station_id, available_t
 		end
 	end
 
-	return best_train, best_dist
+	if valid_train_exists then
+		return best_train, best_dist + p_to_r_dist
+	else
+		return nil, p_to_r_dist
+	end
 end
 
 local function send_train_between(stations, r_station_id, p_station_id, train, primary_item_name, economy)
@@ -152,7 +164,7 @@ local function send_train_between(stations, r_station_id, p_station_id, train, p
 		local item_name = v.signal.name
 		local item_count = v.count
 		local item_type = v.signal.type
-		if item_name and item_type and item_type ~= "virtual" and item_name ~= primary_item_name then
+		if item_name and item_type and item_type ~= "virtual" then
 			local effective_item_count = item_count + p_station.delivery_amount[item_name]
 			if effective_item_count >= p_station.p_threshold then
 				local r = requests[item_name]
@@ -169,8 +181,8 @@ local function send_train_between(stations, r_station_id, p_station_id, train, p
 		end
 	end
 
-	--local total_slots_left = 0
-	--local total_liquid_left = 0
+	local total_slots_left = train.item_slot_capacity
+	local total_liquid_left = train.fluid_capacity
 
 	local i = 1
 	while i <= #manifest do
@@ -195,7 +207,7 @@ local function send_train_between(stations, r_station_id, p_station_id, train, p
 		end
 		if keep_item then
 			i = i + 1
-		else
+		else--swap remove
 			manifest[i] = manifest[#manifest]
 			manifest[#manifest] = nil
 		end
@@ -227,6 +239,21 @@ local function send_train_between(stations, r_station_id, p_station_id, train, p
 				break
 			end
 		end
+	end
+
+	do
+		local records = {}
+		records[#records + 1] = create_inactivity_order(train.depot_name)
+
+		records[#records + 1] = create_direct_to_station_order(p_station.entity)
+		records[#records + 1] = create_loading_order(p_station.entity, manifest)
+
+		records[#records + 1] = create_direct_to_station_order(p_station.entity)
+		records[#records + 1] = create_unloading_order(p_station.entity, manifest)
+
+		local schedule = {current = 1, records = records}
+
+		train.entity.schedule = schedule
 	end
 end
 
