@@ -1,6 +1,9 @@
 --By Mami
 
-
+local function set_station_output_empty(station)
+	--change circuit outputs
+	station.entity_out.get_control_behavior().parameters = nil
+end
 
 local function on_failed_delivery(map_data, train)
 	--NOTE: must change train status to STATUS_D or remove it from tracked trains after this call
@@ -15,8 +18,7 @@ local function on_failed_delivery(map_data, train)
 		end
 		station.deliveries_total = station.deliveries_total - 1
 		if train.status == STATUS_P then
-			--change circuit outputs
-			station.entity_out.get_control_behavior().parameters = nil
+			set_station_output_empty(station)
 		end
 	end
 	local is_r_delivery_made = train.status == STATUS_R_TO_D
@@ -30,8 +32,7 @@ local function on_failed_delivery(map_data, train)
 		end
 		station.deliveries_total = station.deliveries_total - 1
 		if train.status == STATUS_R then
-			--change circuit outputs
-			station.entity_out.get_control_behavior().parameters = nil
+			set_station_output_empty(station)
 		end
 	end
 	train.r_station_id = 0
@@ -106,9 +107,9 @@ local function on_station_built(map_data, stop)
 		if cur_entity.valid then
 			if cur_entity.name == "entity-ghost" then
 				if cur_entity.ghost_name == STATION_IN_NAME then
-					_, entity_in = cur_entity.revive()
+					_, entity_in = cur_entity.silent_revive()
 				elseif cur_entity.ghost_name == STATION_OUT_NAME then
-					_, entity_out = cur_entity.revive()
+					_, entity_out = cur_entity.silent_revive()
 				end
 			elseif cur_entity.name == STATION_IN_NAME then
 				entity_in = cur_entity
@@ -118,7 +119,7 @@ local function on_station_built(map_data, stop)
 		end
 	end
 
-	if entity_in == nil then -- create new
+	if entity_in == nil then
 		entity_in = stop.surface.create_entity({
 			name = STATION_IN_NAME,
 			position = in_pos,
@@ -128,8 +129,9 @@ local function on_station_built(map_data, stop)
 	entity_in.operable = false
 	entity_in.minable = false
 	entity_in.destructible = false
+	entity_in.health = 0
 
-	if entity_out == nil then -- create new
+	if entity_out == nil then
 		entity_out = stop.surface.create_entity({
 			name = STATION_OUT_NAME,
 			position = out_pos,
@@ -140,6 +142,7 @@ local function on_station_built(map_data, stop)
 	entity_out.operable = false
 	entity_out.minable = false
 	entity_out.destructible = false
+	entity_out.health = 0
 
 	local station = {
 		entity = stop,
@@ -386,8 +389,7 @@ local function on_train_leaves_station(map_data, train)
 				end
 			end
 			station.deliveries_total = station.deliveries_total - 1
-			--change circuit outputs
-			station.entity_out.get_control_behavior().parameters = nil
+			set_station_output_empty(station)
 		elseif train.status == STATUS_R then
 			train.status = STATUS_R_TO_D
 			local station = map_data.stations[train.r_station_id]
@@ -398,8 +400,7 @@ local function on_train_leaves_station(map_data, train)
 				end
 			end
 			station.deliveries_total = station.deliveries_total - 1
-			--change circuit outputs
-			station.entity_out.get_control_behavior().parameters = nil
+			set_station_output_empty(station)
 		end
 	end
 end
