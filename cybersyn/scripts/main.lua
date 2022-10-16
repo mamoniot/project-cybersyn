@@ -164,7 +164,8 @@ local function on_station_broken(map_data, stop)
 	local station = map_data.stations[station_id]
 	if station.deliveries_total > 0 then
 		for train_id, train in pairs(map_data.trains) do
-			local is_r = train.p_station_id == station_id
+			local is_r = train.r_station_id == station_id
+			local is_p = train.p_station_id == station_id
 			if is_p or is_r then
 				local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
 				local is_r_delivery_made = train.status == STATUS_R_TO_D
@@ -191,8 +192,8 @@ local function on_station_rename(map_data, stop)
 	local station = map_data.stations[station_id]
 	if station.deliveries_total > 0 then
 		for train_id, train in pairs(map_data.trains) do
-			local is_p = train.r_station_id == station_id
-			local is_r = train.p_station_id == station_id
+			local is_p = train.p_station_id == station_id
+			local is_r = train.r_station_id == station_id
 			if is_p or is_r then
 				local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
 				local is_r_delivery_made = train.status == STATUS_R_TO_D
