@@ -6,7 +6,7 @@ cybersyn_station_recipe.ingredients = {
 }
 cybersyn_station_recipe.enabled = false
 
-cybersyn_depot_recipe = flib.copy_prototype(data.raw["recipe"]["train-stop"], BUFFER_STATION_NAME)
+cybersyn_depot_recipe = flib.copy_prototype(data.raw["recipe"]["train-stop"], DEPOT_STATION_NAME)
 cybersyn_depot_recipe.ingredients = {
 	{"train-stop", 1},
 	{"electronic-circuit", 5},
@@ -15,8 +15,8 @@ cybersyn_depot_recipe.enabled = false
 
 cybersyn_tech = {
 	type = "technology",
-	name = "cybernetic-train-network",
-	icon = "__cybersyn__/graphics/icon/tech.png",
+	name = "cybersyn-train-network",
+	icon = "__cybersyn__/graphics/icons/tech.png",
 	icon_size = 64,
 	icon_mipmaps = 4,
 	prerequisites = {

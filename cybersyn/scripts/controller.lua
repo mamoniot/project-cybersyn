@@ -5,7 +5,7 @@ local INF = math.huge
 
 local function icpairs(a, start_i)
 	if #a == 0 then
-		return nil
+		return function() end
 	end
 	start_i = start_i%#a + 1
 	local i = start_i - 1
@@ -126,34 +126,38 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 	local manifest = {}
 
 	local r_signals = get_signals(r_station)
-	for k, v in pairs(r_signals) do
-		local item_name = v.signal.name
-		local item_count = v.count
-		local item_type = v.signal.type
-		if item_name and item_type and item_type ~= "virtual" then
-			local effective_item_count = item_count + r_station.deliveries[item_name]
-			if -effective_item_count >= r_station.r_threshold then
-				requests[item_name] = -effective_item_count
+	if r_signals then
+		for k, v in pairs(r_signals) do
+			local item_name = v.signal.name
+			local item_count = v.count
+			local item_type = v.signal.type
+			if item_name and item_type and item_type ~= "virtual" then
+				local effective_item_count = item_count + r_station.deliveries[item_name]
+				if -effective_item_count >= r_station.r_threshold then
+					requests[item_name] = -effective_item_count
+				end
 			end
 		end
 	end
 
 	local p_signals = get_signals(r_station)
-	for k, v in pairs(p_signals) do
-		local item_name = v.signal.name
-		local item_count = v.count
-		local item_type = v.signal.type
-		if item_name and item_type and item_type ~= "virtual" then
-			local effective_item_count = item_count + p_station.deliveries[item_name]
-			if effective_item_count >= p_station.p_threshold then
-				local r = requests[item_name]
-				if r then
-					local item = {name = item_name, count = math.min(r, effective_item_count), type = item_type}
-					if item_name == primary_item_name then
-						manifest[#manifest + 1] = manifest[1]
-						manifest[1] = item
-					else
-						manifest[#manifest + 1] = item
+	if p_signals then
+		for k, v in pairs(p_signals) do
+			local item_name = v.signal.name
+			local item_count = v.count
+			local item_type = v.signal.type
+			if item_name and item_type and item_type ~= "virtual" then
+				local effective_item_count = item_count + p_station.deliveries[item_name]
+				if effective_item_count >= p_station.p_threshold then
+					local r = requests[item_name]
+					if r then
+						local item = {name = item_name, count = math.min(r, effective_item_count), type = item_type}
+						if item_name == primary_item_name then
+							manifest[#manifest + 1] = manifest[1]
+							manifest[1] = item
+						else
+							manifest[#manifest + 1] = item
+						end
 					end
 				end
 			end
@@ -260,44 +264,46 @@ function tick(map_data, mod_settings)
 			station.p_threshold = mod_settings.p_threshold
 			station.priority = 0
 			local signals = get_signals(station)
-			for k, v in pairs(signals) do
-				local item_name = v.signal.name
-				local item_count = v.count
-				local item_type = v.signal.type
-				if item_name and item_type then
-					if item_type == "virtual" then
-						if item_name == SIGNAL_PRIORITY then
-							station.priority = item_count
-						elseif item_name == REQUEST_THRESHOLD then
-							station.r_threshold = math.abs(item_count)
-						elseif item_name == PROVIDE_THRESHOLD then
-							station.p_threshold = math.abs(item_count)
+			if signals then
+				for k, v in pairs(signals) do
+					local item_name = v.signal.name
+					local item_count = v.count
+					local item_type = v.signal.type
+					if item_name and item_type then
+						if item_type == "virtual" then
+							if item_name == SIGNAL_PRIORITY then
+								station.priority = item_count
+							elseif item_name == REQUEST_THRESHOLD then
+								station.r_threshold = math.abs(item_count)
+							elseif item_name == PROVIDE_THRESHOLD then
+								station.p_threshold = math.abs(item_count)
+							end
+							signals[k] = nil
 						end
+					else
 						signals[k] = nil
 					end
-				else
-					signals[k] = nil
 				end
-			end
-			for k, v in pairs(signals) do
-				local item_name = v.signal.name
-				local item_count = v.count
-				local effective_item_count = item_count + station.deliveries[item_name]
+				for k, v in pairs(signals) do
+					local item_name = v.signal.name
+					local item_count = v.count
+					local effective_item_count = item_count + station.deliveries[item_name]
 
-				if -effective_item_count >= station.r_threshold then
-					if r_stations_all[item_name] == nil then
-						r_stations_all[item_name] = {}
-						p_stations_all[item_name] = {}
-						all_items[#all_items + 1] = item_name
+					if -effective_item_count >= station.r_threshold then
+						if r_stations_all[item_name] == nil then
+							r_stations_all[item_name] = {}
+							p_stations_all[item_name] = {}
+							all_items[#all_items + 1] = item_name
+						end
+						table.insert(r_stations_all[item_name], station_id)
+					elseif effective_item_count >= station.p_threshold then
+						if r_stations_all[item_name] == nil then
+							r_stations_all[item_name] = {}
+							p_stations_all[item_name] = {}
+							all_items[#all_items + 1] = item_name
+						end
+						table.insert(p_stations_all[item_name], station_id)
 					end
-					table.insert(r_stations_all[item_name], station_id)
-				elseif effective_item_count >= station.p_threshold then
-					if r_stations_all[item_name] == nil then
-						r_stations_all[item_name] = {}
-						p_stations_all[item_name] = {}
-						all_items[#all_items + 1] = item_name
-					end
-					table.insert(p_stations_all[item_name], station_id)
 				end
 			end
 		end

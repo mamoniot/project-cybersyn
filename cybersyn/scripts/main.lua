@@ -460,7 +460,7 @@ local function on_broken(event)
 			on_train_broken(global, entity.train)
 		end
 	elseif entity.name == BUFFER_STATION_NAME then
-		on_station_broken(entity.unit_number)
+		on_station_broken(global, entity)
 	elseif entity.type == "inserter" then
 	elseif entity.type == "pump" then
 	end
@@ -500,7 +500,7 @@ local function on_surface_removed(event)
 		local train_stops = surface.find_entities_filtered({type = "train-stop"})
 		for _, entity in pairs(train_stops) do
 			if entity.name == BUFFER_STATION_NAME then
-				on_station_broken(entity.unit_number)
+				on_station_broken(global, entity)
 			end
 		end
 	end

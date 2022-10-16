@@ -47,9 +47,9 @@ Layout: string
 ]]
 --TODO: only init once
 mod_settings = {}
-mod_settings.tps = settings.global["cybersyn-ticks-per-second"]
-mod_settings.r_threshold = settings.global["cybersyn-requester-threshold"]
-mod_settings.p_threshold = settings.global["cybersyn-provider-threshold"]
+mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value
+mod_settings.r_threshold = settings.global["cybersyn-requester-threshold"].value
+mod_settings.p_threshold = settings.global["cybersyn-provider-threshold"].value
 
 global.total_ticks = 0
 global.stations = {}
