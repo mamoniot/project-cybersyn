@@ -1,8 +1,26 @@
 {
     "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
+    "Lua.diagnostics.disable": [
+        "lowercase-global"
+    ],
+    "Lua.diagnostics.globals": [
+        "mods",
+        "table_size",
+        "log",
+        "localised_print",
+        "serpent",
+        "global",
+        "__DebugAdapter",
+        "__Profiler",
+        "create_inactivity_order"
+    ],
     "runtime": {
-        "plugin": "C:\\Users\\mmoni\\files\\data\\projects\\factorio\\mtc\\.vscode\\lua\\plugin.lua",
-        "pluginArgs": ["--global-as-class", "--mode=mods", "--mod_name=ltndless"]
+        "plugin": "C:\\Users\\mmoni\\files\\data\\projects\\factorio\\cybersyn\\.vscode\\lua\\plugin.lua",
+        "pluginArgs": [
+            "--global-as-class",
+            "--mode=mods",
+            "--mod_name=ltndless"
+        ]
     },
     "runtime.path": [
         "?.lua",
@@ -13,8 +31,8 @@
         "src/scripts/?/init.lua"
     ],
     "runtime.pathStrict": false,
-    "workspace.ignoreSubmodules": false,
     "workspace": {
         "useGitIgnore": false
-    }
+    },
+    "workspace.ignoreSubmodules": false
 }

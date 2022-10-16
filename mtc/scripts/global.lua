@@ -1,4 +1,4 @@
---By Monica Moniot
+--By Mami
 
 --[[
 global: {
@@ -21,13 +21,15 @@ Station: {
 	deliveries: {
 		[item_name]: int
 	}
-	train_layout: [char]
+	--train_layout: [char]
 	accepted_layouts: {
 		[layout_id]: bool
 	}
 }
 Train: {
 	entity: LuaEntity
+	entity_in: LuaEntity
+	entity_out: LuaEntity
 	layout_id: int
 	item_slot_capacity: int
 	fluid_capacity: int
@@ -44,6 +46,11 @@ Train: {
 Layout: string
 ]]
 --TODO: only init once
+mod_settings = {}
+mod_settings.tps = settings.global["cybersyn-ticks-per-second"]
+mod_settings.r_threshold = settings.global["cybersyn-requester-threshold"]
+mod_settings.p_threshold = settings.global["cybersyn-provider-threshold"]
+
 global.total_ticks = 0
 global.stations = {}
 global.trains = {}
@@ -51,10 +58,3 @@ global.trains_available = {}
 global.layouts = {}
 global.layout_train_count = {}
 global.layout_top_id = 1
-
-STATUS_D = 0
-STATUS_D_TO_P = 1
-STATUS_P = 2
-STATUS_P_TO_R = 3
-STATUS_R = 4
-STATUS_R_TO_D = 5

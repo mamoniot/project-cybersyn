@@ -1,8 +1,9 @@
---By Monica Moniot
+--By Mami
 
 
 
 local function on_failed_delivery(map_data, train)
+	--NOTE: must change train status to STATUS_D or remove it from tracked trains after this call
 	local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
 	if not is_p_delivery_made then
 		local station = map_data.stations[train.p_station_id]
@@ -13,6 +14,10 @@ local function on_failed_delivery(map_data, train)
 			end
 		end
 		station.deliveries_total = station.deliveries_total - 1
+		if train.status == STATUS_P then
+			--change circuit outputs
+			station.entity_out.get_control_behavior().parameters = nil
+		end
 	end
 	local is_r_delivery_made = train.status == STATUS_R_TO_D
 	if not is_r_delivery_made then
@@ -24,12 +29,14 @@ local function on_failed_delivery(map_data, train)
 			end
 		end
 		station.deliveries_total = station.deliveries_total - 1
+		if train.status == STATUS_R then
+			--change circuit outputs
+			station.entity_out.get_control_behavior().parameters = nil
+		end
 	end
-	--TODO: change circuit outputs
 	train.r_station_id = 0
 	train.p_station_id = 0
 	train.manifest = nil
-	--NOTE: must change train status to STATUS_D or remove it from tracked trains after call
 end
 
 local function remove_train(map_data, train, train_id)
@@ -49,22 +56,104 @@ local function remove_train(map_data, train, train_id)
 end
 
 local function on_station_built(map_data, stop)
-	--TODO: update station stats
+	local pos_x = stop.position.x
+	local pos_y = stop.position.y
+
+	local in_pos
+	local out_pos
+	local direction
+	local search_area
+	if stop.direction == 0 then
+		direction = 0
+		in_pos = {pos_x, pos_y - 1}
+		out_pos = {pos_x - 1, pos_y - 1}
+		search_area = {
+			{pos_x + DELTA - 1, pos_y + DELTA - 1},
+			{pos_x - DELTA + 1, pos_y - DELTA}
+		}
+	elseif stop.direction == 2 then
+		direction = 2
+		in_pos = {pos_x, pos_y}
+		out_pos = {pos_x, pos_y - 1}
+		search_area = {
+			{pos_x + DELTA, pos_y + DELTA - 1},
+			{pos_x - DELTA + 1, pos_y - DELTA + 1}
+		}
+	elseif stop.direction == 4 then
+		direction = 4
+		in_pos = {pos_x - 1, pos_y}
+		out_pos = {pos_x, pos_y}
+		search_area = {
+			{pos_x + DELTA - 1, pos_y + DELTA},
+			{pos_x - DELTA + 1, pos_y - DELTA + 1}
+		}
+	elseif stop.direction == 6 then
+		direction = 6
+		in_pos = {pos_x - 1, pos_y - 1}
+		out_pos = {pos_x - 1, pos_y}
+		search_area = {
+			{pos_x + DELTA - 1, pos_y + DELTA - 1},
+			{pos_x - DELTA, pos_y - DELTA + 1}
+		}
+	else
+		assert(false, "cybersyn: invalid direction of train stop")
+	end
+
+	local entity_in = nil
+	local entity_out = nil
+	local entities = stop.surface.find_entities(search_area)
+	for _, cur_entity in pairs (entities) do
+		if cur_entity.valid then
+			if cur_entity.name == "entity-ghost" then
+				if cur_entity.ghost_name == STATION_IN_NAME then
+					_, entity_in = cur_entity.revive()
+				elseif cur_entity.ghost_name == STATION_OUT_NAME then
+					_, entity_out = cur_entity.revive()
+				end
+			elseif cur_entity.name == STATION_IN_NAME then
+				entity_in = cur_entity
+			elseif cur_entity.name == STATION_OUT_NAME then
+				entity_out = cur_entity
+			end
+		end
+	end
+
+	if entity_in == nil then -- create new
+		entity_in = stop.surface.create_entity({
+			name = STATION_IN_NAME,
+			position = in_pos,
+			force = stop.force
+		})
+	end
+	entity_in.operable = false
+	entity_in.minable = false
+	entity_in.destructible = false
+
+	if entity_out == nil then -- create new
+		entity_out = stop.surface.create_entity({
+			name = STATION_OUT_NAME,
+			position = out_pos,
+			direction = direction,
+			force = stop.force
+		})
+	end
+	entity_out.operable = false
+	entity_out.minable = false
+	entity_out.destructible = false
+
 	local station = {
+		entity = stop,
+		entity_in = entity_in,
+		entity_out = entity_out,
 		deliveries_total = 0,
 		train_limit = 100,
 		priority = 0,
 		last_delivery_tick = 0,
 		r_threshold = 0,
 		p_threshold = 0,
-		entity = stop,
-		--train_layout: [ [ {
-		--	[car_type]: true|nil
-		--} ] ]
-		accepted_layouts = {
-			--[layout_id]: true|nil
-		}
+		accepted_layouts = {}
 	}
+
 	map_data.stations[stop.unit_number] = station
 end
 local function on_station_broken(map_data, stop)
@@ -90,6 +179,33 @@ local function on_station_broken(map_data, stop)
 		end
 	end
 	map_data.stations[station_id] = nil
+end
+
+local function on_station_rename(map_data, stop)
+	--search for trains coming to the renamed station
+	local station_id = stop.unit_number
+	local station = map_data.stations[station_id]
+	for train_id, train in pairs(map_data.trains) do
+		if station.deliveries_total <= 0 then
+			break
+		end
+		local is_p = train.r_station_id == station_id
+		local is_r = train.p_station_id == station_id
+		if is_p or is_r then
+			local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
+			local is_r_delivery_made = train.status == STATUS_R_TO_D
+			if (is_r and not is_r_delivery_made) or (is_p and not is_p_delivery_made) then
+				--train is attempting delivery to a stop that was renamed
+				--TODO: test to make sure this code actually works
+				local record = train.entity.schedule.records
+				if is_p then
+					record[3] = create_loading_order(station.entity, train.manifest)
+				else
+					record[5] = create_unloading_order(station.entity)
+				end
+			end
+		end
+	end
 end
 
 
@@ -141,35 +257,35 @@ local function update_train_layout(map_data, train)
 
 		map_data.layouts[layout_id] = layout
 		map_data.layout_train_count[layout_id] = 1
-		for station_id, station in pairs(map_data.stations) do
-			if #layout >= #station.train_layout then
-				local is_approved = true
-				for i, v in ipairs(station.train_layout) do
-					local c = string.sub(layout, i, i)
-					if v == "C" then
-						if c ~= "C" and c ~= "?" then
-							is_approved = false
-							break
-						end
-					elseif v == "F" then
-						if c ~= "F" then
-							is_approved = false
-							break
-						end
-					end
-				end
-				for i = #station.train_layout, #layout do
-					local c = string.sub(layout, i, i)
-					if c ~= "?" then
-						is_approved = false
-						break
-					end
-				end
-				if is_approved then
-					station.accepted_layouts[layout_id] = true
-				end
-			end
-		end
+		--for station_id, station in pairs(map_data.stations) do
+		--	if #layout >= #station.train_layout then
+		--		local is_approved = true
+		--		for i, v in ipairs(station.train_layout) do
+		--			local c = string.sub(layout, i, i)
+		--			if v == "C" then
+		--				if c ~= "C" and c ~= "?" then
+		--					is_approved = false
+		--					break
+		--				end
+		--			elseif v == "F" then
+		--				if c ~= "F" then
+		--					is_approved = false
+		--					break
+		--				end
+		--			end
+		--		end
+		--		for i = #station.train_layout, #layout do
+		--			local c = string.sub(layout, i, i)
+		--			if c ~= "?" then
+		--				is_approved = false
+		--				break
+		--			end
+		--		end
+		--		if is_approved then
+		--			station.accepted_layouts[layout_id] = true
+		--		end
+		--	end
+		--end
 	else
 		map_data.layout_train_count[layout_id] = map_data.layout_train_count[layout_id] + 1
 	end
@@ -229,12 +345,24 @@ local function on_train_arrives_buffer(map_data, station_id, train)
 		if train.status == STATUS_D_TO_P then
 			if train.p_station_id == station_id then
 				train.status = STATUS_P
-				--TODO: change circuit outputs
+				--change circuit outputs
+				local station = map_data.stations[station_id]
+				local signals = {}
+				for i, item in ipairs(train.manifest) do
+					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item.count}
+				end
+				station.entity_out.get_control_behavior().parameters = signals
 			end
 		elseif train.status == STATUS_P_TO_R then
 			if train.r_station_id == station_id then
 				train.status = STATUS_R
-				--TODO: change circuit outputs
+				--change circuit outputs
+				local station = map_data.stations[station_id]
+				local signals = {}
+				for i, item in ipairs(train.manifest) do
+					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = -1}
+				end
+				station.entity_out.get_control_behavior().parameters = signals
 			end
 		else
 			on_failed_delivery(map_data, train)
@@ -258,7 +386,8 @@ local function on_train_leaves_station(map_data, train)
 				end
 			end
 			station.deliveries_total = station.deliveries_total - 1
-			--TODO: change circuit outputs
+			--change circuit outputs
+			station.entity_out.get_control_behavior().parameters = nil
 		elseif train.status == STATUS_R then
 			train.status = STATUS_R_TO_D
 			local station = map_data.stations[train.r_station_id]
@@ -269,7 +398,8 @@ local function on_train_leaves_station(map_data, train)
 				end
 			end
 			station.deliveries_total = station.deliveries_total - 1
-			--TODO: change circuit outputs
+			--change circuit outputs
+			station.entity_out.get_control_behavior().parameters = nil
 		end
 	end
 end
@@ -301,8 +431,10 @@ local function on_train_modified(map_data, pre_train_id, train_entity)
 end
 
 
+
+
 local function on_tick(event)
-	tick(global.stations, global.trains_available, global.total_ticks)
+	tick(global, mod_settings)
 	global.total_ticks = global.total_ticks + 1
 end
 
@@ -313,6 +445,9 @@ local function on_built(event)
 		on_station_built(global, entity)
 	elseif entity.type == "inserter" then
 	elseif entity.type == "pump" then
+		if entity.pump_rail_target then
+
+		end
 	end
 end
 local function on_broken(event)
@@ -371,6 +506,12 @@ local function on_surface_removed(event)
 	end
 end
 
+local function on_rename(event)
+	if event.entity.name == BUFFER_STATION_NAME then
+		on_station_rename(global, event.entity)
+	end
+end
+
 local filter_built = {
 	{filter = "type", type = "train-stop"},
 	{filter = "type", type = "inserter"},
@@ -383,6 +524,7 @@ local filter_broken = {
 	{filter = "rolling-stock"},
 }
 local function register_events()
+	--NOTE: I have no idea if this correctly registers all events once in all situations
 	script.on_event(defines.events.on_built_entity, on_built, filter_built)
 	script.on_event(defines.events.on_robot_built_entity, on_built, filter_built)
 	script.on_event({defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, on_built)
@@ -394,11 +536,14 @@ local function register_events()
 
 	script.on_event({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
 
-	--  script.on_nth_tick(nil)
-	script.on_nth_tick(controller_nth_tick, on_tick)
+	local nth_tick = math.ceil(60/mod_settings.tps);
+	script.on_nth_tick(nil)
+	script.on_nth_tick(nth_tick, on_tick)
 
 	script.on_event(defines.events.on_train_created, on_train_built)
 	script.on_event(defines.events.on_train_changed_state, on_train_changed)
+
+	script.on_event(defines.events.on_entity_renamed, on_rename)
 end
 
 script.on_load(function()

@@ -1,4 +1,4 @@
---By Monica Moniot
+--By Mami
 local get_distance = require("__flib__.misc").get_distance
 local math = math
 local INF = math.huge
@@ -22,7 +22,8 @@ local function icpairs(a, start_i)
 	end
 end
 
-local function create_loading_order(stop, manifest)
+local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = 120}
+function create_loading_order(stop, manifest)
 	local condition = {}
 	for _, item in ipairs(manifest) do
 		local cond_type
@@ -32,23 +33,24 @@ local function create_loading_order(stop, manifest)
 			cond_type = "item_count"
 		end
 
-		condition[#condition + 1] = {
+		condition[1] = {
 			type = cond_type,
 			compare_type = "and",
 			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
 		}
+		condition[2] = create_loading_order_condition
 	end
 	return {station = stop.backer_name, wait_conditions = condition}
 end
 
 local create_unloading_order_condition = {type = "empty", compare_type = "and"}
-local function create_unloading_order(stop, manifest)
+function create_unloading_order(stop)
 	return {station = stop.backer_name, wait_conditions = create_unloading_order_condition}
 end
 
-local create_inactivity_order_condition = {type = "inactivity", compare_type = "and", ticks = 3}
-local function create_inactivity_order(stop)
-	return {station = stop.backer_name, wait_conditions = create_inactivity_order_condition}
+local create_inactivity_order_condition = create_loading_order_condition
+function create_inactivity_order(depot_name)
+	return {station = depot_name, wait_conditions = create_inactivity_order_condition}
 end
 
 local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 0}}
@@ -58,18 +60,23 @@ end
 
 
 
-local function get_signals(stations, station_id)
-	return {}
+local function get_signals(station)
+	local signals = station.entity_in.get_merged_signals()
+	return signals
 end
 
 local function get_stop_dist(stop0, stop1)
 	return get_distance(stop0.position, stop1.position)
 end
 
-local function get_valid_train(stations, r_station_id, p_station_id, available_trains, item_type)
+local function station_accepts_layout(station, layout_id)
+	return true
+end
+
+local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 	--NOTE: this code is the critical section for run-time optimization
-	local r_station = stations[r_station_id]
-	local p_station = stations[p_station_id]
+	local r_station = map_data.stations[r_station_id]
+	local p_station = map_data.stations[p_station_id]
 
 	local p_to_r_dist = get_stop_dist(p_station.entity, r_station.entity)
 	if p_to_r_dist == INF then
@@ -81,14 +88,15 @@ local function get_valid_train(stations, r_station_id, p_station_id, available_t
 	local valid_train_exists = false
 
 	local is_fluid = item_type == "fluid"
-	for train_id, _ in pairs(available_trains) do
+	for train_id, _ in pairs(map_data.trains_available) do
 		local train = map_data.trains[train_id]
 		--check cargo capabilities
 		--check layout validity for both stations
 		if
-			((is_fluid and train.fluid_capacity > 0) or (not is_fluid and train.item_slot_capacity > 0))
-			and r_station.accepted_layouts[train.layout_id] and p_station.accepted_layouts[train.layout_id]
-			and train.entity.station
+		((is_fluid and train.fluid_capacity > 0) or (not is_fluid and train.item_slot_capacity > 0))
+		and station_accepts_layout(r_station, train.layout_id)
+		and station_accepts_layout(p_station, train.layout_id)
+		and train.entity.station
 		then
 			valid_train_exists = true
 			--check if exists valid path
@@ -110,14 +118,14 @@ local function get_valid_train(stations, r_station_id, p_station_id, available_t
 	end
 end
 
-local function send_train_between(stations, r_station_id, p_station_id, train, available_trains, primary_item_name, economy)
-	local r_station = stations[r_station_id]
-	local p_station = stations[p_station_id]
+local function send_train_between(map_data, r_station_id, p_station_id, train, primary_item_name, economy)
+	local r_station = map_data.stations[r_station_id]
+	local p_station = map_data.stations[p_station_id]
 
 	local requests = {}
 	local manifest = {}
 
-	local r_signals = get_signals(r_station_id)
+	local r_signals = get_signals(r_station)
 	for k, v in pairs(r_signals) do
 		local item_name = v.signal.name
 		local item_count = v.count
@@ -130,7 +138,7 @@ local function send_train_between(stations, r_station_id, p_station_id, train, a
 		end
 	end
 
-	local p_signals = get_signals(r_station_id)
+	local p_signals = get_signals(r_station)
 	for k, v in pairs(p_signals) do
 		local item_name = v.signal.name
 		local item_count = v.count
@@ -193,8 +201,8 @@ local function send_train_between(stations, r_station_id, p_station_id, train, a
 	for _, item in ipairs(manifest) do
 		assert(item.count > 0, "main.lua error, transfer amount was not positive")
 
-		r_station.deliveries[item.name] = r_station.deliveries[item.name] + item.count
-		p_station.deliveries[item.name] = p_station.deliveries[item.name] - item.count
+		r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
+		p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
 
 		local r_stations = economy.r_stations_all[item.name]
 		local p_stations = economy.p_stations_all[item.name]
@@ -212,22 +220,20 @@ local function send_train_between(stations, r_station_id, p_station_id, train, a
 		end
 	end
 
-	available_trains[train.entity.id] = nil
+	map_data.trains_available[train.entity.id] = nil
 	train.status = STATUS_D_TO_P
 	train.p_station_id = p_station_id
 	train.r_station_id = r_station_id
 	train.manifest = manifest
 
 	do
-		local records = {}
-		records[#records + 1] = create_inactivity_order(train.depot_name)
-
-		records[#records + 1] = create_direct_to_station_order(p_station.entity)
-		records[#records + 1] = create_loading_order(p_station.entity, manifest)
-
-		records[#records + 1] = create_direct_to_station_order(p_station.entity)
-		records[#records + 1] = create_unloading_order(p_station.entity, manifest)
-
+		local records = {
+			create_inactivity_order(train.depot_name),
+			create_direct_to_station_order(p_station.entity),
+			create_loading_order(p_station.entity, manifest),
+			create_direct_to_station_order(r_station.entity),
+			create_unloading_order(r_station.entity),
+		}
 		local schedule = {current = 1, records = records}
 
 		train.entity.schedule = schedule
@@ -235,7 +241,9 @@ local function send_train_between(stations, r_station_id, p_station_id, train, a
 end
 
 
-function tick(stations, available_trains, ticks_total)
+function tick(map_data, mod_settings)
+	local ticks_total = map_data.ticks_total
+	local stations = map_data.stations
 	local economy = {
 		r_stations_all = {},
 		p_stations_all = {},
@@ -248,10 +256,10 @@ function tick(stations, available_trains, ticks_total)
 
 	for station_id, station in pairs(stations) do
 		if station.deliveries_total < station.train_limit then
-			station.r_threshold = 0
-			station.p_threshold = 0
+			station.r_threshold = mod_settings.r_threshold
+			station.p_threshold = mod_settings.p_threshold
 			station.priority = 0
-			local signals = get_signals(station_id)
+			local signals = get_signals(station)
 			for k, v in pairs(signals) do
 				local item_name = v.signal.name
 				local item_count = v.count
@@ -316,7 +324,7 @@ function tick(stations, available_trains, ticks_total)
 					local highest_prior = -INF
 					local could_have_been_serviced = false
 					for j, p_station_id in ipairs(p_stations) do
-						local train, d = get_valid_train(stations, r_station_id, p_station_id, available_trains)
+						local train, d = get_valid_train(map_data, r_station_id, p_station_id)
 						local prior = stations[p_station_id].priority
 						if prior > highest_prior or (prior == highest_prior and d < best_dist) then
 							if train then
@@ -330,7 +338,7 @@ function tick(stations, available_trains, ticks_total)
 						end
 					end
 					if best > 0 then
-						send_train_between(stations, r_station_id, p_stations[best], best_train, available_trains, item_name, economy)
+						send_train_between(map_data, r_station_id, p_stations[best], best_train, item_name, economy)
 					elseif could_have_been_serviced then
 						failed_because_missing_trains_total = failed_because_missing_trains_total + 1
 					end
@@ -350,7 +358,7 @@ function tick(stations, available_trains, ticks_total)
 						local r_station = stations[r_station_id]
 						local prior = r_station.priority
 						if prior > highest_prior or (prior == highest_prior and r_station.last_delivery_tick < lowest_tick) then
-							local train, d = get_valid_train(stations, r_station_id, p_station_id, available_trains)
+							local train, d = get_valid_train(map_data, r_station_id, p_station_id)
 							if train then
 								best = i
 								best_train = train
@@ -362,7 +370,7 @@ function tick(stations, available_trains, ticks_total)
 						end
 					end
 					if best > 0 then
-						send_train_between(stations, r_stations[best], p_station_id, best_train, available_trains, item_name, economy)
+						send_train_between(map_data, r_stations[best], p_station_id, best_train, item_name, economy)
 					elseif could_have_been_serviced then
 						failed_because_missing_trains_total = failed_because_missing_trains_total + 1
 					end
