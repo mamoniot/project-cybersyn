@@ -147,10 +147,11 @@ local function on_station_built(map_data, stop)
 		entity_in = entity_in,
 		entity_out = entity_out,
 		deliveries_total = 0,
-		priority = 0,
 		last_delivery_tick = 0,
+		priority = 0,
 		r_threshold = 0,
 		p_threshold = 0,
+		locked_slots = 0,
 		deliveries = {},
 		accepted_layouts = {}
 	}
@@ -238,7 +239,7 @@ local function update_train_layout(map_data, train)
 			item_slot_capacity = item_slot_capacity + #inv
 		elseif carriage.type == "fluid-wagon" then
 			layout = layout.."F"
-			fluid_capacity = fluid_capacity + carriage.prototype.capacity
+			fluid_capacity = fluid_capacity + carriage.prototype.fluid_capacity
 		else
 			layout = layout.."?"
 		end
@@ -315,6 +316,7 @@ local function on_train_arrives_depot(map_data, train_entity)
 				if next(contents) == nil then
 					train.depot_name = train_entity.station.backer_name
 					train.status = STATUS_D
+					train.entity.schedule = create_depot_schedule(train.depot_name)
 					map_data.trains_available[train_entity.id] = true
 				else--train still has cargo
 					train.entity.schedule = nil
@@ -370,6 +372,7 @@ local function on_train_arrives_buffer(map_data, station_id, train)
 		else
 			on_failed_delivery(map_data, train)
 			remove_train(map_data, train, train.entity.id)
+			train.entity.schedule = nil
 		end
 	else
 		--train is lost somehow, probably from player intervention
@@ -409,6 +412,9 @@ local function on_train_broken(map_data, train)
 	if train.manifest then
 		on_failed_delivery(map_data, train)
 		remove_train(map_data, train, train.entity.id)
+		if train.entity.valid then
+			train.entity.schedule = nil
+		end
 	end
 end
 
@@ -418,15 +424,10 @@ local function on_train_modified(map_data, pre_train_id, train_entity)
 
 		if train.manifest then
 			on_failed_delivery(map_data, train)
-			remove_train(map_data, train, pre_train_id)
-		else--train is in depot
-			remove_train(map_data, train, pre_train_id)
-			train.entity = train_entity
-			update_train_layout(map_data, train)
-			--TODO: update train stats
-
-			map_data.trains[train_entity.id] = train
-			map_data.trains_available[train_entity.id] = true
+		end
+		remove_train(map_data, train, pre_train_id)
+		if train.entity.valid then
+			train.entity.schedule = nil
 		end
 	end
 end

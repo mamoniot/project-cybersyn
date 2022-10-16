@@ -21,4 +21,5 @@ data:extend({
 	cybersyn_priority,
 	cybersyn_p_threshold,
 	cybersyn_r_threshold,
+	cybersyn_locked_slots,
 })

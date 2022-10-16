@@ -3,6 +3,7 @@
 SIGNAL_PRIORITY = "cybersyn-priority"
 REQUEST_THRESHOLD = "cybersyn-r_threshold"
 PROVIDE_THRESHOLD = "cybersyn-p_threshold"
+LOCKED_SLOTS = "cybersyn-locked-slots"
 
 STATION_IN_NAME = "cybersyn-station-in"
 STATION_OUT_NAME = "cybersyn-station-out"

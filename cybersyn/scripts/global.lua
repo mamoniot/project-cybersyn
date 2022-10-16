@@ -16,6 +16,7 @@ Station: {
 	last_delivery_tick: int
 	r_threshold: int >= 0
 	p_threshold: int >= 0
+	locked_slots: int >= 0
 	entity: LuaEntity
 	entity_in: LuaEntity
 	entity_out: LuaEntity

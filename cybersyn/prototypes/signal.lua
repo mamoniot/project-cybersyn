@@ -27,5 +27,13 @@ cybersyn_r_threshold = {
 	icon = "__cybersyn__/graphics/icons/r_threshold.png",
 	icon_size = 64,
 	subgroup = "cybersyn-signal",
-	order = "a-b"
+	order = "a-c"
+}
+cybersyn_locked_slots = {
+	type = "virtual-signal",
+	name = LOCKED_SLOTS,
+	icon = "__cybersyn__/graphics/icons/locked_slots.png",
+	icon_size = 64,
+	subgroup = "cybersyn-signal",
+	order = "a-d"
 }

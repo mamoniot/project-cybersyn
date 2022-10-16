@@ -3,25 +3,6 @@ local get_distance = require("__flib__.misc").get_distance
 local math = math
 local INF = math.huge
 
-local function icpairs(a, start_i)
-	if #a == 0 then
-		return function() end
-	end
-	start_i = start_i%#a + 1
-	local i = start_i - 1
-	local flag = true
-	return function()
-		i = i%#a + 1
-		if i ~= start_i or flag then
-			flag = false
-			local v = a[i]
-			if v then
-				return i, v
-			end
-		end
-	end
-end
-
 local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = 120}
 function create_loading_order(stop, manifest)
 	local condition = {}
@@ -55,7 +36,7 @@ end
 
 local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 0}}
 local function create_direct_to_station_order(stop)
-	return {wait_conditions = create_direct_to_station_order_condition, rail = stop.connected_rail, rail_direction = stop.connected_rail_direction}
+	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction}
 end
 
 function create_depot_schedule(depot_name)
@@ -178,7 +159,11 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 		end
 	end
 
+	local locked_slots = math.max(p_station.locked_slots, r_station.locked_slots)
 	local total_slots_left = train.item_slot_capacity
+	if locked_slots > 0 then
+		total_slots_left = math.max(total_slots_left - #train.entity.cargo_wagons*locked_slots, math.min(total_slots_left, #train.entity.cargo_wagons))
+	end
 	local total_liquid_left = train.fluid_capacity
 
 	local i = 1
@@ -266,6 +251,7 @@ function tick(map_data, mod_settings)
 			station.r_threshold = mod_settings.r_threshold
 			station.p_threshold = mod_settings.p_threshold
 			station.priority = 0
+			station.locked_slots = 0
 			local signals = get_signals(station)
 			if signals then
 				for k, v in pairs(signals) do
@@ -280,6 +266,8 @@ function tick(map_data, mod_settings)
 								station.r_threshold = math.abs(item_count)
 							elseif item_name == PROVIDE_THRESHOLD then
 								station.p_threshold = math.abs(item_count)
+							elseif item_name == LOCKED_SLOTS then
+								station.locked_slots = math.max(item_count, 0)
 							end
 							signals[k] = nil
 						end
@@ -297,6 +285,7 @@ function tick(map_data, mod_settings)
 							r_stations_all[item_name] = {}
 							p_stations_all[item_name] = {}
 							all_items[#all_items + 1] = item_name
+							all_items[#all_items + 1] = v.signal.type
 						end
 						table.insert(r_stations_all[item_name], station_id)
 					elseif effective_item_count >= station.p_threshold then
@@ -304,6 +293,7 @@ function tick(map_data, mod_settings)
 							r_stations_all[item_name] = {}
 							p_stations_all[item_name] = {}
 							all_items[#all_items + 1] = item_name
+							all_items[#all_items + 1] = v.signal.type
 						end
 						table.insert(p_stations_all[item_name], station_id)
 					end
@@ -315,7 +305,10 @@ function tick(map_data, mod_settings)
 	local failed_because_missing_trains_total = 0
 	--we do not dispatch more than one train per station per tick
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
-	for _, item_name in icpairs(all_items, total_ticks) do
+	local start_i = 2*(total_ticks%(#all_items/2)) + 1
+	for item_i = 0, #all_items - 1, 2 do
+		local item_name = all_items[(start_i + item_i - 1)%#all_items + 1]
+		local item_type = all_items[(start_i + item_i)%#all_items + 1]
 		local r_stations = r_stations_all[item_name]
 		local p_stations = p_stations_all[item_name]
 
@@ -333,7 +326,7 @@ function tick(map_data, mod_settings)
 					local highest_prior = -INF
 					local could_have_been_serviced = false
 					for j, p_station_id in ipairs(p_stations) do
-						local train, d = get_valid_train(map_data, r_station_id, p_station_id)
+						local train, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
 						local prior = stations[p_station_id].priority
 						if prior > highest_prior or (prior == highest_prior and d < best_dist) then
 							if train then
@@ -367,7 +360,7 @@ function tick(map_data, mod_settings)
 						local r_station = stations[r_station_id]
 						local prior = r_station.priority
 						if prior > highest_prior or (prior == highest_prior and r_station.last_delivery_tick < lowest_tick) then
-							local train, d = get_valid_train(map_data, r_station_id, p_station_id)
+							local train, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
 							if train then
 								best = i
 								best_train = train
@@ -387,4 +380,5 @@ function tick(map_data, mod_settings)
 			end
 		end
 	end
+	--TODO: add alert for missing trains
 end
