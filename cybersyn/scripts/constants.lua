@@ -1,8 +1,8 @@
 --By Mami
 
 SIGNAL_PRIORITY = "cybersyn-priority"
-REQUEST_THRESHOLD = "cybersyn-request-threshold"
-PROVIDE_THRESHOLD = "cybersyn-provide-threshold"
+REQUEST_THRESHOLD = "cybersyn-r_threshold"
+PROVIDE_THRESHOLD = "cybersyn-p_threshold"
 
 STATION_IN_NAME = "cybersyn-station-in"
 STATION_OUT_NAME = "cybersyn-station-out"

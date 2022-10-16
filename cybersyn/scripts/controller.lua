@@ -33,22 +33,22 @@ function create_loading_order(stop, manifest)
 			cond_type = "item_count"
 		end
 
-		condition[1] = {
+		condition[#condition + 1] = {
 			type = cond_type,
 			compare_type = "and",
 			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
 		}
-		condition[2] = create_loading_order_condition
 	end
+	condition[#condition + 1] = create_loading_order_condition
 	return {station = stop.backer_name, wait_conditions = condition}
 end
 
-local create_unloading_order_condition = {type = "empty", compare_type = "and"}
+local create_unloading_order_condition = {{type = "empty", compare_type = "and"}}
 function create_unloading_order(stop)
 	return {station = stop.backer_name, wait_conditions = create_unloading_order_condition}
 end
 
-local create_inactivity_order_condition = create_loading_order_condition
+local create_inactivity_order_condition = {{type = "inactivity", compare_type = "and", ticks = 120}}
 function create_inactivity_order(depot_name)
 	return {station = depot_name, wait_conditions = create_inactivity_order_condition}
 end
@@ -56,6 +56,20 @@ end
 local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 0}}
 local function create_direct_to_station_order(stop)
 	return {wait_conditions = create_direct_to_station_order_condition, rail = stop.connected_rail, rail_direction = stop.connected_rail_direction}
+end
+
+function create_depot_schedule(depot_name)
+	return {current = 1, records = {create_inactivity_order(depot_name)}}
+end
+
+function create_manifest_schedule(depot_name, p_stop, r_stop, manifest)
+	return {current = 1, records = {
+		create_inactivity_order(depot_name),
+		create_direct_to_station_order(p_stop),
+		create_loading_order(p_stop, manifest),
+		create_direct_to_station_order(r_stop),
+		create_unloading_order(r_stop),
+	}}
 end
 
 
@@ -132,7 +146,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 			local item_count = v.count
 			local item_type = v.signal.type
 			if item_name and item_type and item_type ~= "virtual" then
-				local effective_item_count = item_count + r_station.deliveries[item_name]
+				local effective_item_count = item_count + (r_station.deliveries[item_name] or 0)
 				if -effective_item_count >= r_station.r_threshold then
 					requests[item_name] = -effective_item_count
 				end
@@ -140,14 +154,14 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 		end
 	end
 
-	local p_signals = get_signals(r_station)
+	local p_signals = get_signals(p_station)
 	if p_signals then
 		for k, v in pairs(p_signals) do
 			local item_name = v.signal.name
 			local item_count = v.count
 			local item_type = v.signal.type
 			if item_name and item_type and item_type ~= "virtual" then
-				local effective_item_count = item_count + p_station.deliveries[item_name]
+				local effective_item_count = item_count + (p_station.deliveries[item_name] or 0)
 				if effective_item_count >= p_station.p_threshold then
 					local r = requests[item_name]
 					if r then
@@ -196,8 +210,8 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 		end
 	end
 
-	r_station.last_delivery_tick = economy.ticks_total
-	p_station.last_delivery_tick = economy.ticks_total
+	r_station.last_delivery_tick = economy.total_ticks
+	p_station.last_delivery_tick = economy.total_ticks
 
 	r_station.deliveries_total = r_station.deliveries_total + 1
 	p_station.deliveries_total = p_station.deliveries_total + 1
@@ -230,36 +244,25 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 	train.r_station_id = r_station_id
 	train.manifest = manifest
 
-	do
-		local records = {
-			create_inactivity_order(train.depot_name),
-			create_direct_to_station_order(p_station.entity),
-			create_loading_order(p_station.entity, manifest),
-			create_direct_to_station_order(r_station.entity),
-			create_unloading_order(r_station.entity),
-		}
-		local schedule = {current = 1, records = records}
-
-		train.entity.schedule = schedule
-	end
+	train.entity.schedule = create_manifest_schedule(train.depot_name, p_station.entity, r_station.entity, manifest)
 end
 
 
 function tick(map_data, mod_settings)
-	local ticks_total = map_data.ticks_total
+	local total_ticks = map_data.total_ticks
 	local stations = map_data.stations
 	local economy = {
 		r_stations_all = {},
 		p_stations_all = {},
 		all_items = {},
-		ticks_total = ticks_total,
+		total_ticks = total_ticks,
 	}
 	local r_stations_all = economy.r_stations_all
 	local p_stations_all = economy.p_stations_all
 	local all_items = economy.all_items
 
 	for station_id, station in pairs(stations) do
-		if station.deliveries_total < station.train_limit then
+		if station.deliveries_total < station.entity.trains_limit then
 			station.r_threshold = mod_settings.r_threshold
 			station.p_threshold = mod_settings.p_threshold
 			station.priority = 0
@@ -287,7 +290,7 @@ function tick(map_data, mod_settings)
 				for k, v in pairs(signals) do
 					local item_name = v.signal.name
 					local item_count = v.count
-					local effective_item_count = item_count + station.deliveries[item_name]
+					local effective_item_count = item_count + (station.deliveries[item_name] or 0)
 
 					if -effective_item_count >= station.r_threshold then
 						if r_stations_all[item_name] == nil then
@@ -312,7 +315,7 @@ function tick(map_data, mod_settings)
 	local failed_because_missing_trains_total = 0
 	--we do not dispatch more than one train per station per tick
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
-	for _, item_name in icpairs(all_items, ticks_total) do
+	for _, item_name in icpairs(all_items, total_ticks) do
 		local r_stations = r_stations_all[item_name]
 		local p_stations = p_stations_all[item_name]
 
@@ -321,7 +324,7 @@ function tick(map_data, mod_settings)
 			if #r_stations <= #p_stations then
 				--probably backpressure, prioritize locality
 				repeat
-					local i = ticks_total%#r_stations + 1
+					local i = total_ticks%#r_stations + 1
 					local r_station_id = table.remove(r_stations, i)
 
 					local best = 0
@@ -352,7 +355,7 @@ function tick(map_data, mod_settings)
 			else
 				--prioritize round robin
 				repeat
-					local j = ticks_total%#p_stations + 1
+					local j = total_ticks%#p_stations + 1
 					local p_station_id = table.remove(p_stations, j)
 
 					local best = 0

@@ -4,12 +4,14 @@ cybersyn_station_entity.icon = "__cybersyn__/graphics/icons/station.png"
 cybersyn_station_entity.icon_size = 64
 cybersyn_station_entity.icon_mipmaps = 4
 cybersyn_station_entity.next_upgrade = nil
+cybersyn_station_entity.color = {.5, .1, .9}
 
 cybersyn_depot_entity = flib.copy_prototype(data.raw["train-stop"]["train-stop"], DEPOT_STATION_NAME)
 cybersyn_depot_entity.icon = "__cybersyn__/graphics/icons/depot.png"
 cybersyn_depot_entity.icon_size = 64
 cybersyn_depot_entity.icon_mipmaps = 4
 cybersyn_depot_entity.next_upgrade = nil
+cybersyn_depot_entity.color = {1, .9, .9}
 
 cybersyn_station_in = flib.copy_prototype(data.raw["lamp"]["small-lamp"], STATION_IN_NAME)
 cybersyn_station_in.icon = "__cybersyn__/graphics/icons/station.png"

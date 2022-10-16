@@ -5,6 +5,7 @@ require('scripts.constants')
 require('prototypes.item')
 require('prototypes.tech')
 require('prototypes.entity')
+require('prototypes.signal')
 
 data:extend({
 	cybersyn_depot_item,
@@ -16,4 +17,8 @@ data:extend({
 	cybersyn_station_entity,
 	cybersyn_station_in,
 	cybersyn_station_out,
+	cybersyn_subgroup,
+	cybersyn_priority,
+	cybersyn_p_threshold,
+	cybersyn_r_threshold,
 })

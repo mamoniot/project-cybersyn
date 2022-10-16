@@ -129,7 +129,6 @@ local function on_station_built(map_data, stop)
 	entity_in.operable = false
 	entity_in.minable = false
 	entity_in.destructible = false
-	entity_in.health = 0
 
 	if entity_out == nil then
 		entity_out = stop.surface.create_entity({
@@ -142,18 +141,17 @@ local function on_station_built(map_data, stop)
 	entity_out.operable = false
 	entity_out.minable = false
 	entity_out.destructible = false
-	entity_out.health = 0
 
 	local station = {
 		entity = stop,
 		entity_in = entity_in,
 		entity_out = entity_out,
 		deliveries_total = 0,
-		train_limit = 100,
 		priority = 0,
 		last_delivery_tick = 0,
 		r_threshold = 0,
 		p_threshold = 0,
+		deliveries = {},
 		accepted_layouts = {}
 	}
 
@@ -163,24 +161,26 @@ local function on_station_broken(map_data, stop)
 	--search for trains coming to the destroyed station
 	local station_id = stop.unit_number
 	local station = map_data.stations[station_id]
-	for train_id, train in pairs(map_data.trains) do
-		if station.deliveries_total <= 0 then
-			break
-		end
-		local is_p = train.r_station_id == station_id
-		local is_r = train.p_station_id == station_id
-		if is_p or is_r then
-			local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
-			local is_r_delivery_made = train.status == STATUS_R_TO_D
-			if (is_r and not is_r_delivery_made) or (is_p and not is_p_delivery_made) then
-				--train is attempting delivery to a stop that was destroyed, stop it
-				on_failed_delivery(map_data, train)
-				train.entity.schedule = nil
-				remove_train(map_data, train, train_id)
-				--TODO: mark train as lost in the alerts system
+	if station.deliveries_total > 0 then
+		for train_id, train in pairs(map_data.trains) do
+			local is_r = train.p_station_id == station_id
+			if is_p or is_r then
+				local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
+				local is_r_delivery_made = train.status == STATUS_R_TO_D
+				if (is_r and not is_r_delivery_made) or (is_p and not is_p_delivery_made) then
+					--train is attempting delivery to a stop that was destroyed, stop it
+					on_failed_delivery(map_data, train)
+					train.entity.schedule = nil
+					remove_train(map_data, train, train_id)
+					--TODO: mark train as lost in the alerts system
+				end
 			end
 		end
 	end
+
+	if station.entity_in.valid then station.entity_in.destroy() end
+	if station.entity_out.valid then station.entity_out.destroy() end
+
 	map_data.stations[station_id] = nil
 end
 
@@ -188,23 +188,20 @@ local function on_station_rename(map_data, stop)
 	--search for trains coming to the renamed station
 	local station_id = stop.unit_number
 	local station = map_data.stations[station_id]
-	for train_id, train in pairs(map_data.trains) do
-		if station.deliveries_total <= 0 then
-			break
-		end
-		local is_p = train.r_station_id == station_id
-		local is_r = train.p_station_id == station_id
-		if is_p or is_r then
-			local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
-			local is_r_delivery_made = train.status == STATUS_R_TO_D
-			if (is_r and not is_r_delivery_made) or (is_p and not is_p_delivery_made) then
-				--train is attempting delivery to a stop that was renamed
-				--TODO: test to make sure this code actually works
-				local record = train.entity.schedule.records
-				if is_p then
-					record[3] = create_loading_order(station.entity, train.manifest)
-				else
-					record[5] = create_unloading_order(station.entity)
+	if station.deliveries_total > 0 then
+		for train_id, train in pairs(map_data.trains) do
+			local is_p = train.r_station_id == station_id
+			local is_r = train.p_station_id == station_id
+			if is_p or is_r then
+				local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
+				local is_r_delivery_made = train.status == STATUS_R_TO_D
+				if (is_r and not is_r_delivery_made) or (is_p and not is_p_delivery_made) then
+					--train is attempting delivery to a stop that was renamed
+					local p_station = map_data.stations[train.p_station_id]
+					local r_station = map_data.stations[train.r_station_id]
+					local schedule = create_manifest_schedule(train.depot_name, p_station.entity, r_station.entity, train.manifest)
+					schedule.current = train.entity.schedule.current
+					train.entity.schedule = schedule
 				end
 			end
 		end
@@ -237,7 +234,8 @@ local function update_train_layout(map_data, train)
 	for _, carriage in pairs(carriages) do
 		if carriage.type == "cargo-wagon" then
 			layout = layout.."C"
-			item_slot_capacity = item_slot_capacity + carriage.prototype.inventory_size
+			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
+			item_slot_capacity = item_slot_capacity + #inv
 		elseif carriage.type == "fluid-wagon" then
 			layout = layout.."F"
 			fluid_capacity = fluid_capacity + carriage.prototype.capacity
@@ -309,7 +307,7 @@ local function on_train_arrives_depot(map_data, train_entity)
 				train.manifest = nil
 				train.depot_name = train_entity.station.backer_name
 				train.status = STATUS_D
-				train.entity.schedule = {current = 1, records = {create_inactivity_order(train.depot_name)}}
+				train.entity.schedule = create_depot_schedule(train.depot_name)
 				map_data.trains_available[train_entity.id] = true
 			else
 				on_failed_delivery(map_data, train)
@@ -333,13 +331,15 @@ local function on_train_arrives_depot(map_data, train_entity)
 			layout_id = 0,
 			item_slot_capacity = 0,
 			fluid_capacity = 0,
-			p_station = 0,
-			r_station = 0,
+			p_station_id = 0,
+			r_station_id = 0,
 			manifest = nil,
 		}
-		update_train_layout(train)
+		update_train_layout(global, train)
 		map_data.trains[train_entity.id] = train
 		map_data.trains_available[train_entity.id] = true
+		local schedule = create_depot_schedule(train.depot_name)
+		train_entity.schedule = schedule
 	end
 end
 
@@ -456,9 +456,9 @@ local function on_broken(event)
 	if not entity or not entity.valid then return end
 
 	if entity.train then
-		local train = global.trains[entity.id]
+		local train = global.trains[entity.train.id]
 		if train then
-			on_train_broken(global, entity.train)
+			on_train_broken(global, train)
 		end
 	elseif entity.name == BUFFER_STATION_NAME then
 		on_station_broken(global, entity)

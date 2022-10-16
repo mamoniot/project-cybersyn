@@ -12,12 +12,13 @@ global: {
 }
 Station: {
 	deliveries_total: int
-	train_limit: int
 	priority: int
 	last_delivery_tick: int
 	r_threshold: int >= 0
 	p_threshold: int >= 0
 	entity: LuaEntity
+	entity_in: LuaEntity
+	entity_out: LuaEntity
 	deliveries: {
 		[item_name]: int
 	}
@@ -28,8 +29,6 @@ Station: {
 }
 Train: {
 	entity: LuaEntity
-	entity_in: LuaEntity
-	entity_out: LuaEntity
 	layout_id: int
 	item_slot_capacity: int
 	fluid_capacity: int
