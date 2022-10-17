@@ -62,10 +62,8 @@ local function on_station_built(map_data, stop)
 
 	local in_pos
 	local out_pos
-	local direction
 	local search_area
 	if stop.direction == 0 then
-		direction = 0
 		in_pos = {pos_x, pos_y - 1}
 		out_pos = {pos_x - 1, pos_y - 1}
 		search_area = {
@@ -73,7 +71,6 @@ local function on_station_built(map_data, stop)
 			{pos_x - DELTA + 1, pos_y - DELTA}
 		}
 	elseif stop.direction == 2 then
-		direction = 2
 		in_pos = {pos_x, pos_y}
 		out_pos = {pos_x, pos_y - 1}
 		search_area = {
@@ -81,7 +78,6 @@ local function on_station_built(map_data, stop)
 			{pos_x - DELTA + 1, pos_y - DELTA + 1}
 		}
 	elseif stop.direction == 4 then
-		direction = 4
 		in_pos = {pos_x - 1, pos_y}
 		out_pos = {pos_x, pos_y}
 		search_area = {
@@ -89,7 +85,6 @@ local function on_station_built(map_data, stop)
 			{pos_x - DELTA + 1, pos_y - DELTA + 1}
 		}
 	elseif stop.direction == 6 then
-		direction = 6
 		in_pos = {pos_x - 1, pos_y - 1}
 		out_pos = {pos_x - 1, pos_y}
 		search_area = {
@@ -103,7 +98,7 @@ local function on_station_built(map_data, stop)
 	local entity_in = nil
 	local entity_out = nil
 	local entities = stop.surface.find_entities(search_area)
-	for _, cur_entity in pairs (entities) do
+	for _, cur_entity in pairs(entities) do
 		if cur_entity.valid then
 			if cur_entity.name == "entity-ghost" then
 				if cur_entity.ghost_name == STATION_IN_NAME then
@@ -134,7 +129,7 @@ local function on_station_built(map_data, stop)
 		entity_out = stop.surface.create_entity({
 			name = STATION_OUT_NAME,
 			position = out_pos,
-			direction = direction,
+			direction = stop.direction,
 			force = stop.force
 		})
 	end
@@ -153,7 +148,8 @@ local function on_station_built(map_data, stop)
 		p_threshold = 0,
 		locked_slots = 0,
 		deliveries = {},
-		accepted_layouts = {}
+		accepted_layouts = {},
+		layout_pattern = ".*",--TODO: change this
 	}
 
 	map_data.stations[stop.unit_number] = station
@@ -227,75 +223,6 @@ local function find_and_add_all_stations(map_data)
 	end
 end
 
-local function update_train_layout(map_data, train)
-	local carriages = train.entity.carriages
-	local layout = ""
-	local i = 1
-	local item_slot_capacity = 0
-	local fluid_capacity = 0
-	for _, carriage in pairs(carriages) do
-		if carriage.type == "cargo-wagon" then
-			layout = layout.."C"
-			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
-			item_slot_capacity = item_slot_capacity + #inv
-		elseif carriage.type == "fluid-wagon" then
-			layout = layout.."F"
-			fluid_capacity = fluid_capacity + carriage.prototype.fluid_capacity
-		else
-			layout = layout.."?"
-		end
-		i = i + 1
-	end
-	local layout_id = 0
-	for id, cur_layout in pairs(map_data.layouts) do
-		if layout == cur_layout then
-			layout_id = id
-			break
-		end
-	end
-	if layout_id == 0 then
-		--define new layout
-		layout_id = map_data.layout_top_id
-		map_data.layout_top_id = map_data.layout_top_id + 1
-
-		map_data.layouts[layout_id] = layout
-		map_data.layout_train_count[layout_id] = 1
-		--for station_id, station in pairs(map_data.stations) do
-		--	if #layout >= #station.train_layout then
-		--		local is_approved = true
-		--		for i, v in ipairs(station.train_layout) do
-		--			local c = string.sub(layout, i, i)
-		--			if v == "C" then
-		--				if c ~= "C" and c ~= "?" then
-		--					is_approved = false
-		--					break
-		--				end
-		--			elseif v == "F" then
-		--				if c ~= "F" then
-		--					is_approved = false
-		--					break
-		--				end
-		--			end
-		--		end
-		--		for i = #station.train_layout, #layout do
-		--			local c = string.sub(layout, i, i)
-		--			if c ~= "?" then
-		--				is_approved = false
-		--				break
-		--			end
-		--		end
-		--		if is_approved then
-		--			station.accepted_layouts[layout_id] = true
-		--		end
-		--	end
-		--end
-	else
-		map_data.layout_train_count[layout_id] = map_data.layout_train_count[layout_id] + 1
-	end
-	train.layout_id = layout_id
-	train.item_slot_capacity = item_slot_capacity
-	train.fluid_capacity = fluid_capacity
-end
 
 
 local function on_train_arrives_depot(map_data, train_entity)
