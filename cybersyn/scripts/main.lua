@@ -40,22 +40,6 @@ local function on_failed_delivery(map_data, train)
 	train.manifest = nil
 end
 
-local function remove_train(map_data, train, train_id)
-	map_data.trains[train_id] = nil
-	map_data.trains_available[train_id] = nil
-	local layout_id = train.layout_id
-	local count = map_data.layout_train_count[layout_id]
-	if count <= 1 then
-		map_data.layout_train_count[layout_id] = nil
-		map_data.layouts[layout_id] = nil
-		for station_id, station in pairs(map_data.stations) do
-			station.accepted_layouts[layout_id] = nil
-		end
-	else
-		map_data.layout_train_count[layout_id] = count - 1
-	end
-end
-
 local function on_station_built(map_data, stop)
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
@@ -148,11 +132,13 @@ local function on_station_built(map_data, stop)
 		p_threshold = 0,
 		locked_slots = 0,
 		deliveries = {},
+		train_class = TRAIN_CLASS_AUTO,
 		accepted_layouts = {},
-		layout_pattern = ".*",--TODO: change this
+		layout_pattern = nil,
 	}
-
 	map_data.stations[stop.unit_number] = station
+
+	update_station_if_auto(map_data, station)
 end
 local function on_station_broken(map_data, stop)
 	--search for trains coming to the destroyed station
@@ -371,13 +357,15 @@ end
 local function on_built(event)
 	local entity = event.entity or event.created_entity or event.destination
 	if not entity or not entity.valid then return end
+
 	if entity.name == BUFFER_STATION_NAME then
 		on_station_built(global, entity)
 	elseif entity.type == "inserter" then
+		update_station_from_inserter(global, entity)
 	elseif entity.type == "pump" then
-		if entity.pump_rail_target then
-
-		end
+		update_station_from_pump(global, entity)
+	elseif entity.type == "straight-rail" then
+		update_station_from_rail(global, entity)
 	end
 end
 local function on_broken(event)
@@ -392,7 +380,12 @@ local function on_broken(event)
 	elseif entity.name == BUFFER_STATION_NAME then
 		on_station_broken(global, entity)
 	elseif entity.type == "inserter" then
+		--NOTE: check if this works or if it needs to be delayed
+		update_station_from_inserter(global, entity)
 	elseif entity.type == "pump" then
+		update_station_from_pump(global, entity)
+	elseif entity.type == "straight-rail" then
+		update_station_from_rail(global, entity)
 	end
 end
 
@@ -446,11 +439,13 @@ local filter_built = {
 	{filter = "type", type = "train-stop"},
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
+	{filter = "type", type = "straight-rail"},
 }
 local filter_broken = {
 	{filter = "type", type = "train-stop"},
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
+	{filter = "type", type = "straight-rail"},
 	{filter = "rolling-stock"},
 }
 local function register_events()

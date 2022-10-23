@@ -1,5 +1,22 @@
+--By Mami
+local area = require("__flib__.area")
 
-
+function remove_train(map_data, train, train_id)
+	map_data.trains[train_id] = nil
+	map_data.trains_available[train_id] = nil
+	local layout_id = train.layout_id
+	local count = map_data.layout_train_count[layout_id]
+	if count <= 1 then
+		map_data.layout_train_count[layout_id] = nil
+		map_data.layouts[layout_id] = nil
+		for station_id, station in pairs(map_data.stations) do
+			station.accepted_layouts[layout_id] = nil
+		end
+		map_data.train_classes[TRAIN_CLASS_ALL][layout_id] = nil
+	else
+		map_data.layout_train_count[layout_id] = count - 1
+	end
+end
 
 function update_train_layout(map_data, train)
 	local carriages = train.entity.carriages
@@ -15,7 +32,7 @@ function update_train_layout(map_data, train)
 		elseif carriage.type == "fluid-wagon" then
 			layout = layout..TRAIN_LAYOUT_FLUID
 			fluid_capacity = fluid_capacity + carriage.prototype.fluid_capacity
-		--elseif carriage.type == "artillery-wagon" then
+			--elseif carriage.type == "artillery-wagon" then
 			--layout = layout..TRAIN_LAYOUT_ARTILLERY
 		else
 			layout = layout..TRAIN_LAYOUT_NA
@@ -38,10 +55,11 @@ function update_train_layout(map_data, train)
 		map_data.layouts[layout_id] = layout
 		map_data.layout_train_count[layout_id] = 1
 		for _, station in pairs(map_data.stations) do
-			if string.find(layout, station.layout_pattern) ~= nil then
+			if station.layout_pattern and string.find(layout, station.layout_pattern) ~= nil then
 				station.accepted_layouts[layout_id] = true
 			end
 		end
+		map_data.train_classes[TRAIN_CLASS_ALL][layout_id] = true
 	else
 		map_data.layout_train_count[layout_id] = map_data.layout_train_count[layout_id] + 1
 	end
@@ -50,8 +68,7 @@ function update_train_layout(map_data, train)
 	train.fluid_capacity = fluid_capacity
 end
 
-local area = require("__flib__.area")
-function reset_station_layout(map_data, station)
+local function reset_station_layout(map_data, station)
 	--station.entity
 	local station_rail = station.entity.connected_rail
 	local rail_direction_from_station
@@ -147,5 +164,55 @@ function reset_station_layout(map_data, station)
 		else
 			accepted_layouts[id] = nil
 		end
+	end
+end
+
+function set_station_train_class(map_data, station, train_class_name)
+	if train_class_name == TRAIN_CLASS_AUTO then
+		if station.train_class ~= TRAIN_CLASS_AUTO then
+			station.train_class = TRAIN_CLASS_AUTO
+			station.accepted_layouts = {}
+		end
+		reset_station_layout(map_data, station)
+	else
+		station.train_class = train_class_name
+		station.accepted_layouts = map_data.train_classes[train_class_name]
+		assert(station.accepted_layouts ~= nil)
+		station.layout_pattern = nil
+	end
+end
+
+function update_station_if_auto(map_data, station)
+	if station.train_class == TRAIN_CLASS_AUTO then
+		reset_station_layout(map_data, station)
+	end
+end
+
+function update_station_from_rail(map_data, rail)
+	--TODO: search further?
+	local entity = rail.get_rail_segment_entity(nil, false)
+	if entity.name == BUFFER_STATION_NAME then
+		update_station_if_auto(map_data, map_data.stations[entity.unit_number])
+	end
+end
+function update_station_from_pump(map_data, pump)
+	if pump.pump_rail_target then
+		update_station_from_rail(map_data, pump.pump_rail_target)
+	end
+end
+function update_station_from_inserter(map_data, inserter)
+	--TODO: check if correct
+	local surface = inserter.surface
+	local pos = inserter.position
+	local pickup_pos = inserter.prototype.inserter_pickup_position
+	local drop_pos = inserter.prototype.inserter_drop_position
+
+	local rail = surface.find_entity("straight-rail", {pos.x + pickup_pos.x, pos.y + pickup_pos.y})
+	if rail then
+		update_station_from_rail(map_data, rail)
+	end
+	rail = surface.find_entity("straight-rail", {pos.x + drop_pos.x, pos.y + drop_pos.y})
+	if rail then
+		update_station_from_rail(map_data, rail)
 	end
 end

@@ -9,6 +9,7 @@ global: {
 	trains_available: {[train_id]: bool}
 	layouts: {[layout_id]: Layout}
 	layout_train_count: {[layout_id]: int}
+	train_classes: {[string]: TrainClass}
 }
 Station: {
 	deliveries_total: int
@@ -23,10 +24,9 @@ Station: {
 	deliveries: {
 		[item_name]: int
 	}
-	--train_layout: [char]
-	accepted_layouts: {
-		[layout_id]: bool
-	}
+	train_class: string
+	accepted_layouts: TrainClass
+	layout_pattern: string|nil
 }
 Train: {
 	entity: LuaEntity
@@ -43,6 +43,9 @@ Train: {
 		count: int
 	}]
 }
+TrainClass: {
+	[layout_id]: bool
+}
 Layout: string
 ]]
 --TODO: only init once
@@ -58,3 +61,6 @@ global.trains_available = {}
 global.layouts = {}
 global.layout_train_count = {}
 global.layout_top_id = 1
+global.train_classes = {
+	[TRAIN_CLASS_ALL] = {},
+}
