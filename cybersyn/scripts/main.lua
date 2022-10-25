@@ -58,7 +58,7 @@ local function on_station_broken(map_data, station_id, station)
 					on_failed_delivery(map_data, train)
 					train.entity.schedule = nil
 					remove_train(map_data, train, train_id)
-					--TODO: mark train as lost in the alerts system
+					send_lost_train_alert(train.entity)
 				end
 			end
 		end
@@ -298,7 +298,7 @@ local function on_station_rename(map_data, stop)
 					--train is attempting delivery to a stop that was renamed
 					local p_station = map_data.stations[train.p_station_id]
 					local r_station = map_data.stations[train.r_station_id]
-					local schedule = create_manifest_schedule(train.depot_name, p_station.entity, r_station.entity, train.manifest)
+					local schedule = create_manifest_schedule(train.depot_name, p_station.entity_stop, r_station.entity_stop, train.manifest)
 					schedule.current = train.entity.schedule.current
 					train.entity.schedule = schedule
 				end
@@ -321,34 +321,35 @@ end
 
 
 local function on_train_arrives_depot(map_data, train_entity)
+	local contents = train_entity.get_contents()
 	local train = map_data.trains[train_entity.id]
 	if train then
-		if train.manifest then
-			if train.status == STATUS_R_TO_D then
-				--succeeded delivery
-				train.p_station_id = 0
-				train.r_station_id = 0
-				train.manifest = nil
-				train.depot_name = train_entity.station.backer_name
-				train.status = STATUS_D
-				train.entity.schedule = create_depot_schedule(train.depot_name)
-				map_data.trains_available[train_entity.id] = true
-			else
+		if train.manifest and train.status == STATUS_R_TO_D then
+			--succeeded delivery
+			train.p_station_id = 0
+			train.r_station_id = 0
+			train.manifest = nil
+			train.depot_name = train_entity.station.backer_name
+			train.status = STATUS_D
+			map_data.trains_available[train_entity.id] = true
+		else
+			if train.manifest then
 				on_failed_delivery(map_data, train)
-				local contents = train.entity.get_contents()
-				if next(contents) == nil then
-					train.depot_name = train_entity.station.backer_name
-					train.status = STATUS_D
-					train.entity.schedule = create_depot_schedule(train.depot_name)
-					map_data.trains_available[train_entity.id] = true
-				else--train still has cargo
-					train.entity.schedule = nil
-					remove_train(map_data, train, train_entity.id)
-					--TODO: mark train as lost in the alerts system
-				end
+				send_lost_train_alert(train.entity)
 			end
+			train.depot_name = train_entity.station.backer_name
+			train.status = STATUS_D
+			map_data.trains_available[train_entity.id] = true
 		end
-	else
+		if next(contents) ~= nil then
+			--train still has cargo
+			train_entity.schedule = nil
+			remove_train(map_data, train, train_entity.id)
+			send_nonempty_train_in_depot_alert(train_entity)
+		else
+			train_entity.schedule = create_depot_schedule(train.depot_name)
+		end
+	elseif next(contents) == nil then
 		train = {
 			depot_name = train_entity.station.backer_name,
 			status = STATUS_D,
@@ -365,6 +366,8 @@ local function on_train_arrives_depot(map_data, train_entity)
 		map_data.trains_available[train_entity.id] = true
 		local schedule = create_depot_schedule(train.depot_name)
 		train_entity.schedule = schedule
+	else
+		send_nonempty_train_in_depot_alert(train_entity)
 	end
 end
 local function on_train_arrives_buffer(map_data, stop, train)
@@ -396,6 +399,7 @@ local function on_train_arrives_buffer(map_data, stop, train)
 			on_failed_delivery(map_data, train)
 			remove_train(map_data, train, train.entity.id)
 			train.entity.schedule = nil
+			send_lost_train_alert(train.entity)
 		end
 	else
 		--train is lost somehow, probably from player intervention

@@ -129,7 +129,7 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
 
-	local p_to_r_dist = get_stop_dist(p_station.entity, r_station.entity)
+	local p_to_r_dist = get_stop_dist(p_station.entity_stop, r_station.entity_stop)
 	if p_to_r_dist == INF then
 		return nil, INF
 	end
@@ -147,12 +147,12 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 		((is_fluid and train.fluid_capacity > 0) or (not is_fluid and train.item_slot_capacity > 0))
 		and station_accepts_layout(r_station, train.layout_id)
 		and station_accepts_layout(p_station, train.layout_id)
-		and train.entity.station
+		and train.entity_stop.station
 		then
 			valid_train_exists = true
 			--check if exists valid path
 			--check if path is shortest so we prioritize locality
-			local d_to_p_dist = get_stop_dist(train.entity.station, p_station.entity)
+			local d_to_p_dist = get_stop_dist(train.entity.station, p_station.entity_stop)
 
 			local dist = d_to_p_dist
 			if dist < best_dist then
@@ -288,7 +288,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 	train.r_station_id = r_station_id
 	train.manifest = manifest
 
-	train.entity.schedule = create_manifest_schedule(train.depot_name, p_station.entity, r_station.entity, manifest)
+	train.entity.schedule = create_manifest_schedule(train.depot_name, p_station.entity_stop, r_station.entity_stop, manifest)
 	set_comb2(map_data, p_station)
 	set_comb2(map_data, r_station)
 end
@@ -308,7 +308,7 @@ function tick(map_data, mod_settings)
 	local all_items = economy.all_items
 
 	for station_id, station in pairs(stations) do
-		if station.deliveries_total < station.entity.trains_limit then
+		if station.deliveries_total < station.entity_stop.trains_limit then
 			station.r_threshold = mod_settings.r_threshold
 			station.p_threshold = mod_settings.p_threshold
 			station.priority = 0
@@ -364,7 +364,7 @@ function tick(map_data, mod_settings)
 		end
 	end
 
-	local failed_because_missing_trains_total = 0
+	local failed_because_missing_trains = {}
 	--we do not dispatch more than one train per station per tick
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
 	local start_i = 2*(total_ticks%(#all_items/2)) + 1
@@ -398,13 +398,14 @@ function tick(map_data, mod_settings)
 								highest_prior = prior
 							elseif d < INF then
 								could_have_been_serviced = true
+								best = j
 							end
 						end
 					end
-					if best > 0 then
+					if best_train then
 						send_train_between(map_data, r_station_id, p_stations[best], best_train, item_name, economy)
 					elseif could_have_been_serviced then
-						failed_because_missing_trains_total = failed_because_missing_trains_total + 1
+						send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, p_stations[best].entity_stop)
 					end
 				until #r_stations == 0
 			else
@@ -430,17 +431,17 @@ function tick(map_data, mod_settings)
 								highest_prior = prior
 							elseif d < INF then
 								could_have_been_serviced = true
+								best = i
 							end
 						end
 					end
-					if best > 0 then
+					if best_train then
 						send_train_between(map_data, r_stations[best], p_station_id, best_train, item_name, economy)
 					elseif could_have_been_serviced then
-						failed_because_missing_trains_total = failed_because_missing_trains_total + 1
+						send_missing_train_alert_for_stops(stations[best].entity_stop, p_stations[p_station_id].entity_stop)
 					end
 				until #p_stations == 0
 			end
 		end
 	end
-	--TODO: add alert for missing trains
 end

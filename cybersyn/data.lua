@@ -6,6 +6,7 @@ require('prototypes.item')
 require('prototypes.tech')
 require('prototypes.entity')
 require('prototypes.signal')
+require('prototypes.misc')
 
 data:extend({
 	combinator_entity,
@@ -18,4 +19,7 @@ data:extend({
 	p_threshold_signal,
 	r_threshold_signal,
 	locked_slots_signal,
+	missing_train_icon,
+	lost_train_icon,
+	nonempty_train_icon,
 })

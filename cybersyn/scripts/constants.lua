@@ -1,5 +1,9 @@
 --By Mami
 
+MISSING_TRAIN_NAME = "cybersyn-missing-train"
+LOST_TRAIN_NAME = "cybersyn-lost-train"
+NONEMPTY_TRAIN_NAME = "cybersyn-nonempty-train"
+
 SIGNAL_PRIORITY = "cybersyn-priority"
 REQUEST_THRESHOLD = "cybersyn-request-threshold"
 PROVIDE_THRESHOLD = "cybersyn-provide-threshold"
