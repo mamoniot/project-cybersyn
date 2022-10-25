@@ -1,5 +1,7 @@
 --By Mami
 
+---@param map_data MapData
+---@param train Train
 local function on_failed_delivery(map_data, train)
 	--NOTE: must change train status to STATUS_D or remove it from tracked trains after this call
 	local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
@@ -7,7 +9,7 @@ local function on_failed_delivery(map_data, train)
 		local station = map_data.stations[train.p_station_id]
 		remove_manifest(map_data, station, train.manifest, 1)
 		if train.status == STATUS_P then
-			set_combinator_output(map_data, station.comb1, nil)
+			set_combinator_output(map_data, station.entity_comb1, nil)
 		end
 	end
 	local is_r_delivery_made = train.status == STATUS_R_TO_D
@@ -15,7 +17,7 @@ local function on_failed_delivery(map_data, train)
 		local station = map_data.stations[train.r_station_id]
 		remove_manifest(map_data, station, train.manifest, -1)
 		if train.status == STATUS_R then
-			set_combinator_output(map_data, station.comb1, nil)
+			set_combinator_output(map_data, station.entity_comb1, nil)
 		end
 	end
 	train.r_station_id = 0
@@ -23,6 +25,10 @@ local function on_failed_delivery(map_data, train)
 	train.manifest = nil
 end
 
+---@param map_data MapData
+---@param stop LuaEntity
+---@param comb1 LuaEntity
+---@param comb2 LuaEntity
 local function on_station_built(map_data, stop, comb1, comb2)
 	local station = {
 		entity_stop = stop,
@@ -44,6 +50,9 @@ local function on_station_built(map_data, stop, comb1, comb2)
 
 	update_station_if_auto(map_data, station)
 end
+---@param map_data MapData
+---@param station_id uint
+---@param station Station
 local function on_station_broken(map_data, station_id, station)
 	if station.deliveries_total > 0 then
 		--search for trains coming to the destroyed station
@@ -66,6 +75,10 @@ local function on_station_broken(map_data, station_id, station)
 	map_data.stations[station_id] = nil
 end
 
+---@param map_data MapData
+---@param stop LuaEntity
+---@param comb_operation string
+---@param comb_forbidden LuaEntity?
 local function search_for_station_combinator(map_data, stop, comb_operation, comb_forbidden)
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
@@ -88,6 +101,8 @@ local function search_for_station_combinator(map_data, stop, comb_operation, com
 	end
 end
 
+---@param map_data MapData
+---@param comb LuaEntity
 local function on_combinator_built(map_data, comb)
 	local pos_x = comb.position.x
 	local pos_y = comb.position.y
@@ -116,6 +131,7 @@ local function on_combinator_built(map_data, comb)
 		position = comb.position,
 		force = comb.force
 	})
+	assert(out)
 	comb.connect_neighbour({
 		target_entity = out,
 		source_wire_id = defines.circuit_connector_id.combinator_output,
@@ -190,6 +206,8 @@ local function on_combinator_built(map_data, comb)
 		end
 	end
 end
+---@param map_data MapData
+---@param comb LuaEntity
 local function on_combinator_broken(map_data, comb)
 	local out = map_data.to_output[comb.unit_number]
 	local stop = map_data.to_stop[comb.unit_number]
@@ -223,12 +241,16 @@ local function on_combinator_broken(map_data, comb)
 	map_data.to_output[comb.unit_number] = nil
 	map_data.to_stop[comb.unit_number] = nil
 end
+---@param map_data MapData
+---@param comb LuaEntity
 local function on_combinator_updated(map_data, comb)
 	--NOTE: this is the lazy way to implement updates and is not robust
 	on_combinator_broken(map_data, comb)
 	on_combinator_built(map_data, comb)
 end
 
+---@param map_data MapData
+---@param stop LuaEntity
 local function on_stop_built(map_data, stop)
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
@@ -261,6 +283,8 @@ local function on_stop_built(map_data, stop)
 		map_data.depots[stop.unit_number] = depot_comb
 	end
 end
+---@param map_data MapData
+---@param stop LuaEntity
 local function on_stop_broken(map_data, stop)
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
@@ -283,6 +307,8 @@ local function on_stop_broken(map_data, stop)
 	end
 	map_data.depots[stop.unit_number] = nil
 end
+---@param map_data MapData
+---@param stop LuaEntity
 local function on_station_rename(map_data, stop)
 	--search for trains coming to the renamed station
 	local station_id = stop.unit_number
@@ -308,6 +334,7 @@ local function on_station_rename(map_data, stop)
 end
 
 
+---@param map_data MapData
 local function find_and_add_all_stations_from_nothing(map_data)
 	for _, surface in pairs(game.surfaces) do
 		local entities = surface.find_entities_filtered({name = COMBINATOR_NAME})
@@ -320,6 +347,8 @@ local function find_and_add_all_stations_from_nothing(map_data)
 end
 
 
+---@param map_data MapData
+---@param train_entity LuaTrain
 local function on_train_arrives_depot(map_data, train_entity)
 	local contents = train_entity.get_contents()
 	local train = map_data.trains[train_entity.id]
@@ -370,6 +399,9 @@ local function on_train_arrives_depot(map_data, train_entity)
 		send_nonempty_train_in_depot_alert(train_entity)
 	end
 end
+---@param map_data MapData
+---@param stop LuaEntity
+---@param train Train
 local function on_train_arrives_buffer(map_data, stop, train)
 	local station_id = stop.unit_number
 	if train.manifest then
@@ -383,6 +415,11 @@ local function on_train_arrives_buffer(map_data, stop, train)
 					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item.count}
 				end
 				set_combinator_output(map_data, station.comb1, signals)
+				if station.wagon_combs then
+					for i, entity in ipairs(station.wagon_combs) do
+
+					end
+				end
 			end
 		elseif train.status == STATUS_P_TO_R then
 			if train.r_station_id == station_id then
@@ -406,22 +443,27 @@ local function on_train_arrives_buffer(map_data, stop, train)
 		remove_train(map_data, train, train.entity.id)
 	end
 end
+---@param map_data MapData
+---@param train Train
 local function on_train_leaves_station(map_data, train)
 	if train.manifest then
 		if train.status == STATUS_P then
 			train.status = STATUS_P_TO_R
 			local station = map_data.stations[train.p_station_id]
 			remove_manifest(map_data, station, train.manifest, 1)
-			set_combinator_output(map_data, station.comb1, nil)
+			set_combinator_output(map_data, station.entity_comb1, nil)
 		elseif train.status == STATUS_R then
 			train.status = STATUS_R_TO_D
 			local station = map_data.stations[train.r_station_id]
 			remove_manifest(map_data, station, train.manifest, -1)
-			set_combinator_output(map_data, station.comb1, nil)
+			set_combinator_output(map_data, station.entity_comb1, nil)
 		end
 	end
 end
 
+
+---@param map_data MapData
+---@param train Train
 local function on_train_broken(map_data, train)
 	if train.manifest then
 		on_failed_delivery(map_data, train)
@@ -431,6 +473,9 @@ local function on_train_broken(map_data, train)
 		end
 	end
 end
+---@param map_data MapData
+---@param pre_train_id uint
+---@param train_entity LuaEntity
 local function on_train_modified(map_data, pre_train_id, train_entity)
 	local train = map_data.trains[pre_train_id]
 	if train then
@@ -528,7 +573,7 @@ local function on_surface_removed(event)
 		local train_stops = surface.find_entities_filtered({type = "train-stop"})
 		for _, entity in pairs(train_stops) do
 			if entity.name == "train-stop" then
-				on_station_broken(global, entity)
+				on_stop_broken(global, entity)
 			end
 		end
 	end

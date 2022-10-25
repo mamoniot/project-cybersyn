@@ -1,6 +1,9 @@
 --By Mami
 local area = require("__flib__.area")
 
+---@param map_data MapData
+---@param train Train
+---@param train_id uint
 function remove_train(map_data, train, train_id)
 	map_data.trains[train_id] = nil
 	map_data.trains_available[train_id] = nil
@@ -18,6 +21,8 @@ function remove_train(map_data, train, train_id)
 	end
 end
 
+---@param map_data MapData
+---@param train Train
 function update_train_layout(map_data, train)
 	local carriages = train.entity.carriages
 	local layout = ""
@@ -68,17 +73,18 @@ function update_train_layout(map_data, train)
 	train.fluid_capacity = fluid_capacity
 end
 
+---@param map_data MapData
+---@param station Station
 local function reset_station_layout(map_data, station)
-	--station.entity
-	local station_rail = station.entity.connected_rail
+	local station_rail = station.entity_stop.connected_rail
 	local rail_direction_from_station
-	if station.entity.connected_rail_direction == defines.rail_direction.front then
+	if station.entity_stop.connected_rail_direction == defines.rail_direction.front then
 		rail_direction_from_station = defines.rail_direction.back
 	else
 		rail_direction_from_station = defines.rail_direction.front
 	end
-	local station_direction = station.entity.direction
-	local surface = station.entity.surface
+	local station_direction = station.entity_stop.direction
+	local surface = station.entity_stop.surface
 	local middle_x = station_rail.position.x
 	local middle_y = station_rail.position.y
 	local reach = LONGEST_INSERTER_REACH + 1 - DELTA
@@ -167,6 +173,9 @@ local function reset_station_layout(map_data, station)
 	end
 end
 
+---@param map_data MapData
+---@param station Station
+---@param train_class_name string
 function set_station_train_class(map_data, station, train_class_name)
 	if train_class_name == TRAIN_CLASS_AUTO then
 		if station.train_class ~= TRAIN_CLASS_AUTO then
@@ -182,12 +191,16 @@ function set_station_train_class(map_data, station, train_class_name)
 	end
 end
 
+---@param map_data MapData
+---@param station Station
 function update_station_if_auto(map_data, station)
 	if station.train_class == TRAIN_CLASS_AUTO then
 		reset_station_layout(map_data, station)
 	end
 end
 
+---@param map_data MapData
+---@param rail LuaEntity
 function update_station_from_rail(map_data, rail)
 	--TODO: search further?
 	local entity = rail.get_rail_segment_entity(nil, false)
@@ -195,11 +208,15 @@ function update_station_from_rail(map_data, rail)
 		update_station_if_auto(map_data, map_data.stations[entity.unit_number])
 	end
 end
+---@param map_data MapData
+---@param pump LuaEntity
 function update_station_from_pump(map_data, pump)
 	if pump.pump_rail_target then
 		update_station_from_rail(map_data, pump.pump_rail_target)
 	end
 end
+---@param map_data MapData
+---@param inserter LuaEntity
 function update_station_from_inserter(map_data, inserter)
 	--TODO: check if correct
 	local surface = inserter.surface
