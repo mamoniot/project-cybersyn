@@ -1,14 +1,17 @@
 --By Mami
 
 SIGNAL_PRIORITY = "cybersyn-priority"
-REQUEST_THRESHOLD = "cybersyn-r_threshold"
-PROVIDE_THRESHOLD = "cybersyn-p_threshold"
+REQUEST_THRESHOLD = "cybersyn-request-threshold"
+PROVIDE_THRESHOLD = "cybersyn-provide-threshold"
 LOCKED_SLOTS = "cybersyn-locked-slots"
 
-STATION_IN_NAME = "cybersyn-station-in"
-STATION_OUT_NAME = "cybersyn-station-out"
-BUFFER_STATION_NAME = "cybersyn-station"
-DEPOT_STATION_NAME = "cybersyn-depot"
+COMBINATOR_NAME = "cybersyn-combinator"
+COMBINATOR_OUT_NAME = "cybersyn-combinator-output"
+
+OPERATION_PRIMARY_IO = "*"
+OPERATION_SECONDARY_IO = "/"
+OPERATION_DEPOT = "+"
+OPERATION_WAGON_MANIFEST = "-"
 
 DELTA = 1/2048
 

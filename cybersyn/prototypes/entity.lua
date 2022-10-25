@@ -1,39 +1,47 @@
 --By Mami
-cybersyn_station_entity = flib.copy_prototype(data.raw["train-stop"]["train-stop"], BUFFER_STATION_NAME)
-cybersyn_station_entity.icon = "__cybersyn__/graphics/icons/station.png"
-cybersyn_station_entity.icon_size = 64
-cybersyn_station_entity.icon_mipmaps = 4
-cybersyn_station_entity.next_upgrade = nil
-cybersyn_station_entity.color = {.5, .1, .9}
+combinator_entity = flib.copy_prototype(data.raw["arithmetic-combinator"]["arithmetic-combinator"], COMBINATOR_NAME)
+combinator_entity.icon = "__cybersyn__/graphics/icons/combinator.png"
+combinator_entity.radius_visualisation_specification = {
+	sprite = {
+		filename = "__cybersyn__/graphics/icons/combinator.png",
+		tint = {r = 1, g = 1, b = .25, a = 1},
+		height = 64,
+		width = 64,
+	},
+	distance = 1,
+}
 
-cybersyn_depot_entity = flib.copy_prototype(data.raw["train-stop"]["train-stop"], DEPOT_STATION_NAME)
-cybersyn_depot_entity.icon = "__cybersyn__/graphics/icons/depot.png"
-cybersyn_depot_entity.icon_size = 64
-cybersyn_depot_entity.icon_mipmaps = 4
-cybersyn_depot_entity.next_upgrade = nil
-cybersyn_depot_entity.color = {1, .9, .9}
+combinator_out_entity = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"], COMBINATOR_OUT_NAME)
+combinator_out_entity.icon = nil
+combinator_out_entity.icon_size = nil
+combinator_out_entity.icon_mipmaps = nil
+combinator_out_entity.next_upgrade = nil
+combinator_out_entity.minable = nil
+combinator_out_entity.selection_box = nil
+combinator_out_entity.collision_box = nil
+combinator_out_entity.collision_mask = {}
+combinator_out_entity.item_slot_count = 500
+combinator_out_entity.circuit_wire_max_distance = 3
+combinator_out_entity.flags = {"not-blueprintable", "not-deconstructable", "placeable-off-grid"}
 
-cybersyn_station_in = flib.copy_prototype(data.raw["lamp"]["small-lamp"], STATION_IN_NAME)
-cybersyn_station_in.icon = "__cybersyn__/graphics/icons/station.png"
-cybersyn_station_in.icon_size = 64
-cybersyn_station_in.icon_mipmaps = 4
-cybersyn_station_in.next_upgrade = nil
-cybersyn_station_in.minable = nil
-cybersyn_station_in.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}
-cybersyn_station_in.selection_priority = 60
-cybersyn_station_in.collision_box = {{-0.15, -0.15}, {0.15, 0.15}}
-cybersyn_station_in.collision_mask = {"rail-layer"}
-cybersyn_station_in.energy_usage_per_tick = "10W"
-cybersyn_station_in.light = {intensity = 1, size = 6}
-cybersyn_station_in.energy_source = {type="void"}
-
-cybersyn_station_out = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"],STATION_OUT_NAME)
-cybersyn_station_out.icon = "__cybersyn__/graphics/icons/station.png"
-cybersyn_station_out.icon_size = 64
-cybersyn_station_out.icon_mipmaps = 4
-cybersyn_station_out.next_upgrade = nil
-cybersyn_station_out.minable = nil
-cybersyn_station_out.selection_box = {{-0.5, -0.5}, {0.5, 0.5}}
-cybersyn_station_out.selection_priority = 60
-cybersyn_station_out.collision_box = {{-0.15, -0.15}, {0.15, 0.15}}
-cybersyn_station_out.collision_mask = {"rail-layer"}
+local origin = {0.0, 0.0}
+local invisible_sprite = {filename = "__cybersyn__/graphics/invisible.png", width = 1, height = 1}
+local wire_con1 = {
+	red = origin,
+	green = origin
+}
+local wire_con0 = {wire = wire_con1, shadow = wire_con1}
+combinator_out_entity.sprites = invisible_sprite
+combinator_out_entity.activity_led_sprites = invisible_sprite
+combinator_out_entity.activity_led_light = {
+	intensity = 0,
+	size = 0,
+}
+combinator_out_entity.activity_led_light_offsets = {origin, origin, origin, origin}
+combinator_out_entity.draw_circuit_wires = false
+combinator_out_entity.circuit_wire_connection_points = {
+	wire_con0,
+	wire_con0,
+	wire_con0,
+	wire_con0
+}

@@ -4,7 +4,10 @@
 global: {
 	total_ticks: int
 	layout_top_id: int
+	to_output: {[comb_unit_number]: LuaEntity}
+	to_stop: {[comb_unit_number]: LuaEntity}
 	stations: {[stop_id]: Station}
+	depots: {[stop_id]: LuaEntity}
 	trains: {[train_id]: Train}
 	trains_available: {[train_id]: bool}
 	layouts: {[layout_id]: Layout}
@@ -18,11 +21,15 @@ Station: {
 	r_threshold: int >= 0
 	p_threshold: int >= 0
 	locked_slots: int >= 0
-	entity: LuaEntity
-	entity_in: LuaEntity
-	entity_out: LuaEntity
+	entity_stop: LuaEntity
+	entity_comb1: LuaEntity
+	entity_comb2: LuaEntity?
+	wagon_combs: {[int]: LuaEntity}--allowed to be invalid entities
 	deliveries: {
 		[item_name]: int
+	}
+	deliveries: {
+		[item_name]: item-type
 	}
 	train_class: string
 	accepted_layouts: TrainClass
@@ -51,11 +58,13 @@ Layout: string
 --TODO: only init once
 mod_settings = {}
 mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value
-mod_settings.r_threshold = settings.global["cybersyn-requester-threshold"].value
-mod_settings.p_threshold = settings.global["cybersyn-provider-threshold"].value
+mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value
+mod_settings.p_threshold = settings.global["cybersyn-provide-threshold"].value
 
 global.total_ticks = 0
+global.to_output = {}
 global.stations = {}
+global.depots = {}
 global.trains = {}
 global.trains_available = {}
 global.layouts = {}

@@ -8,18 +8,14 @@ require('prototypes.entity')
 require('prototypes.signal')
 
 data:extend({
-	cybersyn_depot_item,
-	cybersyn_station_item,
-	cybersyn_depot_recipe,
-	cybersyn_station_recipe,
+	combinator_entity,
+	combinator_out_entity,
+	combinator_item,
+	combinator_recipe,
 	cybersyn_tech,
-	cybersyn_depot_entity,
-	cybersyn_station_entity,
-	cybersyn_station_in,
-	cybersyn_station_out,
-	cybersyn_subgroup,
-	cybersyn_priority,
-	cybersyn_p_threshold,
-	cybersyn_r_threshold,
-	cybersyn_locked_slots,
+	subgroup_signal,
+	priority_signal,
+	p_threshold_signal,
+	r_threshold_signal,
+	locked_slots_signal,
 })

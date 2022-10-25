@@ -1,17 +1,10 @@
 --By Mami
-cybersyn_station_recipe = flib.copy_prototype(data.raw["recipe"]["train-stop"], BUFFER_STATION_NAME)
-cybersyn_station_recipe.ingredients = {
-	{"train-stop", 1},
+combinator_recipe = flib.copy_prototype(data.raw["recipe"]["train-stop"], COMBINATOR_NAME)
+combinator_recipe.ingredients = {
+	{"copper-cable", 5},
 	{"advanced-circuit", 5},
 }
-cybersyn_station_recipe.enabled = false
-
-cybersyn_depot_recipe = flib.copy_prototype(data.raw["recipe"]["train-stop"], DEPOT_STATION_NAME)
-cybersyn_depot_recipe.ingredients = {
-	{"train-stop", 1},
-	{"electronic-circuit", 5},
-}
-cybersyn_depot_recipe.enabled = false
+combinator_recipe.enabled = false
 
 cybersyn_tech = {
 	type = "technology",
@@ -27,11 +20,7 @@ cybersyn_tech = {
 	effects = {
 		{
 			type = "unlock-recipe",
-			recipe = BUFFER_STATION_NAME
-		},
-		{
-			type = "unlock-recipe",
-			recipe = DEPOT_STATION_NAME
+			recipe = COMBINATOR_NAME
 		},
 	},
 	unit = {
@@ -39,7 +28,7 @@ cybersyn_tech = {
 			{"automation-science-pack", 1},
 			{"logistic-science-pack", 1}
 		},
-		count = 300,
+		count = 400,
 		time = 30
 	},
 	order = "c-g-c"

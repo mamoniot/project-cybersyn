@@ -1,11 +1,11 @@
 --By Mami
-cybersyn_subgroup = {
+subgroup_signal = {
 	type = "item-subgroup",
 	name = "cybersyn-signal",
 	group = "signals",
 	order = "cybersyn0[cybersyn-signal]"
 }
-cybersyn_priority = {
+priority_signal = {
 	type = "virtual-signal",
 	name = SIGNAL_PRIORITY,
 	icon = "__cybersyn__/graphics/icons/priority.png",
@@ -13,23 +13,23 @@ cybersyn_priority = {
 	subgroup = "cybersyn-signal",
 	order = "a-a"
 }
-cybersyn_p_threshold = {
+p_threshold_signal = {
 	type = "virtual-signal",
 	name = PROVIDE_THRESHOLD,
-	icon = "__cybersyn__/graphics/icons/p_threshold.png",
+	icon = "__cybersyn__/graphics/icons/provide-threshold.png",
 	icon_size = 64,
 	subgroup = "cybersyn-signal",
 	order = "a-b"
 }
-cybersyn_r_threshold = {
+r_threshold_signal = {
 	type = "virtual-signal",
 	name = REQUEST_THRESHOLD,
-	icon = "__cybersyn__/graphics/icons/r_threshold.png",
+	icon = "__cybersyn__/graphics/icons/request-threshold.png",
 	icon_size = 64,
 	subgroup = "cybersyn-signal",
 	order = "a-c"
 }
-cybersyn_locked_slots = {
+locked_slots_signal = {
 	type = "virtual-signal",
 	name = LOCKED_SLOTS,
 	icon = "__cybersyn__/graphics/icons/locked_slots.png",

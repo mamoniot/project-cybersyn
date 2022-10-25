@@ -54,19 +54,75 @@ function create_manifest_schedule(depot_name, p_stop, r_stop, manifest)
 end
 
 
-
 local function get_signals(station)
-	local signals = station.entity_in.get_merged_signals()
-	return signals
+	if station.comb1.valid then
+		local signals = station.comb1.get_merged_signals(defines.circuit_connector_id.combinator_input)
+		return signals
+	else
+		return nil
+	end
+end
+
+function set_combinator_output(map_data, comb, signals)
+	if comb.valid then
+		local out = map_data.to_output[comb.unit_number]
+		if out.valid then
+			out.get_or_create_control_behavior().parameters = signals
+		else
+			--TODO: error logging?
+		end
+	else
+		--TODO: error logging?
+	end
+end
+
+local function set_comb2(map_data, station)
+	if station.comb2 then
+		local deliveries = station.deliveries
+		local signals = {}
+		for item_name, count in pairs(deliveries) do
+			local i = #signals + 1
+			local item_type = game.item_prototypes[item_name].type
+			signals[i] = {index = i, signal = {type = item_type, name = item_name}, count = count}
+		end
+		set_combinator_output(map_data, station.comb2, signals)
+	end
+end
+
+function remove_manifest(map_data, station, manifest, sign)
+	local deliveries = station.deliveries
+	for i, item in ipairs(manifest) do
+		deliveries[item.name] = deliveries[item.name] + sign*item.count
+		if deliveries[item.name] == 0 then
+			deliveries[item.name] = nil
+		end
+	end
+	set_comb2(map_data, station)
+	station.deliveries_total = station.deliveries_total - 1
+end
+
+local function get_thresholds(map_data, station, signal)
+	local comb2 = station.comb2
+	if comb2 and comb2.valid then
+		local count = comb2.get_merged_signal(signal, defines.circuit_connector_id.combinator_input)
+		if count > 0 then
+			return station.r_threshold, count
+		elseif count < 0 then
+			return -count, station.p_threshold
+		end
+	end
+	return station.r_threshold, station.p_threshold
 end
 
 local function get_stop_dist(stop0, stop1)
 	return get_distance(stop0.position, stop1.position)
 end
 
+
 local function station_accepts_layout(station, layout_id)
 	return true
 end
+
 
 local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 	--NOTE: this code is the critical section for run-time optimization
@@ -113,6 +169,7 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 	end
 end
 
+
 local function send_train_between(map_data, r_station_id, p_station_id, train, primary_item_name, economy)
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
@@ -128,7 +185,8 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 			local item_type = v.signal.type
 			if item_name and item_type and item_type ~= "virtual" then
 				local effective_item_count = item_count + (r_station.deliveries[item_name] or 0)
-				if -effective_item_count >= r_station.r_threshold then
+				local r_threshold, p_threshold = get_thresholds(map_data, r_station, v)
+				if -effective_item_count >= r_threshold then
 					requests[item_name] = -effective_item_count
 				end
 			end
@@ -143,7 +201,8 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 			local item_type = v.signal.type
 			if item_name and item_type and item_type ~= "virtual" then
 				local effective_item_count = item_count + (p_station.deliveries[item_name] or 0)
-				if effective_item_count >= p_station.p_threshold then
+				local r_threshold, p_threshold = get_thresholds(map_data, r_station, v)
+				if effective_item_count >= p_threshold then
 					local r = requests[item_name]
 					if r then
 						local item = {name = item_name, count = math.min(r, effective_item_count), type = item_type}
@@ -230,6 +289,8 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 	train.manifest = manifest
 
 	train.entity.schedule = create_manifest_schedule(train.depot_name, p_station.entity, r_station.entity, manifest)
+	set_comb2(map_data, p_station)
+	set_comb2(map_data, r_station)
 end
 
 
@@ -279,8 +340,9 @@ function tick(map_data, mod_settings)
 					local item_name = v.signal.name
 					local item_count = v.count
 					local effective_item_count = item_count + (station.deliveries[item_name] or 0)
+					local r_threshold, p_threshold = get_thresholds(map_data, station, v)
 
-					if -effective_item_count >= station.r_threshold then
+					if -effective_item_count >= r_threshold then
 						if r_stations_all[item_name] == nil then
 							r_stations_all[item_name] = {}
 							p_stations_all[item_name] = {}
@@ -288,7 +350,7 @@ function tick(map_data, mod_settings)
 							all_items[#all_items + 1] = v.signal.type
 						end
 						table.insert(r_stations_all[item_name], station_id)
-					elseif effective_item_count >= station.p_threshold then
+					elseif effective_item_count >= p_threshold then
 						if r_stations_all[item_name] == nil then
 							r_stations_all[item_name] = {}
 							p_stations_all[item_name] = {}
