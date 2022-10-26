@@ -38,7 +38,6 @@ function create_inactivity_order(depot_name)
 	return {station = depot_name, wait_conditions = create_inactivity_order_condition}
 end
 
-local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 0}}
 ---@param stop LuaEntity
 local function create_direct_to_station_order(stop)
 	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction}
@@ -377,7 +376,7 @@ function tick(map_data, mod_settings)
 					local item_count = v.count
 					local effective_item_count = item_count + (station.deliveries[item_name] or 0)
 					local r_threshold, p_threshold = get_thresholds(map_data, station, v.signal)
-					
+
 					if item_name then
 						if -effective_item_count >= r_threshold then
 							if r_stations_all[item_name] == nil then

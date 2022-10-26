@@ -48,7 +48,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 	}
 	map_data.stations[stop.unit_number] = station
 
-	update_station_if_auto(map_data, station)
+	update_station_if_auto(map_data, station, nil)
 end
 ---@param map_data MapData
 ---@param station_id uint
@@ -84,8 +84,8 @@ local function search_for_station_combinator(map_data, stop, comb_operation, com
 	local pos_y = stop.position.y
 	--TODO: fix search area
 	local search_area = {
-		{pos_x + DELTA - 1, pos_y + DELTA - 1},
-		{pos_x - DELTA + 1, pos_y - DELTA + 1}
+		{pos_x - 2, pos_y - 2},
+		{pos_x + 2, pos_y + 2}
 	}
 	local entities = stop.surface.find_entities(search_area)
 	for _, entity in pairs(entities) do
@@ -108,13 +108,21 @@ local function on_combinator_built(map_data, comb)
 	local pos_y = comb.position.y
 
 	--TODO: fix search area
-	local search_area = {
-		{pos_x + DELTA - 1, pos_y + DELTA - 1},
-		{pos_x - DELTA + 1, pos_y - DELTA + 1}
-	}
+	local search_area
+	if comb.direction == defines.direction.north or comb.direction == defines.direction.south then
+		search_area = {
+			{pos_x - 1.5, pos_y - 2},
+			{pos_x + 1.5, pos_y + 2}
+		}
+	else
+		search_area = {
+			{pos_x - 2, pos_y - 1.5},
+			{pos_x + 2, pos_y + 1.5}
+		}
+	end
 	local stop = nil
 	local rail = nil
-	local entities = stop.surface.find_entities(search_area)
+	local entities = comb.surface.find_entities(search_area)
 	for _, cur_entity in pairs(entities) do
 		if cur_entity.valid then
 			if cur_entity.name == "train-stop" then
@@ -131,15 +139,15 @@ local function on_combinator_built(map_data, comb)
 		position = comb.position,
 		force = comb.force
 	})
-	assert(out)
+	assert(out, "cybersyn: could not spawn combinator controller")
 	comb.connect_neighbour({
 		target_entity = out,
-		source_wire_id = defines.circuit_connector_id.combinator_output,
+		source_circuit_id = defines.circuit_connector_id.combinator_output,
 		wire = defines.wire_type.green,
 	})
 	comb.connect_neighbour({
 		target_entity = out,
-		source_wire_id = defines.circuit_connector_id.combinator_output,
+		source_circuit_id = defines.circuit_connector_id.combinator_output,
 		wire = defines.wire_type.red,
 	})
 
@@ -149,7 +157,7 @@ local function on_combinator_built(map_data, comb)
 	local control = comb.get_or_create_control_behavior().parameters
 	if control.operation == OPERATION_WAGON_MANIFEST then
 		if rail then
-			update_station_from_rail(map_data, rail)
+			update_station_from_rail(map_data, rail, nil)
 		end
 	elseif control.operation == OPERATION_DEPOT then
 		if stop then
@@ -182,49 +190,32 @@ local function on_combinator_built(map_data, comb)
 			--no station or depot
 			--add station
 
-			local comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, nil)
+			local comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
 
-			station = {
-				entity_stop = stop,
-				entity_comb1 = comb,
-				entity_comb2 = comb2,
-				wagon_combs = nil,
-				deliveries_total = 0,
-				last_delivery_tick = 0,
-				priority = 0,
-				r_threshold = 0,
-				p_threshold = 0,
-				locked_slots = 0,
-				deliveries = {},
-				train_class = TRAIN_CLASS_AUTO,
-				accepted_layouts = {},
-				layout_pattern = nil,
-			}
-			map_data.stations[stop.unit_number] = station
-
-			update_station_if_auto(map_data, station)
+			on_station_built(map_data, stop, comb, comb2)
 		end
 	end
 end
 ---@param map_data MapData
 ---@param comb LuaEntity
 local function on_combinator_broken(map_data, comb)
+	--NOTE: we do not check for wagon manifest combinators and update their stations, it is assumed they will be lazy deleted later
 	local out = map_data.to_output[comb.unit_number]
 	local stop = map_data.to_stop[comb.unit_number]
 
 	if stop and stop.valid then
 		local station = map_data.stations[stop.unit_number]
 		if station then
-			if station.comb1 == comb then
+			if station.entity_comb1 == comb then
 				local comb1 = search_for_station_combinator(map_data, stop, OPERATION_PRIMARY_IO, comb)
 				if comb1 then
-					station.comb1 = comb1
+					station.entity_comb1 = comb1
 				else
 					on_station_broken(map_data, stop.unit_number, station)
 					map_data.depots[stop.unit_number] = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, nil)
 				end
-			elseif station.comb2 == comb then
-				station.comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
+			elseif station.entity_comb2 == comb then
+				station.entity_comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
 			end
 		else
 			local depot_comb = map_data.depots[stop.unit_number]
@@ -244,7 +235,7 @@ end
 ---@param map_data MapData
 ---@param comb LuaEntity
 local function on_combinator_updated(map_data, comb)
-	--NOTE: this is the lazy way to implement updates and is not robust
+	--NOTE: this is the lazy way to implement updates and puts strong restrictions on data validity on on_combinator_broken
 	on_combinator_broken(map_data, comb)
 	on_combinator_built(map_data, comb)
 end
@@ -257,8 +248,8 @@ local function on_stop_built(map_data, stop)
 
 	--TODO: fix search area
 	local search_area = {
-		{pos_x + DELTA - 1, pos_y + DELTA - 1},
-		{pos_x - DELTA + 1, pos_y - DELTA + 1}
+		{pos_x - 2, pos_y - 2},
+		{pos_x + 2, pos_y + 2}
 	}
 	local comb2 = nil
 	local comb1 = nil
@@ -291,8 +282,8 @@ local function on_stop_broken(map_data, stop)
 
 	--TODO: fix search area
 	local search_area = {
-		{pos_x + DELTA - 1, pos_y + DELTA - 1},
-		{pos_x - DELTA + 1, pos_y - DELTA + 1}
+		{pos_x - 2, pos_y - 2},
+		{pos_x + 2, pos_y + 2}
 	}
 	local entities = stop.surface.find_entities(search_area)
 	for _, entity in pairs(entities) do
@@ -509,7 +500,7 @@ local function on_built(event)
 	elseif entity.type == "pump" then
 		update_station_from_pump(global, entity)
 	elseif entity.type == "straight-rail" then
-		update_station_from_rail(global, entity)
+		update_station_from_rail(global, entity, nil)
 	end
 end
 local function on_broken(event)
@@ -530,7 +521,7 @@ local function on_broken(event)
 	elseif entity.type == "pump" then
 		update_station_from_pump(global, entity)
 	elseif entity.type == "straight-rail" then
-		update_station_from_rail(global, entity)
+		update_station_from_rail(global, entity, nil)
 	end
 end
 local function on_rename(event)

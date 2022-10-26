@@ -22,9 +22,9 @@
 ---@field public entity_stop LuaEntity
 ---@field public entity_comb1 LuaEntity
 ---@field public entity_comb2 LuaEntity?
----@field public wagon_combs {[int]: LuaEntity}?--allowed to be invalid entities
+---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
 ---@field public deliveries {[string]: int}
----@field public train_class string
+---@field public train_class SignalID?
 ---@field public accepted_layouts TrainClass
 ---@field public layout_pattern string?
 
@@ -57,6 +57,7 @@ mod_settings.p_threshold = settings.global["cybersyn-provide-threshold"].value
 
 global.total_ticks = 0
 global.to_output = {}
+global.to_stop = {}
 global.stations = {}
 global.depots = {}
 global.trains = {}
