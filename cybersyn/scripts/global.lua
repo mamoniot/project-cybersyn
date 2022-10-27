@@ -1,61 +1,65 @@
 --By Mami
+---@class MapData
+---@field public total_ticks uint
+---@field public layout_top_id uint
+---@field public to_output {[uint]: LuaEntity}
+---@field public to_stop {[uint]: LuaEntity}
+---@field public stations {[uint]: Station}
+---@field public depots {[uint]: LuaEntity}
+---@field public trains {[uint]: Train}
+---@field public trains_available {[uint]: boolean}
+---@field public layouts {[uint]: string}
+---@field public layout_train_count {[uint]: int}
+---@field public train_classes {[string]: TrainClass}
 
---[[
-global: {
-	total_ticks: int
-	layout_top_id: int
-	stations: {[stop_id]: Station}
-	trains: {[train_id]: Train}
-	trains_available: {[train_id]: bool}
-	layouts: {[layout_id]: Layout}
-	layout_train_count: {[layout_id]: int}
-	train_classes: {[string]: TrainClass}
-}
-Station: {
-	deliveries_total: int
-	priority: int
-	last_delivery_tick: int
-	r_threshold: int >= 0
-	p_threshold: int >= 0
-	locked_slots: int >= 0
-	entity: LuaEntity
-	entity_in: LuaEntity
-	entity_out: LuaEntity
-	deliveries: {
-		[item_name]: int
-	}
-	train_class: string
-	accepted_layouts: TrainClass
-	layout_pattern: string|nil
-}
-Train: {
-	entity: LuaEntity
-	layout_id: int
-	item_slot_capacity: int
-	fluid_capacity: int
-	depot_name: string
-	status: int
-	p_station_id: stop_id
-	r_station_id: stop_id
-	manifest: [{
-		name: string
-		type: string
-		count: int
-	}]
-}
-TrainClass: {
-	[layout_id]: bool
-}
-Layout: string
-]]
+---@class Station
+---@field public deliveries_total int
+---@field public priority int
+---@field public last_delivery_tick int
+---@field public r_threshold int >= 0
+---@field public p_threshold int >= 0
+---@field public locked_slots int >= 0
+---@field public entity_stop LuaEntity
+---@field public entity_comb1 LuaEntity
+---@field public entity_comb2 LuaEntity?
+---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
+---@field public deliveries {[string]: int}
+---@field public train_class SignalID?
+---@field public accepted_layouts TrainClass
+---@field public layout_pattern string?
+
+---@class Train
+---@field public entity LuaTrain
+---@field public layout_id uint
+---@field public item_slot_capacity int
+---@field public fluid_capacity int
+---@field public depot_name string
+---@field public status int
+---@field public p_station_id uint
+---@field public r_station_id uint
+---@field public manifest Manifest
+
+---@alias Manifest {}[]
+---@alias TrainClass {[uint]: boolean}
+---@alias cybersyn.global MapData
+
+---@class Economy
+---@field public r_stations_all {[string]: uint[]}
+---@field public p_stations_all {[string]: uint[]}
+---@field public all_items string[]
+---@field public total_ticks uint
+
 --TODO: only init once
 mod_settings = {}
 mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value
-mod_settings.r_threshold = settings.global["cybersyn-requester-threshold"].value
-mod_settings.p_threshold = settings.global["cybersyn-provider-threshold"].value
+mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value
+mod_settings.p_threshold = settings.global["cybersyn-provide-threshold"].value
 
 global.total_ticks = 0
+global.to_output = {}
+global.to_stop = {}
 global.stations = {}
+global.depots = {}
 global.trains = {}
 global.trains_available = {}
 global.layouts = {}

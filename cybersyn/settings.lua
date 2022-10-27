@@ -1,4 +1,4 @@
---By cybersyn
+--By Mami
 data:extend({
 	{
 		type = "int-setting",
@@ -11,7 +11,7 @@ data:extend({
 	},
 	{
 		type = "int-setting",
-		name = "cybersyn-requester-threshold",
+		name = "cybersyn-request-threshold",
 		order = "ab",
 		setting_type = "runtime-global",
 		default_value = 1000000000,
@@ -20,7 +20,7 @@ data:extend({
 	},
 	{
 		type = "int-setting",
-		name = "cybersyn-provider-threshold",
+		name = "cybersyn-provide-threshold",
 		order = "ac",
 		setting_type = "runtime-global",
 		default_value = 1000000000,

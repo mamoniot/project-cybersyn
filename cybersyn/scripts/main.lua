@@ -1,38 +1,23 @@
 --By Mami
 
-local function set_station_output_empty(station)
-	--change circuit outputs
-	station.entity_out.get_control_behavior().parameters = nil
-end
-
+---@param map_data MapData
+---@param train Train
 local function on_failed_delivery(map_data, train)
 	--NOTE: must change train status to STATUS_D or remove it from tracked trains after this call
 	local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
 	if not is_p_delivery_made then
 		local station = map_data.stations[train.p_station_id]
-		for i, item in ipairs(train.manifest) do
-			station.deliveries[item.name] = station.deliveries[item.name] + item.count
-			if station.deliveries[item.name] == 0 then
-				station.deliveries[item.name] = nil
-			end
-		end
-		station.deliveries_total = station.deliveries_total - 1
+		remove_manifest(map_data, station, train.manifest, 1)
 		if train.status == STATUS_P then
-			set_station_output_empty(station)
+			set_combinator_output(map_data, station.entity_comb1, nil)
 		end
 	end
 	local is_r_delivery_made = train.status == STATUS_R_TO_D
 	if not is_r_delivery_made then
 		local station = map_data.stations[train.r_station_id]
-		for i, item in ipairs(train.manifest) do
-			station.deliveries[item.name] = station.deliveries[item.name] - item.count
-			if station.deliveries[item.name] == 0 then
-				station.deliveries[item.name] = nil
-			end
-		end
-		station.deliveries_total = station.deliveries_total - 1
+		remove_manifest(map_data, station, train.manifest, -1)
 		if train.status == STATUS_R then
-			set_station_output_empty(station)
+			set_combinator_output(map_data, station.entity_comb1, nil)
 		end
 	end
 	train.r_station_id = 0
@@ -40,91 +25,16 @@ local function on_failed_delivery(map_data, train)
 	train.manifest = nil
 end
 
-local function on_station_built(map_data, stop)
-	local pos_x = stop.position.x
-	local pos_y = stop.position.y
-
-	local in_pos
-	local out_pos
-	local search_area
-	if stop.direction == 0 then
-		in_pos = {pos_x, pos_y - 1}
-		out_pos = {pos_x - 1, pos_y - 1}
-		search_area = {
-			{pos_x + DELTA - 1, pos_y + DELTA - 1},
-			{pos_x - DELTA + 1, pos_y - DELTA}
-		}
-	elseif stop.direction == 2 then
-		in_pos = {pos_x, pos_y}
-		out_pos = {pos_x, pos_y - 1}
-		search_area = {
-			{pos_x + DELTA, pos_y + DELTA - 1},
-			{pos_x - DELTA + 1, pos_y - DELTA + 1}
-		}
-	elseif stop.direction == 4 then
-		in_pos = {pos_x - 1, pos_y}
-		out_pos = {pos_x, pos_y}
-		search_area = {
-			{pos_x + DELTA - 1, pos_y + DELTA},
-			{pos_x - DELTA + 1, pos_y - DELTA + 1}
-		}
-	elseif stop.direction == 6 then
-		in_pos = {pos_x - 1, pos_y - 1}
-		out_pos = {pos_x - 1, pos_y}
-		search_area = {
-			{pos_x + DELTA - 1, pos_y + DELTA - 1},
-			{pos_x - DELTA, pos_y - DELTA + 1}
-		}
-	else
-		assert(false, "cybersyn: invalid direction of train stop")
-	end
-
-	local entity_in = nil
-	local entity_out = nil
-	local entities = stop.surface.find_entities(search_area)
-	for _, cur_entity in pairs(entities) do
-		if cur_entity.valid then
-			if cur_entity.name == "entity-ghost" then
-				if cur_entity.ghost_name == STATION_IN_NAME then
-					_, entity_in = cur_entity.silent_revive()
-				elseif cur_entity.ghost_name == STATION_OUT_NAME then
-					_, entity_out = cur_entity.silent_revive()
-				end
-			elseif cur_entity.name == STATION_IN_NAME then
-				entity_in = cur_entity
-			elseif cur_entity.name == STATION_OUT_NAME then
-				entity_out = cur_entity
-			end
-		end
-	end
-
-	if entity_in == nil then
-		entity_in = stop.surface.create_entity({
-			name = STATION_IN_NAME,
-			position = in_pos,
-			force = stop.force
-		})
-	end
-	entity_in.operable = false
-	entity_in.minable = false
-	entity_in.destructible = false
-
-	if entity_out == nil then
-		entity_out = stop.surface.create_entity({
-			name = STATION_OUT_NAME,
-			position = out_pos,
-			direction = stop.direction,
-			force = stop.force
-		})
-	end
-	entity_out.operable = false
-	entity_out.minable = false
-	entity_out.destructible = false
-
+---@param map_data MapData
+---@param stop LuaEntity
+---@param comb1 LuaEntity
+---@param comb2 LuaEntity
+local function on_station_built(map_data, stop, comb1, comb2)
 	local station = {
-		entity = stop,
-		entity_in = entity_in,
-		entity_out = entity_out,
+		entity_stop = stop,
+		entity_comb1 = comb1,
+		entity_comb2 = comb2,
+		wagon_combs = nil,
 		deliveries_total = 0,
 		last_delivery_tick = 0,
 		priority = 0,
@@ -138,13 +48,14 @@ local function on_station_built(map_data, stop)
 	}
 	map_data.stations[stop.unit_number] = station
 
-	update_station_if_auto(map_data, station)
+	update_station_if_auto(map_data, station, nil)
 end
-local function on_station_broken(map_data, stop)
-	--search for trains coming to the destroyed station
-	local station_id = stop.unit_number
-	local station = map_data.stations[station_id]
+---@param map_data MapData
+---@param station_id uint
+---@param station Station
+local function on_station_broken(map_data, station_id, station)
 	if station.deliveries_total > 0 then
+		--search for trains coming to the destroyed station
 		for train_id, train in pairs(map_data.trains) do
 			local is_r = train.r_station_id == station_id
 			local is_p = train.p_station_id == station_id
@@ -156,18 +67,239 @@ local function on_station_broken(map_data, stop)
 					on_failed_delivery(map_data, train)
 					train.entity.schedule = nil
 					remove_train(map_data, train, train_id)
-					--TODO: mark train as lost in the alerts system
+					send_lost_train_alert(train.entity)
 				end
 			end
 		end
 	end
-
-	if station.entity_in.valid then station.entity_in.destroy() end
-	if station.entity_out.valid then station.entity_out.destroy() end
-
 	map_data.stations[station_id] = nil
 end
 
+---@param map_data MapData
+---@param stop LuaEntity
+---@param comb_operation string
+---@param comb_forbidden LuaEntity?
+local function search_for_station_combinator(map_data, stop, comb_operation, comb_forbidden)
+	local pos_x = stop.position.x
+	local pos_y = stop.position.y
+	--TODO: fix search area
+	local search_area = {
+		{pos_x - 2, pos_y - 2},
+		{pos_x + 2, pos_y + 2}
+	}
+	local entities = stop.surface.find_entities(search_area)
+	for _, entity in pairs(entities) do
+		if
+		entity.valid and entity.name == COMBINATOR_NAME and
+		entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == stop
+		then
+			local control = entity.get_or_create_control_behavior().parameters
+			if control.operation == comb_operation then
+				return entity
+			end
+		end
+	end
+end
+
+---@param map_data MapData
+---@param comb LuaEntity
+local function on_combinator_built(map_data, comb)
+	local pos_x = comb.position.x
+	local pos_y = comb.position.y
+
+	--TODO: fix search area
+	local search_area
+	if comb.direction == defines.direction.north or comb.direction == defines.direction.south then
+		search_area = {
+			{pos_x - 1.5, pos_y - 2},
+			{pos_x + 1.5, pos_y + 2}
+		}
+	else
+		search_area = {
+			{pos_x - 2, pos_y - 1.5},
+			{pos_x + 2, pos_y + 1.5}
+		}
+	end
+	local stop = nil
+	local rail = nil
+	local entities = comb.surface.find_entities(search_area)
+	for _, cur_entity in pairs(entities) do
+		if cur_entity.valid then
+			if cur_entity.name == "train-stop" then
+				--NOTE: if there are multiple stops we take the later one
+				stop = cur_entity
+			elseif cur_entity.name == "straight-rail" then
+				rail = cur_entity
+			end
+		end
+	end
+
+	local out = comb.surface.create_entity({
+		name = COMBINATOR_OUT_NAME,
+		position = comb.position,
+		force = comb.force
+	})
+	assert(out, "cybersyn: could not spawn combinator controller")
+	comb.connect_neighbour({
+		target_entity = out,
+		source_circuit_id = defines.circuit_connector_id.combinator_output,
+		wire = defines.wire_type.green,
+	})
+	comb.connect_neighbour({
+		target_entity = out,
+		source_circuit_id = defines.circuit_connector_id.combinator_output,
+		wire = defines.wire_type.red,
+	})
+
+	map_data.to_output[comb.unit_number] = out
+	map_data.to_stop[comb.unit_number] = stop
+
+	local control = comb.get_or_create_control_behavior().parameters
+	if control.operation == OPERATION_WAGON_MANIFEST then
+		if rail then
+			update_station_from_rail(map_data, rail, nil)
+		end
+	elseif control.operation == OPERATION_DEPOT then
+		if stop then
+			local station = map_data.stations[stop.unit_number]
+			local depot_comb = map_data.depots[stop.unit_number]
+			if depot_comb or station then
+				--NOTE: repeated combinators are ignored
+			else
+				map_data.depots[stop.unit_number] = comb
+			end
+		end
+	elseif control.operation == OPERATION_SECONDARY_IO then
+		if stop then
+			local station = map_data.stations[stop.unit_number]
+			if station and not station.entity_comb2 then
+				station.entity_comb2 = comb
+			end
+		end
+	elseif stop then
+		control.operation = OPERATION_PRIMARY_IO
+		local station = map_data.stations[stop.unit_number]
+		local depot_comb = map_data.depots[stop.unit_number]
+		if station then
+			--NOTE: repeated combinators are ignored
+		else
+			if depot_comb then
+				--NOTE: this will disrupt deliveries in progress that where dispatched from this station in a minor way
+				map_data.depots[stop.unit_number] = nil
+			end
+			--no station or depot
+			--add station
+
+			local comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
+
+			on_station_built(map_data, stop, comb, comb2)
+		end
+	end
+end
+---@param map_data MapData
+---@param comb LuaEntity
+local function on_combinator_broken(map_data, comb)
+	--NOTE: we do not check for wagon manifest combinators and update their stations, it is assumed they will be lazy deleted later
+	local out = map_data.to_output[comb.unit_number]
+	local stop = map_data.to_stop[comb.unit_number]
+
+	if stop and stop.valid then
+		local station = map_data.stations[stop.unit_number]
+		if station then
+			if station.entity_comb1 == comb then
+				local comb1 = search_for_station_combinator(map_data, stop, OPERATION_PRIMARY_IO, comb)
+				if comb1 then
+					station.entity_comb1 = comb1
+				else
+					on_station_broken(map_data, stop.unit_number, station)
+					map_data.depots[stop.unit_number] = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, nil)
+				end
+			elseif station.entity_comb2 == comb then
+				station.entity_comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
+			end
+		else
+			local depot_comb = map_data.depots[stop.unit_number]
+			if depot_comb == comb then
+				--NOTE: this will disrupt deliveries in progress that where dispatched from this station in a minor way
+				map_data.depots[stop.unit_number] = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
+			end
+		end
+	end
+
+	if out and out.valid then
+		out.destroy()
+	end
+	map_data.to_output[comb.unit_number] = nil
+	map_data.to_stop[comb.unit_number] = nil
+end
+---@param map_data MapData
+---@param comb LuaEntity
+local function on_combinator_updated(map_data, comb)
+	--NOTE: this is the lazy way to implement updates and puts strong restrictions on data validity on on_combinator_broken
+	on_combinator_broken(map_data, comb)
+	on_combinator_built(map_data, comb)
+end
+
+---@param map_data MapData
+---@param stop LuaEntity
+local function on_stop_built(map_data, stop)
+	local pos_x = stop.position.x
+	local pos_y = stop.position.y
+
+	--TODO: fix search area
+	local search_area = {
+		{pos_x - 2, pos_y - 2},
+		{pos_x + 2, pos_y + 2}
+	}
+	local comb2 = nil
+	local comb1 = nil
+	local depot_comb = nil
+	local entities = stop.surface.find_entities(search_area)
+	for _, entity in pairs(entities) do
+		if entity.valid and entity.name == COMBINATOR_NAME and map_data.to_stop[entity.unit_number] == nil then
+			map_data.to_stop[entity.unit_number] = stop
+			local control = entity.get_or_create_control_behavior().parameters
+			if control.operation == OPERATION_PRIMARY_IO then
+				comb1 = entity
+			elseif control.operation == OPERATION_SECONDARY_IO then
+				comb2 = entity
+			elseif control.operation == OPERATION_DEPOT then
+				depot_comb = entity
+			end
+		end
+	end
+	if comb1 then
+		on_station_built(map_data, stop, comb1, comb2)
+	elseif depot_comb then
+		map_data.depots[stop.unit_number] = depot_comb
+	end
+end
+---@param map_data MapData
+---@param stop LuaEntity
+local function on_stop_broken(map_data, stop)
+	local pos_x = stop.position.x
+	local pos_y = stop.position.y
+
+	--TODO: fix search area
+	local search_area = {
+		{pos_x - 2, pos_y - 2},
+		{pos_x + 2, pos_y + 2}
+	}
+	local entities = stop.surface.find_entities(search_area)
+	for _, entity in pairs(entities) do
+		if map_data.to_stop[entity.unit_number] == stop then
+			map_data.to_stop[entity.unit_number] = nil
+		end
+	end
+
+	local station = map_data.stations[stop.unit_number]
+	if station then
+		on_station_broken(map_data, stop.unit_number, station)
+	end
+	map_data.depots[stop.unit_number] = nil
+end
+---@param map_data MapData
+---@param stop LuaEntity
 local function on_station_rename(map_data, stop)
 	--search for trains coming to the renamed station
 	local station_id = stop.unit_number
@@ -183,7 +315,7 @@ local function on_station_rename(map_data, stop)
 					--train is attempting delivery to a stop that was renamed
 					local p_station = map_data.stations[train.p_station_id]
 					local r_station = map_data.stations[train.r_station_id]
-					local schedule = create_manifest_schedule(train.depot_name, p_station.entity, r_station.entity, train.manifest)
+					local schedule = create_manifest_schedule(train.depot_name, p_station.entity_stop, r_station.entity_stop, train.manifest)
 					schedule.current = train.entity.schedule.current
 					train.entity.schedule = schedule
 				end
@@ -193,53 +325,51 @@ local function on_station_rename(map_data, stop)
 end
 
 
-local function find_and_add_all_stations(map_data)
+---@param map_data MapData
+local function find_and_add_all_stations_from_nothing(map_data)
 	for _, surface in pairs(game.surfaces) do
-		local stops = surface.find_entities_filtered({type="train-stop"})
-		if stops then
-			for k, stop in pairs(stops) do
-				if stop.name == BUFFER_STATION_NAME then
-					local station = map_data.stations[stop.unit_number]
-					if not station then
-						on_station_built(map_data, stop)
-					end
-				end
+		local entities = surface.find_entities_filtered({name = COMBINATOR_NAME})
+		for k, comb in pairs(entities) do
+			if comb.valid then
+				on_combinator_built(map_data, comb)
 			end
 		end
 	end
 end
 
 
-
+---@param map_data MapData
+---@param train_entity LuaTrain
 local function on_train_arrives_depot(map_data, train_entity)
+	local contents = train_entity.get_contents()
 	local train = map_data.trains[train_entity.id]
 	if train then
-		if train.manifest then
-			if train.status == STATUS_R_TO_D then
-				--succeeded delivery
-				train.p_station_id = 0
-				train.r_station_id = 0
-				train.manifest = nil
-				train.depot_name = train_entity.station.backer_name
-				train.status = STATUS_D
-				train.entity.schedule = create_depot_schedule(train.depot_name)
-				map_data.trains_available[train_entity.id] = true
-			else
+		if train.manifest and train.status == STATUS_R_TO_D then
+			--succeeded delivery
+			train.p_station_id = 0
+			train.r_station_id = 0
+			train.manifest = nil
+			train.depot_name = train_entity.station.backer_name
+			train.status = STATUS_D
+			map_data.trains_available[train_entity.id] = true
+		else
+			if train.manifest then
 				on_failed_delivery(map_data, train)
-				local contents = train.entity.get_contents()
-				if next(contents) == nil then
-					train.depot_name = train_entity.station.backer_name
-					train.status = STATUS_D
-					train.entity.schedule = create_depot_schedule(train.depot_name)
-					map_data.trains_available[train_entity.id] = true
-				else--train still has cargo
-					train.entity.schedule = nil
-					remove_train(map_data, train, train_entity.id)
-					--TODO: mark train as lost in the alerts system
-				end
+				send_lost_train_alert(train.entity)
 			end
+			train.depot_name = train_entity.station.backer_name
+			train.status = STATUS_D
+			map_data.trains_available[train_entity.id] = true
 		end
-	else
+		if next(contents) ~= nil then
+			--train still has cargo
+			train_entity.schedule = nil
+			remove_train(map_data, train, train_entity.id)
+			send_nonempty_train_in_depot_alert(train_entity)
+		else
+			train_entity.schedule = create_depot_schedule(train.depot_name)
+		end
+	elseif next(contents) == nil then
 		train = {
 			depot_name = train_entity.station.backer_name,
 			status = STATUS_D,
@@ -251,15 +381,20 @@ local function on_train_arrives_depot(map_data, train_entity)
 			r_station_id = 0,
 			manifest = nil,
 		}
-		update_train_layout(global, train)
+		update_train_layout(map_data, train)
 		map_data.trains[train_entity.id] = train
 		map_data.trains_available[train_entity.id] = true
 		local schedule = create_depot_schedule(train.depot_name)
 		train_entity.schedule = schedule
+	else
+		send_nonempty_train_in_depot_alert(train_entity)
 	end
 end
-
-local function on_train_arrives_buffer(map_data, station_id, train)
+---@param map_data MapData
+---@param stop LuaEntity
+---@param train Train
+local function on_train_arrives_buffer(map_data, stop, train)
+	local station_id = stop.unit_number
 	if train.manifest then
 		if train.status == STATUS_D_TO_P then
 			if train.p_station_id == station_id then
@@ -270,7 +405,12 @@ local function on_train_arrives_buffer(map_data, station_id, train)
 				for i, item in ipairs(train.manifest) do
 					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item.count}
 				end
-				station.entity_out.get_control_behavior().parameters = signals
+				set_combinator_output(map_data, station.comb1, signals)
+				if station.wagon_combs then
+					for i, entity in ipairs(station.wagon_combs) do
+
+					end
+				end
 			end
 		elseif train.status == STATUS_P_TO_R then
 			if train.r_station_id == station_id then
@@ -281,47 +421,40 @@ local function on_train_arrives_buffer(map_data, station_id, train)
 				for i, item in ipairs(train.manifest) do
 					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = -1}
 				end
-				station.entity_out.get_control_behavior().parameters = signals
+				set_combinator_output(map_data, station.comb1, signals)
 			end
 		else
 			on_failed_delivery(map_data, train)
 			remove_train(map_data, train, train.entity.id)
 			train.entity.schedule = nil
+			send_lost_train_alert(train.entity)
 		end
 	else
 		--train is lost somehow, probably from player intervention
 		remove_train(map_data, train, train.entity.id)
 	end
 end
-
+---@param map_data MapData
+---@param train Train
 local function on_train_leaves_station(map_data, train)
 	if train.manifest then
 		if train.status == STATUS_P then
 			train.status = STATUS_P_TO_R
 			local station = map_data.stations[train.p_station_id]
-			for i, item in ipairs(train.manifest) do
-				station.deliveries[item.name] = station.deliveries[item.name] + item.count
-				if station.deliveries[item.name] == 0 then
-					station.deliveries[item.name] = nil
-				end
-			end
-			station.deliveries_total = station.deliveries_total - 1
-			set_station_output_empty(station)
+			remove_manifest(map_data, station, train.manifest, 1)
+			set_combinator_output(map_data, station.entity_comb1, nil)
 		elseif train.status == STATUS_R then
 			train.status = STATUS_R_TO_D
 			local station = map_data.stations[train.r_station_id]
-			for i, item in ipairs(train.manifest) do
-				station.deliveries[item.name] = station.deliveries[item.name] - item.count
-				if station.deliveries[item.name] == 0 then
-					station.deliveries[item.name] = nil
-				end
-			end
-			station.deliveries_total = station.deliveries_total - 1
-			set_station_output_empty(station)
+			remove_manifest(map_data, station, train.manifest, -1)
+			set_combinator_output(map_data, station.entity_comb1, nil)
 		end
 	end
 end
 
+
+---@param map_data MapData
+---@param train Train
 local function on_train_broken(map_data, train)
 	if train.manifest then
 		on_failed_delivery(map_data, train)
@@ -331,7 +464,9 @@ local function on_train_broken(map_data, train)
 		end
 	end
 end
-
+---@param map_data MapData
+---@param pre_train_id uint
+---@param train_entity LuaEntity
 local function on_train_modified(map_data, pre_train_id, train_entity)
 	local train = map_data.trains[pre_train_id]
 	if train then
@@ -347,8 +482,6 @@ local function on_train_modified(map_data, pre_train_id, train_entity)
 end
 
 
-
-
 local function on_tick(event)
 	tick(global, mod_settings)
 	global.total_ticks = global.total_ticks + 1
@@ -358,8 +491,10 @@ local function on_built(event)
 	local entity = event.entity or event.created_entity or event.destination
 	if not entity or not entity.valid then return end
 
-	if entity.name == BUFFER_STATION_NAME then
-		on_station_built(global, entity)
+	if entity.name == "train-stop" then
+		on_stop_built(global, entity)
+	elseif entity.name == COMBINATOR_NAME then
+		on_combinator_built(global, entity)
 	elseif entity.type == "inserter" then
 		update_station_from_inserter(global, entity)
 	elseif entity.type == "pump" then
@@ -377,33 +512,21 @@ local function on_broken(event)
 		if train then
 			on_train_broken(global, train)
 		end
-	elseif entity.name == BUFFER_STATION_NAME then
-		on_station_broken(global, entity)
+	elseif entity.name == "train-stop" then
+		on_stop_broken(global, entity)
+	elseif entity.name == COMBINATOR_NAME then
+		on_combinator_broken(global, entity)
 	elseif entity.type == "inserter" then
-		--NOTE: check if this works or if it needs to be delayed
-		update_station_from_inserter(global, entity)
+		update_station_from_inserter(global, entity, entity)
 	elseif entity.type == "pump" then
-		update_station_from_pump(global, entity)
+		update_station_from_pump(global, entity, entity)
 	elseif entity.type == "straight-rail" then
-		update_station_from_rail(global, entity)
+		update_station_from_rail(global, entity, nil)
 	end
 end
-
-local function on_train_changed(event)
-	local train_e = event.train
-	local train = global.trains[train_e.id]
-	if train_e.state == defines.train_state.wait_station and train_e.station ~= nil then
-		if train_e.station.name == DEPOT_STATION_NAME then
-			on_train_arrives_depot(global, train_e)
-		elseif train_e.station.name == BUFFER_STATION_NAME then
-			if train then
-				on_train_arrives_buffer(global, train_e.station.unit_number, train)
-			end
-		end
-	elseif event.old_state == defines.train_state.wait_station then
-		if train then
-			on_train_leaves_station(global, train)
-		end
+local function on_rename(event)
+	if event.entity.name == "train-stop" then
+		on_station_rename(global, event.entity)
 	end
 end
 
@@ -416,33 +539,48 @@ local function on_train_built(event)
 		on_train_modified(global, event.old_train_id_2, train_e)
 	end
 end
+local function on_train_changed(event)
+	local train_e = event.train
+	local train = global.trains[train_e.id]
+	if train_e.state == defines.train_state.wait_station then
+		local stop = train_e.station
+		if stop and stop.name == "train-stop" then
+			if global.stations[stop.unit_number] then
+				on_train_arrives_buffer(global, stop, train)
+			elseif global.depots[stop.unit_number] then
+				on_train_arrives_depot(global, train_e)
+			end
+		end
+	elseif event.old_state == defines.train_state.wait_station then
+		if train then
+			on_train_leaves_station(global, train)
+		end
+	end
+end
 
 local function on_surface_removed(event)
 	local surface = game.surfaces[event.surface_index]
 	if surface then
 		local train_stops = surface.find_entities_filtered({type = "train-stop"})
 		for _, entity in pairs(train_stops) do
-			if entity.name == BUFFER_STATION_NAME then
-				on_station_broken(global, entity)
+			if entity.name == "train-stop" then
+				on_stop_broken(global, entity)
 			end
 		end
 	end
 end
 
-local function on_rename(event)
-	if event.entity.name == BUFFER_STATION_NAME then
-		on_station_rename(global, event.entity)
-	end
-end
 
 local filter_built = {
 	{filter = "type", type = "train-stop"},
+	{filter = "type", type = "arithmetic-combinator"},
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
 }
 local filter_broken = {
 	{filter = "type", type = "train-stop"},
+	{filter = "type", type = "arithmetic-combinator"},
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
@@ -469,6 +607,8 @@ local function register_events()
 	script.on_event(defines.events.on_train_changed_state, on_train_changed)
 
 	script.on_event(defines.events.on_entity_renamed, on_rename)
+
+	register_gui_actions()
 end
 
 script.on_load(function()
@@ -477,12 +617,12 @@ end)
 
 script.on_init(function()
 	--TODO: we are not checking changed cargo capacities
-	find_and_add_all_stations(global)
+	--find_and_add_all_stations(global)
 	register_events()
 end)
 
 script.on_configuration_changed(function(data)
 	--TODO: we are not checking changed cargo capacities
-	find_and_add_all_stations(global)
+	--find_and_add_all_stations(global)
 	register_events()
 end)

@@ -4,6 +4,8 @@ local math = math
 local INF = math.huge
 
 local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = 120}
+---@param stop LuaEntity
+---@param manifest Manifest
 function create_loading_order(stop, manifest)
 	local condition = {}
 	for _, item in ipairs(manifest) do
@@ -25,24 +27,31 @@ function create_loading_order(stop, manifest)
 end
 
 local create_unloading_order_condition = {{type = "empty", compare_type = "and"}}
+---@param stop LuaEntity
 function create_unloading_order(stop)
 	return {station = stop.backer_name, wait_conditions = create_unloading_order_condition}
 end
 
 local create_inactivity_order_condition = {{type = "inactivity", compare_type = "and", ticks = 120}}
+---@param depot_name string
 function create_inactivity_order(depot_name)
 	return {station = depot_name, wait_conditions = create_inactivity_order_condition}
 end
 
-local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 0}}
+---@param stop LuaEntity
 local function create_direct_to_station_order(stop)
 	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction}
 end
 
+---@param depot_name string
 function create_depot_schedule(depot_name)
 	return {current = 1, records = {create_inactivity_order(depot_name)}}
 end
 
+---@param depot_name string
+---@param p_stop LuaEntity
+---@param r_stop LuaEntity
+---@param manifest Manifest
 function create_manifest_schedule(depot_name, p_stop, r_stop, manifest)
 	return {current = 1, records = {
 		create_inactivity_order(depot_name),
@@ -53,27 +62,103 @@ function create_manifest_schedule(depot_name, p_stop, r_stop, manifest)
 	}}
 end
 
-
-
+---@param station Station
 local function get_signals(station)
-	local signals = station.entity_in.get_merged_signals()
-	return signals
+	if station.entity_comb1.valid then
+		local signals = station.entity_comb1.get_merged_signals(defines.circuit_connector_id.combinator_input)
+		return signals
+	else
+		return nil
+	end
 end
 
+---@param map_data MapData
+---@param comb LuaEntity
+---@param signals ConstantCombinatorParameters[]?
+function set_combinator_output(map_data, comb, signals)
+	if comb.valid then
+		local out = map_data.to_output[comb.unit_number]
+		if out.valid then
+			out.get_or_create_control_behavior().parameters = signals
+		else
+			--TODO: error logging?
+		end
+	else
+		--TODO: error logging?
+	end
+end
+
+---@param map_data MapData
+---@param station Station
+local function set_comb2(map_data, station)
+	if station.entity_comb2 then
+		local deliveries = station.deliveries
+		local signals = {}
+		for item_name, count in pairs(deliveries) do
+			local i = #signals + 1
+			local item_type = game.item_prototypes[item_name].type
+			signals[i] = {index = i, signal = {type = item_type, name = item_name}, count = count}
+		end
+		set_combinator_output(map_data, station.entity_comb2, signals)
+	end
+end
+
+---@param map_data MapData
+---@param station Station
+---@param manifest Manifest
+function remove_manifest(map_data, station, manifest, sign)
+	local deliveries = station.deliveries
+	for i, item in ipairs(manifest) do
+		deliveries[item.name] = deliveries[item.name] + sign*item.count
+		if deliveries[item.name] == 0 then
+			deliveries[item.name] = nil
+		end
+	end
+	set_comb2(map_data, station)
+	station.deliveries_total = station.deliveries_total - 1
+end
+
+---@param map_data MapData
+---@param station Station
+---@param signal SignalID
+local function get_thresholds(map_data, station, signal)
+	local comb2 = station.entity_comb2
+	if comb2 and comb2.valid then
+		local count = comb2.get_merged_signal(signal, defines.circuit_connector_id.combinator_input)
+		if count > 0 then
+			return station.r_threshold, count
+		elseif count < 0 then
+			return -count, station.p_threshold
+		end
+	end
+	return station.r_threshold, station.p_threshold
+end
+
+---@param stop0 LuaEntity
+---@param stop1 LuaEntity
 local function get_stop_dist(stop0, stop1)
 	return get_distance(stop0.position, stop1.position)
 end
 
+
+---@param station Station
+---@param layout_id uint
 local function station_accepts_layout(station, layout_id)
 	return true
 end
 
+
+
+---@param map_data MapData
+---@param r_station_id uint
+---@param p_station_id uint
+---@param item_type string
 local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 	--NOTE: this code is the critical section for run-time optimization
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
 
-	local p_to_r_dist = get_stop_dist(p_station.entity, r_station.entity)
+	local p_to_r_dist = get_stop_dist(p_station.entity_stop, r_station.entity_stop)
 	if p_to_r_dist == INF then
 		return nil, INF
 	end
@@ -96,7 +181,7 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 			valid_train_exists = true
 			--check if exists valid path
 			--check if path is shortest so we prioritize locality
-			local d_to_p_dist = get_stop_dist(train.entity.station, p_station.entity)
+			local d_to_p_dist = get_stop_dist(train.entity.station, p_station.entity_stop)
 
 			local dist = d_to_p_dist
 			if dist < best_dist then
@@ -113,6 +198,13 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 	end
 end
 
+
+---@param map_data MapData
+---@param r_station_id uint
+---@param p_station_id uint
+---@param train Train
+---@param primary_item_name string
+---@param economy Economy
 local function send_train_between(map_data, r_station_id, p_station_id, train, primary_item_name, economy)
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
@@ -128,7 +220,8 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 			local item_type = v.signal.type
 			if item_name and item_type and item_type ~= "virtual" then
 				local effective_item_count = item_count + (r_station.deliveries[item_name] or 0)
-				if -effective_item_count >= r_station.r_threshold then
+				local r_threshold, p_threshold = get_thresholds(map_data, r_station, v.signal)
+				if -effective_item_count >= r_threshold then
 					requests[item_name] = -effective_item_count
 				end
 			end
@@ -143,7 +236,8 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 			local item_type = v.signal.type
 			if item_name and item_type and item_type ~= "virtual" then
 				local effective_item_count = item_count + (p_station.deliveries[item_name] or 0)
-				if effective_item_count >= p_station.p_threshold then
+				local r_threshold, p_threshold = get_thresholds(map_data, r_station, v.signal)
+				if effective_item_count >= p_threshold then
 					local r = requests[item_name]
 					if r then
 						local item = {name = item_name, count = math.min(r, effective_item_count), type = item_type}
@@ -229,10 +323,12 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 	train.r_station_id = r_station_id
 	train.manifest = manifest
 
-	train.entity.schedule = create_manifest_schedule(train.depot_name, p_station.entity, r_station.entity, manifest)
+	train.entity.schedule = create_manifest_schedule(train.depot_name, p_station.entity_stop, r_station.entity_stop, manifest)
+	set_comb2(map_data, p_station)
+	set_comb2(map_data, r_station)
 end
 
-
+---@param map_data MapData
 function tick(map_data, mod_settings)
 	local total_ticks = map_data.total_ticks
 	local stations = map_data.stations
@@ -247,7 +343,7 @@ function tick(map_data, mod_settings)
 	local all_items = economy.all_items
 
 	for station_id, station in pairs(stations) do
-		if station.deliveries_total < station.entity.trains_limit then
+		if station.deliveries_total < station.entity_stop.trains_limit then
 			station.r_threshold = mod_settings.r_threshold
 			station.p_threshold = mod_settings.p_threshold
 			station.priority = 0
@@ -279,30 +375,33 @@ function tick(map_data, mod_settings)
 					local item_name = v.signal.name
 					local item_count = v.count
 					local effective_item_count = item_count + (station.deliveries[item_name] or 0)
+					local r_threshold, p_threshold = get_thresholds(map_data, station, v.signal)
 
-					if -effective_item_count >= station.r_threshold then
-						if r_stations_all[item_name] == nil then
-							r_stations_all[item_name] = {}
-							p_stations_all[item_name] = {}
-							all_items[#all_items + 1] = item_name
-							all_items[#all_items + 1] = v.signal.type
+					if item_name then
+						if -effective_item_count >= r_threshold then
+							if r_stations_all[item_name] == nil then
+								r_stations_all[item_name] = {}
+								p_stations_all[item_name] = {}
+								all_items[#all_items + 1] = item_name
+								all_items[#all_items + 1] = v.signal.type
+							end
+							table.insert(r_stations_all[item_name], station_id)
+						elseif effective_item_count >= p_threshold then
+							if r_stations_all[item_name] == nil then
+								r_stations_all[item_name] = {}
+								p_stations_all[item_name] = {}
+								all_items[#all_items + 1] = item_name
+								all_items[#all_items + 1] = v.signal.type
+							end
+							table.insert(p_stations_all[item_name], station_id)
 						end
-						table.insert(r_stations_all[item_name], station_id)
-					elseif effective_item_count >= station.p_threshold then
-						if r_stations_all[item_name] == nil then
-							r_stations_all[item_name] = {}
-							p_stations_all[item_name] = {}
-							all_items[#all_items + 1] = item_name
-							all_items[#all_items + 1] = v.signal.type
-						end
-						table.insert(p_stations_all[item_name], station_id)
 					end
 				end
 			end
 		end
 	end
 
-	local failed_because_missing_trains_total = 0
+	local failed_because_missing_trains = {}
 	--we do not dispatch more than one train per station per tick
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
 	local start_i = 2*(total_ticks%(#all_items/2)) + 1
@@ -336,13 +435,14 @@ function tick(map_data, mod_settings)
 								highest_prior = prior
 							elseif d < INF then
 								could_have_been_serviced = true
+								best = j
 							end
 						end
 					end
-					if best > 0 then
+					if best_train then
 						send_train_between(map_data, r_station_id, p_stations[best], best_train, item_name, economy)
 					elseif could_have_been_serviced then
-						failed_because_missing_trains_total = failed_because_missing_trains_total + 1
+						send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, p_stations[best].entity_stop)
 					end
 				until #r_stations == 0
 			else
@@ -368,17 +468,17 @@ function tick(map_data, mod_settings)
 								highest_prior = prior
 							elseif d < INF then
 								could_have_been_serviced = true
+								best = i
 							end
 						end
 					end
-					if best > 0 then
+					if best_train then
 						send_train_between(map_data, r_stations[best], p_station_id, best_train, item_name, economy)
 					elseif could_have_been_serviced then
-						failed_because_missing_trains_total = failed_because_missing_trains_total + 1
+						send_missing_train_alert_for_stops(stations[best].entity_stop, p_stations[p_station_id].entity_stop)
 					end
 				until #p_stations == 0
 			end
 		end
 	end
-	--TODO: add alert for missing trains
 end
