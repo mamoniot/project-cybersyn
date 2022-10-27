@@ -43,9 +43,7 @@ function gui_opened(comb, player)
 	end
 
 	local window = flib_gui.build(rootgui, {
-		{type="frame", direction="vertical", ref={"main_window"}, name=COMBINATOR_NAME, actions={
-			on_close = {"test"}
-		}, children={
+		{type="frame", direction="vertical", ref={"main_window"}, name=COMBINATOR_NAME, children={
 			--title bar
 			{type="flow", ref={"titlebar"}, children={
 				{type="label", style="frame_title", caption={"cybersyn-gui.combinator-title"}, elem_mods={ignored_by_interaction=true}},

@@ -64,9 +64,9 @@ end
 
 ---@param station Station
 local function get_signals(station)
-	if station.entity_comb1.valid then
-		local signals = station.entity_comb1.get_merged_signals(defines.circuit_connector_id.combinator_input)
-		return signals
+	local comb = station.entity_comb1
+	if comb.valid and (comb.status == defines.entity_status.working or comb.status == defines.entity_status.low_power) then
+		return comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
 	else
 		return nil
 	end
