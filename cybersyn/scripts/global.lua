@@ -2,6 +2,7 @@
 ---@class MapData
 ---@field public total_ticks uint
 ---@field public layout_top_id uint
+---@field public to_comb {[uint]: LuaEntity}
 ---@field public to_output {[uint]: LuaEntity}
 ---@field public to_stop {[uint]: LuaEntity}
 ---@field public stations {[uint]: Station}
@@ -56,6 +57,7 @@ mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value
 mod_settings.p_threshold = settings.global["cybersyn-provide-threshold"].value
 
 global.total_ticks = 0
+global.to_comb = {}
 global.to_output = {}
 global.to_stop = {}
 global.stations = {}

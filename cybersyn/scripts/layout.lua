@@ -107,7 +107,7 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 		direction_filter = {defines.direction.east, defines.direction.west}
 		is_ver = true
 	elseif station_direction == defines.direction.east then
-		search_area = {left_top = {y = middle_y - reach, x = middle_x}, right_bottom = {y = middle_y + reach, x = middle_x - 6}}
+		search_area = {left_top = {y = middle_y - reach, x = middle_x - 6}, right_bottom = {y = middle_y + reach, x = middle_x}}
 		area_delta = {x = -7, y = 0}
 		direction_filter = {defines.direction.north, defines.direction.south}
 		is_ver = false
@@ -117,7 +117,7 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 		direction_filter = {defines.direction.east, defines.direction.west}
 		is_ver = true
 	elseif station_direction == defines.direction.west then
-		search_area = {left_top = {y = middle_y - reach, x = middle_x + 6}, right_bottom = {y = middle_y + reach, x = middle_x}}
+		search_area = {left_top = {y = middle_y - reach, x = middle_x}, right_bottom = {y = middle_y + reach, x = middle_x + 6}}
 		area_delta = {x = 7, y = 0}
 		direction_filter = {defines.direction.north, defines.direction.south}
 		is_ver = false

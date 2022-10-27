@@ -1,4 +1,5 @@
 --By Mami
+local flib_event = require("__flib__.event")
 
 ---@param map_data MapData
 ---@param train Train
@@ -151,6 +152,7 @@ local function on_combinator_built(map_data, comb)
 		wire = defines.wire_type.red,
 	})
 
+	map_data.to_comb[comb.unit_number] = comb
 	map_data.to_output[comb.unit_number] = out
 	map_data.to_stop[comb.unit_number] = stop
 
@@ -229,12 +231,13 @@ local function on_combinator_broken(map_data, comb)
 	if out and out.valid then
 		out.destroy()
 	end
+	map_data.to_comb[comb.unit_number] = nil
 	map_data.to_output[comb.unit_number] = nil
 	map_data.to_stop[comb.unit_number] = nil
 end
 ---@param map_data MapData
 ---@param comb LuaEntity
-local function on_combinator_updated(map_data, comb)
+function on_combinator_updated(map_data, comb)
 	--NOTE: this is the lazy way to implement updates and puts strong restrictions on data validity on on_combinator_broken
 	on_combinator_broken(map_data, comb)
 	on_combinator_built(map_data, comb)
@@ -588,40 +591,39 @@ local filter_broken = {
 }
 local function register_events()
 	--NOTE: I have no idea if this correctly registers all events once in all situations
-	script.on_event(defines.events.on_built_entity, on_built, filter_built)
-	script.on_event(defines.events.on_robot_built_entity, on_built, filter_built)
-	script.on_event({defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, on_built)
+	flib_event.register(defines.events.on_built_entity, on_built, filter_built)
+	flib_event.register(defines.events.on_robot_built_entity, on_built, filter_built)
+	flib_event.register({defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, on_built)
 
-	script.on_event(defines.events.on_pre_player_mined_item, on_broken, filter_broken)
-	script.on_event(defines.events.on_robot_pre_mined, on_broken, filter_broken)
-	script.on_event(defines.events.on_entity_died, on_broken, filter_broken)
-	script.on_event(defines.events.script_raised_destroy, on_broken)
+	flib_event.register(defines.events.on_pre_player_mined_item, on_broken, filter_broken)
+	flib_event.register(defines.events.on_robot_pre_mined, on_broken, filter_broken)
+	flib_event.register(defines.events.on_entity_died, on_broken, filter_broken)
+	flib_event.register(defines.events.script_raised_destroy, on_broken)
 
-	script.on_event({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
+	flib_event.register({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
 
 	local nth_tick = math.ceil(60/mod_settings.tps);
-	script.on_nth_tick(nil)
-	script.on_nth_tick(nth_tick, on_tick)
+	flib_event.on_nth_tick(nth_tick, on_tick)
 
-	script.on_event(defines.events.on_train_created, on_train_built)
-	script.on_event(defines.events.on_train_changed_state, on_train_changed)
+	flib_event.register(defines.events.on_train_created, on_train_built)
+	flib_event.register(defines.events.on_train_changed_state, on_train_changed)
 
-	script.on_event(defines.events.on_entity_renamed, on_rename)
+	flib_event.register(defines.events.on_entity_renamed, on_rename)
 
 	register_gui_actions()
 end
 
-script.on_load(function()
+flib_event.on_load(function()
 	register_events()
 end)
 
-script.on_init(function()
+flib_event.on_init(function()
 	--TODO: we are not checking changed cargo capacities
 	--find_and_add_all_stations(global)
 	register_events()
 end)
 
-script.on_configuration_changed(function(data)
+flib_event.on_configuration_changed(function(data)
 	--TODO: we are not checking changed cargo capacities
 	--find_and_add_all_stations(global)
 	register_events()
