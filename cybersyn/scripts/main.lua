@@ -128,7 +128,7 @@ local function on_combinator_built(map_data, comb)
 			if cur_entity.name == "train-stop" then
 				--NOTE: if there are multiple stops we take the later one
 				stop = cur_entity
-			elseif cur_entity.name == "rail-straight" then
+			elseif cur_entity.name == "straight-rail" then
 				rail = cur_entity
 			end
 		end
@@ -500,7 +500,7 @@ local function on_built(event)
 	elseif entity.type == "pump" then
 		update_station_from_pump(global, entity)
 	elseif entity.type == "straight-rail" then
-		update_station_from_rail(global, entity, nil)
+		update_station_from_rail(global, entity)
 	end
 end
 local function on_broken(event)
@@ -517,9 +517,9 @@ local function on_broken(event)
 	elseif entity.name == COMBINATOR_NAME then
 		on_combinator_broken(global, entity)
 	elseif entity.type == "inserter" then
-		update_station_from_inserter(global, entity)
+		update_station_from_inserter(global, entity, entity)
 	elseif entity.type == "pump" then
-		update_station_from_pump(global, entity)
+		update_station_from_pump(global, entity, entity)
 	elseif entity.type == "straight-rail" then
 		update_station_from_rail(global, entity, nil)
 	end
@@ -607,6 +607,8 @@ local function register_events()
 	script.on_event(defines.events.on_train_changed_state, on_train_changed)
 
 	script.on_event(defines.events.on_entity_renamed, on_rename)
+
+	register_gui_actions()
 end
 
 script.on_load(function()

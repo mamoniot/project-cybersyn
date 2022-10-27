@@ -127,9 +127,9 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 	local length = 2
 	local pre_rail = station_rail
 	local layout_pattern = "^"
-	local layout_min_size = 10000
 	local type_filter = {"inserter", "pump", "arithmetic-combinator"}
 	local wagon_number = 0
+	local pattern_length = 1
 	for i = 1, 100 do
 		local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({rail_direction = rail_direction_from_station, rail_connection_direction = defines.rail_connection_direction.straight})
 		if not rail or rail_connection_direction ~= defines.rail_connection_direction.straight or not rail.valid then
@@ -203,20 +203,17 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 					--TODO: needs to allow misc wagons as well
 					layout_pattern = layout_pattern..STATION_LAYOUT_NOT_FLUID
 				end
+				pattern_length = #layout_pattern
 			elseif supports_fluid then
 				layout_pattern = layout_pattern..STATION_LAYOUT_NOT_CARGO
+				pattern_length = #layout_pattern
 			else
 				layout_pattern = layout_pattern..STATION_LAYOUT_NA
-			end
-			if layout_min_size <= 0 then
-				layout_pattern = layout_pattern.."?"
-			else
-				layout_min_size = layout_min_size - 1
 			end
 			search_area = area.move(search_area, area_delta)
 		end
 	end
-	layout_pattern = layout_pattern..STATION_LAYOUT_NA.."*$"
+	layout_pattern = string.sub(layout_pattern, 1, pattern_length)..STATION_LAYOUT_NA.."*$"
 	station.layout_pattern = layout_pattern
 	local accepted_layouts = station.accepted_layouts
 	for id, layout in pairs(map_data.layouts) do
@@ -257,7 +254,7 @@ end
 
 ---@param map_data MapData
 ---@param rail LuaEntity
----@param forbidden_entity LuaEntity
+---@param forbidden_entity LuaEntity?
 function update_station_from_rail(map_data, rail, forbidden_entity)
 	--TODO: search further or better?
 	local entity = rail.get_rail_segment_entity(defines.rail_direction.back, false)
@@ -278,23 +275,25 @@ function update_station_from_rail(map_data, rail, forbidden_entity)
 end
 ---@param map_data MapData
 ---@param pump LuaEntity
-function update_station_from_pump(map_data, pump)
+---@param forbidden_entity LuaEntity?
+function update_station_from_pump(map_data, pump, forbidden_entity)
 	if pump.pump_rail_target then
-		update_station_from_rail(map_data, pump.pump_rail_target, pump)
+		update_station_from_rail(map_data, pump.pump_rail_target, forbidden_entity)
 	end
 end
 ---@param map_data MapData
 ---@param inserter LuaEntity
-function update_station_from_inserter(map_data, inserter)
+---@param forbidden_entity LuaEntity?
+function update_station_from_inserter(map_data, inserter, forbidden_entity)
 	--TODO: check if correct
 	local surface = inserter.surface
 
 	local rail = surface.find_entity("straight-rail", inserter.pickup_position)
 	if rail then
-		update_station_from_rail(map_data, rail, inserter)
+		update_station_from_rail(map_data, rail, forbidden_entity)
 	end
 	rail = surface.find_entity("straight-rail", inserter.drop_position)
 	if rail then
-		update_station_from_rail(map_data, rail, inserter)
+		update_station_from_rail(map_data, rail, forbidden_entity)
 	end
 end
