@@ -1,6 +1,6 @@
 --By Mami
 combinator_entity = flib.copy_prototype(data.raw["arithmetic-combinator"]["arithmetic-combinator"], COMBINATOR_NAME)
-combinator_entity.icon = "__cybersyn__/graphics/icons/combinator.png"
+combinator_entity.icon = "__cybersyn__/graphics/icons/area-of-effect.png"
 combinator_entity.radius_visualisation_specification = {
 	sprite = {
 		filename = "__cybersyn__/graphics/icons/combinator.png",
@@ -10,6 +10,9 @@ combinator_entity.radius_visualisation_specification = {
 	},
 	distance = 1,
 }
+combinator_entity.active_energy_usage = "10KW"
+combinator_entity.allow_copy_paste = false
+
 
 combinator_out_entity = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"], COMBINATOR_OUT_NAME)
 combinator_out_entity.icon = nil

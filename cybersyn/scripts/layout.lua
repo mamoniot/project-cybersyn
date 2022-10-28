@@ -15,7 +15,7 @@ function remove_train(map_data, train, train_id)
 		for station_id, station in pairs(map_data.stations) do
 			station.accepted_layouts[layout_id] = nil
 		end
-		map_data.train_classes[TRAIN_CLASS_ALL][layout_id] = nil
+		--map_data.train_classes[TRAIN_CLASS_ALL][layout_id] = nil
 	else
 		map_data.layout_train_count[layout_id] = count - 1
 	end
@@ -64,7 +64,7 @@ function update_train_layout(map_data, train)
 				station.accepted_layouts[layout_id] = true
 			end
 		end
-		map_data.train_classes[TRAIN_CLASS_ALL][layout_id] = true
+		--map_data.train_classes[TRAIN_CLASS_ALL][layout_id] = true
 	else
 		map_data.layout_train_count[layout_id] = map_data.layout_train_count[layout_id] + 1
 	end

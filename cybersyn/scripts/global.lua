@@ -68,5 +68,5 @@ global.layouts = {}
 global.layout_train_count = {}
 global.layout_top_id = 1
 global.train_classes = {
-	[TRAIN_CLASS_ALL] = {},
+	--[TRAIN_CLASS_ALL.name] = {},
 }

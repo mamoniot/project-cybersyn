@@ -236,7 +236,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 			local item_type = v.signal.type
 			if item_name and item_type and item_type ~= "virtual" then
 				local effective_item_count = item_count + (p_station.deliveries[item_name] or 0)
-				local r_threshold, p_threshold = get_thresholds(map_data, r_station, v.signal)
+				local r_threshold, p_threshold = get_thresholds(map_data, p_station, v.signal)
 				if effective_item_count >= p_threshold then
 					local r = requests[item_name]
 					if r then
@@ -332,6 +332,7 @@ end
 function tick(map_data, mod_settings)
 	local total_ticks = map_data.total_ticks
 	local stations = map_data.stations
+	---@type Economy
 	local economy = {
 		r_stations_all = {},
 		p_stations_all = {},
@@ -442,7 +443,7 @@ function tick(map_data, mod_settings)
 					if best_train then
 						send_train_between(map_data, r_station_id, p_stations[best], best_train, item_name, economy)
 					elseif could_have_been_serviced then
-						send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, p_stations[best].entity_stop)
+						send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, stations[p_stations[best]].entity_stop)
 					end
 				until #r_stations == 0
 			else
@@ -475,7 +476,7 @@ function tick(map_data, mod_settings)
 					if best_train then
 						send_train_between(map_data, r_stations[best], p_station_id, best_train, item_name, economy)
 					elseif could_have_been_serviced then
-						send_missing_train_alert_for_stops(stations[best].entity_stop, p_stations[p_station_id].entity_stop)
+						send_missing_train_alert_for_stops(stations[r_stations[best]].entity_stop, stations[p_station_id].entity_stop)
 					end
 				until #p_stations == 0
 			end

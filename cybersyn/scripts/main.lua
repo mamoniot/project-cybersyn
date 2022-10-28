@@ -214,7 +214,7 @@ local function on_combinator_broken(map_data, comb)
 					station.entity_comb1 = comb1
 				else
 					on_station_broken(map_data, stop.unit_number, station)
-					map_data.depots[stop.unit_number] = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, nil)
+					map_data.depots[stop.unit_number] = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
 				end
 			elseif station.entity_comb2 == comb then
 				station.entity_comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
@@ -290,7 +290,7 @@ local function on_stop_broken(map_data, stop)
 	}
 	local entities = stop.surface.find_entities(search_area)
 	for _, entity in pairs(entities) do
-		if map_data.to_stop[entity.unit_number] == stop then
+		if entity.valid and map_data.to_stop[entity.unit_number] == stop then
 			map_data.to_stop[entity.unit_number] = nil
 		end
 	end
@@ -307,7 +307,7 @@ local function on_station_rename(map_data, stop)
 	--search for trains coming to the renamed station
 	local station_id = stop.unit_number
 	local station = map_data.stations[station_id]
-	if station.deliveries_total > 0 then
+	if station and station.deliveries_total > 0 then
 		for train_id, train in pairs(map_data.trains) do
 			local is_p = train.p_station_id == station_id
 			local is_r = train.r_station_id == station_id
@@ -397,8 +397,9 @@ end
 ---@param stop LuaEntity
 ---@param train Train
 local function on_train_arrives_buffer(map_data, stop, train)
-	local station_id = stop.unit_number
 	if train.manifest then
+		---@type uint
+		local station_id = stop.unit_number
 		if train.status == STATUS_D_TO_P then
 			if train.p_station_id == station_id then
 				train.status = STATUS_P
@@ -408,7 +409,7 @@ local function on_train_arrives_buffer(map_data, stop, train)
 				for i, item in ipairs(train.manifest) do
 					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item.count}
 				end
-				set_combinator_output(map_data, station.comb1, signals)
+				set_combinator_output(map_data, station.entity_comb1, signals)
 				if station.wagon_combs then
 					for i, entity in ipairs(station.wagon_combs) do
 
@@ -424,7 +425,7 @@ local function on_train_arrives_buffer(map_data, stop, train)
 				for i, item in ipairs(train.manifest) do
 					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = -1}
 				end
-				set_combinator_output(map_data, station.comb1, signals)
+				set_combinator_output(map_data, station.entity_comb1, signals)
 			end
 		else
 			on_failed_delivery(map_data, train)
@@ -547,7 +548,7 @@ local function on_train_changed(event)
 	local train = global.trains[train_e.id]
 	if train_e.state == defines.train_state.wait_station then
 		local stop = train_e.station
-		if stop and stop.name == "train-stop" then
+		if stop and stop.valid and stop.name == "train-stop" then
 			if global.stations[stop.unit_number] then
 				on_train_arrives_buffer(global, stop, train)
 			elseif global.depots[stop.unit_number] then
@@ -573,6 +574,15 @@ local function on_surface_removed(event)
 	end
 end
 
+local function on_paste(event)
+	local entity = event.destination
+	if not entity or not entity.valid then return end
+
+	if entity.name == COMBINATOR_NAME then
+		on_combinator_updated(global, entity)
+	end
+end
+
 
 local filter_built = {
 	{filter = "type", type = "train-stop"},
@@ -589,6 +599,9 @@ local filter_broken = {
 	{filter = "type", type = "straight-rail"},
 	{filter = "rolling-stock"},
 }
+local filter_comb = {
+	{filter = "type", type = "arithmetic-combinator"},
+}
 local function register_events()
 	--NOTE: I have no idea if this correctly registers all events once in all situations
 	flib_event.register(defines.events.on_built_entity, on_built, filter_built)
@@ -601,6 +614,8 @@ local function register_events()
 	flib_event.register(defines.events.script_raised_destroy, on_broken)
 
 	flib_event.register({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
+
+	flib_event.register(defines.events.on_entity_settings_pasted, on_paste)
 
 	local nth_tick = math.ceil(60/mod_settings.tps);
 	flib_event.on_nth_tick(nth_tick, on_tick)
