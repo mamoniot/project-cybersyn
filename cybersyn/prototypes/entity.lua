@@ -1,9 +1,9 @@
 --By Mami
 combinator_entity = flib.copy_prototype(data.raw["arithmetic-combinator"]["arithmetic-combinator"], COMBINATOR_NAME)
-combinator_entity.icon = "__cybersyn__/graphics/icons/area-of-effect.png"
+combinator_entity.icon = "__cybersyn__/graphics/icons/combinator.png"
 combinator_entity.radius_visualisation_specification = {
 	sprite = {
-		filename = "__cybersyn__/graphics/icons/combinator.png",
+		filename = "__cybersyn__/graphics/icons/area-of-effect.png",
 		tint = {r = 1, g = 1, b = .25, a = 1},
 		height = 64,
 		width = 64,
