@@ -2,6 +2,8 @@
 local get_distance = require("__flib__.misc").get_distance
 local math = math
 local INF = math.huge
+local btest = bit32.btest
+local band = bit32.band
 
 local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = 120}
 ---@param stop LuaEntity
@@ -69,6 +71,33 @@ local function get_signals(station)
 		return comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
 	else
 		return nil
+	end
+end
+
+---@param depot Depot
+local function set_depot_signals(depot)
+	local comb = depot.entity_comb
+	if depot.network_name and comb.valid and (comb.status == defines.entity_status.working or comb.status == defines.entity_status.low_power) then
+		depot.priority = 0
+		depot.network_flag = 1
+		local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
+		if signals then
+			for k, v in pairs(signals) do
+				local item_name = v.signal.name
+				local item_count = v.count
+				if item_name then
+					if item_name == SIGNAL_PRIORITY then
+						depot.priority = item_count
+					end
+					if item_name == depot.network_name then
+						depot.network_flag = item_count
+					end
+				end
+			end
+		end
+	else
+		depot.priority = 0
+		depot.network_flag = 0
 	end
 end
 
@@ -144,7 +173,7 @@ end
 ---@param station Station
 ---@param layout_id uint
 local function station_accepts_layout(station, layout_id)
-	return true
+	return station.accepted_layouts[layout_id]
 end
 
 
@@ -157,9 +186,12 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 	--NOTE: this code is the critical section for run-time optimization
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
+	---@type string
+	local network_name = p_station.network_name
 
 	local p_to_r_dist = get_stop_dist(p_station.entity_stop, r_station.entity_stop)
-	if p_to_r_dist == INF then
+	local netand = band(p_station.network_flag, r_station.network_flag)
+	if p_to_r_dist == INF or netand == 0 then
 		return nil, INF
 	end
 
@@ -168,20 +200,22 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 	local valid_train_exists = false
 
 	local is_fluid = item_type == "fluid"
-	for train_id, _ in pairs(map_data.trains_available) do
+	for depot_id, train_id in pairs(map_data.trains_available[network_name]) do
+		local depot = map_data.depots[depot_id]
 		local train = map_data.trains[train_id]
 		--check cargo capabilities
 		--check layout validity for both stations
 		if
-		((is_fluid and train.fluid_capacity > 0) or (not is_fluid and train.item_slot_capacity > 0))
-		and station_accepts_layout(r_station, train.layout_id)
-		and station_accepts_layout(p_station, train.layout_id)
-		and train.entity.station
+		depot.network_name == network_name and
+		btest(netand, depot.network_flag)
+		((is_fluid and train.fluid_capacity > 0) or (not is_fluid and train.item_slot_capacity > 0)) and
+		station_accepts_layout(r_station, train.layout_id) and
+		station_accepts_layout(p_station, train.layout_id)
 		then
 			valid_train_exists = true
 			--check if exists valid path
 			--check if path is shortest so we prioritize locality
-			local d_to_p_dist = get_stop_dist(train.entity.station, p_station.entity_stop)
+			local d_to_p_dist = get_stop_dist(depot.entity_stop, p_station.entity_stop) - DEPOT_PRIORITY_MULT*depot.priority
 
 			local dist = d_to_p_dist
 			if dist < best_dist then
@@ -206,6 +240,7 @@ end
 ---@param primary_item_name string
 ---@param economy Economy
 local function send_train_between(map_data, r_station_id, p_station_id, train, primary_item_name, economy)
+	--trains and stations expected to be of the same network
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
 
@@ -301,8 +336,9 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 		r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
 		p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
 
-		local r_stations = economy.r_stations_all[item.name]
-		local p_stations = economy.p_stations_all[item.name]
+		local item_network_name = (r_station.network_name and item.name + ":" + r_station.network_name) or item.name
+		local r_stations = economy.r_stations_all[item_network_name]
+		local p_stations = economy.p_stations_all[item_network_name]
 		for i, id in ipairs(r_stations) do
 			if id == r_station_id then
 				table.remove(r_stations, i)
@@ -336,26 +372,30 @@ function tick(map_data, mod_settings)
 	local economy = {
 		r_stations_all = {},
 		p_stations_all = {},
-		all_items = {},
 		total_ticks = total_ticks,
 	}
 	local r_stations_all = economy.r_stations_all
 	local p_stations_all = economy.p_stations_all
-	local all_items = economy.all_items
+	local all_names = {}
+
+	for depot_id, _ in pairs(map_data.trains_available) do
+		set_depot_signals(map_data.depots[depot_id])
+	end
 
 	for station_id, station in pairs(stations) do
-		if station.deliveries_total < station.entity_stop.trains_limit then
+		if station.network_name and station.deliveries_total < station.entity_stop.trains_limit then
 			station.r_threshold = mod_settings.r_threshold
 			station.p_threshold = mod_settings.p_threshold
 			station.priority = 0
 			station.locked_slots = 0
+			station.network_flag = 1
 			local signals = get_signals(station)
 			if signals then
 				for k, v in pairs(signals) do
 					local item_name = v.signal.name
 					local item_count = v.count
 					local item_type = v.signal.type
-					if item_name and item_type then
+					if item_name then
 						if item_type == "virtual" then
 							if item_name == SIGNAL_PRIORITY then
 								station.priority = item_count
@@ -367,6 +407,9 @@ function tick(map_data, mod_settings)
 								station.locked_slots = math.max(item_count, 0)
 							end
 							signals[k] = nil
+						end
+						if item_name == station.network_name then
+							station.network_flag = item_count
 						end
 					else
 						signals[k] = nil
@@ -380,19 +423,21 @@ function tick(map_data, mod_settings)
 
 					if item_name then
 						if -effective_item_count >= r_threshold then
-							if r_stations_all[item_name] == nil then
-								r_stations_all[item_name] = {}
-								p_stations_all[item_name] = {}
-								all_items[#all_items + 1] = item_name
-								all_items[#all_items + 1] = v.signal.type
+							local item_network_name = item_name + ":" + station.network_name
+							if r_stations_all[item_network_name] == nil then
+								r_stations_all[item_network_name] = {}
+								p_stations_all[item_network_name] = {}
+								all_names[#all_names + 1] = item_network_name
+								all_names[#all_names + 1] = v.signal
 							end
 							table.insert(r_stations_all[item_name], station_id)
 						elseif effective_item_count >= p_threshold then
-							if r_stations_all[item_name] == nil then
-								r_stations_all[item_name] = {}
-								p_stations_all[item_name] = {}
-								all_items[#all_items + 1] = item_name
-								all_items[#all_items + 1] = v.signal.type
+							local item_network_name = item_name + ":" + station.network_name
+							if r_stations_all[item_network_name] == nil then
+								r_stations_all[item_network_name] = {}
+								p_stations_all[item_network_name] = {}
+								all_names[#all_names + 1] = item_network_name
+								all_names[#all_names + 1] = v.signal
 							end
 							table.insert(p_stations_all[item_name], station_id)
 						end
@@ -402,17 +447,19 @@ function tick(map_data, mod_settings)
 		end
 	end
 
-	local failed_because_missing_trains = {}
 	--we do not dispatch more than one train per station per tick
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
-	local start_i = 2*(total_ticks%(#all_items/2)) + 1
-	for item_i = 0, #all_items - 1, 2 do
-		local item_name = all_items[(start_i + item_i - 1)%#all_items + 1]
-		local item_type = all_items[(start_i + item_i)%#all_items + 1]
-		local r_stations = r_stations_all[item_name]
-		local p_stations = p_stations_all[item_name]
+	--NOTE: It may be better for performance to update stations one tick at a time rather than all at once, however this does mean more  redundant data will be generated and discarded each tick. Once we have a performance test-bed it will probably be worth checking.
+	local start_i = 2*(total_ticks%(#all_names/2)) + 1
+	for item_i = 0, #all_names - 1, 2 do
+		local item_network_name = all_names[(start_i + item_i - 1)%#all_names + 1]
+		local signal = all_names[(start_i + item_i)%#all_names + 1]
+		local item_name = signal.name
+		local item_type = signal.type
+		local r_stations = r_stations_all[item_network_name]
+		local p_stations = p_stations_all[item_network_name]
 
-		--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm (and run it twice to compare the locality solution to the round-robin solution) but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
+		--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
 		if #r_stations > 0 and #p_stations > 0 then
 			if #r_stations <= #p_stations then
 				--probably backpressure, prioritize locality

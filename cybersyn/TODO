@@ -2,3 +2,6 @@ finish wagon manifest
 add rail networks
 figure out how to make the area-of-effect graphic the correct size
 close gui when the combinator is destroyed
+Improve localization
+support space elevator
+add an "all" train class

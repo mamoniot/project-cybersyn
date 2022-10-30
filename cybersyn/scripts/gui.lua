@@ -75,8 +75,8 @@ function gui_opened(comb, player)
 					}},
 					---choose-elem-button
 					{type="line", style_mods={top_padding=10}},
-					{type="label", style="heading_3_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=7}},
-					{type="choose-elem-button", ref={"network"}, elem_type="signal", signal=control.first_signal, style_mods={bottom_margin=2}, actions={
+					{type="label", style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=7}},
+					{type="choose-elem-button", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", signal=control.first_signal, style_mods={bottom_margin=2}, actions={
 						on_elem_changed={"choose-elem-button", comb.unit_number}
 					}},
 				}}

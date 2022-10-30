@@ -354,7 +354,7 @@ local function on_train_arrives_depot(map_data, train_entity)
 			train.manifest = nil
 			train.depot_name = train_entity.station.backer_name
 			train.status = STATUS_D
-			map_data.trains_available[train_entity.id] = true
+			map_data.trains_available[][train_entity.id] = true
 		else
 			if train.manifest then
 				on_failed_delivery(map_data, train)

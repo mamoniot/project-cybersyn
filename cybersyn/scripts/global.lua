@@ -6,9 +6,9 @@
 ---@field public to_output {[uint]: LuaEntity}
 ---@field public to_stop {[uint]: LuaEntity}
 ---@field public stations {[uint]: Station}
----@field public depots {[uint]: LuaEntity}
+---@field public depots {[uint]: Depot}
 ---@field public trains {[uint]: Train}
----@field public trains_available {[uint]: boolean}
+---@field public trains_available {[string]: {[uint]: uint}}
 ---@field public layouts {[uint]: string}
 ---@field public layout_train_count {[uint]: int}
 ---@field public train_classes {[string]: TrainClass}
@@ -25,9 +25,18 @@
 ---@field public entity_comb2 LuaEntity?
 ---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
 ---@field public deliveries {[string]: int}
+---@field public network_name string?
+---@field public network_flag int
 ---@field public train_class SignalID?
 ---@field public accepted_layouts TrainClass
 ---@field public layout_pattern string?
+
+---@class Depot
+---@field public priority int
+---@field public entity_stop LuaEntity
+---@field public entity_comb LuaEntity
+---@field public network_name string?
+---@field public network_flag int
 
 ---@class Train
 ---@field public entity LuaTrain
@@ -47,7 +56,6 @@
 ---@class Economy
 ---@field public r_stations_all {[string]: uint[]}
 ---@field public p_stations_all {[string]: uint[]}
----@field public all_items string[]
 ---@field public total_ticks uint
 
 --TODO: only init once
