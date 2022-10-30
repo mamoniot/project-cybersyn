@@ -4,11 +4,12 @@ combinator_entity.icon = "__cybersyn__/graphics/icons/combinator.png"
 combinator_entity.radius_visualisation_specification = {
 	sprite = {
 		filename = "__cybersyn__/graphics/icons/area-of-effect.png",
-		tint = {r = 1, g = 1, b = .25, a = 1},
+		tint = {r = 1, g = 1, b = 0, a = .5},
 		height = 64,
 		width = 64,
 	},
-	distance = 1,
+	--offset = {0, .5},
+	distance = 1.5,
 }
 combinator_entity.active_energy_usage = "10KW"
 combinator_entity.allow_copy_paste = false

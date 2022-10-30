@@ -52,10 +52,10 @@ function gui_opened(comb, player)
 					on_click = {"close", comb.unit_number}
 				}}
 			}},
-			{type="frame", style="inside_shallow_frame_with_padding", style_mods={padding=8}, children={
+			{type="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12}, children={
 				{type="flow", direction="vertical", style_mods={horizontal_align="left"}, children={
 					--status
-					{type="flow", style = "status_flow", direction = "horizontal", style_mods={vertical_align="center", horizontally_stretchable=true}, children={
+					{type="flow", style = "status_flow", direction = "horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
 						{type="sprite", sprite=STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", ref={"status_icon"}, style_mods={stretch_image_to_widget_size=true}},
 						{type="label", caption={STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT}, ref={"status_label"}}
 					}},
@@ -63,14 +63,21 @@ function gui_opened(comb, player)
 					{type="frame", style="deep_frame_in_shallow_frame", style_mods={minimal_width=0, horizontally_stretchable=true, padding=0}, children={
 						{type="entity-preview", style="wide_entity_button", ref={"preview"}},
 					}},
-					{type="label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=8}},
-					{type="drop-down", ref={"operation"}, actions={
-						on_selection_state_changed = {"drop-down", comb.unit_number}
+					--drop down
+					{type="label", style="heading_3_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=8}},
+					{type="drop-down", style_mods={top_padding=3}, ref={"operation"}, actions={
+						on_selection_state_changed={"drop-down", comb.unit_number}
 					}, selected_index=selected_index, items={
 						{"cybersyn-gui.comb1"},
 						{"cybersyn-gui.comb2"},
 						{"cybersyn-gui.depot"},
 						{"cybersyn-gui.wagon-manifest"},
+					}},
+					---choose-elem-button
+					{type="line", style_mods={top_padding=10}},
+					{type="label", style="heading_3_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=7}},
+					{type="choose-elem-button", ref={"network"}, elem_type="signal", signal=control.first_signal, style_mods={bottom_margin=2}, actions={
+						on_elem_changed={"choose-elem-button", comb.unit_number}
 					}},
 				}}
 			}}
@@ -139,6 +146,20 @@ function register_gui_actions()
 				end
 				a.parameters = control
 				on_combinator_updated(global, comb)
+			elseif msg[1] == "choose-elem-button" then
+				local element = event.element
+				if not element then return end
+				local comb = global.to_comb[msg[2]]
+				if not comb or not comb.valid then return end
+
+				local signal = element.elem_value
+
+				local a = comb.get_or_create_control_behavior()
+				local control = a.parameters
+
+				control.first_signal = signal
+
+				a.parameters = control
 			end
 		end
 	end)
