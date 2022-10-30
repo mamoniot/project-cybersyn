@@ -12,10 +12,13 @@ LOCKED_SLOTS = "cybersyn-locked-slots"
 COMBINATOR_NAME = "cybersyn-combinator"
 COMBINATOR_OUT_NAME = "cybersyn-combinator-output"
 
-OPERATION_PRIMARY_IO = "*"
-OPERATION_SECONDARY_IO = "/"
+OPERATION_DEFAULT = "*"
+OPERATION_PRIMARY_IO = "/"
+OPERATION_SECONDARY_IO = "%"
 OPERATION_DEPOT = "+"
 OPERATION_WAGON_MANIFEST = "-"
+
+NETWORK_SIGNAL_DEFAULT = {name="signal-A", type="virtual"}
 
 DELTA = 1/2048
 
@@ -38,6 +41,3 @@ STATION_LAYOUT_NOT_FLUID = "[NC]"
 STATION_LAYOUT_NOT_CARGO = "[NF]"
 
 LONGEST_INSERTER_REACH = 2
-
-TRAIN_CLASS_ALL = {name = "all", type = "virtual"}
-TRAIN_CLASS_AUTO = {name = "auto", type = "virtual"}

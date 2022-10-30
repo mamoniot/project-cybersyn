@@ -26,11 +26,27 @@ local function on_failed_delivery(map_data, train)
 	train.manifest = nil
 end
 
+
+---@param map_data MapData
+---@param stop LuaEntity
+---@param comb LuaEntity
+local function on_depot_built(map_data, stop, comb, network_name)
+	local depot = {
+		entity_stop = stop,
+		entity_comb = comb,
+		network_name = network_name,
+		priority = 0,
+		network_flag = 0,
+	}
+	map_data.depots[stop.unit_number] = depot
+end
+
 ---@param map_data MapData
 ---@param stop LuaEntity
 ---@param comb1 LuaEntity
 ---@param comb2 LuaEntity
-local function on_station_built(map_data, stop, comb1, comb2)
+---@param network_name string
+local function on_station_built(map_data, stop, comb1, comb2, network_name)
 	local station = {
 		entity_stop = stop,
 		entity_comb1 = comb1,
@@ -42,6 +58,8 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		r_threshold = 0,
 		p_threshold = 0,
 		locked_slots = 0,
+		network_name = network_name,
+		network_flag = 0,
 		deliveries = {},
 		train_class = TRAIN_CLASS_AUTO,
 		accepted_layouts = {},
@@ -156,7 +174,13 @@ local function on_combinator_built(map_data, comb)
 	map_data.to_output[comb.unit_number] = out
 	map_data.to_stop[comb.unit_number] = stop
 
-	local control = comb.get_or_create_control_behavior().parameters
+	local a = comb.get_or_create_control_behavior()
+	local control = a.parameters
+	if control.operation == OPERATION_DEFAULT then
+		control.operation = OPERATION_PRIMARY_IO
+		control.first_signal = NETWORK_SIGNAL_DEFAULT
+		a.parameters = control
+	end
 	if control.operation == OPERATION_WAGON_MANIFEST then
 		if rail then
 			update_station_from_rail(map_data, rail, nil)
@@ -164,11 +188,12 @@ local function on_combinator_built(map_data, comb)
 	elseif control.operation == OPERATION_DEPOT then
 		if stop then
 			local station = map_data.stations[stop.unit_number]
-			local depot_comb = map_data.depots[stop.unit_number]
-			if depot_comb or station then
+			---@type Depot
+			local depot = map_data.depots[stop.unit_number]
+			if depot or station then
 				--NOTE: repeated combinators are ignored
 			else
-				map_data.depots[stop.unit_number] = comb
+				on_depot_built(map_data, stop, comb, control.first_signal)
 			end
 		end
 	elseif control.operation == OPERATION_SECONDARY_IO then
@@ -181,11 +206,11 @@ local function on_combinator_built(map_data, comb)
 	elseif stop then
 		control.operation = OPERATION_PRIMARY_IO
 		local station = map_data.stations[stop.unit_number]
-		local depot_comb = map_data.depots[stop.unit_number]
+		local depot = map_data.depots[stop.unit_number]
 		if station then
 			--NOTE: repeated combinators are ignored
 		else
-			if depot_comb then
+			if depot then
 				--NOTE: this will disrupt deliveries in progress that where dispatched from this station in a minor way
 				map_data.depots[stop.unit_number] = nil
 			end
@@ -194,7 +219,26 @@ local function on_combinator_built(map_data, comb)
 
 			local comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
 
-			on_station_built(map_data, stop, comb, comb2)
+			on_station_built(map_data, stop, comb, comb2, control.first_signal)
+		end
+	end
+end
+---@param map_data MapData
+---@param comb LuaEntity
+function on_combinator_network_updated(map_data, comb, network_name)
+	local stop = map_data.to_stop[comb.unit_number]
+
+	if stop and stop.valid then
+		local station = map_data.stations[stop.unit_number]
+		if station then
+			if station.entity_comb1 == comb then
+				station.network_name = network_name
+			end
+		else
+			local depot = map_data.depots[stop.unit_number]
+			if depot.entity_comb == comb then
+				depot.network_name = network_name
+			end
 		end
 	end
 end
@@ -212,18 +256,31 @@ local function on_combinator_broken(map_data, comb)
 				local comb1 = search_for_station_combinator(map_data, stop, OPERATION_PRIMARY_IO, comb)
 				if comb1 then
 					station.entity_comb1 = comb1
+					local control = comb1.get_or_create_control_behavior().parameters
+					station.network_name = control.first_signal
 				else
 					on_station_broken(map_data, stop.unit_number, station)
-					map_data.depots[stop.unit_number] = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
+					local depot_comb = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
+					if depot_comb then
+						local control = depot_comb.get_or_create_control_behavior().parameters
+						on_depot_built(map_data, stop, depot_comb, control.first_signal)
+					end
 				end
 			elseif station.entity_comb2 == comb then
 				station.entity_comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
 			end
 		else
-			local depot_comb = map_data.depots[stop.unit_number]
-			if depot_comb == comb then
+			local depot = map_data.depots[stop.unit_number]
+			if depot.entity_comb == comb then
 				--NOTE: this will disrupt deliveries in progress that where dispatched from this station in a minor way
-				map_data.depots[stop.unit_number] = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
+				local depot_comb = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
+				if depot_comb then
+					local control = depot_comb.get_or_create_control_behavior().parameters
+					depot.entity_comb = depot_comb
+					depot.network_name = control.first_signal
+				else
+					map_data.depots[stop.unit_number] = nil
+				end
 			end
 		end
 	end
@@ -272,9 +329,11 @@ local function on_stop_built(map_data, stop)
 		end
 	end
 	if comb1 then
-		on_station_built(map_data, stop, comb1, comb2)
+		local control = comb1.get_or_create_control_behavior().parameters
+		on_station_built(map_data, stop, comb1, comb2, control.first_signal)
 	elseif depot_comb then
-		map_data.depots[stop.unit_number] = depot_comb
+		local control = depot_comb.get_or_create_control_behavior().parameters
+		on_depot_built(map_data, stop, depot_comb, control.first_signal)
 	end
 end
 ---@param map_data MapData
@@ -342,8 +401,9 @@ end
 
 
 ---@param map_data MapData
+---@param stop LuaEntity
 ---@param train_entity LuaTrain
-local function on_train_arrives_depot(map_data, train_entity)
+local function on_train_arrives_depot(map_data, stop, train_entity)
 	local contents = train_entity.get_contents()
 	local train = map_data.trains[train_entity.id]
 	if train then
@@ -354,7 +414,7 @@ local function on_train_arrives_depot(map_data, train_entity)
 			train.manifest = nil
 			train.depot_name = train_entity.station.backer_name
 			train.status = STATUS_D
-			map_data.trains_available[][train_entity.id] = true
+			map_data.trains_available[stop.unit_number] = train_entity.id
 		else
 			if train.manifest then
 				on_failed_delivery(map_data, train)
@@ -362,7 +422,7 @@ local function on_train_arrives_depot(map_data, train_entity)
 			end
 			train.depot_name = train_entity.station.backer_name
 			train.status = STATUS_D
-			map_data.trains_available[train_entity.id] = true
+			map_data.trains_available[stop.unit_number] = train_entity.id
 		end
 		if next(contents) ~= nil then
 			--train still has cargo
@@ -386,7 +446,7 @@ local function on_train_arrives_depot(map_data, train_entity)
 		}
 		update_train_layout(map_data, train)
 		map_data.trains[train_entity.id] = train
-		map_data.trains_available[train_entity.id] = true
+		map_data.trains_available[stop.unit_number] = train_entity.id
 		local schedule = create_depot_schedule(train.depot_name)
 		train_entity.schedule = schedule
 	else
@@ -552,7 +612,7 @@ local function on_train_changed(event)
 			if global.stations[stop.unit_number] then
 				on_train_arrives_buffer(global, stop, train)
 			elseif global.depots[stop.unit_number] then
-				on_train_arrives_depot(global, train_e)
+				on_train_arrives_depot(global, stop, train_e)
 			end
 		end
 	elseif event.old_state == defines.train_state.wait_station then

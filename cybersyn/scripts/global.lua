@@ -15,28 +15,29 @@
 
 ---@class Station
 ---@field public deliveries_total int
----@field public priority int
 ---@field public last_delivery_tick int
----@field public r_threshold int >= 0
----@field public p_threshold int >= 0
----@field public locked_slots int >= 0
+---@field public priority int --transient
+---@field public r_threshold int >= 0 --transient
+---@field public p_threshold int >= 0 --transient
+---@field public locked_slots int >= 0 --transient
 ---@field public entity_stop LuaEntity
 ---@field public entity_comb1 LuaEntity
 ---@field public entity_comb2 LuaEntity?
 ---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
 ---@field public deliveries {[string]: int}
 ---@field public network_name string?
----@field public network_flag int
+---@field public network_flag int --transient
 ---@field public train_class SignalID?
 ---@field public accepted_layouts TrainClass
 ---@field public layout_pattern string?
+---@field public tick_signals Signal[]? --transient
 
 ---@class Depot
----@field public priority int
+---@field public priority int --transient
 ---@field public entity_stop LuaEntity
 ---@field public entity_comb LuaEntity
 ---@field public network_name string?
----@field public network_flag int
+---@field public network_flag int --transient
 
 ---@class Train
 ---@field public entity LuaTrain

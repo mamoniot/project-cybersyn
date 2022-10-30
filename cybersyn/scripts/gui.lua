@@ -75,8 +75,8 @@ function gui_opened(comb, player)
 					}},
 					---choose-elem-button
 					{type="line", style_mods={top_padding=10}},
-					{type="label", style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=7}},
-					{type="choose-elem-button", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", signal=control.first_signal, style_mods={bottom_margin=2}, actions={
+					{type="label", name="network_label", style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=7}},
+					{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", signal=control.first_signal, style_mods={bottom_margin=2}, actions={
 						on_elem_changed={"choose-elem-button", comb.unit_number}
 					}},
 				}}
@@ -87,6 +87,7 @@ function gui_opened(comb, player)
 	window.preview.entity = comb
 	window.titlebar.drag_target = window.main_window
 	window.main_window.force_auto_center()
+	window.network.visible = selected_index == 1 or selected_index == 3
 
 	player.opened = window.main_window
 end
@@ -131,19 +132,29 @@ function register_gui_actions()
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
+				local parent = element.parent
 				local a = comb.get_or_create_control_behavior()
 				local control = a.parameters
 				if element.selected_index == 1 then
 					control.operation = OPERATION_PRIMARY_IO
+					parent["network"].visible = true
+					parent["network_label"].visible = true
 				elseif element.selected_index == 2 then
 					control.operation = OPERATION_SECONDARY_IO
+					parent["network"].visible = false
+					parent["network_label"].visible = false
 				elseif element.selected_index == 3 then
 					control.operation = OPERATION_DEPOT
+					parent["network"].visible = true
+					parent["network_label"].visible = true
 				elseif element.selected_index == 4 then
 					control.operation = OPERATION_WAGON_MANIFEST
+					parent["network"].visible = false
+					parent["network_label"].visible = false
 				else
 					return
 				end
+
 				a.parameters = control
 				on_combinator_updated(global, comb)
 			elseif msg[1] == "choose-elem-button" then
@@ -152,14 +163,19 @@ function register_gui_actions()
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
-				local signal = element.elem_value
-
 				local a = comb.get_or_create_control_behavior()
 				local control = a.parameters
 
-				control.first_signal = signal
+				local signal = element.elem_value
+				if signal and (signal.name == "signal-everything" or signal.name == "signal-anything" or signal.name == "signal-each") then
+					control.first_signal = nil
+					element.elem_value = nil
+				else
+					control.first_signal = signal
+				end
 
 				a.parameters = control
+				on_combinator_network_updated(global, comb, signal and signal.name or nil)
 			end
 		end
 	end)
