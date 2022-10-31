@@ -175,30 +175,29 @@ function set_p_wagon_combs(map_data, station, train)
 			while fluid_capacity > 0 do
 				local do_inc = false
 				if fluid.type == "fluid" then
-					local i = #signals + 1
 					if fluid_count > fluid_capacity then
 						if comb then
-							signals[i] = {index = i, signal = {type = fluid.type, name = fluid.name}, count = fluid_capacity}
+							signals[1] = {index = 1, signal = {type = fluid.type, name = fluid.name}, count = fluid_capacity}
 						end
 						fluid_capacity = 0
 						fluid_count = fluid_count - fluid_capacity
 					else
 						if comb then
-							signals[i] = {index = i, signal = {type = fluid.type, name = fluid.name}, count = item_count}
+							signals[1] = {index = 1, signal = {type = fluid.type, name = fluid.name}, count = item_count}
 						end
 						fluid_capacity = fluid_capacity - fluid_count
-						do_inc = true
+						fluid_i = fluid_i + 1
+						if fluid_i <= #manifest then
+							fluid = manifest[fluid_i]
+							fluid_count = fluid.count
+						end
 					end
+					break
 				else
-					do_inc = true
-				end
-				if do_inc then
 					fluid_i = fluid_i + 1
 					if fluid_i <= #manifest then
 						fluid = manifest[fluid_i]
 						fluid_count = fluid.count
-					else
-						break
 					end
 				end
 			end
@@ -214,7 +213,7 @@ end
 ---@param station Station
 ---@param train Train
 function set_r_wagon_combs(map_data, station, train)
-	if not station.wagon_combs or not next(station.wagon_combs) then return end
+	if not station.wagon_combs then return end
 	local carriages = train.entity.carriages
 
 	local is_reversed = get_train_direction(station.entity_stop, train.entity)
@@ -253,6 +252,23 @@ function set_r_wagon_combs(map_data, station, train)
 			end
 			set_combinator_output(map_data, comb, signals)
 		end
+	end
+end
+
+---@param map_data MapData
+---@param station Station
+function unset_wagon_combs(map_data, station)
+	if not station.wagon_combs then return end
+
+	for i, comb in pairs(station.wagon_combs) do
+		if comb.valid then
+			set_combinator_output(map_data, comb, nil)
+		else
+			station.wagon_combs[i] = nil
+		end
+	end
+	if next(station.wagon_combs) == nil then
+		station.wagon_combs = nil
 	end
 end
 

@@ -11,7 +11,7 @@ local function on_failed_delivery(map_data, train)
 		remove_manifest(map_data, station, train.manifest, 1)
 		if train.status == STATUS_P then
 			set_combinator_output(map_data, station.entity_comb1, nil)
-			--TODO: remove wagon_comb manifest output
+			unset_wagon_combs(map_data, station)
 		end
 	end
 	local is_r_delivery_made = train.status == STATUS_R_TO_D
@@ -20,7 +20,7 @@ local function on_failed_delivery(map_data, train)
 		remove_manifest(map_data, station, train.manifest, -1)
 		if train.status == STATUS_R then
 			set_combinator_output(map_data, station.entity_comb1, nil)
-			--TODO: remove wagon_comb manifest output
+			unset_wagon_combs(map_data, station)
 		end
 	end
 	train.r_station_id = 0
@@ -103,7 +103,6 @@ end
 local function search_for_station_combinator(map_data, stop, comb_operation, comb_forbidden)
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
-	--TODO: fix search area
 	local search_area = {
 		{pos_x - 2, pos_y - 2},
 		{pos_x + 2, pos_y + 2}
@@ -128,7 +127,6 @@ local function on_combinator_built(map_data, comb)
 	local pos_x = comb.position.x
 	local pos_y = comb.position.y
 
-	--TODO: fix search area
 	local search_area
 	if comb.direction == defines.direction.north or comb.direction == defines.direction.south then
 		search_area = {
@@ -308,7 +306,6 @@ local function on_stop_built(map_data, stop)
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
 
-	--TODO: fix search area
 	local search_area = {
 		{pos_x - 2, pos_y - 2},
 		{pos_x + 2, pos_y + 2}
@@ -344,7 +341,6 @@ local function on_stop_broken(map_data, stop)
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
 
-	--TODO: fix search area
 	local search_area = {
 		{pos_x - 2, pos_y - 2},
 		{pos_x + 2, pos_y + 2}
@@ -506,13 +502,13 @@ local function on_train_leaves_station(map_data, train)
 			local station = map_data.stations[train.p_station_id]
 			remove_manifest(map_data, station, train.manifest, 1)
 			set_combinator_output(map_data, station.entity_comb1, nil)
-			--TODO: remove wagon_comb manifest output
+			unset_wagon_combs(map_data, station)
 		elseif train.status == STATUS_R then
 			train.status = STATUS_R_TO_D
 			local station = map_data.stations[train.r_station_id]
 			remove_manifest(map_data, station, train.manifest, -1)
 			set_combinator_output(map_data, station.entity_comb1, nil)
-			--TODO: remove wagon_comb manifest output
+			unset_wagon_combs(map_data, station)
 		end
 	end
 end
@@ -535,7 +531,6 @@ end
 local function on_train_modified(map_data, pre_train_id, train_entity)
 	local train = map_data.trains[pre_train_id]
 	if train then
-
 		if train.manifest then
 			on_failed_delivery(map_data, train)
 		end
