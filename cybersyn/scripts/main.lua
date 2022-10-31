@@ -11,6 +11,7 @@ local function on_failed_delivery(map_data, train)
 		remove_manifest(map_data, station, train.manifest, 1)
 		if train.status == STATUS_P then
 			set_combinator_output(map_data, station.entity_comb1, nil)
+			--TODO: remove wagon_comb manifest output
 		end
 	end
 	local is_r_delivery_made = train.status == STATUS_R_TO_D
@@ -19,6 +20,7 @@ local function on_failed_delivery(map_data, train)
 		remove_manifest(map_data, station, train.manifest, -1)
 		if train.status == STATUS_R then
 			set_combinator_output(map_data, station.entity_comb1, nil)
+			--TODO: remove wagon_comb manifest output
 		end
 	end
 	train.r_station_id = 0
@@ -470,11 +472,7 @@ local function on_train_arrives_buffer(map_data, stop, train)
 					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item.count}
 				end
 				set_combinator_output(map_data, station.entity_comb1, signals)
-				if station.wagon_combs then
-					for i, entity in ipairs(station.wagon_combs) do
-
-					end
-				end
+				set_p_wagon_combs(map_data, station, train)
 			end
 		elseif train.status == STATUS_P_TO_R then
 			if train.r_station_id == station_id then
@@ -486,6 +484,7 @@ local function on_train_arrives_buffer(map_data, stop, train)
 					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = -1}
 				end
 				set_combinator_output(map_data, station.entity_comb1, signals)
+				set_r_wagon_combs(map_data, station, train)
 			end
 		else
 			on_failed_delivery(map_data, train)
@@ -507,11 +506,13 @@ local function on_train_leaves_station(map_data, train)
 			local station = map_data.stations[train.p_station_id]
 			remove_manifest(map_data, station, train.manifest, 1)
 			set_combinator_output(map_data, station.entity_comb1, nil)
+			--TODO: remove wagon_comb manifest output
 		elseif train.status == STATUS_R then
 			train.status = STATUS_R_TO_D
 			local station = map_data.stations[train.r_station_id]
 			remove_manifest(map_data, station, train.manifest, -1)
 			set_combinator_output(map_data, station.entity_comb1, nil)
+			--TODO: remove wagon_comb manifest output
 		end
 	end
 end

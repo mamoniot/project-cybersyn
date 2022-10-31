@@ -1,6 +1,18 @@
 --By Mami
 local area = require("__flib__.area")
 
+local function iterr(a, i)
+	i = i - 1
+	if i > 0 then
+		return i, a[i]
+	end
+end
+
+local function irpairs(a)
+	return iterr, a, #a + 1
+end
+
+
 ---@param map_data MapData
 ---@param train Train
 ---@param train_id uint
@@ -72,6 +84,178 @@ function update_train_layout(map_data, train)
 	train.item_slot_capacity = item_slot_capacity
 	train.fluid_capacity = fluid_capacity
 end
+
+---@param stop LuaEntity
+---@param train LuaTrain
+local function get_train_direction(stop, train)
+	local back_rail = train.back_rail
+	local stop_rail = stop.connected_rail
+
+	if back_rail and stop_rail and back_rail.unit_number == stop_rail.unit_number then
+		return true
+	end
+
+	return false
+end
+
+---@param map_data MapData
+---@param station Station
+---@param train Train
+function set_p_wagon_combs(map_data, station, train)
+	if not station.wagon_combs or not next(station.wagon_combs) then return end
+	local carriages = train.entity.carriages
+	local manifest = train.manifest
+
+	local is_reversed = get_train_direction(station.entity_stop, train.entity)
+
+	local item_i = 1
+	local item = manifest[item_i]
+	local item_count = item.count
+	local fluid_i = 1
+	local fluid = manifest[fluid_i]
+	local fluid_count = fluid.count
+
+	local ivpairs = is_reversed and irpairs or ipairs
+	for carriage_i, carriage in ivpairs(carriages) do
+		---@type LuaEntity?
+		local comb = station.wagon_combs[carriage_i]
+		if comb and not comb.valid then
+			comb = nil
+			station.wagon_combs[carriage_i] = nil
+			if next(station.wagon_combs) == nil then
+				station.wagon_combs = nil
+				break
+			end
+		end
+		if carriage.type == "cargo-wagon" and item_i <= #manifest then
+			local signals = {}
+
+			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
+			local item_slots_capacity = #inv - station.locked_slots
+			while item_slots_capacity > 0 do
+				local do_inc = false
+				if item.type == "item" then
+					local stack_size = game.item_prototypes[item.name].stack_size
+					local item_slots = math.ceil(item_count/stack_size)
+					local i = #signals + 1
+					if item_slots > item_slots_capacity then
+						if comb then
+							signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item_slots_capacity*stack_size}
+						end
+						item_slots_capacity = 0
+						item_count = item_count - item_slots_capacity*stack_size
+					else
+						if comb then
+							signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item_count}
+						end
+						item_slots_capacity = item_slots_capacity - item_slots
+						do_inc = true
+					end
+				else
+					do_inc = true
+				end
+				if do_inc then
+					item_i = item_i + 1
+					if item_i <= #manifest then
+						item = manifest[item_i]
+						item_count = item.count
+					else
+						break
+					end
+				end
+			end
+
+			if comb then
+				set_combinator_output(map_data, comb, signals)
+			end
+		elseif carriage.type == "fluid-wagon" and fluid_i <= #manifest then
+			local fluid_capacity = carriage.prototype.fluid_capacity
+			local signals = {}
+
+			while fluid_capacity > 0 do
+				local do_inc = false
+				if fluid.type == "fluid" then
+					local i = #signals + 1
+					if fluid_count > fluid_capacity then
+						if comb then
+							signals[i] = {index = i, signal = {type = fluid.type, name = fluid.name}, count = fluid_capacity}
+						end
+						fluid_capacity = 0
+						fluid_count = fluid_count - fluid_capacity
+					else
+						if comb then
+							signals[i] = {index = i, signal = {type = fluid.type, name = fluid.name}, count = item_count}
+						end
+						fluid_capacity = fluid_capacity - fluid_count
+						do_inc = true
+					end
+				else
+					do_inc = true
+				end
+				if do_inc then
+					fluid_i = fluid_i + 1
+					if fluid_i <= #manifest then
+						fluid = manifest[fluid_i]
+						fluid_count = fluid.count
+					else
+						break
+					end
+				end
+			end
+
+			if comb then
+				set_combinator_output(map_data, comb, signals)
+			end
+		end
+	end
+end
+
+---@param map_data MapData
+---@param station Station
+---@param train Train
+function set_r_wagon_combs(map_data, station, train)
+	if not station.wagon_combs or not next(station.wagon_combs) then return end
+	local carriages = train.entity.carriages
+
+	local is_reversed = get_train_direction(station.entity_stop, train.entity)
+
+	local ivpairs = is_reversed and irpairs or ipairs
+	for carriage_i, carriage in ivpairs(carriages) do
+		---@type LuaEntity?
+		local comb = station.wagon_combs[carriage_i]
+		if comb and not comb.valid then
+			comb = nil
+			station.wagon_combs[carriage_i] = nil
+			if next(station.wagon_combs) == nil then
+				station.wagon_combs = nil
+				break
+			end
+		end
+		if comb and carriage.type == "cargo-wagon" then
+			local signals = {}
+
+			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
+			for stack_i, stack in ipairs(inv) do
+				if stack.valid_for_read then
+					local i = #signals + 1
+					--TODO: does this work or do we need to aggregate signals?
+					signals[i] = {index = i, signal = {type = stack.type, name = stack.name}, count = stack.count}
+				end
+			end
+			set_combinator_output(map_data, comb, signals)
+		elseif comb and carriage.type == "fluid-wagon" then
+			local signals = {}
+
+			local inv = carriage.get_fluid_contents()
+			for fluid_name, count in pairs(inv) do
+				local i = #signals + 1
+				signals[i] = {index = i, signal = {type = "fluid", name = fluid_name}, count = math.floor(count)}
+			end
+			set_combinator_output(map_data, comb, signals)
+		end
+	end
+end
+
 
 ---@param map_data MapData
 ---@param station Station
