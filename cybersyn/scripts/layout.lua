@@ -300,7 +300,6 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 	local area_delta
 	local direction_filter
 	local is_ver
-	--local center_line
 	if station_direction == defines.direction.north then
 		search_area = {left_top = {x = middle_x - reach, y = middle_y}, right_bottom = {x = middle_x + reach, y = middle_y + 6}}
 		area_delta = {x = 0, y = 7}
@@ -376,7 +375,7 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 							supports_fluid = true
 						end
 					elseif entity.name == COMBINATOR_NAME then
-						local control = entity.get_or_create_control_behavior().parameters
+						local control = entity.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
 						if control.operation == OPERATION_WAGON_MANIFEST then
 							local pos = entity.position
 							local is_there
@@ -427,19 +426,13 @@ end
 
 ---@param map_data MapData
 ---@param station Station
----@param train_class SignalID
-function set_station_train_class(map_data, station, train_class)
-	if train_class.name == TRAIN_CLASS_AUTO.name then
-		if station.train_class.name ~= TRAIN_CLASS_AUTO.name then
-			station.train_class = TRAIN_CLASS_AUTO
-			station.accepted_layouts = {}
+---@param is_all boolean
+function set_station_train_class(map_data, station, is_all)
+	if station.is_all ~= is_all then
+		station.is_all = is_all
+		if not is_all then
+			reset_station_layout(map_data, station, nil)
 		end
-		reset_station_layout(map_data, station, nil)
-	else
-		station.train_class = train_class
-		station.accepted_layouts = map_data.train_classes[train_class.name]
-		assert(station.accepted_layouts ~= nil)
-		station.layout_pattern = nil
 	end
 end
 
@@ -447,7 +440,7 @@ end
 ---@param station Station
 ---@param forbidden_entity LuaEntity?
 function update_station_if_auto(map_data, station, forbidden_entity)
-	if station.train_class.name == TRAIN_CLASS_AUTO.name then
+	if not station.is_all then
 		reset_station_layout(map_data, station, forbidden_entity)
 	end
 end

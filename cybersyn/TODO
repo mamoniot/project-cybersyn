@@ -2,6 +2,5 @@ finish wagon manifest
 close gui when the combinator is destroyed
 improve localization
 support space elevator
-add an "all" train class
 do hardcore testing
 optimizations?

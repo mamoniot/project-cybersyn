@@ -173,7 +173,7 @@ end
 ---@param station Station
 ---@param layout_id uint
 local function station_accepts_layout(station, layout_id)
-	return station.accepted_layouts[layout_id]
+	return station.is_all or station.accepted_layouts[layout_id]
 end
 
 

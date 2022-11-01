@@ -32,11 +32,11 @@ end
 ---@param map_data MapData
 ---@param stop LuaEntity
 ---@param comb LuaEntity
-local function on_depot_built(map_data, stop, comb, network_name)
+local function on_depot_built(map_data, stop, comb, control)
 	local depot = {
 		entity_stop = stop,
 		entity_comb = comb,
-		network_name = network_name,
+		network_name = control.first_signal and control.first_signal.name or nil,
 		priority = 0,
 		network_flag = 0,
 	}
@@ -47,8 +47,8 @@ end
 ---@param stop LuaEntity
 ---@param comb1 LuaEntity
 ---@param comb2 LuaEntity
----@param network_name string
-local function on_station_built(map_data, stop, comb1, comb2, network_name)
+---@param control ArithmeticCombinatorParameters
+local function on_station_built(map_data, stop, comb1, comb2, control)
 	local station = {
 		entity_stop = stop,
 		entity_comb1 = comb1,
@@ -60,10 +60,10 @@ local function on_station_built(map_data, stop, comb1, comb2, network_name)
 		r_threshold = 0,
 		p_threshold = 0,
 		locked_slots = 0,
-		network_name = network_name,
+		network_name = control.first_signal and control.first_signal.name or nil,
 		network_flag = 0,
 		deliveries = {},
-		train_class = TRAIN_CLASS_AUTO,
+		is_all = control.second_constant == 1,
 		accepted_layouts = {},
 		layout_pattern = nil,
 	}
@@ -113,7 +113,7 @@ local function search_for_station_combinator(map_data, stop, comb_operation, com
 		entity.valid and entity.name == COMBINATOR_NAME and
 		entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == stop
 		then
-			local control = entity.get_or_create_control_behavior().parameters
+			local control = entity.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
 			if control.operation == comb_operation then
 				return entity
 			end
@@ -174,7 +174,7 @@ local function on_combinator_built(map_data, comb)
 	map_data.to_output[comb.unit_number] = out
 	map_data.to_stop[comb.unit_number] = stop
 
-	local a = comb.get_or_create_control_behavior()
+	local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
 	local control = a.parameters
 	if control.operation == OPERATION_DEFAULT then
 		control.operation = OPERATION_PRIMARY_IO
@@ -193,7 +193,7 @@ local function on_combinator_built(map_data, comb)
 			if depot or station then
 				--NOTE: repeated combinators are ignored
 			else
-				on_depot_built(map_data, stop, comb, control.first_signal)
+				on_depot_built(map_data, stop, comb, control)
 			end
 		end
 	elseif control.operation == OPERATION_SECONDARY_IO then
@@ -219,7 +219,7 @@ local function on_combinator_built(map_data, comb)
 
 			local comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
 
-			on_station_built(map_data, stop, comb, comb2, control.first_signal)
+			on_station_built(map_data, stop, comb, comb2, control)
 		end
 	end
 end
@@ -256,13 +256,13 @@ local function on_combinator_broken(map_data, comb)
 				local comb1 = search_for_station_combinator(map_data, stop, OPERATION_PRIMARY_IO, comb)
 				if comb1 then
 					station.entity_comb1 = comb1
-					local control = comb1.get_or_create_control_behavior().parameters
-					station.network_name = control.first_signal
+					local control = comb1.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
+					station.network_name = control.first_signal and control.first_signal.name
 				else
 					on_station_broken(map_data, stop.unit_number, station)
 					local depot_comb = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
 					if depot_comb then
-						local control = depot_comb.get_or_create_control_behavior().parameters
+						local control = depot_comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
 						on_depot_built(map_data, stop, depot_comb, control.first_signal)
 					end
 				end
@@ -275,9 +275,9 @@ local function on_combinator_broken(map_data, comb)
 				--NOTE: this will disrupt deliveries in progress that where dispatched from this station in a minor way
 				local depot_comb = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
 				if depot_comb then
-					local control = depot_comb.get_or_create_control_behavior().parameters
+					local control = depot_comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
 					depot.entity_comb = depot_comb
-					depot.network_name = control.first_signal
+					depot.network_name = control.first_signal and control.first_signal.name
 				else
 					map_data.depots[stop.unit_number] = nil
 				end
@@ -317,7 +317,7 @@ local function on_stop_built(map_data, stop)
 	for _, entity in pairs(entities) do
 		if entity.valid and entity.name == COMBINATOR_NAME and map_data.to_stop[entity.unit_number] == nil then
 			map_data.to_stop[entity.unit_number] = stop
-			local control = entity.get_or_create_control_behavior().parameters
+			local control = entity.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
 			if control.operation == OPERATION_PRIMARY_IO then
 				comb1 = entity
 			elseif control.operation == OPERATION_SECONDARY_IO then
@@ -328,11 +328,9 @@ local function on_stop_built(map_data, stop)
 		end
 	end
 	if comb1 then
-		local control = comb1.get_or_create_control_behavior().parameters
-		on_station_built(map_data, stop, comb1, comb2, control.first_signal)
+		on_station_built(map_data, stop, comb1, comb2, comb1.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]])
 	elseif depot_comb then
-		local control = depot_comb.get_or_create_control_behavior().parameters
-		on_depot_built(map_data, stop, depot_comb, control.first_signal)
+		on_depot_built(map_data, stop, depot_comb, depot_comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]])
 	end
 end
 ---@param map_data MapData

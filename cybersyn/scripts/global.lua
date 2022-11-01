@@ -27,7 +27,7 @@
 ---@field public deliveries {[string]: int}
 ---@field public network_name string?
 ---@field public network_flag int --transient
----@field public train_class SignalID?
+---@field public is_all boolean
 ---@field public accepted_layouts TrainClass
 ---@field public layout_pattern string?
 ---@field public tick_signals Signal[]? --transient
