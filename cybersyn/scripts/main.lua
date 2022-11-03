@@ -325,7 +325,7 @@ local function on_combinator_broken(map_data, comb)
 			end
 		else
 			local depot = map_data.depots[stop.unit_number]
-			if depot.entity_comb == comb then
+			if depot and depot.entity_comb == comb then
 				--NOTE: this will disrupt deliveries in progress that where dispatched from this station in a minor way
 				local depot_comb = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
 				if depot_comb then
@@ -538,7 +538,7 @@ local function on_train_arrives_buffer(map_data, stop, train)
 				local station = map_data.stations[station_id]
 				local signals = {}
 				for i, item in ipairs(train.manifest) do
-					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = -1}
+					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = -item.count}
 				end
 				set_combinator_output(map_data, station.entity_comb1, signals)
 				set_r_wagon_combs(map_data, station, train)
@@ -604,11 +604,6 @@ local function on_train_modified(map_data, pre_train_id, train_entity)
 	end
 end
 
-
-local function on_tick(event)
-	tick(global, mod_settings)
-	global.total_ticks = global.total_ticks + 1
-end
 
 local function on_built(event)
 	local entity = event.entity or event.created_entity or event.destination
@@ -740,7 +735,9 @@ local function register_events()
 	flib_event.register(defines.events.on_entity_settings_pasted, on_paste)
 
 	local nth_tick = math.ceil(60/mod_settings.tps);
-	flib_event.on_nth_tick(nth_tick, on_tick)
+	flib_event.on_nth_tick(nth_tick, function(event)
+		tick(global, mod_settings)
+	end)
 
 	flib_event.register(defines.events.on_train_created, on_train_built)
 	flib_event.register(defines.events.on_train_changed_state, on_train_changed)

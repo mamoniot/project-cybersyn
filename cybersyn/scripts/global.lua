@@ -11,7 +11,9 @@
 ---@field public trains_available {[string]: {[uint]: uint}} --{[network_name]: {[train_id]: depot_id}}
 ---@field public layouts {[uint]: string}
 ---@field public layout_train_count {[uint]: int}
----@field public train_classes {[string]: TrainClass}
+---@field public tick_state uint
+---@field public tick_data {}
+---@field public economy Economy
 
 ---@class Station
 ---@field public deliveries_total int
@@ -57,17 +59,33 @@
 ---@alias cybersyn.global MapData
 
 ---@class Economy
----@field public r_stations_all {[string]: uint[]}
----@field public p_stations_all {[string]: uint[]}
----@field public total_ticks uint
+---@field public all_r_stations {[string]: uint[]} --{[network_name:item_name]: count}
+---@field public all_p_stations {[string]: uint[]} --{[network_name:item_name]: count}
+---@field public all_names {[string]: uint[]} --{[network_name:item_name]: count}
 
---TODO: only init once
+---@class CybersynModSettings
+---@field public tps int
+---@field public r_threshold int
+---@field public p_threshold int
+---@field public network_flag int
+
+
+--TODO: only init once and move settings code
+---@type CybersynModSettings
 mod_settings = {}
 mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value
 mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value
 mod_settings.p_threshold = settings.global["cybersyn-provide-threshold"].value
+mod_settings.network_flag = settings.global["cybersyn-network-flag"].value
 
 global.total_ticks = 0
+global.tick_state = STATE_INIT
+global.tick_data = {}
+global.economy = {
+	all_r_stations = {},
+	all_p_stations = {},
+	all_names = {},
+}
 global.to_comb = {}
 global.to_output = {}
 global.to_stop = {}
@@ -78,6 +96,3 @@ global.trains_available = {}
 global.layouts = {}
 global.layout_train_count = {}
 global.layout_top_id = 1
-global.train_classes = {
-	--[TRAIN_CLASS_ALL.name] = {},
-}

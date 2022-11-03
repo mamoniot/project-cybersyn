@@ -211,9 +211,9 @@ end
 ---@param p_station_id uint
 ---@param depot Depot
 ---@param primary_item_name string
----@param economy Economy
-local function send_train_between(map_data, r_station_id, p_station_id, depot, primary_item_name, economy)
+local function send_train_between(map_data, r_station_id, p_station_id, depot, primary_item_name)
 	--trains and stations expected to be of the same network
+	local economy = map_data.economy
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
 	local train = map_data.trains[depot.available_train]
@@ -297,8 +297,8 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 		end
 	end
 
-	r_station.last_delivery_tick = economy.total_ticks
-	p_station.last_delivery_tick = economy.total_ticks
+	r_station.last_delivery_tick = map_data.total_ticks
+	p_station.last_delivery_tick = map_data.total_ticks
 
 	r_station.deliveries_total = r_station.deliveries_total + 1
 	p_station.deliveries_total = p_station.deliveries_total + 1
@@ -310,8 +310,8 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 		p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
 
 		local item_network_name = network_name..":"..item.name
-		local r_stations = economy.r_stations_all[item_network_name]
-		local p_stations = economy.p_stations_all[item_network_name]
+		local r_stations = economy.all_r_stations[item_network_name]
+		local p_stations = economy.all_p_stations[item_network_name]
 		for i, id in ipairs(r_stations) do
 			if id == r_station_id then
 				table.remove(r_stations, i)
@@ -337,56 +337,80 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	set_comb2(map_data, r_station)
 end
 
----@param map_data MapData
-function tick(map_data, mod_settings)
-	local total_ticks = map_data.total_ticks
-	local stations = map_data.stations
-	---@type Economy
-	local economy = {
-		r_stations_all = {},
-		p_stations_all = {},
-		total_ticks = total_ticks,
-	}
-	local r_stations_all = economy.r_stations_all
-	local p_stations_all = economy.p_stations_all
-	local all_names = {}
 
-	for _, network in pairs(map_data.trains_available) do
-		for _, depot_id in pairs(network) do
-			local depot = map_data.depots[depot_id]
-			local comb = depot.entity_comb
-			if depot.network_name and comb.valid and (comb.status == defines.entity_status.working or comb.status == defines.entity_status.low_power) then
-				depot.priority = 0
-				depot.network_flag = 1
-				local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
-				if signals then
-					for k, v in pairs(signals) do
-						local item_name = v.signal.name
-						local item_count = v.count
-						if item_name then
-							if item_name == SIGNAL_PRIORITY then
-								depot.priority = item_count
-							end
-							if item_name == depot.network_name then
-								depot.network_flag = item_count
-							end
-						end
-					end
+
+---@param map_data MapData
+local function tick_poll_depot(map_data)
+	local depot_id
+	do--get next depot id
+		local tick_data = map_data.tick_data
+		while true do
+			if tick_data.network == nil then
+				tick_data.network_name, tick_data.network = next(map_data.trains_available)
+				if tick_data.network == nil then
+					tick_data.train_id = nil
+					map_data.tick_state = STATE_POLL_STATIONS
+					return true
 				end
+			end
+
+			tick_data.train_id, depot_id = next(tick_data.network, tick_data.train_id)
+			if depot_id then
+				break
 			else
-				depot.priority = 0
-				depot.network_flag = 0
+				tick_data.network = nil
 			end
 		end
 	end
 
-	for station_id, station in pairs(stations) do
+	local depot = map_data.depots[depot_id]
+	local comb = depot.entity_comb
+	if depot.network_name and comb.valid and (comb.status == defines.entity_status.working or comb.status == defines.entity_status.low_power) then
+		depot.priority = 0
+		depot.network_flag = 1
+		local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
+		if signals then
+			for k, v in pairs(signals) do
+				local item_name = v.signal.name
+				local item_count = v.count
+				if item_name then
+					if item_name == SIGNAL_PRIORITY then
+						depot.priority = item_count
+					end
+					if item_name == depot.network_name then
+						depot.network_flag = item_count
+					end
+				end
+			end
+		end
+	else
+		depot.priority = 0
+		depot.network_flag = 0
+	end
+	return false
+end
+---@param map_data MapData
+---@param mod_settings CybersynModSettings
+local function tick_poll_station(map_data, mod_settings)
+	local tick_data = map_data.tick_data
+	local all_r_stations = map_data.economy.all_r_stations
+	local all_p_stations = map_data.economy.all_p_stations
+	local all_names = map_data.economy.all_names
+
+	while true do
+		local station_id, station = next(map_data.stations, tick_data.station_id)
+		tick_data.station_id = station_id
+		if station == nil then
+			map_data.tick_state = STATE_DISPATCH
+			return true
+		end
+
 		if station.network_name and station.deliveries_total < station.entity_stop.trains_limit then
 			station.r_threshold = mod_settings.r_threshold
 			station.p_threshold = mod_settings.p_threshold
 			station.priority = 0
 			station.locked_slots = 0
-			station.network_flag = 1
+			station.network_flag = mod_settings.network_flag
 			local signals = get_signals(station)
 			station.tick_signals = signals
 			if signals then
@@ -422,111 +446,153 @@ function tick(map_data, mod_settings)
 
 					if -effective_item_count >= r_threshold then
 						local item_network_name = station.network_name..":"..item_name
-						if r_stations_all[item_network_name] == nil then
-							r_stations_all[item_network_name] = {}
-							p_stations_all[item_network_name] = {}
+						local stations = all_r_stations[item_network_name]
+						if stations == nil then
+							stations = {}
+							all_r_stations[item_network_name] = stations
 							all_names[#all_names + 1] = item_network_name
 							all_names[#all_names + 1] = v.signal
 						end
-						table.insert(r_stations_all[item_network_name], station_id)
+						stations[#stations + 1] = station_id
 					elseif effective_item_count >= p_threshold then
 						local item_network_name = station.network_name..":"..item_name
-						if r_stations_all[item_network_name] == nil then
-							r_stations_all[item_network_name] = {}
-							p_stations_all[item_network_name] = {}
-							all_names[#all_names + 1] = item_network_name
-							all_names[#all_names + 1] = v.signal
+						local stations = all_p_stations[item_network_name]
+						if stations == nil then
+							stations = {}
+							all_p_stations[item_network_name] = stations
 						end
-						table.insert(p_stations_all[item_network_name], station_id)
+						stations[#stations + 1] = station_id
 					end
 				end
 			end
+			return false
 		end
 	end
-
+end
+---@param map_data MapData
+---@param mod_settings CybersynModSettings
+local function tick_dispatch(map_data, mod_settings)
 	--we do not dispatch more than one train per station per tick
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
 	--NOTE: It may be better for performance to update stations one tick at a time rather than all at once, however this does mean more  redundant data will be generated and discarded each tick. Once we have a performance test-bed it will probably be worth checking.
-	local start_i = 2*(total_ticks%(#all_names/2)) + 1
-	for item_i = 0, #all_names - 1, 2 do
-		local item_network_name = all_names[(start_i + item_i - 1)%#all_names + 1]
-		local signal = all_names[(start_i + item_i)%#all_names + 1]
-		local item_name = signal.name
-		local item_type = signal.type
-		local r_stations = r_stations_all[item_network_name]
-		local p_stations = p_stations_all[item_network_name]
+	local tick_data = map_data.tick_data
+	local all_r_stations = map_data.economy.all_r_stations
+	local all_p_stations = map_data.economy.all_p_stations
+	local all_names = map_data.economy.all_names
+	local stations = map_data.stations
 
-		--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
-		if #r_stations > 0 and #p_stations > 0 then
-			if #r_stations <= #p_stations then
-				--probably backpressure, prioritize locality
-				repeat
-					local i = total_ticks%#r_stations + 1
-					local r_station_id = table.remove(r_stations, i)
+	local size = #all_names
+	if tick_data.start_i == nil and size > 0 then
+		--semi-randomized starting item
+		tick_data.start_i = 2*(map_data.total_ticks%(size/2)) + 1
+		tick_data.offset_i = 0
+	elseif size == 0 or tick_data.offset_i >= size then
+		tick_data.start_i = nil
+		tick_data.offset_i = nil
+		map_data.tick_state = STATE_INIT
+		return true
+	end
+	local name_i = tick_data.start_i + tick_data.offset_i
+	tick_data.offset_i = tick_data.offset_i + 2
 
-					local best = 0
-					local best_depot = nil
-					local best_dist = INF
-					local highest_prior = -INF
-					local could_have_been_serviced = false
-					for j, p_station_id in ipairs(p_stations) do
+	local item_network_name = all_names[(name_i - 1)%size + 1]
+	local signal = all_names[(name_i)%size + 1]
+	local item_name = signal.name
+	local item_type = signal.type
+	local r_stations = all_r_stations[item_network_name]
+	local p_stations = all_p_stations[item_network_name]
+
+	--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
+	if p_stations and #r_stations > 0 and #p_stations > 0 then
+		if #r_stations <= #p_stations then
+			--probably backpressure, prioritize locality
+			repeat
+				local i = map_data.total_ticks%#r_stations + 1
+				local r_station_id = table.remove(r_stations, i)
+
+				local best = 0
+				local best_depot = nil
+				local best_dist = INF
+				local highest_prior = -INF
+				local could_have_been_serviced = false
+				for j, p_station_id in ipairs(p_stations) do
+					local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
+					local prior = stations[p_station_id].priority
+					if prior > highest_prior or (prior == highest_prior and d < best_dist) then
+						if depot then
+							best = j
+							best_dist = d
+							best_depot = depot
+							highest_prior = prior
+						elseif d < INF then
+							could_have_been_serviced = true
+							best = j
+						end
+					end
+				end
+				if best_depot then
+					send_train_between(map_data, r_station_id, p_stations[best], best_depot, item_name)
+				elseif could_have_been_serviced then
+					send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, stations[p_stations[best]].entity_stop)
+				end
+			until #r_stations == 0
+		else
+			--prioritize round robin
+			repeat
+				local j = map_data.total_ticks%#p_stations + 1
+				local p_station_id = table.remove(p_stations, j)
+
+				local best = 0
+				local best_depot = nil
+				local lowest_tick = INF
+				local highest_prior = -INF
+				local could_have_been_serviced = false
+				for i, r_station_id in ipairs(r_stations) do
+					local r_station = stations[r_station_id]
+					local prior = r_station.priority
+					if prior > highest_prior or (prior == highest_prior and r_station.last_delivery_tick < lowest_tick) then
 						local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
-						local prior = stations[p_station_id].priority
-						if prior > highest_prior or (prior == highest_prior and d < best_dist) then
-							if depot then
-								best = j
-								best_dist = d
-								best_depot = depot
-								highest_prior = prior
-							elseif d < INF then
-								could_have_been_serviced = true
-								best = j
-							end
+						if depot then
+							best = i
+							best_depot = depot
+							lowest_tick = r_station.last_delivery_tick
+							highest_prior = prior
+						elseif d < INF then
+							could_have_been_serviced = true
+							best = i
 						end
 					end
-					if best_depot then
-						send_train_between(map_data, r_station_id, p_stations[best], best_depot, item_name, economy)
-					elseif could_have_been_serviced then
-						send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, stations[p_stations[best]].entity_stop)
-					end
-				until #r_stations == 0
-			else
-				--prioritize round robin
-				repeat
-					local j = total_ticks%#p_stations + 1
-					local p_station_id = table.remove(p_stations, j)
-
-					local best = 0
-					local best_depot = nil
-					local lowest_tick = INF
-					local highest_prior = -INF
-					local could_have_been_serviced = false
-					for i, r_station_id in ipairs(r_stations) do
-						local r_station = stations[r_station_id]
-						local prior = r_station.priority
-						if prior > highest_prior or (prior == highest_prior and r_station.last_delivery_tick < lowest_tick) then
-							local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
-							if depot then
-								best = i
-								best_depot = depot
-								lowest_tick = r_station.last_delivery_tick
-								highest_prior = prior
-							elseif d < INF then
-								could_have_been_serviced = true
-								best = i
-							end
-						end
-					end
-					if best_depot then
-						send_train_between(map_data, r_stations[best], p_station_id, best_depot, item_name, economy)
-					elseif could_have_been_serviced then
-						send_missing_train_alert_for_stops(stations[r_stations[best]].entity_stop, stations[p_station_id].entity_stop)
-					end
-				until #p_stations == 0
-			end
+				end
+				if best_depot then
+					send_train_between(map_data, r_stations[best], p_station_id, best_depot, item_name)
+				elseif could_have_been_serviced then
+					send_missing_train_alert_for_stops(stations[r_stations[best]].entity_stop, stations[p_station_id].entity_stop)
+				end
+			until #p_stations == 0
 		end
 	end
-	for station_id, station in pairs(stations) do
-		station.tick_signals = nil
+	return false
+end
+---@param map_data MapData
+---@param mod_settings CybersynModSettings
+function tick(map_data, mod_settings)
+	if map_data.tick_state == STATE_INIT then
+		map_data.total_ticks = map_data.total_ticks + 1
+		map_data.economy.all_p_stations = {}
+		map_data.economy.all_r_stations = {}
+		map_data.economy.all_names = {}
+		map_data.tick_state = STATE_POLL_DEPOTS
+	end
+
+	if map_data.tick_state == STATE_POLL_DEPOTS then
+		for i = 1, 3 do
+			if tick_poll_depot(map_data) then break end
+		end
+	elseif map_data.tick_state == STATE_POLL_STATIONS then
+		for i = 1, 2 do
+			if tick_poll_station(map_data, mod_settings) then break end
+		end
+	elseif map_data.tick_state == STATE_DISPATCH then
+		tick_dispatch(map_data, mod_settings)
 	end
 end
