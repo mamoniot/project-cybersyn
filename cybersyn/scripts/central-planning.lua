@@ -102,7 +102,7 @@ local function set_comb2(map_data, station)
 		for item_name, count in pairs(deliveries) do
 			local i = #signals + 1
 			local item_type = game.item_prototypes[item_name].type
-			signals[i] = {index = i, signal = {type = item_type, name = item_name}, count = count}
+			signals[i] = {index = i, signal = {type = item_type, name = item_name}, count = -count}
 		end
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end

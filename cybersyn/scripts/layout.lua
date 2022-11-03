@@ -242,7 +242,8 @@ function set_r_wagon_combs(map_data, station, train)
 			local signals = {}
 
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
-			for stack_i, stack in ipairs(inv) do
+			for stack_i = 1, #inv do
+				local stack = inv[stack_i]
 				if stack.valid_for_read then
 					local i = #signals + 1
 					--TODO: does this work or do we need to aggregate signals?
