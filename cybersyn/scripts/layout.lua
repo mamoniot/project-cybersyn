@@ -1,15 +1,16 @@
 --By Mami
 local area = require("__flib__.area")
+local abs = math.abs
 
 local function iterr(a, i)
-	i = i - 1
-	if i > 0 then
-		return i, a[i]
+	i = i + 1
+	if i <= #a then
+		return i, a[#a - i + 1]
 	end
 end
 
 local function irpairs(a)
-	return iterr, a, #a + 1
+	return iterr, a, 0
 end
 
 
@@ -18,7 +19,10 @@ end
 ---@param train_id uint
 function remove_train(map_data, train, train_id)
 	map_data.trains[train_id] = nil
-	map_data.trains_available[train_id] = nil
+	local depot = train.depot
+	if depot then
+		remove_available_train(map_data, depot)
+	end
 	local layout_id = train.layout_id
 	local count = map_data.layout_train_count[layout_id]
 	if count <= 1 then
@@ -89,10 +93,13 @@ end
 ---@param train LuaTrain
 local function get_train_direction(stop, train)
 	local back_rail = train.back_rail
-	local stop_rail = stop.connected_rail
 
-	if back_rail and stop_rail and back_rail.unit_number == stop_rail.unit_number then
-		return true
+	if back_rail then
+		local back_pos = back_rail.position
+		local stop_pos = stop.position
+		if abs(back_pos.x - stop_pos.x) < 3 and abs(back_pos.y - stop_pos.y) < 3 then
+			return true
+		end
 	end
 
 	return false
@@ -238,7 +245,7 @@ function set_r_wagon_combs(map_data, station, train)
 				if stack.valid_for_read then
 					local i = #signals + 1
 					--TODO: does this work or do we need to aggregate signals?
-					signals[i] = {index = i, signal = {type = stack.type, name = stack.name}, count = stack.count}
+					signals[i] = {index = i, signal = {type = stack.type, name = stack.name}, count = -stack.count}
 				end
 			end
 			set_combinator_output(map_data, comb, signals)
@@ -248,7 +255,7 @@ function set_r_wagon_combs(map_data, station, train)
 			local inv = carriage.get_fluid_contents()
 			for fluid_name, count in pairs(inv) do
 				local i = #signals + 1
-				signals[i] = {index = i, signal = {type = "fluid", name = fluid_name}, count = math.floor(count)}
+				signals[i] = {index = i, signal = {type = "fluid", name = fluid_name}, count = -math.floor(count)}
 			end
 			set_combinator_output(map_data, comb, signals)
 		end

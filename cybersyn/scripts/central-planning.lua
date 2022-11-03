@@ -74,33 +74,6 @@ local function get_signals(station)
 	end
 end
 
----@param depot Depot
-local function set_depot_signals(depot)
-	local comb = depot.entity_comb
-	if depot.network_name and comb.valid and (comb.status == defines.entity_status.working or comb.status == defines.entity_status.low_power) then
-		depot.priority = 0
-		depot.network_flag = 1
-		local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
-		if signals then
-			for k, v in pairs(signals) do
-				local item_name = v.signal.name
-				local item_count = v.count
-				if item_name then
-					if item_name == SIGNAL_PRIORITY then
-						depot.priority = item_count
-					end
-					if item_name == depot.network_name then
-						depot.network_flag = item_count
-					end
-				end
-			end
-		end
-	else
-		depot.priority = 0
-		depot.network_flag = 0
-	end
-end
-
 ---@param map_data MapData
 ---@param comb LuaEntity
 ---@param signals ConstantCombinatorParameters[]?
@@ -170,13 +143,6 @@ local function get_stop_dist(stop0, stop1)
 end
 
 
----@param station Station
----@param layout_id uint
-local function station_accepts_layout(station, layout_id)
-	return station.is_all or station.accepted_layouts[layout_id]
-end
-
-
 
 ---@param map_data MapData
 ---@param r_station_id uint
@@ -195,38 +161,42 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 		return nil, INF
 	end
 
-	local best_train = nil
+	---@type Depot|nil
+	local best_depot = nil
 	local best_dist = INF
 	local valid_train_exists = false
 
 	local is_fluid = item_type == "fluid"
-	for depot_id, train_id in pairs(map_data.trains_available[network_name]) do
-		local depot = map_data.depots[depot_id]
-		local train = map_data.trains[train_id]
-		--check cargo capabilities
-		--check layout validity for both stations
-		if
-		depot.network_name == network_name and
-		btest(netand, depot.network_flag)
-		((is_fluid and train.fluid_capacity > 0) or (not is_fluid and train.item_slot_capacity > 0)) and
-		station_accepts_layout(r_station, train.layout_id) and
-		station_accepts_layout(p_station, train.layout_id)
-		then
-			valid_train_exists = true
-			--check if exists valid path
-			--check if path is shortest so we prioritize locality
-			local d_to_p_dist = get_stop_dist(depot.entity_stop, p_station.entity_stop) - DEPOT_PRIORITY_MULT*depot.priority
+	local trains = map_data.trains_available[network_name]
+	if trains then
+		for train_id, depot_id in pairs(trains) do
+			local depot = map_data.depots[depot_id]
+			local train = map_data.trains[train_id]
+			local layout_id = train.layout_id
+			--check cargo capabilities
+			--check layout validity for both stations
+			if
+			btest(netand, depot.network_flag) and
+			((is_fluid and train.fluid_capacity > 0) or (not is_fluid and train.item_slot_capacity > 0)) and
+			(r_station.is_all or r_station.accepted_layouts[layout_id]) and
+			(p_station.is_all or p_station.accepted_layouts[layout_id])
+			then
+				valid_train_exists = true
+				--check if exists valid path
+				--check if path is shortest so we prioritize locality
+				local d_to_p_dist = get_stop_dist(depot.entity_stop, p_station.entity_stop) - DEPOT_PRIORITY_MULT*depot.priority
 
-			local dist = d_to_p_dist
-			if dist < best_dist then
-				best_dist = dist
-				best_train = train
+				local dist = d_to_p_dist
+				if dist < best_dist then
+					best_dist = dist
+					best_depot = depot
+				end
 			end
 		end
 	end
 
 	if valid_train_exists then
-		return best_train, best_dist + p_to_r_dist
+		return best_depot, best_dist + p_to_r_dist
 	else
 		return nil, p_to_r_dist
 	end
@@ -236,13 +206,16 @@ end
 ---@param map_data MapData
 ---@param r_station_id uint
 ---@param p_station_id uint
----@param train Train
+---@param depot Depot
 ---@param primary_item_name string
 ---@param economy Economy
-local function send_train_between(map_data, r_station_id, p_station_id, train, primary_item_name, economy)
+local function send_train_between(map_data, r_station_id, p_station_id, depot, primary_item_name, economy)
 	--trains and stations expected to be of the same network
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
+	local train = map_data.trains[depot.available_train]
+	---@type string
+	local network_name = depot.network_name
 
 	local requests = {}
 	local manifest = {}
@@ -333,7 +306,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 		r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
 		p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
 
-		local item_network_name = (r_station.network_name and item.name + ":" + r_station.network_name) or item.name
+		local item_network_name = network_name..":"..item.name
 		local r_stations = economy.r_stations_all[item_network_name]
 		local p_stations = economy.p_stations_all[item_network_name]
 		for i, id in ipairs(r_stations) do
@@ -350,7 +323,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, train, p
 		end
 	end
 
-	map_data.trains_available[train.entity.id] = nil
+	remove_available_train(map_data, depot)
 	train.status = STATUS_D_TO_P
 	train.p_station_id = p_station_id
 	train.r_station_id = r_station_id
@@ -375,8 +348,33 @@ function tick(map_data, mod_settings)
 	local p_stations_all = economy.p_stations_all
 	local all_names = {}
 
-	for depot_id, _ in pairs(map_data.trains_available) do
-		set_depot_signals(map_data.depots[depot_id])
+	for _, network in pairs(map_data.trains_available) do
+		for _, depot_id in pairs(network) do
+			local depot = map_data.depots[depot_id]
+			local comb = depot.entity_comb
+			if depot.network_name and comb.valid and (comb.status == defines.entity_status.working or comb.status == defines.entity_status.low_power) then
+				depot.priority = 0
+				depot.network_flag = 1
+				local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
+				if signals then
+					for k, v in pairs(signals) do
+						local item_name = v.signal.name
+						local item_count = v.count
+						if item_name then
+							if item_name == SIGNAL_PRIORITY then
+								depot.priority = item_count
+							end
+							if item_name == depot.network_name then
+								depot.network_flag = item_count
+							end
+						end
+					end
+				end
+			else
+				depot.priority = 0
+				depot.network_flag = 0
+			end
+		end
 	end
 
 	for station_id, station in pairs(stations) do
@@ -420,23 +418,23 @@ function tick(map_data, mod_settings)
 					local r_threshold, p_threshold = get_thresholds(map_data, station, v.signal)
 
 					if -effective_item_count >= r_threshold then
-						local item_network_name = item_name + ":" + station.network_name
+						local item_network_name = station.network_name..":"..item_name
 						if r_stations_all[item_network_name] == nil then
 							r_stations_all[item_network_name] = {}
 							p_stations_all[item_network_name] = {}
 							all_names[#all_names + 1] = item_network_name
 							all_names[#all_names + 1] = v.signal
 						end
-						table.insert(r_stations_all[item_name], station_id)
+						table.insert(r_stations_all[item_network_name], station_id)
 					elseif effective_item_count >= p_threshold then
-						local item_network_name = item_name + ":" + station.network_name
+						local item_network_name = station.network_name..":"..item_name
 						if r_stations_all[item_network_name] == nil then
 							r_stations_all[item_network_name] = {}
 							p_stations_all[item_network_name] = {}
 							all_names[#all_names + 1] = item_network_name
 							all_names[#all_names + 1] = v.signal
 						end
-						table.insert(p_stations_all[item_name], station_id)
+						table.insert(p_stations_all[item_network_name], station_id)
 					end
 				end
 			end
@@ -464,18 +462,18 @@ function tick(map_data, mod_settings)
 					local r_station_id = table.remove(r_stations, i)
 
 					local best = 0
-					local best_train = nil
+					local best_depot = nil
 					local best_dist = INF
 					local highest_prior = -INF
 					local could_have_been_serviced = false
 					for j, p_station_id in ipairs(p_stations) do
-						local train, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
+						local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
 						local prior = stations[p_station_id].priority
 						if prior > highest_prior or (prior == highest_prior and d < best_dist) then
-							if train then
+							if depot then
 								best = j
 								best_dist = d
-								best_train = train
+								best_depot = depot
 								highest_prior = prior
 							elseif d < INF then
 								could_have_been_serviced = true
@@ -483,8 +481,8 @@ function tick(map_data, mod_settings)
 							end
 						end
 					end
-					if best_train then
-						send_train_between(map_data, r_station_id, p_stations[best], best_train, item_name, economy)
+					if best_depot then
+						send_train_between(map_data, r_station_id, p_stations[best], best_depot, item_name, economy)
 					elseif could_have_been_serviced then
 						send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, stations[p_stations[best]].entity_stop)
 					end
@@ -496,7 +494,7 @@ function tick(map_data, mod_settings)
 					local p_station_id = table.remove(p_stations, j)
 
 					local best = 0
-					local best_train = nil
+					local best_depot = nil
 					local lowest_tick = INF
 					local highest_prior = -INF
 					local could_have_been_serviced = false
@@ -504,10 +502,10 @@ function tick(map_data, mod_settings)
 						local r_station = stations[r_station_id]
 						local prior = r_station.priority
 						if prior > highest_prior or (prior == highest_prior and r_station.last_delivery_tick < lowest_tick) then
-							local train, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
-							if train then
+							local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
+							if depot then
 								best = i
-								best_train = train
+								best_depot = depot
 								lowest_tick = r_station.last_delivery_tick
 								highest_prior = prior
 							elseif d < INF then
@@ -516,8 +514,8 @@ function tick(map_data, mod_settings)
 							end
 						end
 					end
-					if best_train then
-						send_train_between(map_data, r_stations[best], p_station_id, best_train, item_name, economy)
+					if best_depot then
+						send_train_between(map_data, r_stations[best], p_station_id, best_depot, item_name, economy)
 					elseif could_have_been_serviced then
 						send_missing_train_alert_for_stops(stations[r_stations[best]].entity_stop, stations[p_station_id].entity_stop)
 					end

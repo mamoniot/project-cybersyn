@@ -30,6 +30,43 @@ end
 
 
 ---@param map_data MapData
+---@param depot Depot
+---@param train_id uint
+local function add_available_train(map_data, depot, train_id)
+	if depot.network_name then
+		local network = map_data.trains_available[depot.network_name]
+		if not network then
+			network = {}
+			map_data.trains_available[depot.network_name] = network
+		end
+		network[train_id] = depot.entity_stop.unit_number
+	end
+	depot.available_train = train_id
+	local train = map_data.trains[train_id]
+	train.depot_name = depot.entity_stop.backer_name
+	train.depot = depot
+end
+---@param map_data MapData
+---@param depot Depot
+function remove_available_train(map_data, depot)
+	if depot.available_train then
+		if depot.network_name then
+			local network = map_data.trains_available[depot.network_name]
+			if network then
+				network[depot.available_train] = nil
+				if next(network) == nil then
+					map_data.trains_available[depot.network_name] = nil
+				end
+			end
+		end
+		local train = map_data.trains[depot.available_train]
+		train.depot = nil
+		depot.available_train = nil
+	end
+end
+
+
+---@param map_data MapData
 ---@param stop LuaEntity
 ---@param comb LuaEntity
 local function on_depot_built(map_data, stop, comb, control)
@@ -41,6 +78,17 @@ local function on_depot_built(map_data, stop, comb, control)
 		network_flag = 0,
 	}
 	map_data.depots[stop.unit_number] = depot
+end
+
+local function on_depot_broken(map_data, depot)
+	--remove train
+	if depot.available_train then
+		--NOTE: we could remove the schedule from this train
+		--local train = map_data.trains[depot.available_train]
+		map_data.trains[depot.available_train] = nil
+		remove_available_train(map_data, depot)
+	end
+	map_data.depots[depot.entity_stop.unit_number] = nil
 end
 
 ---@param map_data MapData
@@ -225,6 +273,7 @@ local function on_combinator_built(map_data, comb)
 end
 ---@param map_data MapData
 ---@param comb LuaEntity
+---@param network_name string?
 function on_combinator_network_updated(map_data, comb, network_name)
 	local stop = map_data.to_stop[comb.unit_number]
 
@@ -237,7 +286,12 @@ function on_combinator_network_updated(map_data, comb, network_name)
 		else
 			local depot = map_data.depots[stop.unit_number]
 			if depot.entity_comb == comb then
+				if depot.available_train then
+					remove_available_train(map_data, depot)
+					add_available_train(map_data, depot, depot.available_train)
+				end
 				depot.network_name = network_name
+
 			end
 		end
 	end
@@ -279,7 +333,7 @@ local function on_combinator_broken(map_data, comb)
 					depot.entity_comb = depot_comb
 					depot.network_name = control.first_signal and control.first_signal.name
 				else
-					map_data.depots[stop.unit_number] = nil
+					on_depot_broken(map_data, depot)
 				end
 			end
 		end
@@ -353,8 +407,12 @@ local function on_stop_broken(map_data, stop)
 	local station = map_data.stations[stop.unit_number]
 	if station then
 		on_station_broken(map_data, stop.unit_number, station)
+	else
+		local depot = map_data.depots[stop.unit_number]
+		if depot then
+			on_depot_broken(map_data, depot)
+		end
 	end
-	map_data.depots[stop.unit_number] = nil
 end
 ---@param map_data MapData
 ---@param stop LuaEntity
@@ -379,6 +437,12 @@ local function on_station_rename(map_data, stop)
 				end
 			end
 		end
+	else
+		local depot = map_data.depots[station_id]
+		if depot and depot.available_train then
+			local train = map_data.trains[depot.available_train]
+			train.depot_name = stop.backer_name
+		end
 	end
 end
 
@@ -395,42 +459,41 @@ local function find_and_add_all_stations_from_nothing(map_data)
 	end
 end
 
-
 ---@param map_data MapData
----@param stop LuaEntity
+---@param depot Depot
 ---@param train_entity LuaTrain
-local function on_train_arrives_depot(map_data, stop, train_entity)
+local function on_train_arrives_depot(map_data, depot, train_entity)
 	local contents = train_entity.get_contents()
-	local train = map_data.trains[train_entity.id]
+	local train_id = train_entity.id
+	local train = map_data.trains[train_id]
 	if train then
 		if train.manifest and train.status == STATUS_R_TO_D then
 			--succeeded delivery
 			train.p_station_id = 0
 			train.r_station_id = 0
 			train.manifest = nil
-			train.depot_name = train_entity.station.backer_name
 			train.status = STATUS_D
-			map_data.trains_available[stop.unit_number] = train_entity.id
+			add_available_train(map_data, depot, train_id)
 		else
 			if train.manifest then
 				on_failed_delivery(map_data, train)
 				send_lost_train_alert(train.entity)
 			end
-			train.depot_name = train_entity.station.backer_name
 			train.status = STATUS_D
-			map_data.trains_available[stop.unit_number] = train_entity.id
+			add_available_train(map_data, depot, train_id)
 		end
 		if next(contents) ~= nil then
 			--train still has cargo
 			train_entity.schedule = nil
-			remove_train(map_data, train, train_entity.id)
+			remove_train(map_data, train, train_id)
 			send_nonempty_train_in_depot_alert(train_entity)
 		else
 			train_entity.schedule = create_depot_schedule(train.depot_name)
 		end
 	elseif next(contents) == nil then
 		train = {
-			depot_name = train_entity.station.backer_name,
+			--depot_name = train_entity.station.backer_name,
+			--depot = depot,
 			status = STATUS_D,
 			entity = train_entity,
 			layout_id = 0,
@@ -441,8 +504,8 @@ local function on_train_arrives_depot(map_data, stop, train_entity)
 			manifest = nil,
 		}
 		update_train_layout(map_data, train)
-		map_data.trains[train_entity.id] = train
-		map_data.trains_available[stop.unit_number] = train_entity.id
+		map_data.trains[train_id] = train
+		add_available_train(map_data, depot, train_id)
 		local schedule = create_depot_schedule(train.depot_name)
 		train_entity.schedule = schedule
 	else
@@ -508,6 +571,8 @@ local function on_train_leaves_station(map_data, train)
 			set_combinator_output(map_data, station.entity_comb1, nil)
 			unset_wagon_combs(map_data, station)
 		end
+	elseif train.depot then
+		remove_available_train(map_data, train.depot)
 	end
 end
 
@@ -605,8 +670,11 @@ local function on_train_changed(event)
 		if stop and stop.valid and stop.name == "train-stop" then
 			if global.stations[stop.unit_number] then
 				on_train_arrives_buffer(global, stop, train)
-			elseif global.depots[stop.unit_number] then
-				on_train_arrives_depot(global, stop, train_e)
+			else
+				local depot = global.depots[stop.unit_number]
+				if depot then
+					on_train_arrives_depot(global, depot, train_e)
+				end
 			end
 		end
 	elseif event.old_state == defines.train_state.wait_station then

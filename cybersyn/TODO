@@ -1,6 +1,7 @@
-finish wagon manifest
 close gui when the combinator is destroyed
+play close sound when gui is closed
 improve localization
 support space elevator
 do hardcore testing
 optimizations?
+models & art

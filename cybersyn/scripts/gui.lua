@@ -75,7 +75,7 @@ local window = flib_gui.build(rootgui, {
 				}},
 				---choose-elem-button
 				{type="line", style_mods={top_padding=10}},
-				{type="label", name="network_label", style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=7}},
+				{type="label", name="network_label", ref={"network_label"}, style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=7}},
 				{type="flow", name="bottom", direction="horizontal", children={
 					{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", signal=control.first_signal, style_mods={bottom_margin=2, right_margin=6}, actions={
 						on_elem_changed={"choose-elem-button", comb.unit_number}
@@ -94,6 +94,7 @@ local window = flib_gui.build(rootgui, {
 	window.titlebar.drag_target = window.main_window
 	window.main_window.force_auto_center()
 	window.network.visible = selected_index == 1 or selected_index == 3
+	window.network_label.visible = selected_index == 1 or selected_index == 3
 	window.radiobutton.visible = selected_index == 1
 	window.radiolabel.visible = selected_index == 1
 

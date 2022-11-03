@@ -8,7 +8,7 @@
 ---@field public stations {[uint]: Station}
 ---@field public depots {[uint]: Depot}
 ---@field public trains {[uint]: Train}
----@field public trains_available {[string]: {[uint]: uint}}
+---@field public trains_available {[string]: {[uint]: uint}} --{[network_name]: {[train_id]: depot_id}}
 ---@field public layouts {[uint]: string}
 ---@field public layout_train_count {[uint]: int}
 ---@field public train_classes {[string]: TrainClass}
@@ -38,6 +38,7 @@
 ---@field public entity_comb LuaEntity
 ---@field public network_name string?
 ---@field public network_flag int --transient
+---@field public available_train uint?
 
 ---@class Train
 ---@field public entity LuaTrain
@@ -45,6 +46,7 @@
 ---@field public item_slot_capacity int
 ---@field public fluid_capacity int
 ---@field public depot_name string
+---@field public depot Depot?
 ---@field public status int
 ---@field public p_station_id uint
 ---@field public r_station_id uint
