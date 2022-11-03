@@ -1,6 +1,7 @@
 --By Mami
 local area = require("__flib__.area")
 local abs = math.abs
+local floor = math.floor
 
 local function iterr(a, i)
 	i = i + 1
@@ -255,7 +256,7 @@ function set_r_wagon_combs(map_data, station, train)
 			local inv = carriage.get_fluid_contents()
 			for fluid_name, count in pairs(inv) do
 				local i = #signals + 1
-				signals[i] = {index = i, signal = {type = "fluid", name = fluid_name}, count = -math.floor(count)}
+				signals[i] = {index = i, signal = {type = "fluid", name = fluid_name}, count = -floor(count)}
 			end
 			set_combinator_output(map_data, comb, signals)
 		end

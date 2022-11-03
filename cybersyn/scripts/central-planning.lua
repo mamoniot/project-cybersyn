@@ -1,6 +1,9 @@
 --By Mami
 local get_distance = require("__flib__.misc").get_distance
-local math = math
+local min = math.min
+local max = math.max
+local abs = math.abs
+local ceil = math.ceil
 local INF = math.huge
 local btest = bit32.btest
 local band = bit32.band
@@ -246,7 +249,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 			if effective_item_count >= p_threshold then
 				local r = requests[item_name]
 				if r then
-					local item = {name = item_name, type = item_type, count = math.min(r, effective_item_count)}
+					local item = {name = item_name, type = item_type, count = min(r, effective_item_count)}
 					if item_name == primary_item_name then
 						manifest[#manifest + 1] = manifest[1]
 						manifest[1] = item
@@ -258,10 +261,10 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 		end
 	end
 
-	local locked_slots = math.max(p_station.locked_slots, r_station.locked_slots)
+	local locked_slots = max(p_station.locked_slots, r_station.locked_slots)
 	local total_slots_left = train.item_slot_capacity
 	if locked_slots > 0 then
-		total_slots_left = math.max(total_slots_left - #train.entity.cargo_wagons*locked_slots, math.min(total_slots_left, #train.entity.cargo_wagons))
+		total_slots_left = max(total_slots_left - #train.entity.cargo_wagons*locked_slots, min(total_slots_left, #train.entity.cargo_wagons))
 	end
 	local total_liquid_left = train.fluid_capacity
 
@@ -279,7 +282,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 			end
 		elseif total_slots_left > 0 then
 			local stack_size = game.item_prototypes[item.name].stack_size
-			local slots = math.ceil(item.count/stack_size)
+			local slots = ceil(item.count/stack_size)
 			if slots > total_slots_left then
 				item.count = total_slots_left*stack_size
 			end
@@ -396,11 +399,11 @@ function tick(map_data, mod_settings)
 							if item_name == SIGNAL_PRIORITY then
 								station.priority = item_count
 							elseif item_name == REQUEST_THRESHOLD then
-								station.r_threshold = math.abs(item_count)
+								station.r_threshold = abs(item_count)
 							elseif item_name == PROVIDE_THRESHOLD then
-								station.p_threshold = math.abs(item_count)
+								station.p_threshold = abs(item_count)
 							elseif item_name == LOCKED_SLOTS then
-								station.locked_slots = math.max(item_count, 0)
+								station.locked_slots = max(item_count, 0)
 							end
 							signals[k] = nil
 						end
