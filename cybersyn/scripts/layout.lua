@@ -453,6 +453,27 @@ end
 ---@param map_data MapData
 ---@param rail LuaEntity
 ---@param forbidden_entity LuaEntity?
+function force_update_station_from_rail(map_data, rail, forbidden_entity)
+	--NOTE: should we search further or better? it would be more expensive
+	local entity = rail.get_rail_segment_entity(defines.rail_direction.back, false)
+	if entity and entity.valid and entity.name == "train-stop" then
+		local station = map_data.stations[entity.unit_number]
+		if station then
+			reset_station_layout(map_data, station, forbidden_entity)
+		end
+	else
+		entity = rail.get_rail_segment_entity(defines.rail_direction.front, false)
+		if entity and entity.valid and entity.name == "train-stop" then
+			local station = map_data.stations[entity.unit_number]
+			if station then
+				reset_station_layout(map_data, station, forbidden_entity)
+			end
+		end
+	end
+end
+---@param map_data MapData
+---@param rail LuaEntity
+---@param forbidden_entity LuaEntity?
 function update_station_from_rail(map_data, rail, forbidden_entity)
 	--NOTE: should we search further or better? it would be more expensive
 	local entity = rail.get_rail_segment_entity(defines.rail_direction.back, false)

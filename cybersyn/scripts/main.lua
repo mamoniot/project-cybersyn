@@ -231,7 +231,7 @@ local function on_combinator_built(map_data, comb)
 	end
 	if control.operation == OPERATION_WAGON_MANIFEST then
 		if rail then
-			update_station_from_rail(map_data, rail, nil)
+			force_update_station_from_rail(map_data, rail, nil)
 		end
 	elseif control.operation == OPERATION_DEPOT then
 		if stop then
@@ -287,11 +287,14 @@ function on_combinator_network_updated(map_data, comb, network_name)
 			local depot = map_data.depots[stop.unit_number]
 			if depot.entity_comb == comb then
 				if depot.available_train then
+					---@type uint
+					local train_id = depot.available_train
 					remove_available_train(map_data, depot)
-					add_available_train(map_data, depot, depot.available_train)
+					depot.network_name = network_name
+					add_available_train(map_data, depot, train_id)
+				else
+					depot.network_name = network_name
 				end
-				depot.network_name = network_name
-
 			end
 		end
 	end
