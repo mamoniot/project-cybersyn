@@ -7,6 +7,7 @@ local ceil = math.ceil
 local INF = math.huge
 local btest = bit32.btest
 local band = bit32.band
+local table_remove = table.remove
 
 local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = 120}
 ---@param stop LuaEntity
@@ -295,26 +296,28 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	r_station.deliveries_total = r_station.deliveries_total + 1
 	p_station.deliveries_total = p_station.deliveries_total + 1
 
-	for _, item in ipairs(manifest) do
+	assert(manifest[1].name == primary_item_name)
+	for item_i, item in ipairs(manifest) do
 		assert(item.count > 0, "main.lua error, transfer amount was not positive")
 
 		r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
 		p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
 
-		local item_network_name = network_name..":"..item.name
-		local r_stations = economy.all_r_stations[item_network_name]
-		local p_stations = economy.all_p_stations[item_network_name]
-		--NOTE: one of these will be redundant
-		for i, id in ipairs(r_stations) do
-			if id == r_station_id then
-				table.remove(r_stations, i)
-				break
+		if item_i > 1 then
+			local item_network_name = network_name..":"..item.name
+			local r_stations = economy.all_r_stations[item_network_name]
+			local p_stations = economy.all_p_stations[item_network_name]
+			for j, id in ipairs(r_stations) do
+				if id == r_station_id then
+					table_remove(r_stations, j)
+					break
+				end
 			end
-		end
-		for i, id in ipairs(p_stations) do
-			if id == p_station_id then
-				table.remove(p_stations, i)
-				break
+			for j, id in ipairs(p_stations) do
+				if id == p_station_id then
+					table_remove(p_stations, j)
+					break
+				end
 			end
 		end
 	end
@@ -339,7 +342,7 @@ local function tick_poll_depot(map_data)
 		local tick_data = map_data.tick_data
 		while true do
 			if tick_data.network == nil then
-				tick_data.network_name, tick_data.network = next(map_data.trains_available)
+				tick_data.network_name, tick_data.network = next(map_data.trains_available, tick_data.network_name)
 				if tick_data.network == nil then
 					tick_data.train_id = nil
 					map_data.tick_state = STATE_POLL_STATIONS
@@ -478,13 +481,18 @@ local function tick_dispatch(map_data, mod_settings)
 	local stations = map_data.stations
 
 	local size = #all_names
-	if tick_data.start_i == nil and size > 0 then
-		--semi-randomized starting item
-		tick_data.start_i = 2*(map_data.total_ticks%(size/2)) + 1
-		tick_data.offset_i = 0
-	elseif size == 0 or tick_data.offset_i >= size then
-		tick_data.start_i = nil
-		tick_data.offset_i = nil
+	if size > 0 then
+		if tick_data.start_i == nil then
+			--semi-randomized starting item
+			tick_data.start_i = 2*(map_data.total_ticks%(size/2)) + 1
+			tick_data.offset_i = 0
+		elseif tick_data.offset_i >= size then
+			tick_data.start_i = nil
+			tick_data.offset_i = nil
+			map_data.tick_state = STATE_INIT
+			return true
+		end
+	else
 		map_data.tick_state = STATE_INIT
 		return true
 	end
@@ -500,72 +508,44 @@ local function tick_dispatch(map_data, mod_settings)
 
 	--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
 	if p_stations and #r_stations > 0 and #p_stations > 0 then
-		if #r_stations <= #p_stations then
-			--probably backpressure, prioritize locality
-			repeat
-				local i = map_data.total_ticks%#r_stations + 1
-				local r_station_id = table.remove(r_stations, i)
+		table.sort(r_stations, function(a_id, b_id)
+			local a = stations[a_id]
+			local b = stations[b_id]
+			if a.priority ~= b.priority then
+				return a.priority < b.priority
+			else
+				return a.last_delivery_tick > b.last_delivery_tick
+			end
+		end)
+		repeat
+			local r_station_id = table_remove(r_stations)
 
-				local best = 0
-				local best_depot = nil
-				local best_dist = INF
-				local highest_prior = -INF
-				local could_have_been_serviced = false
-				for j, p_station_id in ipairs(p_stations) do
-					local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
-					local prior = stations[p_station_id].priority
-					if prior > highest_prior or (prior == highest_prior and d < best_dist) then
-						if depot then
-							best = j
-							best_dist = d
-							best_depot = depot
-							highest_prior = prior
-						elseif d < INF then
-							could_have_been_serviced = true
-							best = j
-						end
+			local best = 0
+			local best_depot = nil
+			local best_dist = INF
+			local highest_prior = -INF
+			local could_have_been_serviced = false
+			for j, p_station_id in ipairs(p_stations) do
+				local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
+				local prior = stations[p_station_id].priority
+				if prior > highest_prior or (prior == highest_prior and d < best_dist) then
+					if depot then
+						best = j
+						best_dist = d
+						best_depot = depot
+						highest_prior = prior
+					elseif d < INF then
+						could_have_been_serviced = true
+						best = j
 					end
 				end
-				if best_depot then
-					send_train_between(map_data, r_station_id, p_stations[best], best_depot, item_name)
-				elseif could_have_been_serviced then
-					send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, stations[p_stations[best]].entity_stop)
-				end
-			until #r_stations == 0
-		else
-			--prioritize round robin
-			repeat
-				local j = map_data.total_ticks%#p_stations + 1
-				local p_station_id = table.remove(p_stations, j)
-
-				local best = 0
-				local best_depot = nil
-				local lowest_tick = INF
-				local highest_prior = -INF
-				local could_have_been_serviced = false
-				for i, r_station_id in ipairs(r_stations) do
-					local r_station = stations[r_station_id]
-					local prior = r_station.priority
-					if prior > highest_prior or (prior == highest_prior and r_station.last_delivery_tick < lowest_tick) then
-						local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
-						if depot then
-							best = i
-							best_depot = depot
-							lowest_tick = r_station.last_delivery_tick
-							highest_prior = prior
-						elseif d < INF then
-							could_have_been_serviced = true
-							best = i
-						end
-					end
-				end
-				if best_depot then
-					send_train_between(map_data, r_stations[best], p_station_id, best_depot, item_name)
-				elseif could_have_been_serviced then
-					send_missing_train_alert_for_stops(stations[r_stations[best]].entity_stop, stations[p_station_id].entity_stop)
-				end
-			until #p_stations == 0
-		end
+			end
+			if best_depot then
+				send_train_between(map_data, r_station_id, table_remove(p_stations, best), best_depot, item_name)
+			elseif could_have_been_serviced then
+				send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, stations[p_stations[best]].entity_stop)
+			end
+		until #r_stations == 0
 	end
 	return false
 end
