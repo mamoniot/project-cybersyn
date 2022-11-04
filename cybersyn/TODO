@@ -2,5 +2,4 @@ close gui when the combinator is destroyed
 do not play close sound when a different gui is opened
 support space elevator
 do hardcore testing
-optimizations?
 models & art
