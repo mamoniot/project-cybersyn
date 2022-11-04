@@ -72,22 +72,23 @@
 ---@type CybersynModSettings
 mod_settings = {}
 
---TODO: guarantee this only inits once
-global.total_ticks = 0
-global.tick_state = STATE_INIT
-global.tick_data = {}
-global.economy = {
-	all_r_stations = {},
-	all_p_stations = {},
-	all_names = {},
-}
-global.to_comb = {}
-global.to_output = {}
-global.to_stop = {}
-global.stations = {}
-global.depots = {}
-global.trains = {}
-global.trains_available = {}
-global.layouts = {}
-global.layout_train_count = {}
-global.layout_top_id = 1
+function init_global()
+	global.total_ticks = 0
+	global.tick_state = STATE_INIT
+	global.tick_data = {}
+	global.economy = {
+		all_r_stations = {},
+		all_p_stations = {},
+		all_names = {},
+	}
+	global.to_comb = {}
+	global.to_output = {}
+	global.to_stop = {}
+	global.stations = {}
+	global.depots = {}
+	global.trains = {}
+	global.trains_available = {}
+	global.layouts = {}
+	global.layout_train_count = {}
+	global.layout_top_id = 1
+end

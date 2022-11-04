@@ -33,7 +33,7 @@ data:extend({
 		order = "ad",
 		setting_type = "runtime-global",
 		default_value = 1,
-		minimum_value = -1,
+		minimum_value = -2147483648,
 		maximum_value = 2147483647,
 	},
 })

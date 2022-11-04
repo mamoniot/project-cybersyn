@@ -703,6 +703,20 @@ local function on_paste(event)
 	end
 end
 
+local function on_settings_changed(event)
+	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]
+	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
+	mod_settings.p_threshold = settings.global["cybersyn-provide-threshold"].value--[[@as int]]
+	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
+	if event.setting == "cybersyn-ticks-per-second" then
+		local nth_tick = math.ceil(60/mod_settings.tps);
+		flib_event.on_nth_tick(nil)
+		flib_event.on_nth_tick(nth_tick, function()
+			tick(global, mod_settings)
+		end)
+	end
+end
+
 
 local filter_built = {
 	{filter = "type", type = "train-stop"},
@@ -722,8 +736,7 @@ local filter_broken = {
 local filter_comb = {
 	{filter = "type", type = "arithmetic-combinator"},
 }
-local function register_events()
-
+local function main()
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.p_threshold = settings.global["cybersyn-provide-threshold"].value--[[@as int]]
@@ -753,21 +766,12 @@ local function register_events()
 
 	flib_event.register(defines.events.on_entity_renamed, on_rename)
 
+	flib_event.register(defines.events.on_runtime_mod_setting_changed, on_settings_changed)
+
 	register_gui_actions()
+
+	flib_event.on_init(init_global)
 end
 
-flib_event.on_load(function()
-	register_events()
-end)
 
-flib_event.on_init(function()
-	--TODO: we are not checking changed cargo capacities
-	--find_and_add_all_stations(global)
-	register_events()
-end)
-
-flib_event.on_configuration_changed(function(data)
-	--TODO: we are not checking changed cargo capacities
-	--find_and_add_all_stations(global)
-	register_events()
-end)
+main()
