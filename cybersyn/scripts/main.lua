@@ -720,6 +720,12 @@ local filter_comb = {
 	{filter = "type", type = "arithmetic-combinator"},
 }
 local function register_events()
+
+	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]
+	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
+	mod_settings.p_threshold = settings.global["cybersyn-provide-threshold"].value--[[@as int]]
+	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
+
 	--NOTE: I have no idea if this correctly registers all events once in all situations
 	flib_event.register(defines.events.on_built_entity, on_built, filter_built)
 	flib_event.register(defines.events.on_robot_built_entity, on_built, filter_built)

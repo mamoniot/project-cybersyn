@@ -11,6 +11,7 @@ LOCKED_SLOTS = "cybersyn-locked-slots"
 
 COMBINATOR_NAME = "cybersyn-combinator"
 COMBINATOR_OUT_NAME = "cybersyn-combinator-output"
+COMBINATOR_CLOSE_SOUND = "entity-close/cybersyn-combinator"
 
 OPERATION_DEFAULT = "*"
 OPERATION_PRIMARY_IO = "/"

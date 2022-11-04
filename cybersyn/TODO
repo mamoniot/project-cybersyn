@@ -1,5 +1,5 @@
 close gui when the combinator is destroyed
-play close sound when gui is closed
+do not play close sound when a different gui is opened
 improve localization
 support space elevator
 do hardcore testing

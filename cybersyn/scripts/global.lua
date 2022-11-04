@@ -32,7 +32,7 @@
 ---@field public is_all boolean
 ---@field public accepted_layouts TrainClass
 ---@field public layout_pattern string?
----@field public tick_signals Signal[]? --transient
+---@field public tick_signals {[uint]: Signal}? --transient
 
 ---@class Depot
 ---@field public priority int --transient
@@ -69,15 +69,10 @@
 ---@field public p_threshold int
 ---@field public network_flag int
 
-
---TODO: only init once and move settings code
 ---@type CybersynModSettings
 mod_settings = {}
-mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value
-mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value
-mod_settings.p_threshold = settings.global["cybersyn-provide-threshold"].value
-mod_settings.network_flag = settings.global["cybersyn-network-flag"].value
 
+--TODO: guarantee this only inits once
 global.total_ticks = 0
 global.tick_state = STATE_INIT
 global.tick_data = {}

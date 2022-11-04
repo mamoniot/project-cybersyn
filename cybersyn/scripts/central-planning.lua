@@ -85,11 +85,7 @@ function set_combinator_output(map_data, comb, signals)
 		local out = map_data.to_output[comb.unit_number]
 		if out.valid then
 			out.get_or_create_control_behavior().parameters = signals
-		else
-			--TODO: error logging?
 		end
-	else
-		--TODO: error logging?
 	end
 end
 
@@ -101,7 +97,7 @@ local function set_comb2(map_data, station)
 		local signals = {}
 		for item_name, count in pairs(deliveries) do
 			local i = #signals + 1
-			local item_type = game.item_prototypes[item_name].type
+			local item_type = game.item_prototypes[item_name].type--NOTE: this is expensive
 			signals[i] = {index = i, signal = {type = item_type, name = item_name}, count = -count}
 		end
 		set_combinator_output(map_data, station.entity_comb2, signals)
@@ -124,7 +120,6 @@ function remove_manifest(map_data, station, manifest, sign)
 end
 
 ---@param map_data MapData
----@param station Station
 ---@param signal SignalID
 local function get_thresholds(map_data, station, signal)
 	local comb2 = station.entity_comb2
@@ -229,10 +224,8 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 			---@type string
 			local item_name = v.signal.name
 			local item_count = v.count
-			--local item_type = v.signal.type
 			local effective_item_count = item_count + (r_station.deliveries[item_name] or 0)
-			local r_threshold, p_threshold = get_thresholds(map_data, r_station, v.signal)
-			if -effective_item_count >= r_threshold then
+			if effective_item_count < 0 and item_count < 0 then
 				requests[item_name] = -effective_item_count
 			end
 		end
@@ -245,8 +238,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 			local item_count = v.count
 			local item_type = v.signal.type
 			local effective_item_count = item_count + (p_station.deliveries[item_name] or 0)
-			local r_threshold, p_threshold = get_thresholds(map_data, p_station, v.signal)
-			if effective_item_count >= p_threshold then
+			if effective_item_count > 0 and item_count > 0 then
 				local r = requests[item_name]
 				if r then
 					local item = {name = item_name, type = item_type, count = min(r, effective_item_count)}
@@ -312,6 +304,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 		local item_network_name = network_name..":"..item.name
 		local r_stations = economy.all_r_stations[item_network_name]
 		local p_stations = economy.all_p_stations[item_network_name]
+		--NOTE: one of these will be redundant
 		for i, id in ipairs(r_stations) do
 			if id == r_station_id then
 				table.remove(r_stations, i)
@@ -422,9 +415,10 @@ local function tick_poll_station(map_data, mod_settings)
 						if item_type == "virtual" then
 							if item_name == SIGNAL_PRIORITY then
 								station.priority = item_count
-							elseif item_name == REQUEST_THRESHOLD then
+							elseif item_name == REQUEST_THRESHOLD and item_count ~= 0 then
+								--NOTE: thresholds must be >0 or they will cause a crash
 								station.r_threshold = abs(item_count)
-							elseif item_name == PROVIDE_THRESHOLD then
+							elseif item_name == PROVIDE_THRESHOLD and item_count ~= 0 then
 								station.p_threshold = abs(item_count)
 							elseif item_name == LOCKED_SLOTS then
 								station.locked_slots = max(item_count, 0)
@@ -444,7 +438,7 @@ local function tick_poll_station(map_data, mod_settings)
 					local effective_item_count = item_count + (station.deliveries[item_name] or 0)
 					local r_threshold, p_threshold = get_thresholds(map_data, station, v.signal)
 
-					if -effective_item_count >= r_threshold then
+					if -effective_item_count >= r_threshold and -item_count >= r_threshold then
 						local item_network_name = station.network_name..":"..item_name
 						local stations = all_r_stations[item_network_name]
 						if stations == nil then
@@ -454,7 +448,7 @@ local function tick_poll_station(map_data, mod_settings)
 							all_names[#all_names + 1] = v.signal
 						end
 						stations[#stations + 1] = station_id
-					elseif effective_item_count >= p_threshold then
+					elseif effective_item_count >= p_threshold and item_count >= p_threshold then
 						local item_network_name = station.network_name..":"..item_name
 						local stations = all_p_stations[item_network_name]
 						if stations == nil then
@@ -462,6 +456,8 @@ local function tick_poll_station(map_data, mod_settings)
 							all_p_stations[item_network_name] = stations
 						end
 						stations[#stations + 1] = station_id
+					else
+						signals[k] = nil
 					end
 				end
 			end

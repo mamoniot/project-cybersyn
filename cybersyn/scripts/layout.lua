@@ -244,7 +244,6 @@ function set_r_wagon_combs(map_data, station, train)
 				local stack = inv[stack_i]
 				if stack.valid_for_read then
 					local i = #signals + 1
-					--TODO: does this work or do we need to aggregate signals?
 					signals[i] = {index = i, signal = {type = stack.type, name = stack.name}, count = -stack.count}
 				end
 			end
@@ -406,7 +405,6 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 				if supports_fluid then
 					layout_pattern = layout_pattern..STATION_LAYOUT_ALL
 				else
-					--TODO: needs to allow misc wagons as well
 					layout_pattern = layout_pattern..STATION_LAYOUT_NOT_FLUID
 				end
 				pattern_length = #layout_pattern
@@ -456,7 +454,7 @@ end
 ---@param rail LuaEntity
 ---@param forbidden_entity LuaEntity?
 function update_station_from_rail(map_data, rail, forbidden_entity)
-	--TODO: search further or better?
+	--NOTE: should we search further or better? it would be more expensive
 	local entity = rail.get_rail_segment_entity(defines.rail_direction.back, false)
 	if entity and entity.valid and entity.name == "train-stop" then
 		local station = map_data.stations[entity.unit_number]
@@ -485,7 +483,6 @@ end
 ---@param inserter LuaEntity
 ---@param forbidden_entity LuaEntity?
 function update_station_from_inserter(map_data, inserter, forbidden_entity)
-	--TODO: check if correct
 	local surface = inserter.surface
 
 	local rail = surface.find_entity("straight-rail", inserter.pickup_position)

@@ -118,7 +118,7 @@ local function on_gui_closed(event)
 
 	if rootgui[COMBINATOR_NAME] then
 		rootgui[COMBINATOR_NAME].destroy()
-		--TODO: play close sound to player
+		player.play_sound({path = COMBINATOR_CLOSE_SOUND})
 	end
 end
 
@@ -133,7 +133,7 @@ function register_gui_actions()
 			if msg[1] == "close" then
 				if rootgui[COMBINATOR_NAME] then
 					rootgui[COMBINATOR_NAME].destroy()
-					--TODO: play close sound to player
+					player.play_sound({path = COMBINATOR_CLOSE_SOUND})
 				end
 			elseif msg[1] == "drop-down" then
 				local element = event.element
