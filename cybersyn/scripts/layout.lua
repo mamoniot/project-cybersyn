@@ -237,17 +237,18 @@ function set_r_wagon_combs(map_data, station, train)
 			end
 		end
 		if comb and carriage.type == "cargo-wagon" then
-			local signals = {}
-
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
-			for stack_i = 1, #inv do
-				local stack = inv[stack_i]
-				if stack.valid_for_read then
-					local i = #signals + 1
-					signals[i] = {index = i, signal = {type = stack.type, name = stack.name}, count = -stack.count}
+			if inv then
+				local signals = {}
+				for stack_i = 1, #inv do
+					local stack = inv[stack_i]
+					if stack.valid_for_read then
+						local i = #signals + 1
+						signals[i] = {index = i, signal = {type = stack.type, name = stack.name}, count = -stack.count}
+					end
 				end
+				set_combinator_output(map_data, comb, signals)
 			end
-			set_combinator_output(map_data, comb, signals)
 		elseif comb and carriage.type == "fluid-wagon" then
 			local signals = {}
 
