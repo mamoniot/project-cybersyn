@@ -15,7 +15,6 @@
                 "flib": true,
                 "cybersyn": true,
                 "creative-mod": true,
-                "LogisticTrainNetwork": true,
             },
             "disableExtraMods": true
         },
@@ -42,7 +41,6 @@
                 "flib": true,
                 "cybersyn": true,
                 "creative-mod": true,
-                "LogisticTrainNetwork": true,
             },
             "disableExtraMods": true
         }

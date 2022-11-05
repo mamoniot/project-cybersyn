@@ -1,6 +1,6 @@
 --By Mami
 combinator_entity = flib.copy_prototype(data.raw["arithmetic-combinator"]["arithmetic-combinator"], COMBINATOR_NAME)
-combinator_entity.icon = "__cybersyn__/graphics/icons/combinator.png"
+combinator_entity.icon = "__cybersyn__/graphics/icons/cybernetic-combinator.png"
 combinator_entity.radius_visualisation_specification = {
 	sprite = {
 		filename = "__cybersyn__/graphics/icons/area-of-effect.png",
@@ -13,6 +13,88 @@ combinator_entity.radius_visualisation_specification = {
 }
 combinator_entity.active_energy_usage = "10KW"
 combinator_entity.allow_copy_paste = false
+
+
+
+local comb = combinator_entity
+--local display_base = {
+--  filename = "__cybersyn__/graphics/combinator/combinator-displays.png",
+--  width = 15,
+--  height = 11,
+--  hr_version = {
+--    filename = "__cybersyn__/graphics/combinator/hr-combinator-displays.png",
+--    width = 30,
+--    height = 21,
+--  }
+--}
+
+--local north = table.deepcopy(display_base)
+--north.scale = comb.and_symbol_sprites.north.scale
+--north.shift = comb.and_symbol_sprites.north.shift
+--north.hr_version.scale = comb.and_symbol_sprites.north.hr_version.scale
+--north.hr_version.shift = comb.and_symbol_sprites.north.hr_version.shift
+--local east = table.deepcopy(display_base)
+--east.scale = comb.and_symbol_sprites.east.scale
+--east.shift = comb.and_symbol_sprites.east.shift
+--east.hr_version.scale = comb.and_symbol_sprites.east.hr_version.scale
+--east.hr_version.shift = comb.and_symbol_sprites.east.hr_version.shift
+--local south = table.deepcopy(display_base)
+--south.scale = comb.and_symbol_sprites.south.scale
+--south.shift = comb.and_symbol_sprites.south.shift
+--south.hr_version.scale = comb.and_symbol_sprites.south.hr_version.scale
+--south.hr_version.shift = comb.and_symbol_sprites.south.hr_version.shift
+--local west = table.deepcopy(display_base)
+--west.scale = comb.and_symbol_sprites.west.scale
+--west.shift = comb.and_symbol_sprites.west.shift
+--west.hr_version.scale = comb.and_symbol_sprites.west.hr_version.scale
+--west.hr_version.shift = comb.and_symbol_sprites.west.hr_version.shift
+
+--local display = {
+--  north = north,
+--  east = east,
+--  south = south,
+--  west = west
+--}
+--comb.and_symbol_sprites = table.deepcopy(display)
+--comb.divide_symbol_sprites = table.deepcopy(display)
+--comb.left_shift_symbol_sprites = table.deepcopy(display)
+--comb.minus_symbol_sprites = table.deepcopy(display)
+--comb.modulo_symbol_sprites = table.deepcopy(display)
+--comb.multiply_symbol_sprites = table.deepcopy(display)
+--comb.or_symbol_sprites = table.deepcopy(display)
+--comb.plus_symbol_sprites = table.deepcopy(display)
+--comb.power_symbol_sprites = table.deepcopy(display)
+--comb.right_shift_symbol_sprites = table.deepcopy(display)
+--comb.xor_symbol_sprites = table.deepcopy(display)
+
+
+--local sprite_base = {
+--	filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png",
+--	hr_version = {
+--		filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png",
+--	}
+--}
+
+--comb.sprites.north.layers[1].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
+--comb.sprites.north.layers[1].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
+--comb.sprites.north.layers[2].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
+--comb.sprites.north.layers[2].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
+
+--comb.sprites.east.layers[1].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
+--comb.sprites.east.layers[1].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
+--comb.sprites.east.layers[2].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
+--comb.sprites.east.layers[2].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
+
+--comb.sprites.south.layers[1].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
+--comb.sprites.south.layers[1].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
+--comb.sprites.south.layers[2].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
+--comb.sprites.south.layers[2].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
+
+--comb.sprites.west.layers[1].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
+--comb.sprites.west.layers[1].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
+--comb.sprites.west.layers[2].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
+--comb.sprites.west.layers[2].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
+
 
 
 combinator_out_entity = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"], COMBINATOR_OUT_NAME)
