@@ -562,6 +562,20 @@ end
 local function on_train_leaves_station(map_data, train)
 	if train.manifest then
 		if train.status == STATUS_P then
+			if train.has_filtered_wagon then
+				train.has_filtered_wagon = false
+				for carriage_i, carriage in ipairs(train.entity.carriages) do
+					if carriage.type == "cargo-wagon" then
+						local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
+						if inv and inv.is_filtered() then
+							---@type uint
+							for i = 1, #inv do
+								inv.set_filter(i, nil)
+							end
+						end
+					end
+				end
+			end
 			train.status = STATUS_P_TO_R
 			local station = map_data.stations[train.p_station_id]
 			remove_manifest(map_data, station, train.manifest, 1)
@@ -663,21 +677,23 @@ end
 local function on_train_changed(event)
 	local train_e = event.train
 	local train = global.trains[train_e.id]
-	if train_e.state == defines.train_state.wait_station then
-		local stop = train_e.station
-		if stop and stop.valid and stop.name == "train-stop" then
-			if global.stations[stop.unit_number] then
-				on_train_arrives_buffer(global, stop, train)
-			else
-				local depot = global.depots[stop.unit_number]
-				if depot then
-					on_train_arrives_depot(global, depot, train_e)
+	if train_e.valid then
+		if train_e.state == defines.train_state.wait_station then
+			local stop = train_e.station
+			if stop and stop.valid and stop.name == "train-stop" then
+				if global.stations[stop.unit_number] then
+					on_train_arrives_buffer(global, stop, train)
+				else
+					local depot = global.depots[stop.unit_number]
+					if depot then
+						on_train_arrives_depot(global, depot, train_e)
+					end
 				end
 			end
-		end
-	elseif event.old_state == defines.train_state.wait_station then
-		if train then
-			on_train_leaves_station(global, train)
+		elseif event.old_state == defines.train_state.wait_station then
+			if train then
+				on_train_leaves_station(global, train)
+			end
 		end
 	end
 end
@@ -739,7 +755,7 @@ local function main()
 	mod_settings.p_threshold = settings.global["cybersyn-provide-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
 
-	--NOTE: I have no idea if this correctly registers all events once in all situations
+	--NOTE: There is a concern that it is possible to build or destroy important entities without one of these events being triggered, in which case the mod will have undefined behavior
 	flib_event.register(defines.events.on_built_entity, on_built, filter_built)
 	flib_event.register(defines.events.on_robot_built_entity, on_built, filter_built)
 	flib_event.register({defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, on_built)
@@ -754,7 +770,7 @@ local function main()
 	flib_event.register(defines.events.on_entity_settings_pasted, on_paste)
 
 	local nth_tick = math.ceil(60/mod_settings.tps);
-	flib_event.on_nth_tick(nth_tick, function(event)
+	flib_event.on_nth_tick(nth_tick, function()
 		tick(global, mod_settings)
 	end)
 

@@ -53,6 +53,7 @@
 ---@field public p_station_id uint
 ---@field public r_station_id uint
 ---@field public manifest Manifest
+---@field public has_filtered_wagon boolean
 
 ---@alias Manifest {}[]
 ---@alias TrainClass {[uint]: boolean}

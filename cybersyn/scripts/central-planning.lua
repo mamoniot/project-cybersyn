@@ -9,6 +9,7 @@ local btest = bit32.btest
 local band = bit32.band
 local table_remove = table.remove
 local table_sort = table.sort
+local random = math.random
 
 local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = 120}
 ---@param stop LuaEntity
@@ -99,8 +100,8 @@ local function set_comb2(map_data, station)
 		local signals = {}
 		for item_name, count in pairs(deliveries) do
 			local i = #signals + 1
-			local item_type = game.item_prototypes[item_name].type--NOTE: this is expensive
-			signals[i] = {index = i, signal = {type = item_type, name = item_name}, count = -count}
+			local is_fluid = game.item_prototypes[item_name] == nil--NOTE: this is expensive
+			signals[i] = {index = i, signal = {type = is_fluid and "fluid" or "item", name = item_name}, count = -count}
 		end
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end
@@ -481,23 +482,13 @@ local function tick_dispatch(map_data, mod_settings)
 	local all_p_stations = map_data.economy.all_p_stations
 	local all_names = map_data.economy.all_names
 	local stations = map_data.stations
-	local size = #all_names
 
 	local r_stations = tick_data.r_stations
 	local p_stations = tick_data.p_stations
 	if not (p_stations and #r_stations > 0 and #p_stations > 0) then
-		if size == 0 then
-			map_data.tick_state = STATE_INIT
-			return true
-		elseif tick_data.start_i == nil then
-			--semi-randomized starting item
-			tick_data.start_i = 2*(map_data.total_ticks%(size/2)) + 1
-			tick_data.offset_i = 0
-		end
 		while true do
-			if tick_data.offset_i >= size then
-				tick_data.start_i = nil
-				tick_data.offset_i = nil
+			local size = #all_names
+			if size == 0 then
 				tick_data.r_stations = nil
 				tick_data.p_stations = nil
 				tick_data.item_name = nil
@@ -505,11 +496,16 @@ local function tick_dispatch(map_data, mod_settings)
 				map_data.tick_state = STATE_INIT
 				return true
 			end
-			local name_i = tick_data.start_i + tick_data.offset_i
-			tick_data.offset_i = tick_data.offset_i + 2
 
-			local item_network_name = all_names[(name_i - 1)%size + 1]
-			local signal = all_names[(name_i)%size + 1]
+			--randomizing the ordering should only matter if we run out of available trains
+			local name_i = size <= 2 and 2 or 2*random(size/2)
+			local item_network_name = all_names[name_i - 1]
+			local signal = all_names[name_i]
+			--swap remove
+			all_names[name_i - 1] = all_names[size - 1]
+			all_names[name_i] = all_names[size]
+			all_names[size] = nil
+			all_names[size - 1] = nil
 
 			r_stations = all_r_stations[item_network_name]
 			p_stations = all_p_stations[item_network_name]

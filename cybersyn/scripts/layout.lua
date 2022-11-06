@@ -2,6 +2,7 @@
 local area = require("__flib__.area")
 local abs = math.abs
 local floor = math.floor
+local ceil = math.ceil
 
 local function iterr(a, i)
 	i = i + 1
@@ -123,6 +124,7 @@ function set_p_wagon_combs(map_data, station, train)
 
 	local ivpairs = is_reversed and irpairs or ipairs
 	for carriage_i, carriage in ivpairs(carriages) do
+		--NOTE: we are not checking valid
 		---@type LuaEntity?
 		local comb = station.wagon_combs[carriage_i]
 		if comb and not comb.valid then
@@ -137,42 +139,53 @@ function set_p_wagon_combs(map_data, station, train)
 			local signals = {}
 
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
-			local item_slots_capacity = #inv - station.locked_slots
-			while item_slots_capacity > 0 do
-				local do_inc = false
-				if item.type == "item" then
-					local stack_size = game.item_prototypes[item.name].stack_size
-					local item_slots = math.ceil(item_count/stack_size)
-					local i = #signals + 1
-					if item_slots > item_slots_capacity then
-						if comb then
-							signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item_slots_capacity*stack_size}
+			if inv then
+				local inv_filter_i = 1
+				local item_slots_capacity = #inv - station.locked_slots
+				while item_slots_capacity > 0 do
+					local do_inc = false
+					if item.type == "item" then
+						local stack_size = game.item_prototypes[item.name].stack_size
+						local item_slots = ceil(item_count/stack_size)
+						local i = #signals + 1
+						local slots_to_filter
+						if item_slots > item_slots_capacity then
+							if comb then
+								signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item_slots_capacity*stack_size}
+							end
+							item_slots_capacity = 0
+							item_count = item_count - item_slots_capacity*stack_size
+							slots_to_filter = item_slots_capacity
+						else
+							if comb then
+								signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item_count}
+							end
+							item_slots_capacity = item_slots_capacity - item_slots
+							do_inc = true
+							slots_to_filter = item_slots
 						end
-						item_slots_capacity = 0
-						item_count = item_count - item_slots_capacity*stack_size
+						for j = 1, slots_to_filter do
+							inv.set_filter(inv_filter_i, item.name)
+							inv_filter_i = inv_filter_i + 1
+						end
+						train.has_filtered_wagon = true
 					else
-						if comb then
-							signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item_count}
-						end
-						item_slots_capacity = item_slots_capacity - item_slots
 						do_inc = true
 					end
-				else
-					do_inc = true
-				end
-				if do_inc then
-					item_i = item_i + 1
-					if item_i <= #manifest then
-						item = manifest[item_i]
-						item_count = item.count
-					else
-						break
+					if do_inc then
+						item_i = item_i + 1
+						if item_i <= #manifest then
+							item = manifest[item_i]
+							item_count = item.count
+						else
+							break
+						end
 					end
 				end
-			end
 
-			if comb then
-				set_combinator_output(map_data, comb, signals)
+				if comb then
+					set_combinator_output(map_data, comb, signals)
+				end
 			end
 		elseif carriage.type == "fluid-wagon" and fluid_i <= #manifest then
 			local fluid_capacity = carriage.prototype.fluid_capacity

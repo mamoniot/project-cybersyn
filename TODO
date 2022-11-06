@@ -4,3 +4,6 @@ do hardcore testing
 models & art
 space elevator compat
 railloader compat
+add missing items alert
+lost train can be repurposed and rescheduled while alert is active
+display when train is coming
