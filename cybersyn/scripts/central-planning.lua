@@ -8,6 +8,7 @@ local INF = math.huge
 local btest = bit32.btest
 local band = bit32.band
 local table_remove = table.remove
+local table_sort = table.sort
 
 local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = 120}
 ---@param stop LuaEntity
@@ -471,81 +472,92 @@ end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 local function tick_dispatch(map_data, mod_settings)
-	--we do not dispatch more than one train per station per tick
+	--we do not dispatch more than one train per tick
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
 	--NOTE: It may be better for performance to update stations one tick at a time rather than all at once, however this does mean more  redundant data will be generated and discarded each tick. Once we have a performance test-bed it will probably be worth checking.
+	--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
 	local tick_data = map_data.tick_data
 	local all_r_stations = map_data.economy.all_r_stations
 	local all_p_stations = map_data.economy.all_p_stations
 	local all_names = map_data.economy.all_names
 	local stations = map_data.stations
-
 	local size = #all_names
-	if size > 0 then
-		if tick_data.start_i == nil then
+
+	local r_stations = tick_data.r_stations
+	local p_stations = tick_data.p_stations
+	if not (p_stations and #r_stations > 0 and #p_stations > 0) then
+		if size == 0 then
+			map_data.tick_state = STATE_INIT
+			return true
+		elseif tick_data.start_i == nil then
 			--semi-randomized starting item
 			tick_data.start_i = 2*(map_data.total_ticks%(size/2)) + 1
 			tick_data.offset_i = 0
-		elseif tick_data.offset_i >= size then
-			tick_data.start_i = nil
-			tick_data.offset_i = nil
-			map_data.tick_state = STATE_INIT
-			return true
 		end
-	else
-		map_data.tick_state = STATE_INIT
-		return true
-	end
-	local name_i = tick_data.start_i + tick_data.offset_i
-	tick_data.offset_i = tick_data.offset_i + 2
-
-	local item_network_name = all_names[(name_i - 1)%size + 1]
-	local signal = all_names[(name_i)%size + 1]
-	local item_name = signal.name
-	local item_type = signal.type
-	local r_stations = all_r_stations[item_network_name]
-	local p_stations = all_p_stations[item_network_name]
-
-	--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
-	if p_stations and #r_stations > 0 and #p_stations > 0 then
-		table.sort(r_stations, function(a_id, b_id)
-			local a = stations[a_id]
-			local b = stations[b_id]
-			if a.priority ~= b.priority then
-				return a.priority < b.priority
-			else
-				return a.last_delivery_tick > b.last_delivery_tick
+		while true do
+			if tick_data.offset_i >= size then
+				tick_data.start_i = nil
+				tick_data.offset_i = nil
+				tick_data.r_stations = nil
+				tick_data.p_stations = nil
+				tick_data.item_name = nil
+				tick_data.item_type = nil
+				map_data.tick_state = STATE_INIT
+				return true
 			end
-		end)
-		repeat
-			local r_station_id = table_remove(r_stations)
+			local name_i = tick_data.start_i + tick_data.offset_i
+			tick_data.offset_i = tick_data.offset_i + 2
 
-			local best = 0
-			local best_depot = nil
-			local best_dist = INF
-			local highest_prior = -INF
-			local could_have_been_serviced = false
-			for j, p_station_id in ipairs(p_stations) do
-				local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type)
-				local prior = stations[p_station_id].priority
-				if prior > highest_prior or (prior == highest_prior and d < best_dist) then
-					if depot then
-						best = j
-						best_dist = d
-						best_depot = depot
-						highest_prior = prior
-					elseif d < INF then
-						could_have_been_serviced = true
-						best = j
+			local item_network_name = all_names[(name_i - 1)%size + 1]
+			local signal = all_names[(name_i)%size + 1]
+
+			r_stations = all_r_stations[item_network_name]
+			p_stations = all_p_stations[item_network_name]
+			if p_stations and #r_stations > 0 and #p_stations > 0 then
+				tick_data.r_stations = r_stations
+				tick_data.p_stations = p_stations
+				tick_data.item_name = signal.name
+				tick_data.item_type = signal.type
+				table_sort(r_stations, function(a_id, b_id)
+					local a = stations[a_id]
+					local b = stations[b_id]
+					if a.priority ~= b.priority then
+						return a.priority < b.priority
+					else
+						return a.last_delivery_tick > b.last_delivery_tick
 					end
-				end
+				end)
+				break
 			end
-			if best_depot then
-				send_train_between(map_data, r_station_id, table_remove(p_stations, best), best_depot, item_name)
-			elseif could_have_been_serviced then
-				send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, stations[p_stations[best]].entity_stop)
+		end
+	end
+
+	local r_station_id = table_remove(r_stations--[[@as uint[] ]])
+
+	local best = 0
+	local best_depot = nil
+	local best_dist = INF
+	local highest_prior = -INF
+	local could_have_been_serviced = false
+	for j, p_station_id in ipairs(p_stations) do
+		local depot, d = get_valid_train(map_data, r_station_id, p_station_id, tick_data.item_type)
+		local prior = stations[p_station_id].priority
+		if prior > highest_prior or (prior == highest_prior and d < best_dist) then
+			if depot then
+				best = j
+				best_dist = d
+				best_depot = depot
+				highest_prior = prior
+			elseif d < INF then
+				could_have_been_serviced = true
+				best = j
 			end
-		until #r_stations == 0
+		end
+	end
+	if best_depot then
+		send_train_between(map_data, r_station_id, table_remove(p_stations, best), best_depot, tick_data.item_name)
+	elseif could_have_been_serviced then
+		send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, stations[p_stations[best]].entity_stop)
 	end
 	return false
 end
