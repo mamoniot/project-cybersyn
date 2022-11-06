@@ -195,7 +195,7 @@ local function on_combinator_built(map_data, comb)
 			if cur_entity.name == "train-stop" then
 				--NOTE: if there are multiple stops we take the later one
 				stop = cur_entity
-			elseif cur_entity.name == "straight-rail" then
+			elseif cur_entity.type == "straight-rail" then
 				rail = cur_entity
 			end
 		end
@@ -719,22 +719,19 @@ end
 
 
 local filter_built = {
-	{filter = "type", type = "train-stop"},
-	{filter = "type", type = "arithmetic-combinator"},
+	{filter = "name", name = "train-stop"},
+	{filter = "name", name = COMBINATOR_NAME},
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
 }
 local filter_broken = {
-	{filter = "type", type = "train-stop"},
-	{filter = "type", type = "arithmetic-combinator"},
+	{filter = "name", name = "train-stop"},
+	{filter = "name", name = COMBINATOR_NAME},
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
 	{filter = "rolling-stock"},
-}
-local filter_comb = {
-	{filter = "type", type = "arithmetic-combinator"},
 }
 local function main()
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]

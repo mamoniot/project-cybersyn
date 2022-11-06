@@ -507,12 +507,21 @@ end
 function update_station_from_inserter(map_data, inserter, forbidden_entity)
 	local surface = inserter.surface
 
-	local rail = surface.find_entity("straight-rail", inserter.pickup_position)
-	if rail then
-		update_station_from_rail(map_data, rail, forbidden_entity)
+	--NOTE: we don't use find_entity solely for miniloader compat
+	local rails = surface.find_entities_filtered({
+		type = "straight-rail",
+		position = inserter.pickup_position,
+		radius = 1,
+	})
+	if rails[1] then
+		update_station_from_rail(map_data, rails[1], forbidden_entity)
 	end
-	rail = surface.find_entity("straight-rail", inserter.drop_position)
-	if rail then
-		update_station_from_rail(map_data, rail, forbidden_entity)
+	rails = surface.find_entities_filtered({
+		type = "straight-rail",
+		position = inserter.drop_position,
+		radius = 1,
+	})
+	if rails[1] then
+		update_station_from_rail(map_data, rails[1], forbidden_entity)
 	end
 end

@@ -2,6 +2,5 @@ close gui when the combinator is destroyed
 do not play close sound when a different gui is opened
 do hardcore testing
 models & art
-move signal subgroup
-add miniloader compat
 space elevator compat
+railloader compat
