@@ -28,7 +28,7 @@ cybersyn_tech = {
 			{"automation-science-pack", 1},
 			{"logistic-science-pack", 1}
 		},
-		count = 400,
+		count = 250,
 		time = 30
 	},
 	order = "c-g-c"
