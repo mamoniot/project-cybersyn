@@ -1,6 +1,28 @@
 --By Mami
 local flib_event = require("__flib__.event")
 
+
+---@param map_data MapData
+---@param station Station
+---@param sign int?
+local function set_comb1(map_data, station, manifest, sign)
+	local comb = station.entity_comb1
+	if comb.valid then
+		if manifest then
+			local signals = {}
+			for i, item in ipairs(manifest) do
+				signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = sign*item.count}
+			end
+			set_combinator_output(map_data, comb, signals)
+		else
+			if station.deliveries_total == 0 then
+				set_combinator_operation(comb, OPERATION_PRIMARY_IO)
+			end
+			set_combinator_output(map_data, comb, nil)
+		end
+	end
+end
+
 ---@param map_data MapData
 ---@param train Train
 local function on_failed_delivery(map_data, train)
@@ -10,7 +32,7 @@ local function on_failed_delivery(map_data, train)
 		local station = map_data.stations[train.p_station_id]
 		remove_manifest(map_data, station, train.manifest, 1)
 		if train.status == STATUS_P then
-			set_combinator_output(map_data, station.entity_comb1, nil)
+			set_comb1(map_data, station, nil)
 			unset_wagon_combs(map_data, station)
 		end
 	end
@@ -19,7 +41,7 @@ local function on_failed_delivery(map_data, train)
 		local station = map_data.stations[train.r_station_id]
 		remove_manifest(map_data, station, train.manifest, -1)
 		if train.status == STATUS_R then
-			set_combinator_output(map_data, station.entity_comb1, nil)
+			set_comb1(map_data, station, nil)
 			unset_wagon_combs(map_data, station)
 		end
 	end
@@ -224,16 +246,22 @@ local function on_combinator_built(map_data, comb)
 
 	local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
 	local control = a.parameters
-	if control.operation == OPERATION_DEFAULT then
-		control.operation = OPERATION_PRIMARY_IO
+	local op = control.operation
+	if op == OPERATION_DEFAULT then
+		op = OPERATION_PRIMARY_IO
+		control.operation = op
 		control.first_signal = NETWORK_SIGNAL_DEFAULT
 		a.parameters = control
+	elseif op == OPERATION_PRIMARY_IO_ACTIVE then
+		op = OPERATION_PRIMARY_IO
+		control.operation = op
+		a.parameters = control
 	end
-	if control.operation == OPERATION_WAGON_MANIFEST then
+	if op == OPERATION_WAGON_MANIFEST then
 		if rail then
 			force_update_station_from_rail(map_data, rail, nil)
 		end
-	elseif control.operation == OPERATION_DEPOT then
+	elseif op == OPERATION_DEPOT then
 		if stop then
 			local station = map_data.stations[stop.unit_number]
 			---@type Depot
@@ -244,7 +272,7 @@ local function on_combinator_built(map_data, comb)
 				on_depot_built(map_data, stop, comb, control)
 			end
 		end
-	elseif control.operation == OPERATION_SECONDARY_IO then
+	elseif op == OPERATION_SECONDARY_IO then
 		if stop then
 			local station = map_data.stations[stop.unit_number]
 			if station and not station.entity_comb2 then
@@ -375,11 +403,12 @@ local function on_stop_built(map_data, stop)
 		if entity.valid and entity.name == COMBINATOR_NAME and map_data.to_stop[entity.unit_number] == nil then
 			map_data.to_stop[entity.unit_number] = stop
 			local control = entity.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
-			if control.operation == OPERATION_PRIMARY_IO then
+			local op = control.operation
+			if op == OPERATION_PRIMARY_IO then
 				comb1 = entity
-			elseif control.operation == OPERATION_SECONDARY_IO then
+			elseif op == OPERATION_SECONDARY_IO then
 				comb2 = entity
-			elseif control.operation == OPERATION_DEPOT then
+			elseif op == OPERATION_DEPOT then
 				depot_comb = entity
 			end
 		end
@@ -525,25 +554,15 @@ local function on_train_arrives_buffer(map_data, stop, train)
 		if train.status == STATUS_D_TO_P then
 			if train.p_station_id == station_id then
 				train.status = STATUS_P
-				--change circuit outputs
 				local station = map_data.stations[station_id]
-				local signals = {}
-				for i, item in ipairs(train.manifest) do
-					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item.count}
-				end
-				set_combinator_output(map_data, station.entity_comb1, signals)
+				set_comb1(map_data, station, train.manifest, 1)
 				set_p_wagon_combs(map_data, station, train)
 			end
 		elseif train.status == STATUS_P_TO_R then
 			if train.r_station_id == station_id then
 				train.status = STATUS_R
-				--change circuit outputs
 				local station = map_data.stations[station_id]
-				local signals = {}
-				for i, item in ipairs(train.manifest) do
-					signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = -item.count}
-				end
-				set_combinator_output(map_data, station.entity_comb1, signals)
+				set_comb1(map_data, station, train.manifest, -1)
 				set_r_wagon_combs(map_data, station, train)
 			end
 		else
@@ -562,6 +581,11 @@ end
 local function on_train_leaves_station(map_data, train)
 	if train.manifest then
 		if train.status == STATUS_P then
+			train.status = STATUS_P_TO_R
+			local station = map_data.stations[train.p_station_id]
+			remove_manifest(map_data, station, train.manifest, 1)
+			set_comb1(map_data, station, nil)
+			unset_wagon_combs(map_data, station)
 			if train.has_filtered_wagon then
 				train.has_filtered_wagon = false
 				for carriage_i, carriage in ipairs(train.entity.carriages) do
@@ -576,16 +600,11 @@ local function on_train_leaves_station(map_data, train)
 					end
 				end
 			end
-			train.status = STATUS_P_TO_R
-			local station = map_data.stations[train.p_station_id]
-			remove_manifest(map_data, station, train.manifest, 1)
-			set_combinator_output(map_data, station.entity_comb1, nil)
-			unset_wagon_combs(map_data, station)
 		elseif train.status == STATUS_R then
 			train.status = STATUS_R_TO_D
 			local station = map_data.stations[train.r_station_id]
 			remove_manifest(map_data, station, train.manifest, -1)
-			set_combinator_output(map_data, station.entity_comb1, nil)
+			set_comb1(map_data, station, nil)
 			unset_wagon_combs(map_data, station)
 		end
 	elseif train.depot then

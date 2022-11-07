@@ -32,13 +32,14 @@ function gui_opened(comb, player)
 	local rootgui = player.gui.screen
 	local selected_index = 0
 	local control = comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
-	if control.operation == OPERATION_PRIMARY_IO then
+	local op = control.operation
+	if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE then
 		selected_index = 1
-	elseif control.operation == OPERATION_SECONDARY_IO then
+	elseif op == OPERATION_SECONDARY_IO then
 		selected_index = 2
-	elseif control.operation == OPERATION_DEPOT then
+	elseif op == OPERATION_DEPOT then
 		selected_index = 3
-	elseif control.operation == OPERATION_WAGON_MANIFEST then
+	elseif op == OPERATION_WAGON_MANIFEST then
 		selected_index = 4
 	end
 
@@ -142,28 +143,26 @@ function register_gui_actions()
 				if not comb or not comb.valid then return end
 
 				local parent = element.parent.bottom
-				local a = comb.get_or_create_control_behavior() --[[@as LuaArithmeticCombinatorControlBehavior]]
-				local control = a.parameters
 				if element.selected_index == 1 then
-					control.operation = OPERATION_PRIMARY_IO
+					set_combinator_operation(comb, OPERATION_PRIMARY_IO)
 					element.parent["network_label"].visible = true
 					parent["network"].visible = true
 					parent["radiobutton"].visible = true
 					parent["radiolabel"].visible = true
 				elseif element.selected_index == 2 then
-					control.operation = OPERATION_SECONDARY_IO
+					set_combinator_operation(comb, OPERATION_SECONDARY_IO)
 					element.parent["network_label"].visible = false
 					parent["network"].visible = false
 					parent["radiobutton"].visible = false
 					parent["radiolabel"].visible = false
 				elseif element.selected_index == 3 then
-					control.operation = OPERATION_DEPOT
+					set_combinator_operation(comb, OPERATION_DEPOT)
 					element.parent["network_label"].visible = true
 					parent["network"].visible = true
 					parent["radiobutton"].visible = false
 					parent["radiolabel"].visible = false
 				elseif element.selected_index == 4 then
-					control.operation = OPERATION_WAGON_MANIFEST
+					set_combinator_operation(comb, OPERATION_WAGON_MANIFEST)
 					element.parent["network_label"].visible = false
 					parent["network"].visible = false
 					parent["radiobutton"].visible = false
@@ -172,7 +171,6 @@ function register_gui_actions()
 					return
 				end
 
-				a.parameters = control
 				on_combinator_updated(global, comb)
 			elseif msg[1] == "choose-elem-button" then
 				local element = event.element

@@ -84,12 +84,18 @@ end
 ---@param comb LuaEntity
 ---@param signals ConstantCombinatorParameters[]?
 function set_combinator_output(map_data, comb, signals)
-	if comb.valid then
-		local out = map_data.to_output[comb.unit_number]
-		if out.valid then
-			out.get_or_create_control_behavior().parameters = signals
-		end
+	local out = map_data.to_output[comb.unit_number]
+	if out.valid then
+		out.get_or_create_control_behavior().parameters = signals
 	end
+end
+---@param comb LuaEntity
+---@param op string
+function set_combinator_operation(comb, op)
+		local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
+		local control = a.parameters
+		control.operation = op
+		a.parameters = control
 end
 
 ---@param map_data MapData
@@ -333,6 +339,12 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	train.entity.schedule = create_manifest_schedule(train.depot_name, p_station.entity_stop, r_station.entity_stop, manifest)
 	set_comb2(map_data, p_station)
 	set_comb2(map_data, r_station)
+	if p_station.entity_comb1.valid then
+		set_combinator_operation(p_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+	end
+	if r_station.entity_comb1.valid then
+		set_combinator_operation(r_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+	end
 end
 
 
