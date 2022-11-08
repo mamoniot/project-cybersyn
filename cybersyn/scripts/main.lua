@@ -695,13 +695,15 @@ local function on_train_built(event)
 end
 local function on_train_changed(event)
 	local train_e = event.train
-	local train = global.trains[train_e.id]
 	if train_e.valid then
+		local train = global.trains[train_e.id]
 		if train_e.state == defines.train_state.wait_station then
 			local stop = train_e.station
 			if stop and stop.valid and stop.name == "train-stop" then
 				if global.stations[stop.unit_number] then
-					on_train_arrives_buffer(global, stop, train)
+					if train then
+						on_train_arrives_buffer(global, stop, train)
+					end
 				else
 					local depot = global.depots[stop.unit_number]
 					if depot then
