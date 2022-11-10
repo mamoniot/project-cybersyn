@@ -170,6 +170,7 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 
 	---@type Depot|nil
 	local best_depot = nil
+	local best_capacity = 0
 	local best_dist = INF
 	local valid_train_exists = false
 
@@ -182,9 +183,10 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 			local layout_id = train.layout_id
 			--check cargo capabilities
 			--check layout validity for both stations
+			local capacity = (is_fluid and train.fluid_capacity) or train.item_slot_capacity
 			if
+			capacity > 0 and
 			btest(netand, depot.network_flag) and
-			((is_fluid and train.fluid_capacity > 0) or (not is_fluid and train.item_slot_capacity > 0)) and
 			(r_station.is_all or r_station.accepted_layouts[layout_id]) and
 			(p_station.is_all or p_station.accepted_layouts[layout_id])
 			then
@@ -194,7 +196,8 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 				local d_to_p_dist = get_stop_dist(depot.entity_stop, p_station.entity_stop) - DEPOT_PRIORITY_MULT*depot.priority
 
 				local dist = d_to_p_dist
-				if dist < best_dist then
+				if capacity > best_capacity or (capacity == best_capacity and dist < best_dist) then
+					best_capacity = capacity
 					best_dist = dist
 					best_depot = depot
 				end

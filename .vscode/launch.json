@@ -28,7 +28,6 @@
                 "debugadapter": true,
                 "flib": true,
                 "cybersyn": true,
-                "creative-mod": true,
             },
             "disableExtraMods": false
         },

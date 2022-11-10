@@ -3,6 +3,8 @@ local area = require("__flib__.area")
 local abs = math.abs
 local floor = math.floor
 local ceil = math.ceil
+local string_find = string.find
+local string_sub = string.sub
 
 local function iterr(a, i)
 	i = i + 1
@@ -431,11 +433,11 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 			search_area = area.move(search_area, area_delta)
 		end
 	end
-	layout_pattern = string.sub(layout_pattern, 1, pattern_length)..STATION_LAYOUT_NA.."*$"
+	layout_pattern = string_sub(layout_pattern, 1, pattern_length)..STATION_LAYOUT_NA.."*$"
 	station.layout_pattern = layout_pattern
 	local accepted_layouts = station.accepted_layouts
 	for id, layout in pairs(map_data.layouts) do
-		if string.find(layout, layout_pattern) ~= nil then
+		if string_find(layout, layout_pattern) ~= nil then
 			accepted_layouts[id] = true
 		else
 			accepted_layouts[id] = nil
