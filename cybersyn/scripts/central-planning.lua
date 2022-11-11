@@ -226,32 +226,9 @@ end
 
 
 ---@param map_data MapData
-local function tick_poll_depot(map_data)
-	local depot_id
-	do--get next depot id
-		local tick_data = map_data.tick_data
-		while true do
-			if tick_data.network == nil then
-				tick_data.network_name, tick_data.network = next(map_data.trains_available, tick_data.network_name)
-				if tick_data.network == nil then
-					tick_data.train_id = nil
-					map_data.tick_state = STATE_POLL_STATIONS
-					return true
-				end
-			end
-
-			tick_data.train_id, depot_id = next(tick_data.network, tick_data.train_id)
-			if depot_id then
-				break
-			else
-				tick_data.network = nil
-			end
-		end
-	end
-
-	local depot = map_data.depots[depot_id]
+function poll_depot(map_data, depot)
 	local comb = depot.entity_comb
-	if depot.network_name and comb.valid and (comb.status == defines.entity_status.working or comb.status == defines.entity_status.low_power) then
+	if depot.network_name then
 		depot.priority = 0
 		depot.network_flag = 1
 		local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
@@ -269,12 +246,9 @@ local function tick_poll_depot(map_data)
 				end
 			end
 		end
-	else
-		depot.priority = 0
-		depot.network_flag = 0
 	end
-	return false
 end
+
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 local function tick_poll_station(map_data, mod_settings)
@@ -284,11 +258,18 @@ local function tick_poll_station(map_data, mod_settings)
 	local all_names = map_data.economy.all_names
 
 	while true do
-		local station_id, station = next(map_data.stations, tick_data.station_id)
-		tick_data.station_id = station_id
-		if station == nil then
+		tick_data.i = (tick_data.i or 0) + 1
+		if tick_data.i > #map_data.all_station_ids then
+			tick_data.i = nil
 			map_data.tick_state = STATE_DISPATCH
 			return true
+		end
+		local station_id = map_data.all_station_ids[tick_data.i]
+		local station = map_data.stations[station_id]
+		if station == nil then
+			table_remove(map_data.all_station_ids, tick_data.i)
+			tick_data.i = tick_data.i - 1
+			return false
 		end
 		if station.display_update then
 			update_combinator_display(station.entity_comb1, station.display_failed_request)
@@ -303,7 +284,7 @@ local function tick_poll_station(map_data, mod_settings)
 			station.network_flag = mod_settings.network_flag
 			local signals = get_signals(station)
 			station.tick_signals = signals
-			table_clear(station.p_count_or_r_threshold_per_item)
+			station.p_count_or_r_threshold_per_item = {}
 			if signals then
 				for k, v in pairs(signals) do
 					local item_name = v.signal.name
@@ -379,7 +360,7 @@ local function tick_dispatch(map_data, mod_settings)
 
 	local r_stations = tick_data.r_stations
 	local p_stations = tick_data.p_stations
-	if not (p_stations and #r_stations > 0 and #p_stations > 0) then
+	if not p_stations then
 		while true do
 			local size = #all_names
 			if size == 0 then
@@ -445,7 +426,7 @@ local function tick_dispatch(map_data, mod_settings)
 		local best_depot = nil
 		local best_dist = INF
 		local highest_prior = -INF
-		local could_have_been_serviced = false
+		local can_be_serviced = false
 		for j, p_station_id in ipairs(p_stations) do
 			local p_station = stations[p_station_id]
 			if p_station and p_station.p_count_or_r_threshold_per_item[item_name] >= r_threshold then
@@ -458,17 +439,22 @@ local function tick_dispatch(map_data, mod_settings)
 						best_dist = d
 						best_depot = depot
 						highest_prior = prior
+						can_be_serviced = true
 					elseif d < INF then
-						could_have_been_serviced = true
+						can_be_serviced = true
 						best = j
 					end
 				end
 			end
 		end
-		if best_depot then
+		if
+		best_depot and (
+		best_depot.entity_comb.status == defines.entity_status.working or
+		best_depot.entity_comb.status == defines.entity_status.low_power)
+		then
 			send_train_between(map_data, r_station_id, table_remove(p_stations, best), best_depot, item_name)
 		else
-			if could_have_been_serviced then
+			if can_be_serviced then
 				send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best]].entity_stop)
 			end
 			r_station.display_failed_request = true
@@ -485,14 +471,10 @@ function tick(map_data, mod_settings)
 		map_data.economy.all_p_stations = {}
 		map_data.economy.all_r_stations = {}
 		map_data.economy.all_names = {}
-		map_data.tick_state = STATE_POLL_DEPOTS
+		map_data.tick_state = STATE_POLL_STATIONS
 	end
 
-	if map_data.tick_state == STATE_POLL_DEPOTS then
-		for i = 1, 3 do
-			if tick_poll_depot(map_data) then break end
-		end
-	elseif map_data.tick_state == STATE_POLL_STATIONS then
+	if map_data.tick_state == STATE_POLL_STATIONS then
 		for i = 1, 2 do
 			if tick_poll_station(map_data, mod_settings) then break end
 		end

@@ -68,6 +68,7 @@ local function add_available_train(map_data, depot, train_id)
 	local train = map_data.trains[train_id]
 	train.depot_name = depot.entity_stop.backer_name
 	train.depot = depot
+	poll_depot(map_data, depot)
 end
 ---@param map_data MapData
 ---@param depot Depot
@@ -102,6 +103,7 @@ local function on_depot_built(map_data, stop, comb)
 	}
 	map_data.depots[stop.unit_number] = depot
 	set_depot_from_comb_state(depot)
+	poll_depot(map_data, depot)
 end
 
 local function on_depot_broken(map_data, depot)
@@ -140,7 +142,9 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		p_count_or_r_threshold_per_item = {},
 	}
 	set_station_from_comb_state(station)
-	map_data.stations[stop.unit_number] = station
+	local id = stop.unit_number--[[@as uint]]
+	map_data.stations[id] = station
+	map_data.all_station_ids[#map_data.all_station_ids + 1] = id
 
 	update_station_if_auto(map_data, station, nil)
 end
@@ -363,6 +367,7 @@ local function on_combinator_broken(map_data, comb)
 				if depot_comb then
 					depot.entity_comb = depot_comb
 					set_depot_from_comb_state(depot)
+					poll_depot(map_data, depot)
 				else
 					on_depot_broken(map_data, depot)
 				end
