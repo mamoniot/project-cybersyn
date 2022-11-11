@@ -64,6 +64,7 @@
 ---@alias cybersyn.global MapData
 
 ---@class Economy
+---could contain invalid stations
 ---@field public all_r_stations {[string]: uint[]} --{[network_name:item_name]: count}
 ---@field public all_p_stations {[string]: uint[]} --{[network_name:item_name]: count}
 ---@field public all_names {[string]: uint[]} --{[network_name:item_name]: count}

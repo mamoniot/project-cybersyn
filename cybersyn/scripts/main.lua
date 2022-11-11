@@ -661,12 +661,7 @@ local function on_broken(event)
 	local entity = event.entity
 	if not entity or not entity.valid then return end
 
-	if entity.train then
-		local train = global.trains[entity.train.id]
-		if train then
-			on_train_broken(global, train)
-		end
-	elseif entity.name == "train-stop" then
+	if entity.name == "train-stop" then
 		on_stop_broken(global, entity)
 	elseif entity.name == COMBINATOR_NAME then
 		on_combinator_broken(global, entity)
@@ -676,6 +671,11 @@ local function on_broken(event)
 		update_station_from_pump(global, entity, entity)
 	elseif entity.type == "straight-rail" then
 		update_station_from_rail(global, entity, nil)
+	elseif entity.train then
+		local train = global.trains[entity.train.id]
+		if train then
+			on_train_broken(global, train)
+		end
 	end
 end
 local function on_rename(event)

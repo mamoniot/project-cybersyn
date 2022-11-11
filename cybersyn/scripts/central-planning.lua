@@ -188,16 +188,20 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 			local item_network_name = network_name..":"..item.name
 			local r_stations = economy.all_r_stations[item_network_name]
 			local p_stations = economy.all_p_stations[item_network_name]
-			for j, id in ipairs(r_stations) do
-				if id == r_station_id then
-					table_remove(r_stations, j)
-					break
+			if r_stations then
+				for j, id in ipairs(r_stations) do
+					if id == r_station_id then
+						table_remove(r_stations, j)
+						break
+					end
 				end
 			end
-			for j, id in ipairs(p_stations) do
-				if id == p_station_id then
-					table_remove(p_stations, j)
-					break
+			if p_stations then
+				for j, id in ipairs(p_stations) do
+					if id == p_station_id then
+						table_remove(p_stations, j)
+						break
+					end
 				end
 			end
 		end
@@ -407,18 +411,24 @@ local function tick_dispatch(map_data, mod_settings)
 				table_sort(r_stations, function(a_id, b_id)
 					local a = stations[a_id]
 					local b = stations[b_id]
-					if a.priority ~= b.priority then
-						return a.priority < b.priority
+					if a and b then
+						if a.priority ~= b.priority then
+							return a.priority < b.priority
+						else
+							return a.last_delivery_tick > b.last_delivery_tick
+						end
 					else
-						return a.last_delivery_tick > b.last_delivery_tick
+						return a == nil
 					end
 				end)
 				break
 			else
 				for i, id in ipairs(r_stations) do
 					local station = stations[id]
-					station.display_failed_request = true
-					station.display_update = true
+					if station then
+						station.display_failed_request = true
+						station.display_update = true
+					end
 				end
 			end
 		end
@@ -426,42 +436,44 @@ local function tick_dispatch(map_data, mod_settings)
 
 	local r_station_id = table_remove(r_stations--[[@as uint[] ]])
 	local r_station = stations[r_station_id]
-	local item_name = tick_data.item_name
-	local item_type = tick_data.item_type
-	local r_threshold = r_station.p_count_or_r_threshold_per_item[item_name]
+	if r_station then
+		local item_name = tick_data.item_name
+		local item_type = tick_data.item_type
+		local r_threshold = r_station.p_count_or_r_threshold_per_item[item_name]
 
-	local best = 0
-	local best_depot = nil
-	local best_dist = INF
-	local highest_prior = -INF
-	local could_have_been_serviced = false
-	for j, p_station_id in ipairs(p_stations) do
-		local p_station = stations[p_station_id]
-		if p_station.p_count_or_r_threshold_per_item[item_name] >= r_threshold then
-			local prior = p_station.priority
-			local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
-			local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
-			if prior > highest_prior or (prior == highest_prior and d < best_dist) then
-				if depot then
-					best = j
-					best_dist = d
-					best_depot = depot
-					highest_prior = prior
-				elseif d < INF then
-					could_have_been_serviced = true
-					best = j
+		local best = 0
+		local best_depot = nil
+		local best_dist = INF
+		local highest_prior = -INF
+		local could_have_been_serviced = false
+		for j, p_station_id in ipairs(p_stations) do
+			local p_station = stations[p_station_id]
+			if p_station and p_station.p_count_or_r_threshold_per_item[item_name] >= r_threshold then
+				local prior = p_station.priority
+				local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
+				local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
+				if prior > highest_prior or (prior == highest_prior and d < best_dist) then
+					if depot then
+						best = j
+						best_dist = d
+						best_depot = depot
+						highest_prior = prior
+					elseif d < INF then
+						could_have_been_serviced = true
+						best = j
+					end
 				end
 			end
 		end
-	end
-	if best_depot then
-		send_train_between(map_data, r_station_id, table_remove(p_stations, best), best_depot, item_name)
-	else
-		if could_have_been_serviced then
-			send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best]].entity_stop)
+		if best_depot then
+			send_train_between(map_data, r_station_id, table_remove(p_stations, best), best_depot, item_name)
+		else
+			if could_have_been_serviced then
+				send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best]].entity_stop)
+			end
+			r_station.display_failed_request = true
+			r_station.display_update = true
 		end
-		r_station.display_failed_request = true
-		r_station.display_update = true
 	end
 	return false
 end
