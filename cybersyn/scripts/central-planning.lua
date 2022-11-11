@@ -504,8 +504,13 @@ local function tick_dispatch(map_data, mod_settings)
 	end
 	if best_depot then
 		send_train_between(map_data, r_station_id, table_remove(p_stations, best), best_depot, item_name)
-	elseif could_have_been_serviced then
-		send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best]].entity_stop)
+	else
+		if could_have_been_serviced then
+			send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best]].entity_stop)
+		end
+		if r_station.entity_comb1.valid then
+			set_combinator_operation(r_station.entity_comb1, OPERATION_PRIMARY_IO_NOT_FOUND)
+		end
 	end
 	return false
 end
