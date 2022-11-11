@@ -246,6 +246,8 @@ function poll_depot(map_data, depot)
 				end
 			end
 		end
+	else
+		depot.network_flag = 0
 	end
 end
 
@@ -363,7 +365,7 @@ local function tick_dispatch(map_data, mod_settings)
 
 	local r_stations = tick_data.r_stations
 	local p_stations = tick_data.p_stations
-	if not p_stations then
+	if p_stations == nil or #p_stations == 0 or #r_stations == 0 then
 		while true do
 			local size = #all_names
 			if size == 0 then

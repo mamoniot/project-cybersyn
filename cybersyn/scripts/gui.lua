@@ -222,7 +222,7 @@ function register_gui_actions()
 
 				local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
 
-				local allows_all_trains = element.state
+				local allows_all_trains = not element.state
 				set_comb_allows_all_trains(a, allows_all_trains)
 
 				local stop = global.to_stop[comb.unit_number]
