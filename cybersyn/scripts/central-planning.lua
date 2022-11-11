@@ -257,93 +257,96 @@ local function tick_poll_station(map_data, mod_settings)
 	local all_p_stations = map_data.economy.all_p_stations
 	local all_names = map_data.economy.all_names
 
-	while true do
+	local station_id
+	local station
+	while true do--choose a station
 		tick_data.i = (tick_data.i or 0) + 1
 		if tick_data.i > #map_data.all_station_ids then
 			tick_data.i = nil
 			map_data.tick_state = STATE_DISPATCH
 			return true
 		end
-		local station_id = map_data.all_station_ids[tick_data.i]
-		local station = map_data.stations[station_id]
-		if station == nil then
+		station_id = map_data.all_station_ids[tick_data.i]
+		station = map_data.stations[station_id]
+		if station then
+			if station.display_update then
+				update_combinator_display(station.entity_comb1, station.display_failed_request)
+				station.display_update = station.display_failed_request
+				station.display_failed_request = nil
+			end
+			if station.network_name and station.deliveries_total < station.entity_stop.trains_limit then
+				break
+			end
+		else
+			--lazy delete removed stations
 			table_remove(map_data.all_station_ids, tick_data.i)
 			tick_data.i = tick_data.i - 1
-			return false
-		end
-		if station.display_update then
-			update_combinator_display(station.entity_comb1, station.display_failed_request)
-			station.display_update = station.display_failed_request
-			station.display_failed_request = nil
-		end
-
-		if station.network_name and station.deliveries_total < station.entity_stop.trains_limit then
-			station.r_threshold = mod_settings.r_threshold
-			station.priority = 0
-			station.locked_slots = 0
-			station.network_flag = mod_settings.network_flag
-			local signals = get_signals(station)
-			station.tick_signals = signals
-			station.p_count_or_r_threshold_per_item = {}
-			if signals then
-				for k, v in pairs(signals) do
-					local item_name = v.signal.name
-					local item_count = v.count
-					local item_type = v.signal.type
-					if item_name then
-						if item_type == "virtual" then
-							if item_name == SIGNAL_PRIORITY then
-								station.priority = item_count
-							elseif item_name == REQUEST_THRESHOLD and item_count ~= 0 then
-								--NOTE: thresholds must be >0 or they can cause a crash
-								station.r_threshold = abs(item_count)
-							elseif item_name == LOCKED_SLOTS then
-								station.locked_slots = max(item_count, 0)
-							end
-							signals[k] = nil
-						end
-						if item_name == station.network_name then
-							station.network_flag = item_count
-						end
-					else
-						signals[k] = nil
-					end
-				end
-				for k, v in pairs(signals) do
-					---@type string
-					local item_name = v.signal.name
-					local item_count = v.count
-					local effective_item_count = item_count + (station.deliveries[item_name] or 0)
-					local r_threshold = get_threshold(map_data, station, v.signal)
-
-					if station.is_r and -effective_item_count >= r_threshold and -item_count >= r_threshold then
-						local item_network_name = station.network_name..":"..item_name
-						local stations = all_r_stations[item_network_name]
-						if stations == nil then
-							stations = {}
-							all_r_stations[item_network_name] = stations
-							all_names[#all_names + 1] = item_network_name
-							all_names[#all_names + 1] = v.signal
-						end
-						stations[#stations + 1] = station_id
-						station.p_count_or_r_threshold_per_item[item_name] = r_threshold
-					elseif station.is_p and effective_item_count > 0 and item_count > 0 then
-						local item_network_name = station.network_name..":"..item_name
-						local stations = all_p_stations[item_network_name]
-						if stations == nil then
-							stations = {}
-							all_p_stations[item_network_name] = stations
-						end
-						stations[#stations + 1] = station_id
-						station.p_count_or_r_threshold_per_item[item_name] = effective_item_count
-					else
-						signals[k] = nil
-					end
-				end
-			end
-			return false
 		end
 	end
+	station.r_threshold = mod_settings.r_threshold
+	station.priority = 0
+	station.locked_slots = 0
+	station.network_flag = mod_settings.network_flag
+	local signals = get_signals(station)
+	station.tick_signals = signals
+	station.p_count_or_r_threshold_per_item = {}
+	if signals then
+		for k, v in pairs(signals) do
+			local item_name = v.signal.name
+			local item_count = v.count
+			local item_type = v.signal.type
+			if item_name then
+				if item_type == "virtual" then
+					if item_name == SIGNAL_PRIORITY then
+						station.priority = item_count
+					elseif item_name == REQUEST_THRESHOLD and item_count ~= 0 then
+						--NOTE: thresholds must be >0 or they can cause a crash
+						station.r_threshold = abs(item_count)
+					elseif item_name == LOCKED_SLOTS then
+						station.locked_slots = max(item_count, 0)
+					end
+					signals[k] = nil
+				end
+				if item_name == station.network_name then
+					station.network_flag = item_count
+				end
+			else
+				signals[k] = nil
+			end
+		end
+		for k, v in pairs(signals) do
+			---@type string
+			local item_name = v.signal.name
+			local item_count = v.count
+			local effective_item_count = item_count + (station.deliveries[item_name] or 0)
+			local r_threshold = get_threshold(map_data, station, v.signal)
+
+			if station.is_r and -effective_item_count >= r_threshold and -item_count >= r_threshold then
+				local item_network_name = station.network_name..":"..item_name
+				local stations = all_r_stations[item_network_name]
+				if stations == nil then
+					stations = {}
+					all_r_stations[item_network_name] = stations
+					all_names[#all_names + 1] = item_network_name
+					all_names[#all_names + 1] = v.signal
+				end
+				stations[#stations + 1] = station_id
+				station.p_count_or_r_threshold_per_item[item_name] = r_threshold
+			elseif station.is_p and effective_item_count > 0 and item_count > 0 then
+				local item_network_name = station.network_name..":"..item_name
+				local stations = all_p_stations[item_network_name]
+				if stations == nil then
+					stations = {}
+					all_p_stations[item_network_name] = stations
+				end
+				stations[#stations + 1] = station_id
+				station.p_count_or_r_threshold_per_item[item_name] = effective_item_count
+			else
+				signals[k] = nil
+			end
+		end
+	end
+	return false
 end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
