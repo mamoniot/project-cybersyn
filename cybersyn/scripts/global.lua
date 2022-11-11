@@ -34,7 +34,7 @@
 ---@field public accepted_layouts TrainClass
 ---@field public layout_pattern string?
 ---@field public tick_signals {[uint]: Signal}? --transient
----@field public p_count_or_r_threshold_per_item {[string]: int}? --transient
+---@field public p_count_or_r_threshold_per_item {[string]: int} --transient
 
 ---@class Depot
 ---@field public priority int --transient
@@ -75,6 +75,7 @@
 mod_settings = {}
 
 local pairs = pairs
+---@param tab {}
 function table_clear(tab)
 	for k, _ in pairs(tab) do
 		tab[k] = nil

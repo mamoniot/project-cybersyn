@@ -136,6 +136,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		--allows_all_trains = param.second_constant == 1,
 		accepted_layouts = {},
 		layout_pattern = nil,
+		p_count_or_r_threshold_per_item = {},
 	}
 	set_station_from_comb_state(station)
 	map_data.stations[stop.unit_number] = station
