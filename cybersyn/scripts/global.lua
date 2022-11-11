@@ -16,11 +16,12 @@
 ---@field public economy Economy
 
 ---@class Station
+---@field public is_p boolean
+---@field public is_r boolean
 ---@field public deliveries_total int
 ---@field public last_delivery_tick int
 ---@field public priority int --transient
 ---@field public r_threshold int >= 0 --transient
----@field public p_threshold int >= 0 --transient
 ---@field public locked_slots int >= 0 --transient
 ---@field public entity_stop LuaEntity
 ---@field public entity_comb1 LuaEntity
@@ -29,10 +30,11 @@
 ---@field public deliveries {[string]: int}
 ---@field public network_name string?
 ---@field public network_flag int --transient
----@field public is_all boolean
+---@field public allows_all_trains boolean
 ---@field public accepted_layouts TrainClass
 ---@field public layout_pattern string?
 ---@field public tick_signals {[uint]: Signal}? --transient
+---@field public p_count_or_r_threshold_per_item {[string]: int}? --transient
 
 ---@class Depot
 ---@field public priority int --transient
@@ -67,11 +69,17 @@
 ---@class CybersynModSettings
 ---@field public tps int
 ---@field public r_threshold int
----@field public p_threshold int
 ---@field public network_flag int
 
 ---@type CybersynModSettings
 mod_settings = {}
+
+local pairs = pairs
+function table_clear(tab)
+	for k, _ in pairs(tab) do
+		tab[k] = nil
+	end
+end
 
 function init_global()
 	global.total_ticks = 0

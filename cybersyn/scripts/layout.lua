@@ -447,11 +447,11 @@ end
 
 ---@param map_data MapData
 ---@param station Station
----@param is_all boolean
-function set_station_train_class(map_data, station, is_all)
-	if station.is_all ~= is_all then
-		station.is_all = is_all
-		if not is_all then
+---@param allows_all_trains boolean
+function set_station_train_class(map_data, station, allows_all_trains)
+	if station.allows_all_trains ~= allows_all_trains then
+		station.allows_all_trains = allows_all_trains
+		if not allows_all_trains then
 			reset_station_layout(map_data, station, nil)
 		end
 	end
@@ -461,7 +461,7 @@ end
 ---@param station Station
 ---@param forbidden_entity LuaEntity?
 function update_station_if_auto(map_data, station, forbidden_entity)
-	if not station.is_all then
+	if not station.allows_all_trains then
 		reset_station_layout(map_data, station, forbidden_entity)
 	end
 end

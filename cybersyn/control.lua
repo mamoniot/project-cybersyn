@@ -2,6 +2,7 @@
 
 require("scripts.constants")
 require("scripts.global")
+require("scripts.combinator")
 require("scripts.central-planning")
 require("scripts.layout")
 require("scripts.gui")

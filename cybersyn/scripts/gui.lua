@@ -30,10 +30,21 @@ STATUS_NAMES_DEFAULT = "entity-status.disabled"
 ---@param player LuaPlayer
 function gui_opened(comb, player)
 	local rootgui = player.gui.screen
-	local selected_index = 0
 	local control = comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
 	local op = control.operation
-	if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE then
+
+	local selected_index = 0
+	local switch_state = "none"
+	local allows_all_trains, is_pr_state = get_comb_secondary_state(control)
+	if is_pr_state == 0 then
+		switch_state = "none"
+	elseif is_pr_state == 1 then
+		switch_state = "left"
+	elseif is_pr_state == 2 then
+		switch_state = "right"
+	end
+
+	if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_NOT_FOUND then
 		selected_index = 1
 	elseif op == OPERATION_SECONDARY_IO then
 		selected_index = 2
@@ -43,61 +54,67 @@ function gui_opened(comb, player)
 		selected_index = 4
 	end
 
-local window = flib_gui.build(rootgui, {
-	{type="frame", direction="vertical", ref={"main_window"}, name=COMBINATOR_NAME, children={
-		--title bar
-		{type="flow", ref={"titlebar"}, children={
-			{type="label", style="frame_title", caption={"cybersyn-gui.combinator-title"}, elem_mods={ignored_by_interaction=true}},
-			{type="empty-widget", style="flib_titlebar_drag_handle", elem_mods={ignored_by_interaction=true}},
-			{type="sprite-button", style="frame_action_button", mouse_button_filter={"left"}, sprite="utility/close_white", hovered_sprite="utility/close_black", name=COMBINATOR_NAME, actions={
-				on_click = {"close", comb.unit_number}
-			}}
-		}},
-		{type="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12}, children={
-			{type="flow", direction="vertical", style_mods={horizontal_align="left"}, children={
-				--status
-				{type="flow", style="status_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
-					{type="sprite", sprite=STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", ref={"status_icon"}, style_mods={stretch_image_to_widget_size=true}},
-					{type="label", caption={STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT}, ref={"status_label"}}
-				}},
-				--preview
-				{type="frame", style="deep_frame_in_shallow_frame", style_mods={minimal_width=0, horizontally_stretchable=true, padding=0}, children={
-					{type="entity-preview", style="wide_entity_button", ref={"preview"}},
-				}},
-				--drop down
-				{type="label", style="heading_3_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=8}},
-				{type="drop-down", style_mods={top_padding=3}, ref={"operation"}, actions={
-					on_selection_state_changed={"drop-down", comb.unit_number}
-				}, selected_index=selected_index, items={
-					{"cybersyn-gui.comb1"},
-					{"cybersyn-gui.comb2"},
-					{"cybersyn-gui.depot"},
-					{"cybersyn-gui.wagon-manifest"},
-				}},
-				---choose-elem-button
-				{type="line", style_mods={top_padding=10}},
-				{type="label", name="network_label", ref={"network_label"}, style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=7}},
-				{type="flow", name="bottom", direction="horizontal", children={
-					{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", signal=control.first_signal, style_mods={bottom_margin=2, right_margin=6}, actions={
-						on_elem_changed={"choose-elem-button", comb.unit_number}
+	local window = flib_gui.build(rootgui, {
+		{type="frame", direction="vertical", ref={"main_window"}, name=COMBINATOR_NAME, children={
+			--title bar
+			{type="flow", ref={"titlebar"}, children={
+				{type="label", style="frame_title", caption={"cybersyn-gui.combinator-title"}, elem_mods={ignored_by_interaction=true}},
+				{type="empty-widget", style="flib_titlebar_drag_handle", elem_mods={ignored_by_interaction=true}},
+				{type="sprite-button", style="frame_action_button", mouse_button_filter={"left"}, sprite="utility/close_white", hovered_sprite="utility/close_black", name=COMBINATOR_NAME, actions={
+					on_click = {"close", comb.unit_number}
+				}}
+			}},
+			{type="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12}, children={
+				{type="flow", direction="vertical", style_mods={horizontal_align="left"}, children={
+					--status
+					{type="flow", style="status_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
+						{type="sprite", sprite=STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", ref={"status_icon"}, style_mods={stretch_image_to_widget_size=true}},
+						{type="label", caption={STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT}, ref={"status_label"}}
 					}},
-					{type="checkbox", name="radiobutton", ref={"radiobutton"}, state=control.second_constant ~= 1, style_mods={top_margin=4}, actions={
-						on_checked_state_changed={"radiobutton", comb.unit_number}
+					--preview
+					{type="frame", style="deep_frame_in_shallow_frame", style_mods={minimal_width=0, horizontally_stretchable=true, padding=0}, children={
+						{type="entity-preview", style="wide_entity_button", ref={"preview"}},
 					}},
-					{type="label", name="radiolabel", style_mods={single_line=false, maximal_width=330, left_padding=3}, ref={"radiolabel"}, caption={"cybersyn-gui.auto-description"}},
+					--drop down
+					{type="label", style="heading_3_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=8}},
+					{type="flow", name="top", direction="horizontal", style_mods={vertical_align="center"}, children={
+						{type="drop-down", style_mods={top_padding=3, right_margin=8}, ref={"operation"}, actions={
+							on_selection_state_changed={"drop-down", comb.unit_number}
+						}, selected_index=selected_index, items={
+							{"cybersyn-gui.comb1"},
+							{"cybersyn-gui.comb2"},
+							{"cybersyn-gui.depot"},
+							{"cybersyn-gui.wagon-manifest"},
+						}},
+						{type="switch", name="switch", ref={"switch"}, allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, actions={
+							on_switch_state_changed={"switch", comb.unit_number}
+						}}
+					}},
+					---choose-elem-button
+					{type="line", style_mods={top_padding=10}},
+					{type="label", name="network_label", ref={"network_label"}, style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
+					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="center"}, children={
+						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=control.first_signal, style_mods={bottom_margin=1, right_margin=6}, actions={
+							on_elem_changed={"choose-elem-button", comb.unit_number}
+						}},
+						{type="checkbox", name="radio_button", ref={"radio_button"}, state=not allows_all_trains, tooltip={"cybersyn-gui.auto-tooltip"}, actions={
+							on_checked_state_changed={"radio_button", comb.unit_number}
+						}},
+						{type="label", name="radio_label", style_mods={left_padding=3}, ref={"radio_label"}, caption={"cybersyn-gui.auto-description"}},
+					}}
 				}}
 			}}
 		}}
-	}}
-})
+	})
 
 	window.preview.entity = comb
 	window.titlebar.drag_target = window.main_window
 	window.main_window.force_auto_center()
 	window.network.visible = selected_index == 1 or selected_index == 3
 	window.network_label.visible = selected_index == 1 or selected_index == 3
-	window.radiobutton.visible = selected_index == 1
-	window.radiolabel.visible = selected_index == 1
+	window.radio_button.visible = selected_index == 1
+	window.radio_label.visible = selected_index == 1
+	window.switch.visible = selected_index == 1
 
 	player.opened = window.main_window
 end
@@ -142,31 +159,37 @@ function register_gui_actions()
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
-				local parent = element.parent.bottom
+				local top_flow = element.parent
+				local all_flow = top_flow.parent
+				local bottom_flow = all_flow.bottom
 				if element.selected_index == 1 then
 					set_combinator_operation(comb, OPERATION_PRIMARY_IO)
-					element.parent["network_label"].visible = true
-					parent["network"].visible = true
-					parent["radiobutton"].visible = true
-					parent["radiolabel"].visible = true
+					top_flow["switch"].visible = true
+					all_flow["network_label"].visible = true
+					bottom_flow["network"].visible = true
+					bottom_flow["radio_button"].visible = true
+					bottom_flow["radio_label"].visible = true
 				elseif element.selected_index == 2 then
 					set_combinator_operation(comb, OPERATION_SECONDARY_IO)
-					element.parent["network_label"].visible = false
-					parent["network"].visible = false
-					parent["radiobutton"].visible = false
-					parent["radiolabel"].visible = false
+					top_flow["switch"].visible = false
+					all_flow["network_label"].visible = false
+					bottom_flow["network"].visible = false
+					bottom_flow["radio_button"].visible = false
+					bottom_flow["radio_label"].visible = false
 				elseif element.selected_index == 3 then
 					set_combinator_operation(comb, OPERATION_DEPOT)
-					element.parent["network_label"].visible = true
-					parent["network"].visible = true
-					parent["radiobutton"].visible = false
-					parent["radiolabel"].visible = false
+					top_flow["switch"].visible = false
+					all_flow["network_label"].visible = true
+					bottom_flow["network"].visible = true
+					bottom_flow["radio_button"].visible = false
+					bottom_flow["radio_label"].visible = false
 				elseif element.selected_index == 4 then
 					set_combinator_operation(comb, OPERATION_WAGON_MANIFEST)
-					element.parent["network_label"].visible = false
-					parent["network"].visible = false
-					parent["radiobutton"].visible = false
-					parent["radiolabel"].visible = false
+					top_flow["switch"].visible = false
+					all_flow["network_label"].visible = false
+					bottom_flow["network"].visible = false
+					bottom_flow["radio_button"].visible = false
+					bottom_flow["radio_label"].visible = false
 				else
 					return
 				end
@@ -188,28 +211,43 @@ function register_gui_actions()
 				else
 					control.first_signal = signal
 				end
-
 				a.parameters = control
+
 				on_combinator_network_updated(global, comb, signal and signal.name or nil)
-			elseif msg[1] == "radiobutton" then
+			elseif msg[1] == "radio_button" then
 				local element = event.element
 				if not element then return end
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
 				local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
-				local control = a.parameters
 
-				local is_auto = element.state
-				control.second_constant = is_auto and 0 or 1
-
-				a.parameters = control
+				local allows_all_trains = element.state
+				set_comb_allows_all_trains(a, allows_all_trains)
 
 				local stop = global.to_stop[comb.unit_number]
 				if stop then
 					local station = global.stations[stop.unit_number]
 					if station then
-						set_station_train_class(global, station, not is_auto)
+						set_station_train_class(global, station, allows_all_trains)
+					end
+				end
+			elseif msg[1] == "switch" then
+				local element = event.element
+				if not element then return end
+				local comb = global.to_comb[msg[2]]
+				if not comb or not comb.valid then return end
+
+				local is_pr_state = (element.switch_state == "none" and 0) or (element.switch_state == "left" and 1) or 2
+				local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
+				set_comb_is_pr_state(a, is_pr_state)
+
+				local stop = global.to_stop[comb.unit_number]
+				if stop then
+					local station = global.stations[stop.unit_number]
+					if station then
+						station.is_p = is_pr_state == 0 or is_pr_state == 1
+						station.is_r = is_pr_state == 0 or is_pr_state == 2
 					end
 				end
 			end

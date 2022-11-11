@@ -70,49 +70,6 @@ function create_manifest_schedule(depot_name, p_stop, r_stop, manifest)
 	}}
 end
 
----@param station Station
-local function get_signals(station)
-	local comb = station.entity_comb1
-	if comb.valid and (comb.status == defines.entity_status.working or comb.status == defines.entity_status.low_power) then
-		return comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
-	else
-		return nil
-	end
-end
-
----@param map_data MapData
----@param comb LuaEntity
----@param signals ConstantCombinatorParameters[]?
-function set_combinator_output(map_data, comb, signals)
-	local out = map_data.to_output[comb.unit_number]
-	if out.valid then
-		out.get_or_create_control_behavior().parameters = signals
-	end
-end
----@param comb LuaEntity
----@param op string
-function set_combinator_operation(comb, op)
-		local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
-		local control = a.parameters
-		control.operation = op
-		a.parameters = control
-end
-
----@param map_data MapData
----@param station Station
-local function set_comb2(map_data, station)
-	if station.entity_comb2 then
-		local deliveries = station.deliveries
-		local signals = {}
-		for item_name, count in pairs(deliveries) do
-			local i = #signals + 1
-			local is_fluid = game.item_prototypes[item_name] == nil--NOTE: this is expensive
-			signals[i] = {index = i, signal = {type = is_fluid and "fluid" or "item", name = item_name}, count = -count}
-		end
-		set_combinator_output(map_data, station.entity_comb2, signals)
-	end
-end
-
 ---@param map_data MapData
 ---@param station Station
 ---@param manifest Manifest
@@ -128,20 +85,6 @@ function remove_manifest(map_data, station, manifest, sign)
 	station.deliveries_total = station.deliveries_total - 1
 end
 
----@param map_data MapData
----@param signal SignalID
-local function get_thresholds(map_data, station, signal)
-	local comb2 = station.entity_comb2
-	if comb2 and comb2.valid then
-		local count = comb2.get_merged_signal(signal, defines.circuit_connector_id.combinator_input)
-		if count > 0 then
-			return station.r_threshold, count
-		elseif count < 0 then
-			return -count, station.p_threshold
-		end
-	end
-	return station.r_threshold, station.p_threshold
-end
 
 ---@param stop0 LuaEntity
 ---@param stop1 LuaEntity
@@ -150,12 +93,12 @@ local function get_stop_dist(stop0, stop1)
 end
 
 
-
 ---@param map_data MapData
 ---@param r_station_id uint
 ---@param p_station_id uint
 ---@param item_type string
-local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
+---@param min_amount_to_move int
+local function get_valid_train(map_data, r_station_id, p_station_id, item_type, min_amount_to_move)
 	--NOTE: this code is the critical section for run-time optimization
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
@@ -185,10 +128,10 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type)
 			--check layout validity for both stations
 			local capacity = (is_fluid and train.fluid_capacity) or train.item_slot_capacity
 			if
-			capacity > 0 and
+			capacity > min_amount_to_move and
 			btest(netand, depot.network_flag) and
-			(r_station.is_all or r_station.accepted_layouts[layout_id]) and
-			(p_station.is_all or p_station.accepted_layouts[layout_id])
+			(r_station.allows_all_trains or r_station.accepted_layouts[layout_id]) and
+			(p_station.allows_all_trains or p_station.accepted_layouts[layout_id])
 			then
 				valid_train_exists = true
 				--check if exists valid path
@@ -227,48 +170,35 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	---@type string
 	local network_name = depot.network_name
 
-	local requests = {}
 	local manifest = {}
 
-	local r_signals = r_station.tick_signals
-	if r_signals then
-		for k, v in pairs(r_signals) do
-			---@type string
-			local item_name = v.signal.name
-			local item_count = v.count
-			local effective_item_count = item_count + (r_station.deliveries[item_name] or 0)
-			if effective_item_count < 0 and item_count < 0 then
-				requests[item_name] = -effective_item_count
-			end
-		end
-	end
-
-	local p_signals = p_station.tick_signals
-	if p_signals then
-		for k, v in pairs(p_signals) do
-			local item_name = v.signal.name
-			local item_count = v.count
-			local item_type = v.signal.type
-			local effective_item_count = item_count + (p_station.deliveries[item_name] or 0)
-			if effective_item_count > 0 and item_count > 0 then
-				local r = requests[item_name]
-				if r then
-					local item = {name = item_name, type = item_type, count = min(r, effective_item_count)}
-					if item_name == primary_item_name then
-						manifest[#manifest + 1] = manifest[1]
-						manifest[1] = item
-					else
-						manifest[#manifest + 1] = item
-					end
+	for k, v in pairs(r_station.tick_signals) do
+		---@type string
+		local item_name = v.signal.name
+		local item_type = v.signal.type
+		local r_item_count = v.count
+		local r_effective_item_count = r_item_count + (r_station.deliveries[item_name] or 0)
+		if r_effective_item_count < 0 and r_item_count < 0 then
+			local r_threshold = r_station.p_count_or_r_threshold_per_item[item_name]
+			local p_effective_item_count = p_station.p_count_or_r_threshold_per_item[item_name]
+			if p_effective_item_count and p_effective_item_count >= r_threshold then
+				local item = {name = item_name, type = item_type, count = min(-r_effective_item_count, p_effective_item_count)}
+				if item_name == primary_item_name then
+					manifest[#manifest + 1] = manifest[1]
+					manifest[1] = item
+				else
+					manifest[#manifest + 1] = item
 				end
 			end
 		end
 	end
 
-	local locked_slots = max(p_station.locked_slots, r_station.locked_slots)
+	--locked slots is only taken into account after the train is already approved for dispatch
+	local locked_slots = p_station.locked_slots
 	local total_slots_left = train.item_slot_capacity
 	if locked_slots > 0 then
-		total_slots_left = max(total_slots_left - #train.entity.cargo_wagons*locked_slots, min(total_slots_left, #train.entity.cargo_wagons))
+		local total_cw = #train.entity.cargo_wagons
+		total_slots_left = min(total_slots_left, max(total_slots_left - total_cw*locked_slots, total_cw))
 	end
 	local total_liquid_left = train.fluid_capacity
 
@@ -307,7 +237,6 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	r_station.deliveries_total = r_station.deliveries_total + 1
 	p_station.deliveries_total = p_station.deliveries_total + 1
 
-	assert(manifest[1].name == primary_item_name)
 	for item_i, item in ipairs(manifest) do
 		assert(item.count > 0, "main.lua error, transfer amount was not positive")
 
@@ -420,12 +349,12 @@ local function tick_poll_station(map_data, mod_settings)
 
 		if station.network_name and station.deliveries_total < station.entity_stop.trains_limit then
 			station.r_threshold = mod_settings.r_threshold
-			station.p_threshold = mod_settings.p_threshold
 			station.priority = 0
 			station.locked_slots = 0
 			station.network_flag = mod_settings.network_flag
 			local signals = get_signals(station)
 			station.tick_signals = signals
+			table_clear(station.p_count_or_r_threshold_per_item)
 			if signals then
 				for k, v in pairs(signals) do
 					local item_name = v.signal.name
@@ -436,10 +365,8 @@ local function tick_poll_station(map_data, mod_settings)
 							if item_name == SIGNAL_PRIORITY then
 								station.priority = item_count
 							elseif item_name == REQUEST_THRESHOLD and item_count ~= 0 then
-								--NOTE: thresholds must be >0 or they will cause a crash
+								--NOTE: thresholds must be >0 or they can cause a crash
 								station.r_threshold = abs(item_count)
-							elseif item_name == PROVIDE_THRESHOLD and item_count ~= 0 then
-								station.p_threshold = abs(item_count)
 							elseif item_name == LOCKED_SLOTS then
 								station.locked_slots = max(item_count, 0)
 							end
@@ -453,12 +380,13 @@ local function tick_poll_station(map_data, mod_settings)
 					end
 				end
 				for k, v in pairs(signals) do
+					---@type string
 					local item_name = v.signal.name
 					local item_count = v.count
 					local effective_item_count = item_count + (station.deliveries[item_name] or 0)
-					local r_threshold, p_threshold = get_thresholds(map_data, station, v.signal)
+					local r_threshold = get_threshold(map_data, station, v.signal)
 
-					if -effective_item_count >= r_threshold and -item_count >= r_threshold then
+					if station.is_r and -effective_item_count >= r_threshold and -item_count >= r_threshold then
 						local item_network_name = station.network_name..":"..item_name
 						local stations = all_r_stations[item_network_name]
 						if stations == nil then
@@ -468,7 +396,8 @@ local function tick_poll_station(map_data, mod_settings)
 							all_names[#all_names + 1] = v.signal
 						end
 						stations[#stations + 1] = station_id
-					elseif effective_item_count >= p_threshold and item_count >= p_threshold then
+						station.p_count_or_r_threshold_per_item[item_name] = r_threshold
+					elseif station.is_p and effective_item_count > 0 and item_count > 0 then
 						local item_network_name = station.network_name..":"..item_name
 						local stations = all_p_stations[item_network_name]
 						if stations == nil then
@@ -476,6 +405,7 @@ local function tick_poll_station(map_data, mod_settings)
 							all_p_stations[item_network_name] = stations
 						end
 						stations[#stations + 1] = station_id
+						station.p_count_or_r_threshold_per_item[item_name] = effective_item_count
 					else
 						signals[k] = nil
 					end
@@ -544,6 +474,10 @@ local function tick_dispatch(map_data, mod_settings)
 	end
 
 	local r_station_id = table_remove(r_stations--[[@as uint[] ]])
+	local r_station = stations[r_station_id]
+	local item_name = tick_data.item_name
+	local item_type = tick_data.item_type
+	local r_threshold = r_station.p_count_or_r_threshold_per_item[item_name]
 
 	local best = 0
 	local best_depot = nil
@@ -551,24 +485,27 @@ local function tick_dispatch(map_data, mod_settings)
 	local highest_prior = -INF
 	local could_have_been_serviced = false
 	for j, p_station_id in ipairs(p_stations) do
-		local depot, d = get_valid_train(map_data, r_station_id, p_station_id, tick_data.item_type)
-		local prior = stations[p_station_id].priority
-		if prior > highest_prior or (prior == highest_prior and d < best_dist) then
-			if depot then
-				best = j
-				best_dist = d
-				best_depot = depot
-				highest_prior = prior
-			elseif d < INF then
-				could_have_been_serviced = true
-				best = j
+		local p_station = stations[p_station_id]
+		if p_station.p_count_or_r_threshold_per_item[item_name] >= r_threshold then
+			local prior = p_station.priority
+			local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, r_threshold)
+			if prior > highest_prior or (prior == highest_prior and d < best_dist) then
+				if depot then
+					best = j
+					best_dist = d
+					best_depot = depot
+					highest_prior = prior
+				elseif d < INF then
+					could_have_been_serviced = true
+					best = j
+				end
 			end
 		end
 	end
 	if best_depot then
-		send_train_between(map_data, r_station_id, table_remove(p_stations, best), best_depot, tick_data.item_name)
+		send_train_between(map_data, r_station_id, table_remove(p_stations, best), best_depot, item_name)
 	elseif could_have_been_serviced then
-		send_missing_train_alert_for_stops(stations[r_station_id].entity_stop, stations[p_stations[best]].entity_stop)
+		send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best]].entity_stop)
 	end
 	return false
 end

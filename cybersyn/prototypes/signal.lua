@@ -14,15 +14,6 @@ priority_signal = {
 	subgroup = "cybersyn-signal",
 	order = "a"
 }
-p_threshold_signal = {
-	type = "virtual-signal",
-	name = PROVIDE_THRESHOLD,
-	icon = "__cybersyn__/graphics/icons/provide-threshold.png",
-	icon_size = 64,
-	icon_mipmaps = 4,
-	subgroup = "cybersyn-signal",
-	order = "b"
-}
 r_threshold_signal = {
 	type = "virtual-signal",
 	name = REQUEST_THRESHOLD,
