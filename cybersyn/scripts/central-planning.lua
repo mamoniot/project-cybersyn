@@ -97,8 +97,8 @@ end
 ---@param r_station_id uint
 ---@param p_station_id uint
 ---@param item_type string
----@param min_amount_to_move int
-local function get_valid_train(map_data, r_station_id, p_station_id, item_type, min_amount_to_move)
+---@param min_slots_to_move int
+local function get_valid_train(map_data, r_station_id, p_station_id, item_type, min_slots_to_move)
 	--NOTE: this code is the critical section for run-time optimization
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
@@ -128,7 +128,7 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type, 
 			--check layout validity for both stations
 			local capacity = (is_fluid and train.fluid_capacity) or train.item_slot_capacity
 			if
-			capacity > min_amount_to_move and
+			capacity >= min_slots_to_move and
 			btest(netand, depot.network_flag) and
 			(r_station.allows_all_trains or r_station.accepted_layouts[layout_id]) and
 			(p_station.allows_all_trains or p_station.accepted_layouts[layout_id])
@@ -488,7 +488,8 @@ local function tick_dispatch(map_data, mod_settings)
 		local p_station = stations[p_station_id]
 		if p_station.p_count_or_r_threshold_per_item[item_name] >= r_threshold then
 			local prior = p_station.priority
-			local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, r_threshold)
+			local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/game.item_prototypes[item_name].stack_size)
+			local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
 			if prior > highest_prior or (prior == highest_prior and d < best_dist) then
 				if depot then
 					best = j
