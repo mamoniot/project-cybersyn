@@ -802,6 +802,8 @@ local function main()
 	register_gui_actions()
 
 	flib_event.on_init(init_global)
+
+	flib_event.on_configuration_changed(on_config_changed)
 end
 
 

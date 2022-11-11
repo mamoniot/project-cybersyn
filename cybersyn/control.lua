@@ -2,9 +2,9 @@
 
 require("scripts.constants")
 require("scripts.global")
-require("scripts.combinator")
+require("scripts.factorio-api")
 require("scripts.central-planning")
 require("scripts.layout")
 require("scripts.gui")
-require("scripts.alerts")
+require("scripts.migrations")
 require("scripts.main")

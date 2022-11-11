@@ -11,80 +11,6 @@ local table_remove = table.remove
 local table_sort = table.sort
 local random = math.random
 
-local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = 120}
----@param stop LuaEntity
----@param manifest Manifest
-function create_loading_order(stop, manifest)
-	local condition = {}
-	for _, item in ipairs(manifest) do
-		local cond_type
-		if item.type == "fluid" then
-			cond_type = "fluid_count"
-		else
-			cond_type = "item_count"
-		end
-
-		condition[#condition + 1] = {
-			type = cond_type,
-			compare_type = "and",
-			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
-		}
-	end
-	condition[#condition + 1] = create_loading_order_condition
-	return {station = stop.backer_name, wait_conditions = condition}
-end
-
-local create_unloading_order_condition = {{type = "empty", compare_type = "and"}}
----@param stop LuaEntity
-function create_unloading_order(stop)
-	return {station = stop.backer_name, wait_conditions = create_unloading_order_condition}
-end
-
-local create_inactivity_order_condition = {{type = "inactivity", compare_type = "and", ticks = 120}}
----@param depot_name string
-function create_inactivity_order(depot_name)
-	return {station = depot_name, wait_conditions = create_inactivity_order_condition}
-end
-
----@param stop LuaEntity
-local function create_direct_to_station_order(stop)
-	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction}
-end
-
----@param depot_name string
-function create_depot_schedule(depot_name)
-	return {current = 1, records = {create_inactivity_order(depot_name)}}
-end
-
----@param depot_name string
----@param p_stop LuaEntity
----@param r_stop LuaEntity
----@param manifest Manifest
-function create_manifest_schedule(depot_name, p_stop, r_stop, manifest)
-	return {current = 1, records = {
-		create_inactivity_order(depot_name),
-		create_direct_to_station_order(p_stop),
-		create_loading_order(p_stop, manifest),
-		create_direct_to_station_order(r_stop),
-		create_unloading_order(r_stop),
-	}}
-end
-
----@param map_data MapData
----@param station Station
----@param manifest Manifest
-function remove_manifest(map_data, station, manifest, sign)
-	local deliveries = station.deliveries
-	for i, item in ipairs(manifest) do
-		deliveries[item.name] = deliveries[item.name] + sign*item.count
-		if deliveries[item.name] == 0 then
-			deliveries[item.name] = nil
-		end
-	end
-	set_comb2(map_data, station)
-	station.deliveries_total = station.deliveries_total - 1
-end
-
 
 ---@param stop0 LuaEntity
 ---@param stop1 LuaEntity
@@ -215,7 +141,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 				keep_item = true
 			end
 		elseif total_slots_left > 0 then
-			local stack_size = game.item_prototypes[item.name].stack_size
+			local stack_size = get_stack_size(map_data, item.name)
 			local slots = ceil(item.count/stack_size)
 			if slots > total_slots_left then
 				item.count = total_slots_left*stack_size
@@ -488,7 +414,7 @@ local function tick_dispatch(map_data, mod_settings)
 		local p_station = stations[p_station_id]
 		if p_station.p_count_or_r_threshold_per_item[item_name] >= r_threshold then
 			local prior = p_station.priority
-			local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/game.item_prototypes[item_name].stack_size)
+			local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
 			local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
 			if prior > highest_prior or (prior == highest_prior and d < best_dist) then
 				if depot then
@@ -518,8 +444,8 @@ end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 function tick(map_data, mod_settings)
+	map_data.total_ticks = map_data.total_ticks + 1
 	if map_data.tick_state == STATE_INIT then
-		map_data.total_ticks = map_data.total_ticks + 1
 		map_data.economy.all_p_stations = {}
 		map_data.economy.all_r_stations = {}
 		map_data.economy.all_names = {}
