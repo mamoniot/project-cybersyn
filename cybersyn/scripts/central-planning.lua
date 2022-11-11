@@ -363,7 +363,9 @@ local function tick_dispatch(map_data, mod_settings)
 	local all_names = map_data.economy.all_names
 	local stations = map_data.stations
 
+	---@type {}
 	local r_stations = tick_data.r_stations
+	---@type {}
 	local p_stations = tick_data.p_stations
 	if p_stations == nil or #p_stations == 0 or #r_stations == 0 then
 		while true do
@@ -457,10 +459,10 @@ local function tick_dispatch(map_data, mod_settings)
 		best_depot.entity_comb.status == defines.entity_status.working or
 		best_depot.entity_comb.status == defines.entity_status.low_power)
 		then
-			send_train_between(map_data, r_station_id, table_remove(p_stations, best), best_depot, item_name)
+			send_train_between(map_data, r_station_id, table_remove(p_stations--[[@as {}]], best), best_depot, item_name)
 		else
 			if can_be_serviced then
-				send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best]].entity_stop)
+				send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations--[[@as {}]][best]].entity_stop)
 			end
 			r_station.display_failed_request = true
 			r_station.display_update = true
