@@ -18,6 +18,7 @@
 ---@class Station
 ---@field public is_p boolean
 ---@field public is_r boolean
+---@field public allows_all_trains boolean
 ---@field public deliveries_total int
 ---@field public last_delivery_tick int
 ---@field public priority int --transient
@@ -30,11 +31,12 @@
 ---@field public deliveries {[string]: int}
 ---@field public network_name string?
 ---@field public network_flag int --transient
----@field public allows_all_trains boolean
 ---@field public accepted_layouts TrainClass
 ---@field public layout_pattern string?
 ---@field public tick_signals {[uint]: Signal}? --transient
 ---@field public p_count_or_r_threshold_per_item {[string]: int} --transient
+---@field public display_failed_request true?
+---@field public display_update true?
 
 ---@class Depot
 ---@field public priority int --transient
@@ -58,7 +60,7 @@
 ---@field public has_filtered_wagon boolean
 
 ---@alias Manifest {}[]
----@alias TrainClass {[uint]: boolean}
+---@alias TrainClass {[uint]: true}
 ---@alias cybersyn.global MapData
 
 ---@class Economy

@@ -4,6 +4,7 @@ local flib_event = require("__flib__.event")
 
 ---@param map_data MapData
 ---@param station Station
+---@param manifest Manifest
 ---@param sign int?
 local function set_comb1(map_data, station, manifest, sign)
 	local comb = station.entity_comb1
@@ -254,7 +255,7 @@ local function on_combinator_built(map_data, comb)
 		param.operation = op
 		param.first_signal = NETWORK_SIGNAL_DEFAULT
 		control.parameters = param
-	elseif op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_NOT_FOUND then
+	elseif op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_REQUEST_FAILED then
 		op = OPERATION_PRIMARY_IO
 		param.operation = op
 		control.parameters = param
@@ -403,7 +404,7 @@ local function on_stop_built(map_data, stop)
 			map_data.to_stop[entity.unit_number] = stop
 			local control = entity.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
 			local op = control.operation
-			if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_NOT_FOUND then
+			if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_REQUEST_FAILED then
 				comb1 = entity
 			elseif op == OPERATION_SECONDARY_IO then
 				comb2 = entity

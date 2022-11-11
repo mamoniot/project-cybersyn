@@ -20,6 +20,21 @@ end
 
 
 ---@param map_data MapData
+---@param station Station
+---@param manifest Manifest
+function remove_manifest(map_data, station, manifest, sign)
+	local deliveries = station.deliveries
+	for i, item in ipairs(manifest) do
+		deliveries[item.name] = deliveries[item.name] + sign*item.count
+		if deliveries[item.name] == 0 then
+			deliveries[item.name] = nil
+		end
+	end
+	set_comb2(map_data, station)
+	station.deliveries_total = station.deliveries_total - 1
+end
+
+---@param map_data MapData
 ---@param r_station_id uint
 ---@param p_station_id uint
 ---@param item_type string
@@ -206,7 +221,6 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 end
 
 
-
 ---@param map_data MapData
 local function tick_poll_depot(map_data)
 	local depot_id
@@ -271,6 +285,11 @@ local function tick_poll_station(map_data, mod_settings)
 		if station == nil then
 			map_data.tick_state = STATE_DISPATCH
 			return true
+		end
+		if station.display_update then
+			update_combinator_display(station.entity_comb1, station.display_failed_request)
+			station.display_update = station.display_failed_request
+			station.display_failed_request = nil
 		end
 
 		if station.network_name and station.deliveries_total < station.entity_stop.trains_limit then
@@ -380,7 +399,7 @@ local function tick_dispatch(map_data, mod_settings)
 
 			r_stations = all_r_stations[item_network_name]
 			p_stations = all_p_stations[item_network_name]
-			if p_stations and #r_stations > 0 and #p_stations > 0 then
+			if p_stations then
 				tick_data.r_stations = r_stations
 				tick_data.p_stations = p_stations
 				tick_data.item_name = signal.name
@@ -395,6 +414,12 @@ local function tick_dispatch(map_data, mod_settings)
 					end
 				end)
 				break
+			else
+				for i, id in ipairs(r_stations) do
+					local station = stations[id]
+					station.display_failed_request = true
+					station.display_update = true
+				end
 			end
 		end
 	end
@@ -435,9 +460,8 @@ local function tick_dispatch(map_data, mod_settings)
 		if could_have_been_serviced then
 			send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best]].entity_stop)
 		end
-		if r_station.entity_comb1.valid then
-			set_combinator_operation(r_station.entity_comb1, OPERATION_PRIMARY_IO_NOT_FOUND)
-		end
+		r_station.display_failed_request = true
+		r_station.display_update = true
 	end
 	return false
 end

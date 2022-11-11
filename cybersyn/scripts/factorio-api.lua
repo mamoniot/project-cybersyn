@@ -69,22 +69,6 @@ function create_manifest_schedule(depot_name, p_stop, r_stop, manifest)
 	}}
 end
 
----@param map_data MapData
----@param station Station
----@param manifest Manifest
-function remove_manifest(map_data, station, manifest, sign)
-	local deliveries = station.deliveries
-	for i, item in ipairs(manifest) do
-		deliveries[item.name] = deliveries[item.name] + sign*item.count
-		if deliveries[item.name] == 0 then
-			deliveries[item.name] = nil
-		end
-	end
-	set_comb2(map_data, station)
-	station.deliveries_total = station.deliveries_total - 1
-end
-
-
 
 ---@param param ArithmeticCombinatorParameters
 function get_comb_secondary_state(param)
@@ -142,6 +126,21 @@ function set_combinator_operation(comb, op)
 	control.operation = op
 	a.parameters = control
 end
+---@param comb LuaEntity
+---@param is_failed boolean
+function update_combinator_display(comb, is_failed)
+	local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
+	local control = a.parameters
+	if is_failed then
+		if control.operation == OPERATION_PRIMARY_IO then
+			control.operation = OPERATION_PRIMARY_IO_REQUEST_FAILED
+			a.parameters = control
+		end
+	elseif control.operation == OPERATION_PRIMARY_IO_REQUEST_FAILED then
+		control.operation = OPERATION_PRIMARY_IO
+		a.parameters = control
+	end
+end
 
 
 ---@param station Station
@@ -190,12 +189,12 @@ local send_missing_train_alert_for_stop_icon = {name = MISSING_TRAIN_NAME, type 
 function send_missing_train_alert_for_stops(r_stop, p_stop)
 	for _, player in pairs(r_stop.force.players) do
 		player.add_custom_alert(
-			r_stop,
-			send_missing_train_alert_for_stop_icon,
-			{"cybersyn-messages.missing-trains", r_stop.backer_name, p_stop.backer_name},
-			true
-		)
-	end
+		r_stop,
+		send_missing_train_alert_for_stop_icon,
+		{"cybersyn-messages.missing-trains", r_stop.backer_name, p_stop.backer_name},
+		true
+	)
+end
 end
 
 local send_lost_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
@@ -205,15 +204,14 @@ function send_lost_train_alert(train)
 	if loco then
 		for _, player in pairs(loco.force.players) do
 			player.add_custom_alert(
-				loco,
-				send_lost_train_alert_icon,
-				{"cybersyn-messages.lost-train"},
-				true
-			)
-		end
+			loco,
+			send_lost_train_alert_icon,
+			{"cybersyn-messages.lost-train"},
+			true
+		)
 	end
 end
-
+end
 
 local send_nonempty_train_in_depot_alert_icon = {name = NONEMPTY_TRAIN_NAME, type = "fluid"}
 ---@param train LuaTrain
@@ -222,11 +220,11 @@ function send_nonempty_train_in_depot_alert(train)
 	if loco then
 		for _, player in pairs(loco.force.players) do
 			player.add_custom_alert(
-				loco,
-				send_nonempty_train_in_depot_alert_icon,
-				{"cybersyn-messages.nonempty-train"},
-				true
-			)
-		end
+			loco,
+			send_nonempty_train_in_depot_alert_icon,
+			{"cybersyn-messages.nonempty-train"},
+			true
+		)
 	end
+end
 end
