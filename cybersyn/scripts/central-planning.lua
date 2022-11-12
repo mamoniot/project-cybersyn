@@ -324,30 +324,37 @@ local function tick_poll_station(map_data, mod_settings)
 			local item_name = v.signal.name
 			local item_count = v.count
 			local effective_item_count = item_count + (station.deliveries[item_name] or 0)
-			local r_threshold = get_threshold(map_data, station, v.signal)
 
-			if station.is_r and -effective_item_count >= r_threshold and -item_count >= r_threshold then
-				local item_network_name = station.network_name..":"..item_name
-				local stations = all_r_stations[item_network_name]
-				if stations == nil then
-					stations = {}
-					all_r_stations[item_network_name] = stations
-					all_names[#all_names + 1] = item_network_name
-					all_names[#all_names + 1] = v.signal
+			local flag = true
+			if station.is_r then
+				local r_threshold = get_threshold(map_data, station, v.signal)
+				if -effective_item_count >= r_threshold and -item_count >= r_threshold then
+					flag = false
+					local item_network_name = station.network_name..":"..item_name
+					local stations = all_r_stations[item_network_name]
+					if stations == nil then
+						stations = {}
+						all_r_stations[item_network_name] = stations
+						all_names[#all_names + 1] = item_network_name
+						all_names[#all_names + 1] = v.signal
+					end
+					stations[#stations + 1] = station_id
+					station.p_count_or_r_threshold_per_item[item_name] = r_threshold
 				end
-				stations[#stations + 1] = station_id
-				station.p_count_or_r_threshold_per_item[item_name] = r_threshold
-			elseif station.is_p and effective_item_count > 0 and item_count > 0 then
-				local item_network_name = station.network_name..":"..item_name
-				local stations = all_p_stations[item_network_name]
-				if stations == nil then
-					stations = {}
-					all_p_stations[item_network_name] = stations
+			end
+			if flag then
+				if station.is_p and effective_item_count > 0 and item_count > 0 then
+					local item_network_name = station.network_name..":"..item_name
+					local stations = all_p_stations[item_network_name]
+					if stations == nil then
+						stations = {}
+						all_p_stations[item_network_name] = stations
+					end
+					stations[#stations + 1] = station_id
+					station.p_count_or_r_threshold_per_item[item_name] = effective_item_count
+				else
+					signals[k] = nil
 				end
-				stations[#stations + 1] = station_id
-				station.p_count_or_r_threshold_per_item[item_name] = effective_item_count
-			else
-				signals[k] = nil
 			end
 		end
 	end

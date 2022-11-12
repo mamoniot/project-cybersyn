@@ -14,19 +14,19 @@ r_threshold_signal = {
 	subgroup = "cybersyn-signal",
 	order = "a"
 }
-priority_signal = {
+locked_slots_signal = {
 	type = "virtual-signal",
-	name = SIGNAL_PRIORITY,
-	icon = "__cybersyn__/graphics/icons/priority.png",
+	name = LOCKED_SLOTS,
+	icon = "__cybersyn__/graphics/icons/locked-slots.png",
 	icon_size = 64,
 	icon_mipmaps = 4,
 	subgroup = "cybersyn-signal",
 	order = "b"
 }
-locked_slots_signal = {
+priority_signal = {
 	type = "virtual-signal",
-	name = LOCKED_SLOTS,
-	icon = "__cybersyn__/graphics/icons/locked-slots.png",
+	name = SIGNAL_PRIORITY,
+	icon = "__cybersyn__/graphics/icons/priority.png",
 	icon_size = 64,
 	icon_mipmaps = 4,
 	subgroup = "cybersyn-signal",
