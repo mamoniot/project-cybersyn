@@ -16,6 +16,13 @@ local migrations_table = {
 			map_data.all_station_ids[#map_data.all_station_ids + 1] = id
 		end
 	end,
+	["0.2.1"] = function()
+		---@type MapData
+		local map_data = global
+		for id, station in pairs(map_data.stations) do
+			station.p_threshold = nil
+		end
+	end,
 }
 
 ---@param data ConfigurationChangedData

@@ -32,6 +32,9 @@ function remove_manifest(map_data, station, manifest, sign)
 	end
 	set_comb2(map_data, station)
 	station.deliveries_total = station.deliveries_total - 1
+	if station.deliveries_total == 0 and station.entity_comb1.valid then
+		set_combinator_operation(station.entity_comb1, OPERATION_PRIMARY_IO)
+	end
 end
 
 ---@param map_data MapData
@@ -448,8 +451,8 @@ local function tick_dispatch(map_data, mod_settings)
 						highest_prior = prior
 						can_be_serviced = true
 					elseif d < INF then
-						can_be_serviced = true
 						best = j
+						can_be_serviced = true
 					end
 				end
 			end

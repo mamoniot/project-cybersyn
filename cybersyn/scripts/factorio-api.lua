@@ -45,9 +45,10 @@ function create_inactivity_order(depot_name)
 	return {station = depot_name, wait_conditions = create_inactivity_order_condition}
 end
 
+local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 1}}
 ---@param stop LuaEntity
 local function create_direct_to_station_order(stop)
-	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction}
+	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction,wait_conditions = create_direct_to_station_order_condition}
 end
 
 ---@param depot_name string

@@ -220,10 +220,10 @@ function register_gui_actions()
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
-				local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
+				local control = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
 
 				local allows_all_trains = not element.state
-				set_comb_allows_all_trains(a, allows_all_trains)
+				set_comb_allows_all_trains(control, allows_all_trains)
 
 				local stop = global.to_stop[comb.unit_number]
 				if stop then

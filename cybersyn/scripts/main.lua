@@ -16,9 +16,6 @@ local function set_comb1(map_data, station, manifest, sign)
 			end
 			set_combinator_output(map_data, comb, signals)
 		else
-			if station.deliveries_total == 0 then
-				set_combinator_operation(comb, OPERATION_PRIMARY_IO)
-			end
 			set_combinator_output(map_data, comb, nil)
 		end
 	end
@@ -131,7 +128,6 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		last_delivery_tick = 0,
 		priority = 0,
 		r_threshold = 0,
-		p_threshold = 0,
 		locked_slots = 0,
 		--network_name = param.first_signal and param.first_signal.name or nil,
 		network_flag = 0,
@@ -570,6 +566,8 @@ local function on_train_arrives_buffer(map_data, stop, train)
 				set_comb1(map_data, station, train.manifest, -1)
 				set_r_wagon_combs(map_data, station, train)
 			end
+		elseif train.status == STATUS_P and train.p_station_id == station_id then
+		elseif train.status == STATUS_R and train.r_station_id == station_id then
 		else
 			on_failed_delivery(map_data, train)
 			remove_train(map_data, train, train.entity.id)
