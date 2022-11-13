@@ -434,7 +434,7 @@ local function tick_dispatch(map_data, mod_settings)
 
 	local r_station_id = table_remove(r_stations--[[@as uint[] ]])
 	local r_station = stations[r_station_id]
-	if r_station then
+	if r_station and r_station.deliveries_total < r_station.entity_stop.trains_limit then
 		local item_name = tick_data.item_name
 		local item_type = tick_data.item_type
 		local r_threshold = r_station.p_count_or_r_threshold_per_item[item_name]
@@ -446,7 +446,7 @@ local function tick_dispatch(map_data, mod_settings)
 		local can_be_serviced = false
 		for j, p_station_id in ipairs(p_stations) do
 			local p_station = stations[p_station_id]
-			if p_station and p_station.p_count_or_r_threshold_per_item[item_name] >= r_threshold then
+			if p_station and p_station.p_count_or_r_threshold_per_item[item_name] >= r_threshold and p_station.deliveries_total < p_station.entity_stop.trains_limit then
 				local prior = p_station.priority
 				local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
 				local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
