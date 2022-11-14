@@ -125,7 +125,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		entity_comb2 = comb2,
 		wagon_combs = nil,
 		deliveries_total = 0,
-		last_delivery_tick = 0,
+		last_delivery_tick = map_data.total_ticks,
 		priority = 0,
 		r_threshold = 0,
 		locked_slots = 0,
@@ -140,7 +140,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 	set_station_from_comb_state(station)
 	local id = stop.unit_number--[[@as uint]]
 	map_data.stations[id] = station
-	map_data.all_station_ids[#map_data.all_station_ids + 1] = id
+	map_data.warmup_station_ids[#map_data.warmup_station_ids + 1] = id
 
 	update_station_if_auto(map_data, station, nil)
 end
@@ -747,6 +747,7 @@ local function on_settings_changed(event)
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
+	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]
 	if event.setting == "cybersyn-ticks-per-second" then
 		local nth_tick = math.ceil(60/mod_settings.tps);
 		flib_event.on_nth_tick(nil)
@@ -776,6 +777,7 @@ local function main()
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
+	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]
 
 	--NOTE: There is a concern that it is possible to build or destroy important entities without one of these events being triggered, in which case the mod will have undefined behavior
 	flib_event.register(defines.events.on_built_entity, on_built, filter_built)

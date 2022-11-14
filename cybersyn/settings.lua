@@ -27,4 +27,13 @@ data:extend({
 		minimum_value = -2147483648,
 		maximum_value = 2147483647,
 	},
+	{
+		type = "int-setting",
+		name = "cybersyn-warmup-time",
+		order = "ac",
+		setting_type = "runtime-global",
+		default_value = 20,
+		minimum_value = 0,
+		maximum_value = 2147483647,
+	},
 })

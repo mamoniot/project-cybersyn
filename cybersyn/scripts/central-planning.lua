@@ -266,12 +266,12 @@ local function tick_poll_station(map_data, mod_settings)
 	local station
 	while true do--choose a station
 		tick_data.i = (tick_data.i or 0) + 1
-		if tick_data.i > #map_data.all_station_ids then
+		if tick_data.i > #map_data.active_station_ids then
 			tick_data.i = nil
 			map_data.tick_state = STATE_DISPATCH
 			return true
 		end
-		station_id = map_data.all_station_ids[tick_data.i]
+		station_id = map_data.active_station_ids[tick_data.i]
 		station = map_data.stations[station_id]
 		if station then
 			if station.display_update then
@@ -284,7 +284,7 @@ local function tick_poll_station(map_data, mod_settings)
 			end
 		else
 			--lazy delete removed stations
-			table_remove(map_data.all_station_ids, tick_data.i)
+			table_remove(map_data.active_station_ids, tick_data.i)
 			tick_data.i = tick_data.i - 1
 		end
 	end
@@ -489,6 +489,17 @@ function tick(map_data, mod_settings)
 		map_data.economy.all_r_stations = {}
 		map_data.economy.all_names = {}
 		map_data.tick_state = STATE_POLL_STATIONS
+		for i, id in pairs(map_data.warmup_station_ids) do
+			local station = map_data.stations[id]
+			if station then
+				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps >= map_data.total_ticks then
+					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
+					map_data.warmup_station_ids[i] = nil
+				end
+			else
+				map_data.warmup_station_ids[i] = nil
+			end
+		end
 	end
 
 	if map_data.tick_state == STATE_POLL_STATIONS then

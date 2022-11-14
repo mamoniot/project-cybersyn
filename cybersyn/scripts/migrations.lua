@@ -23,6 +23,14 @@ local migrations_table = {
 			station.p_threshold = nil
 		end
 	end,
+	["0.3.0"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.warmup_station_ids = {}
+		map_data.active_station_ids = map_data.all_station_ids
+		map_data.all_station_ids = nil
+		mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]
+	end,
 }
 
 ---@param data ConfigurationChangedData

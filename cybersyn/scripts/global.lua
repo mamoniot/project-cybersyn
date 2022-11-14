@@ -6,7 +6,8 @@
 ---@field public to_output {[uint]: LuaEntity}
 ---@field public to_stop {[uint]: LuaEntity}
 ---@field public stations {[uint]: Station}
----@field public all_station_ids uint[]
+---@field public active_station_ids uint[]
+---@field public warmup_station_ids uint[]
 ---@field public depots {[uint]: Depot}
 ---@field public trains {[uint]: Train}
 ---@field public trains_available {[string]: {[uint]: uint}} --{[network_name]: {[train_id]: depot_id}}
@@ -74,6 +75,7 @@
 ---@field public tps int
 ---@field public r_threshold int
 ---@field public network_flag int
+---@field public warmup_time int
 
 ---@type CybersynModSettings
 mod_settings = {}
@@ -91,7 +93,8 @@ function init_global()
 	global.to_output = {}
 	global.to_stop = {}
 	global.stations = {}
-	global.all_station_ids = {}
+	global.active_station_ids = {}
+	global.warmup_station_ids = {}
 	global.depots = {}
 	global.trains = {}
 	global.trains_available = {}

@@ -9,9 +9,13 @@ Date: 2022-11-10
   Features:
     - Removed provide-threshold
     - Added ability to specify station type on a cybernetic combinator
-
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.1
 Date: 2022-11-11
   Features:
     - Minor bugfixes and performance improvements
+---------------------------------------------------------------------------------------------------
+Version: 0.3.0
+Date: 2022-11-13
+  Features:
+    - Added warmup period on just built stations
