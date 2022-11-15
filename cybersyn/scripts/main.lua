@@ -786,7 +786,6 @@ local function on_cursor_stack_changed(event)
 	local player = game.get_player(i)
 	if not player then return end
 	local cursor = player.cursor_stack
-	player.play_sound({path = ALERT_SOUND})
 
 	if global.is_player_cursor_blueprint[i] then
 		--TODO: check if we can limit this search somehow?
