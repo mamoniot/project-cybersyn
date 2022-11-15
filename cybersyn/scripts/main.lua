@@ -1,5 +1,6 @@
 --By Mami
 local flib_event = require("__flib__.event")
+local floor = math.floor
 
 
 ---@param map_data MapData
@@ -186,8 +187,8 @@ local function search_for_station_combinator(map_data, stop, comb_operation, com
 		entity.valid and entity.name == COMBINATOR_NAME and
 		entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == stop
 		then
-			local control = entity.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
-			if control.operation == comb_operation then
+			local param = get_comb_params(entity)
+			if param.operation == comb_operation then
 				return entity
 			end
 		end
@@ -243,13 +244,15 @@ local function on_combinator_built(map_data, comb)
 		wire = defines.wire_type.red,
 	})
 
-	map_data.to_comb[comb.unit_number] = comb
-	map_data.to_output[comb.unit_number] = out
-	map_data.to_stop[comb.unit_number] = stop
-
 	local control = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
 	local param = control.parameters
 	local op = param.operation
+
+	map_data.to_comb[comb.unit_number] = comb
+	map_data.to_output[comb.unit_number] = out
+	map_data.to_stop[comb.unit_number] = stop
+	map_data.to_comb_params[comb.unit_number] = param
+
 	if op == OPERATION_DEFAULT then
 		op = OPERATION_PRIMARY_IO
 		param.operation = op
@@ -334,8 +337,10 @@ end
 ---@param comb LuaEntity
 local function on_combinator_broken(map_data, comb)
 	--NOTE: we do not check for wagon manifest combinators and update their stations, it is assumed they will be lazy deleted later
-	local out = map_data.to_output[comb.unit_number]
-	local stop = map_data.to_stop[comb.unit_number]
+	---@type uint
+	local comb_id = comb.unit_number
+	local out = map_data.to_output[comb_id]
+	local stop = map_data.to_stop[comb_id]
 
 	if stop and stop.valid then
 		local station = map_data.stations[stop.unit_number]
@@ -345,6 +350,7 @@ local function on_combinator_broken(map_data, comb)
 				if comb1 then
 					station.entity_comb1 = comb1
 					set_station_from_comb_state(station)
+					update_station_if_auto(map_data, station)
 				else
 					on_station_broken(map_data, stop.unit_number, station)
 					local depot_comb = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
@@ -374,16 +380,47 @@ local function on_combinator_broken(map_data, comb)
 	if out and out.valid then
 		out.destroy()
 	end
-	map_data.to_comb[comb.unit_number] = nil
-	map_data.to_output[comb.unit_number] = nil
-	map_data.to_stop[comb.unit_number] = nil
+	map_data.to_comb[comb_id] = nil
+	map_data.to_output[comb_id] = nil
+	map_data.to_stop[comb_id] = nil
+	map_data.to_comb_params[comb_id] = nil
 end
+
 ---@param map_data MapData
 ---@param comb LuaEntity
-function on_combinator_updated(map_data, comb)
-	--NOTE: this is the lazy way to implement updates and puts strong restrictions on data validity on on_combinator_broken
-	on_combinator_broken(map_data, comb)
-	on_combinator_built(map_data, comb)
+---@param new_params ArithmeticCombinatorParameters
+function on_combinator_updated(map_data, comb, new_params)
+	local old_params = map_data.to_comb_params[comb.unit_number]
+	if new_params.operation ~= old_params.operation then
+		on_combinator_broken(map_data, comb)
+		on_combinator_built(map_data, comb)
+	else
+		local new_signal = new_params.first_signal
+		local old_signal = old_params.first_signal
+		local new_network = new_signal and new_signal.name or nil
+		local old_network = old_signal and old_signal.name or nil
+		if (new_network ~= old_network) then
+			on_combinator_network_updated(map_data, comb, new_network)
+		end
+		if new_params.second_constant ~= old_params.second_constant then
+			local stop = global.to_stop[comb.unit_number]
+			if stop then
+				local station = global.stations[stop.unit_number]
+				if station then
+					local bits = new_params.second_constant
+					local is_pr_state = floor(bits/2)%3
+					station.is_p = is_pr_state == 0 or is_pr_state == 1
+					station.is_r = is_pr_state == 0 or is_pr_state == 2
+					local allow_all_trains = bits%2 == 1
+					if station.allow_all_trains ~= allow_all_trains then
+						station.allow_all_trains = allow_all_trains
+						update_station_if_auto(map_data, station)
+					end
+				end
+			end
+		end
+		map_data.to_comb_params[comb.unit_number] = new_params
+	end
 end
 
 ---@param map_data MapData
@@ -403,8 +440,8 @@ local function on_stop_built(map_data, stop)
 	for _, entity in pairs(entities) do
 		if entity.valid and entity.name == COMBINATOR_NAME and map_data.to_stop[entity.unit_number] == nil then
 			map_data.to_stop[entity.unit_number] = stop
-			local control = entity.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
-			local op = control.operation
+			local param = get_comb_params(entity)
+			local op = param.operation
 			if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_REQUEST_FAILED then
 				comb1 = entity
 			elseif op == OPERATION_SECONDARY_IO then
@@ -510,7 +547,7 @@ local function on_train_arrives_depot(map_data, depot, train_entity)
 		else
 			if train.manifest then
 				on_failed_delivery(map_data, train)
-				send_lost_train_alert(train.entity)
+				send_unexpected_train_alert(train.entity)
 			end
 			train.status = STATUS_D
 			add_available_train(map_data, depot, train_id)
@@ -734,14 +771,42 @@ local function on_surface_removed(event)
 	end
 end
 
+
 local function on_paste(event)
 	local entity = event.destination
 	if not entity or not entity.valid then return end
 
 	if entity.name == COMBINATOR_NAME then
-		on_combinator_updated(global, entity)
+		on_combinator_updated(global, entity, get_comb_params(entity))
 	end
 end
+
+local function on_cursor_stack_changed(event)
+	local i = event.player_index
+	local player = game.get_player(i)
+	if not player then return end
+	local cursor = player.cursor_stack
+	player.play_sound({path = ALERT_SOUND})
+
+	if global.is_player_cursor_blueprint[i] then
+		--TODO: check if we can limit this search somehow?
+		for id, comb in pairs(global.to_comb) do
+			on_combinator_updated(global, comb, get_comb_params(comb))
+		end
+	end
+	local contains_comb = nil
+	if cursor and cursor.valid_for_read and cursor.type == "blueprint" then
+		local cost_to_build = cursor.cost_to_build
+		for k, v in pairs(cost_to_build) do
+			if k == COMBINATOR_NAME then
+				contains_comb = true
+				break
+			end
+		end
+	end
+	global.is_player_cursor_blueprint[i] = contains_comb
+end
+
 
 local function on_settings_changed(event)
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]
@@ -792,6 +857,7 @@ local function main()
 	flib_event.register({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
 
 	flib_event.register(defines.events.on_entity_settings_pasted, on_paste)
+	flib_event.register(defines.events.on_player_cursor_stack_changed, on_cursor_stack_changed)
 
 	local nth_tick = math.ceil(60/mod_settings.tps);
 	flib_event.on_nth_tick(nth_tick, function()

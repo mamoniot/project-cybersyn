@@ -30,12 +30,12 @@ STATUS_NAMES_DEFAULT = "entity-status.disabled"
 ---@param player LuaPlayer
 function gui_opened(comb, player)
 	local rootgui = player.gui.screen
-	local control = comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
-	local op = control.operation
+	local param = get_comb_params(comb)
+	local op = param.operation
 
 	local selected_index = 0
 	local switch_state = "none"
-	local allows_all_trains, is_pr_state = get_comb_secondary_state(control)
+	local allows_all_trains, is_pr_state = get_comb_secondary_state(param)
 	if is_pr_state == 0 then
 		switch_state = "none"
 	elseif is_pr_state == 1 then
@@ -94,7 +94,7 @@ function gui_opened(comb, player)
 					{type="line", style_mods={top_padding=10}},
 					{type="label", name="network_label", ref={"network_label"}, style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
 					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="center"}, children={
-						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=control.first_signal, style_mods={bottom_margin=1, right_margin=6}, actions={
+						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=param.first_signal, style_mods={bottom_margin=1, right_margin=6}, actions={
 							on_elem_changed={"choose-elem-button", comb.unit_number}
 						}},
 						{type="checkbox", name="radio_button", ref={"radio_button"}, state=not allows_all_trains, tooltip={"cybersyn-gui.auto-tooltip"}, actions={
@@ -162,29 +162,30 @@ function register_gui_actions()
 				local top_flow = element.parent
 				local all_flow = top_flow.parent
 				local bottom_flow = all_flow.bottom
+				local param
 				if element.selected_index == 1 then
-					set_combinator_operation(comb, OPERATION_PRIMARY_IO)
+					param = set_combinator_operation(comb, OPERATION_PRIMARY_IO)
 					top_flow["switch"].visible = true
 					all_flow["network_label"].visible = true
 					bottom_flow["network"].visible = true
 					bottom_flow["radio_button"].visible = true
 					bottom_flow["radio_label"].visible = true
 				elseif element.selected_index == 2 then
-					set_combinator_operation(comb, OPERATION_SECONDARY_IO)
+					param = set_combinator_operation(comb, OPERATION_SECONDARY_IO)
 					top_flow["switch"].visible = false
 					all_flow["network_label"].visible = false
 					bottom_flow["network"].visible = false
 					bottom_flow["radio_button"].visible = false
 					bottom_flow["radio_label"].visible = false
 				elseif element.selected_index == 3 then
-					set_combinator_operation(comb, OPERATION_DEPOT)
+					param = set_combinator_operation(comb, OPERATION_DEPOT)
 					top_flow["switch"].visible = false
 					all_flow["network_label"].visible = true
 					bottom_flow["network"].visible = true
 					bottom_flow["radio_button"].visible = false
 					bottom_flow["radio_label"].visible = false
 				elseif element.selected_index == 4 then
-					set_combinator_operation(comb, OPERATION_WAGON_MANIFEST)
+					param = set_combinator_operation(comb, OPERATION_WAGON_MANIFEST)
 					top_flow["switch"].visible = false
 					all_flow["network_label"].visible = false
 					bottom_flow["network"].visible = false
@@ -194,44 +195,31 @@ function register_gui_actions()
 					return
 				end
 
-				on_combinator_updated(global, comb)
+				on_combinator_updated(global, comb, param)
 			elseif msg[1] == "choose-elem-button" then
 				local element = event.element
 				if not element then return end
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
-				local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
-				local control = a.parameters
-
 				local signal = element.elem_value
 				if signal and (signal.name == "signal-everything" or signal.name == "signal-anything" or signal.name == "signal-each") then
-					control.first_signal = nil
+					signal = nil
 					element.elem_value = nil
-				else
-					control.first_signal = signal
 				end
-				a.parameters = control
+				local param = set_comb_network_name(comb, signal)
 
-				on_combinator_network_updated(global, comb, signal and signal.name or nil)
+				on_combinator_updated(global, comb, param)
 			elseif msg[1] == "radio_button" then
 				local element = event.element
 				if not element then return end
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
-				local control = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
-
 				local allows_all_trains = not element.state
-				set_comb_allows_all_trains(control, allows_all_trains)
+				local param = set_comb_allows_all_trains(comb, allows_all_trains)
 
-				local stop = global.to_stop[comb.unit_number]
-				if stop then
-					local station = global.stations[stop.unit_number]
-					if station then
-						set_station_train_class(global, station, allows_all_trains)
-					end
-				end
+				on_combinator_updated(global, comb, param)
 			elseif msg[1] == "switch" then
 				local element = event.element
 				if not element then return end
@@ -239,17 +227,9 @@ function register_gui_actions()
 				if not comb or not comb.valid then return end
 
 				local is_pr_state = (element.switch_state == "none" and 0) or (element.switch_state == "left" and 1) or 2
-				local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
-				set_comb_is_pr_state(a, is_pr_state)
+				local param = set_comb_is_pr_state(comb, is_pr_state)
 
-				local stop = global.to_stop[comb.unit_number]
-				if stop then
-					local station = global.stations[stop.unit_number]
-					if station then
-						station.is_p = is_pr_state == 0 or is_pr_state == 1
-						station.is_r = is_pr_state == 0 or is_pr_state == 2
-					end
-				end
+				on_combinator_updated(global, comb, param)
 			end
 		end
 	end)

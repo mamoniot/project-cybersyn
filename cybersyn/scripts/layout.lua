@@ -397,8 +397,8 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 							supports_fluid = true
 						end
 					elseif entity.name == COMBINATOR_NAME then
-						local control = entity.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
-						if control.operation == OPERATION_WAGON_MANIFEST then
+						local param = map_data.to_comb_params[entity.unit_number]
+						if param.operation == OPERATION_WAGON_MANIFEST then
 							local pos = entity.position
 							local is_there
 							if is_ver then
@@ -441,18 +441,6 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 			accepted_layouts[id] = true
 		else
 			accepted_layouts[id] = nil
-		end
-	end
-end
-
----@param map_data MapData
----@param station Station
----@param allows_all_trains boolean
-function set_station_train_class(map_data, station, allows_all_trains)
-	if station.allows_all_trains ~= allows_all_trains then
-		station.allows_all_trains = allows_all_trains
-		if not allows_all_trains then
-			reset_station_layout(map_data, station, nil)
 		end
 	end
 end

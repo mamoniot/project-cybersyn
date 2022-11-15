@@ -2,7 +2,9 @@
 ---@class MapData
 ---@field public total_ticks uint
 ---@field public layout_top_id uint
+---@field public is_player_cursor_blueprint {[uint]: true|nil}
 ---@field public to_comb {[uint]: LuaEntity}
+---@field public to_comb_params {[uint]: ArithmeticCombinatorParameters}
 ---@field public to_output {[uint]: LuaEntity}
 ---@field public to_stop {[uint]: LuaEntity}
 ---@field public stations {[uint]: Station}
@@ -90,6 +92,7 @@ function init_global()
 		all_names = {},
 	}
 	global.to_comb = {}
+	global.to_comb_params = {}
 	global.to_output = {}
 	global.to_stop = {}
 	global.stations = {}
@@ -101,4 +104,5 @@ function init_global()
 	global.layouts = {}
 	global.layout_train_count = {}
 	global.layout_top_id = 1
+	global.is_player_cursor_blueprint = {}
 end

@@ -70,7 +70,9 @@ function create_manifest_schedule(depot_name, p_stop, r_stop, manifest)
 	}}
 end
 
-
+function get_comb_params(comb)
+	return comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
+end
 ---@param param ArithmeticCombinatorParameters
 function get_comb_secondary_state(param)
 	local bits = param.second_constant or 0
@@ -78,14 +80,14 @@ function get_comb_secondary_state(param)
 end
 ---@param depot Depot
 function set_depot_from_comb_state(depot)
-	local param = depot.entity_comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
+	local param = get_comb_params(depot.entity_comb)
 	local signal = param.first_signal
 	depot.network_name = signal and signal.name or nil
 end
 ---@param station Station
 function set_station_from_comb_state(station)
 	--NOTE: this does nothing to update currently active deliveries
-	local param = station.entity_comb1.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
+	local param = get_comb_params(station.entity_comb1)
 	local bits = param.second_constant or 0
 	local is_pr_state = floor(bits/2)%3
 	local signal = param.first_signal
@@ -94,19 +96,36 @@ function set_station_from_comb_state(station)
 	station.is_p = is_pr_state == 0 or is_pr_state == 1
 	station.is_r = is_pr_state == 0 or is_pr_state == 2
 end
----@param control LuaArithmeticCombinatorControlBehavior
-function set_comb_allows_all_trains(control, allows_all_trains)
+---@param comb LuaEntity
+---@param allows_all_trains boolean
+function set_comb_allows_all_trains(comb, allows_all_trains)
+	local control = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
 	local param = control.parameters
 	local bits = param.second_constant or 0
 	param.second_constant = (bits - bits%2) + (allows_all_trains and 1 or 0)
 	control.parameters = param
+	return param
 end
----@param control LuaArithmeticCombinatorControlBehavior
-function set_comb_is_pr_state(control, is_pr_state)
+---@param comb LuaEntity
+---@param is_pr_state 0|1|2
+function set_comb_is_pr_state(comb, is_pr_state)
+	local control = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
 	local param = control.parameters
 	local bits = param.second_constant or 0
 	param.second_constant = (bits%2) + (2*is_pr_state)
 	control.parameters = param
+	return param
+end
+
+---@param comb LuaEntity
+---@param signal SignalID?
+function set_comb_network_name(comb, signal)
+	local control = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
+	local param = control.parameters
+
+	param.first_signal = signal
+	control.parameters = param
+	return param
 end
 
 
@@ -122,24 +141,25 @@ end
 ---@param comb LuaEntity
 ---@param op string
 function set_combinator_operation(comb, op)
-	local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
-	local control = a.parameters
-	control.operation = op
-	a.parameters = control
+	local control = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
+	local param = control.parameters
+	param.operation = op
+	control.parameters = param
+	return param
 end
 ---@param comb LuaEntity
 ---@param is_failed boolean
 function update_combinator_display(comb, is_failed)
-	local a = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
-	local control = a.parameters
+	local control = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
+	local param = control.parameters
 	if is_failed then
-		if control.operation == OPERATION_PRIMARY_IO then
-			control.operation = OPERATION_PRIMARY_IO_REQUEST_FAILED
-			a.parameters = control
+		if param.operation == OPERATION_PRIMARY_IO then
+			param.operation = OPERATION_PRIMARY_IO_REQUEST_FAILED
+			control.parameters = param
 		end
-	elseif control.operation == OPERATION_PRIMARY_IO_REQUEST_FAILED then
-		control.operation = OPERATION_PRIMARY_IO
-		a.parameters = control
+	elseif param.operation == OPERATION_PRIMARY_IO_REQUEST_FAILED then
+		param.operation = OPERATION_PRIMARY_IO
+		control.parameters = param
 	end
 end
 
@@ -193,9 +213,8 @@ function send_missing_train_alert_for_stops(r_stop, p_stop)
 		r_stop,
 		send_missing_train_alert_for_stop_icon,
 		{"cybersyn-messages.missing-trains", r_stop.backer_name, p_stop.backer_name},
-		true
-	)
-end
+		true)
+	end
 end
 
 local send_lost_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
@@ -208,11 +227,25 @@ function send_lost_train_alert(train)
 			loco,
 			send_lost_train_alert_icon,
 			{"cybersyn-messages.lost-train"},
-			true
-		)
+			true)
+			player.play_sound({path = ALERT_SOUND})
+		end
 	end
 end
+---@param train LuaTrain
+function send_unexpected_train_alert(train)
+	local loco = train.front_stock or train.back_stock
+	if loco then
+		for _, player in pairs(loco.force.players) do
+			player.add_custom_alert(
+			loco,
+			send_lost_train_alert_icon,
+			{"cybersyn-messages.unexpected-train"},
+			true)
+		end
+	end
 end
+
 
 local send_nonempty_train_in_depot_alert_icon = {name = NONEMPTY_TRAIN_NAME, type = "fluid"}
 ---@param train LuaTrain
@@ -224,8 +257,8 @@ function send_nonempty_train_in_depot_alert(train)
 			loco,
 			send_nonempty_train_in_depot_alert_icon,
 			{"cybersyn-messages.nonempty-train"},
-			true
-		)
+			true)
+			player.play_sound({path = ALERT_SOUND})
+		end
 	end
-end
 end

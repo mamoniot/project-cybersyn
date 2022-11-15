@@ -31,6 +31,15 @@ local migrations_table = {
 		map_data.all_station_ids = nil
 		mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]
 	end,
+	["0.4.0"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.is_player_cursor_blueprint = {}
+		map_data.to_comb_params = {}
+		for id, comb in pairs(map_data.to_comb) do
+			map_data.to_comb_params[id] = get_comb_params(comb)
+		end
+	end,
 }
 
 ---@param data ConfigurationChangedData
