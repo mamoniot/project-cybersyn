@@ -22,10 +22,8 @@ end
 ---@param train Train
 ---@param train_id uint
 function remove_train(map_data, train, train_id)
-	map_data.trains[train_id] = nil
-	local depot = train.depot
-	if depot then
-		remove_available_train(map_data, depot)
+	if train.depot then
+		remove_available_train(map_data, train.depot)
 	end
 	local layout_id = train.layout_id
 	local count = map_data.layout_train_count[layout_id]
@@ -38,6 +36,7 @@ function remove_train(map_data, train, train_id)
 	else
 		map_data.layout_train_count[layout_id] = count - 1
 	end
+	map_data.trains[train_id] = nil
 end
 
 ---@param map_data MapData

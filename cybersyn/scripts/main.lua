@@ -162,7 +162,7 @@ local function on_station_broken(map_data, station_id, station)
 					on_failed_delivery(map_data, train)
 					train.entity.schedule = nil
 					remove_train(map_data, train, train_id)
-					send_lost_train_alert(train.entity)
+					send_lost_train_alert(train.entity, train.depot_name)
 				end
 			end
 		end
@@ -609,7 +609,7 @@ local function on_train_arrives_buffer(map_data, stop, train)
 			on_failed_delivery(map_data, train)
 			remove_train(map_data, train, train.entity.id)
 			train.entity.schedule = nil
-			send_lost_train_alert(train.entity)
+			send_lost_train_alert(train.entity, train.depot_name)
 		end
 	else
 		--train is lost somehow, probably from player intervention
