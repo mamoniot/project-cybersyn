@@ -248,21 +248,22 @@ local function on_combinator_built(map_data, comb)
 	local param = control.parameters
 	local op = param.operation
 
-	map_data.to_comb[comb.unit_number] = comb
-	map_data.to_output[comb.unit_number] = out
-	map_data.to_stop[comb.unit_number] = stop
-	map_data.to_comb_params[comb.unit_number] = param
-
 	if op == OPERATION_DEFAULT then
 		op = OPERATION_PRIMARY_IO
 		param.operation = op
 		param.first_signal = NETWORK_SIGNAL_DEFAULT
 		control.parameters = param
-	elseif op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_REQUEST_FAILED then
+	elseif op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_FAILED_REQUEST then
 		op = OPERATION_PRIMARY_IO
 		param.operation = op
 		control.parameters = param
 	end
+
+	map_data.to_comb[comb.unit_number] = comb
+	map_data.to_output[comb.unit_number] = out
+	map_data.to_stop[comb.unit_number] = stop
+	map_data.to_comb_params[comb.unit_number] = param
+
 	if op == OPERATION_WAGON_MANIFEST then
 		if rail then
 			force_update_station_from_rail(map_data, rail, nil)
@@ -392,35 +393,41 @@ end
 function on_combinator_updated(map_data, comb, new_params)
 	local old_params = map_data.to_comb_params[comb.unit_number]
 	if new_params.operation ~= old_params.operation then
-		on_combinator_broken(map_data, comb)
-		on_combinator_built(map_data, comb)
-	else
-		local new_signal = new_params.first_signal
-		local old_signal = old_params.first_signal
-		local new_network = new_signal and new_signal.name or nil
-		local old_network = old_signal and old_signal.name or nil
-		if (new_network ~= old_network) then
-			on_combinator_network_updated(map_data, comb, new_network)
+		if (new_params.operation == OPERATION_PRIMARY_IO_ACTIVE or new_params.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST or new_params.operation == OPERATION_PRIMARY_IO) and (old_params.operation == OPERATION_PRIMARY_IO_ACTIVE or old_params.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST or old_params.operation == OPERATION_PRIMARY_IO) then
+			set_combinator_operation(comb, old_params.operation)
+			new_params.operation = old_params.operation
+		else
+			--NOTE: This is rather dangerous, we may need to actually implement operation changing
+			on_combinator_broken(map_data, comb)
+			on_combinator_built(map_data, comb)
+			return
 		end
-		if new_params.second_constant ~= old_params.second_constant then
-			local stop = global.to_stop[comb.unit_number]
-			if stop then
-				local station = global.stations[stop.unit_number]
-				if station then
-					local bits = new_params.second_constant
-					local is_pr_state = floor(bits/2)%3
-					station.is_p = is_pr_state == 0 or is_pr_state == 1
-					station.is_r = is_pr_state == 0 or is_pr_state == 2
-					local allow_all_trains = bits%2 == 1
-					if station.allow_all_trains ~= allow_all_trains then
-						station.allow_all_trains = allow_all_trains
-						update_station_if_auto(map_data, station)
-					end
+	end
+	local new_signal = new_params.first_signal
+	local old_signal = old_params.first_signal
+	local new_network = new_signal and new_signal.name or nil
+	local old_network = old_signal and old_signal.name or nil
+	if new_network ~= old_network then
+		on_combinator_network_updated(map_data, comb, new_network)
+	end
+	if new_params.second_constant ~= old_params.second_constant then
+		local stop = global.to_stop[comb.unit_number]
+		if stop then
+			local station = global.stations[stop.unit_number]
+			if station then
+				local bits = new_params.second_constant
+				local is_pr_state = floor(bits/2)%3
+				station.is_p = is_pr_state == 0 or is_pr_state == 1
+				station.is_r = is_pr_state == 0 or is_pr_state == 2
+				local allow_all_trains = bits%2 == 1
+				if station.allow_all_trains ~= allow_all_trains then
+					station.allow_all_trains = allow_all_trains
+					update_station_if_auto(map_data, station)
 				end
 			end
 		end
-		map_data.to_comb_params[comb.unit_number] = new_params
 	end
+	map_data.to_comb_params[comb.unit_number] = new_params
 end
 
 ---@param map_data MapData
@@ -442,7 +449,7 @@ local function on_stop_built(map_data, stop)
 			map_data.to_stop[entity.unit_number] = stop
 			local param = get_comb_params(entity)
 			local op = param.operation
-			if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_REQUEST_FAILED then
+			if op == OPERATION_PRIMARY_IO then
 				comb1 = entity
 			elseif op == OPERATION_SECONDARY_IO then
 				comb2 = entity

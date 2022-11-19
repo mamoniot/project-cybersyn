@@ -154,13 +154,14 @@ function update_combinator_display(comb, is_failed)
 	local param = control.parameters
 	if is_failed then
 		if param.operation == OPERATION_PRIMARY_IO then
-			param.operation = OPERATION_PRIMARY_IO_REQUEST_FAILED
+			param.operation = OPERATION_PRIMARY_IO_FAILED_REQUEST
 			control.parameters = param
 		end
-	elseif param.operation == OPERATION_PRIMARY_IO_REQUEST_FAILED then
+	elseif param.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST then
 		param.operation = OPERATION_PRIMARY_IO
 		control.parameters = param
 	end
+	return param
 end
 
 

@@ -1,9 +1,7 @@
 close gui when the combinator is destroyed
 do not play close sound when a different gui is opened
+gui can desync if settings are changed outside of it while it is open
 do hardcore testing
 models & art
 space elevator compat
 railloader compat
-add missing items alert
-lost train can be repurposed and rescheduled while alert is active
-display when train is coming

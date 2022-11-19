@@ -44,7 +44,7 @@ function gui_opened(comb, player)
 		switch_state = "right"
 	end
 
-	if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_REQUEST_FAILED then
+	if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_FAILED_REQUEST then
 		selected_index = 1
 	elseif op == OPERATION_SECONDARY_IO then
 		selected_index = 2

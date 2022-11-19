@@ -21,7 +21,7 @@ Date: 2022-11-13
     - Added warmup period on just built stations
 ---------------------------------------------------------------------------------------------------
 Version: 0.3.0
-Date: 2022-11-13
+Date: 2022-11-15
   Features:
     - Fixed copy-paste
     - Added alert sounds

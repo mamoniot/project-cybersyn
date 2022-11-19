@@ -33,7 +33,7 @@ function remove_manifest(map_data, station, manifest, sign)
 	set_comb2(map_data, station)
 	station.deliveries_total = station.deliveries_total - 1
 	if station.deliveries_total == 0 and station.entity_comb1.valid then
-		set_combinator_operation(station.entity_comb1, OPERATION_PRIMARY_IO)
+		map_data.to_comb_params[station.entity_comb1.unit_number] = set_combinator_operation(station.entity_comb1, OPERATION_PRIMARY_IO)
 	end
 end
 
@@ -220,10 +220,10 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	set_comb2(map_data, p_station)
 	set_comb2(map_data, r_station)
 	if p_station.entity_comb1.valid then
-		set_combinator_operation(p_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+		map_data.to_comb_params[p_station.entity_comb1.unit_number] = set_combinator_operation(p_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
 	end
 	if r_station.entity_comb1.valid then
-		set_combinator_operation(r_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+		map_data.to_comb_params[r_station.entity_comb1.unit_number] = set_combinator_operation(r_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
 	end
 end
 
@@ -275,7 +275,7 @@ local function tick_poll_station(map_data, mod_settings)
 		station = map_data.stations[station_id]
 		if station then
 			if station.display_update then
-				update_combinator_display(station.entity_comb1, station.display_failed_request)
+				map_data.to_comb_params[station.entity_comb1.unit_number] = update_combinator_display(station.entity_comb1, station.display_failed_request)
 				station.display_update = station.display_failed_request
 				station.display_failed_request = nil
 			end
@@ -439,43 +439,45 @@ local function tick_dispatch(map_data, mod_settings)
 		local item_type = tick_data.item_type
 		local r_threshold = r_station.p_count_or_r_threshold_per_item[item_name]
 
-		local best = 0
-		local best_depot = nil
-		local best_dist = INF
-		local highest_prior = -INF
-		local can_be_serviced = false
-		for j, p_station_id in ipairs(p_stations) do
-			local p_station = stations[p_station_id]
-			if p_station and p_station.p_count_or_r_threshold_per_item[item_name] >= r_threshold and p_station.deliveries_total < p_station.entity_stop.trains_limit then
-				local prior = p_station.priority
-				local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
-				local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
-				if prior > highest_prior or (prior == highest_prior and d < best_dist) then
-					if depot then
-						best = j
-						best_dist = d
-						best_depot = depot
-						highest_prior = prior
-						can_be_serviced = true
-					elseif d < INF then
-						best = j
-						can_be_serviced = true
+		if r_threshold then
+			local best = 0
+			local best_depot = nil
+			local best_dist = INF
+			local highest_prior = -INF
+			local can_be_serviced = false
+			for j, p_station_id in ipairs(p_stations) do
+				local p_station = stations[p_station_id]
+				if p_station and (p_station.p_count_or_r_threshold_per_item[item_name] or -1) >= r_threshold and p_station.deliveries_total < p_station.entity_stop.trains_limit then
+					local prior = p_station.priority
+					local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
+					local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
+					if prior > highest_prior or (prior == highest_prior and d < best_dist) then
+						if depot then
+							best = j
+							best_dist = d
+							best_depot = depot
+							highest_prior = prior
+							can_be_serviced = true
+						elseif d < INF then
+							best = j
+							can_be_serviced = true
+						end
 					end
 				end
 			end
-		end
-		if
-		best_depot and (
-		best_depot.entity_comb.status == defines.entity_status.working or
-		best_depot.entity_comb.status == defines.entity_status.low_power)
-		then
-			send_train_between(map_data, r_station_id, table_remove(p_stations--[[@as {}]], best), best_depot, item_name)
-		else
-			if can_be_serviced then
-				send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations--[[@as {}]][best]].entity_stop)
+			if
+			best_depot and (
+			best_depot.entity_comb.status == defines.entity_status.working or
+			best_depot.entity_comb.status == defines.entity_status.low_power)
+			then
+				send_train_between(map_data, r_station_id, table_remove(p_stations--[[@as {}]], best), best_depot, item_name)
+			else
+				if can_be_serviced then
+					send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations--[[@as {}]][best]].entity_stop)
+				end
+				r_station.display_failed_request = true
+				r_station.display_update = true
 			end
-			r_station.display_failed_request = true
-			r_station.display_update = true
 		end
 	end
 	return false
