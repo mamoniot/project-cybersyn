@@ -40,6 +40,15 @@ local migrations_table = {
 			map_data.to_comb_params[id] = get_comb_params(comb)
 		end
 	end,
+	["0.4.1"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		for id, station in pairs(map_data.stations) do
+			station.allows_all_trains = station.allow_all_trains or station.allows_all_trains
+			station.allow_all_trains = nil
+		end
+	end,
 }
 
 ---@param data ConfigurationChangedData

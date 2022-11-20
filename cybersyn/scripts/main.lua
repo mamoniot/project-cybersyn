@@ -419,9 +419,9 @@ function on_combinator_updated(map_data, comb, new_params)
 				local is_pr_state = floor(bits/2)%3
 				station.is_p = is_pr_state == 0 or is_pr_state == 1
 				station.is_r = is_pr_state == 0 or is_pr_state == 2
-				local allow_all_trains = bits%2 == 1
-				if station.allow_all_trains ~= allow_all_trains then
-					station.allow_all_trains = allow_all_trains
+				local allows_all_trains = bits%2 == 1
+				if station.allows_all_trains ~= allows_all_trains then
+					station.allows_all_trains = allows_all_trains
 					update_station_if_auto(map_data, station)
 				end
 			end
@@ -862,8 +862,8 @@ local function main()
 
 	flib_event.register({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
 
-	flib_event.register(defines.events.on_entity_settings_pasted, on_paste)
-	flib_event.register(defines.events.on_player_cursor_stack_changed, on_cursor_stack_changed)
+	--flib_event.register(defines.events.on_entity_settings_pasted, on_paste)
+	--flib_event.register(defines.events.on_player_cursor_stack_changed, on_cursor_stack_changed)
 
 	local nth_tick = math.ceil(60/mod_settings.tps);
 	flib_event.on_nth_tick(nth_tick, function()

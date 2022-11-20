@@ -12,7 +12,7 @@ combinator_entity.radius_visualisation_specification = {
 	distance = 1.5,
 }
 combinator_entity.active_energy_usage = "10KW"
-combinator_entity.allow_copy_paste = true
+combinator_entity.allow_copy_paste = false
 
 
 
