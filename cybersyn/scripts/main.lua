@@ -64,7 +64,7 @@ local function add_available_train(map_data, depot_id, train_id)
 			network = {}
 			map_data.available_trains[network_name] = network
 		end
-		network[train_id] = depot.entity_stop.unit_number
+		network[train_id] = depot_id
 	end
 	depot.available_train_id = train_id
 	train.depot_id = depot_id

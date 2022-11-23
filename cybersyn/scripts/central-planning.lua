@@ -467,7 +467,7 @@ function tick(map_data, mod_settings)
 		for i, id in pairs(map_data.warmup_station_ids) do
 			local station = map_data.stations[id]
 			if station then
-				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps >= map_data.total_ticks then--TODO: bug HERE
+				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps <= map_data.total_ticks then
 					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
 					map_data.warmup_station_ids[i] = nil
 				end
