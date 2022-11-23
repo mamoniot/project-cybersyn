@@ -12,7 +12,7 @@
 ---@field public warmup_station_ids uint[]
 ---@field public depots {[uint]: Depot}
 ---@field public trains {[uint]: Train}
----@field public trains_available {[string]: {[uint]: uint}} --{[network_name]: {[train_id]: depot_id}}
+---@field public available_trains {[string]: {[uint]: uint}} --{[network_name]: {[train_id]: depot_id}}
 ---@field public layouts {[uint]: string}
 ---@field public layout_train_count {[uint]: int}
 ---@field public tick_state uint
@@ -43,25 +43,25 @@
 ---@field public display_update true?
 
 ---@class Depot
----@field public priority int --transient
 ---@field public entity_stop LuaEntity
 ---@field public entity_comb LuaEntity
----@field public network_name string?
----@field public network_flag int --transient
----@field public available_train uint?
+---@field public available_train_id uint?--train_id
 
 ---@class Train
 ---@field public entity LuaTrain
 ---@field public layout_id uint
 ---@field public item_slot_capacity int
 ---@field public fluid_capacity int
----@field public depot_name string
----@field public depot Depot?
 ---@field public status int
 ---@field public p_station_id uint
 ---@field public r_station_id uint
 ---@field public manifest Manifest
 ---@field public has_filtered_wagon boolean
+---@field public depot_id uint?
+---@field public depot_name string
+---@field public network_name string
+---@field public network_flag int
+---@field public priority int
 
 ---@alias Manifest {}[]
 ---@alias TrainClass {[uint]: true}
@@ -100,7 +100,7 @@ function init_global()
 	global.warmup_station_ids = {}
 	global.depots = {}
 	global.trains = {}
-	global.trains_available = {}
+	global.available_trains = {}
 	global.layouts = {}
 	global.layout_train_count = {}
 	global.layout_top_id = 1

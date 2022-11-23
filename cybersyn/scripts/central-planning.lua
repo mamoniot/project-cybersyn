@@ -62,7 +62,7 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type, 
 	local valid_train_exists = false
 
 	local is_fluid = item_type == "fluid"
-	local trains = map_data.trains_available[network_name]
+	local trains = map_data.available_trains[network_name]
 	if trains then
 		for train_id, depot_id in pairs(trains) do
 			local depot = map_data.depots[depot_id]
@@ -73,14 +73,14 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type, 
 			local capacity = (is_fluid and train.fluid_capacity) or train.item_slot_capacity
 			if
 			capacity >= min_slots_to_move and
-			btest(netand, depot.network_flag) and
+			btest(netand, train.network_flag) and
 			(r_station.allows_all_trains or r_station.accepted_layouts[layout_id]) and
 			(p_station.allows_all_trains or p_station.accepted_layouts[layout_id])
 			then
 				valid_train_exists = true
 				--check if exists valid path
 				--check if path is shortest so we prioritize locality
-				local d_to_p_dist = get_stop_dist(depot.entity_stop, p_station.entity_stop) - DEPOT_PRIORITY_MULT*depot.priority
+				local d_to_p_dist = get_stop_dist(depot.entity_stop, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority
 
 				local dist = d_to_p_dist
 				if capacity > best_capacity or (capacity == best_capacity and dist < best_dist) then
@@ -110,9 +110,9 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	local economy = map_data.economy
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
-	local train = map_data.trains[depot.available_train]
+	local train = map_data.trains[depot.available_train_id]
 	---@type string
-	local network_name = depot.network_name
+	local network_name = r_station.network_name
 
 	local manifest = {}
 
@@ -210,7 +210,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 		end
 	end
 
-	remove_available_train(map_data, depot)
+	remove_available_train(map_data, train, depot)
 	train.status = STATUS_D_TO_P
 	train.p_station_id = p_station_id
 	train.r_station_id = r_station_id
@@ -224,33 +224,6 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	end
 	if r_station.entity_comb1.valid then
 		map_data.to_comb_params[r_station.entity_comb1.unit_number] = set_combinator_operation(r_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
-	end
-end
-
-
----@param map_data MapData
-function poll_depot(map_data, depot)
-	local comb = depot.entity_comb
-	if depot.network_name then
-		depot.priority = 0
-		depot.network_flag = 1
-		local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
-		if signals then
-			for k, v in pairs(signals) do
-				local item_name = v.signal.name
-				local item_count = v.count
-				if item_name then
-					if item_name == SIGNAL_PRIORITY then
-						depot.priority = item_count
-					end
-					if item_name == depot.network_name then
-						depot.network_flag = item_count
-					end
-				end
-			end
-		end
-	else
-		depot.network_flag = 0
 	end
 end
 
@@ -494,7 +467,7 @@ function tick(map_data, mod_settings)
 		for i, id in pairs(map_data.warmup_station_ids) do
 			local station = map_data.stations[id]
 			if station then
-				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps >= map_data.total_ticks then
+				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps >= map_data.total_ticks then--TODO: bug HERE
 					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
 					map_data.warmup_station_ids[i] = nil
 				end

@@ -78,12 +78,6 @@ function get_comb_secondary_state(param)
 	local bits = param.second_constant or 0
 	return bits%2 == 1, floor(bits/2)%3
 end
----@param depot Depot
-function set_depot_from_comb_state(depot)
-	local param = get_comb_params(depot.entity_comb)
-	local signal = param.first_signal
-	depot.network_name = signal and signal.name or nil
-end
 ---@param station Station
 function set_station_from_comb_state(station)
 	--NOTE: this does nothing to update currently active deliveries
@@ -115,6 +109,14 @@ function set_comb_is_pr_state(comb, is_pr_state)
 	param.second_constant = (bits%2) + (2*is_pr_state)
 	control.parameters = param
 	return param
+end
+
+---@param comb LuaEntity
+function get_comb_network_name(comb)
+	local control = comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
+	local signal = control.parameters.first_signal
+
+	return signal and signal.name
 end
 
 ---@param comb LuaEntity

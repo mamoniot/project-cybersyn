@@ -49,6 +49,32 @@ local migrations_table = {
 			station.allow_all_trains = nil
 		end
 	end,
+	["0.4.2"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		map_data.available_trains = map_data.trains_available
+		for id, train in pairs(map_data.trains) do
+			local depot = train.depot
+			if depot then
+				train.depot_id = depot.entity_comb.unit_number
+				train.network_name = depot.network_name
+				train.network_flag = depot.network_flag
+				train.priority = depot.priority
+			else
+				train.network_name = ""
+				train.network_flag = 0
+				train.priority = 0
+			end
+		end
+		for id, depot in pairs(map_data.depots) do
+			map_data.depots[id] = {
+				entity_comb = depot.entity_comb,
+				entity_stop = depot.entity_stop,
+				available_train_id = depot.available_train,
+			}
+		end
+	end,
 }
 
 ---@param data ConfigurationChangedData
