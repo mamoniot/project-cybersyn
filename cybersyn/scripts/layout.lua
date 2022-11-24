@@ -351,9 +351,11 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 	local type_filter = {"inserter", "pump", "arithmetic-combinator"}
 	local wagon_number = 0
 	local pattern_length = 1
+	local is_break = false
 	for i = 1, 100 do
 		local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({rail_direction = rail_direction_from_station, rail_connection_direction = defines.rail_connection_direction.straight})
 		if not rail or rail_connection_direction ~= defines.rail_connection_direction.straight or not rail.valid then
+			is_break = true
 			break
 		end
 		pre_rail = rail
@@ -433,7 +435,10 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 			search_area = area.move(search_area, area_delta)
 		end
 	end
-	layout_pattern = string_sub(layout_pattern, 1, pattern_length)..STATION_LAYOUT_NA.."*$"
+	layout_pattern = string_sub(layout_pattern, 1, pattern_length)
+	if is_break then
+		layout_pattern = layout_pattern..STATION_LAYOUT_NA.."*$"
+	end
 	station.layout_pattern = layout_pattern
 	local accepted_layouts = station.accepted_layouts
 	for id, layout in pairs(map_data.layouts) do
@@ -457,45 +462,40 @@ end
 ---@param map_data MapData
 ---@param rail LuaEntity
 ---@param forbidden_entity LuaEntity?
-function force_update_station_from_rail(map_data, rail, forbidden_entity)
-	--NOTE: should we search further or better? it would be more expensive
-	local entity = rail.get_rail_segment_entity(defines.rail_direction.back, false)
-	if entity and entity.valid and entity.name == "train-stop" then
-		local station = map_data.stations[entity.unit_number]
-		if station then
-			reset_station_layout(map_data, station, forbidden_entity)
+---@param force boolean?
+function update_station_from_rail(map_data, rail, forbidden_entity, force)
+	--NOTE: is this a correct way to figure out the direction?
+	---@type defines.rail_direction
+	local rail_direction = defines.rail_direction.back
+	local entity = rail.get_rail_segment_entity(rail_direction, false)
+	if not entity then
+		rail_direction = defines.rail_direction.front
+		entity = rail.get_rail_segment_entity(rail_direction, false)
+	end
+	for i = 1, 100 do
+		if not entity or not entity.valid then
+			return
 		end
-	else
-		entity = rail.get_rail_segment_entity(defines.rail_direction.front, false)
-		if entity and entity.valid and entity.name == "train-stop" then
+		if entity.name == "train-stop" then
 			local station = map_data.stations[entity.unit_number]
 			if station then
-				reset_station_layout(map_data, station, forbidden_entity)
+				if force then
+					reset_station_layout(map_data, station, forbidden_entity)
+				else
+					update_station_if_auto(map_data, station, forbidden_entity)
+				end
 			end
+			return
 		end
+
+		rail = rail.get_connected_rail({rail_direction = rail_direction, rail_connection_direction = defines.rail_connection_direction.straight})--[[@as LuaEntity]]
+		if not rail or not rail.valid then
+			return
+		end
+		entity = rail.get_rail_segment_entity(rail_direction, false)
 	end
 end
----@param map_data MapData
----@param rail LuaEntity
----@param forbidden_entity LuaEntity?
-function update_station_from_rail(map_data, rail, forbidden_entity)
-	--NOTE: should we search further or better? it would be more expensive
-	local entity = rail.get_rail_segment_entity(defines.rail_direction.back, false)
-	if entity and entity.valid and entity.name == "train-stop" then
-		local station = map_data.stations[entity.unit_number]
-		if station then
-			update_station_if_auto(map_data, station, forbidden_entity)
-		end
-	else
-		entity = rail.get_rail_segment_entity(defines.rail_direction.front, false)
-		if entity and entity.valid and entity.name == "train-stop" then
-			local station = map_data.stations[entity.unit_number]
-			if station then
-				update_station_if_auto(map_data, station, forbidden_entity)
-			end
-		end
-	end
-end
+
 ---@param map_data MapData
 ---@param pump LuaEntity
 ---@param forbidden_entity LuaEntity?

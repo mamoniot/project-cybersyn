@@ -41,4 +41,5 @@ Date: 2022-11-24
   Features:
     - Added a stuck train alert
     - Improved localization
-    - Fixed Bug with fluid cargo not being detected by depots
+    - Fixed bug with fluid cargo not being detected by depots
+    - Greatly improved automatic train blacklist logic

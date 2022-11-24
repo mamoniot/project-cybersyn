@@ -287,7 +287,7 @@ local function on_combinator_built(map_data, comb)
 
 	if op == OPERATION_WAGON_MANIFEST then
 		if rail then
-			force_update_station_from_rail(map_data, rail, nil)
+			update_station_from_rail(map_data, rail, nil, true)
 		end
 	elseif op == OPERATION_DEPOT then
 		if stop then
