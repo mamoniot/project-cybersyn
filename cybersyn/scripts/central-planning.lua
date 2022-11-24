@@ -215,6 +215,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	train.p_station_id = p_station_id
 	train.r_station_id = r_station_id
 	train.manifest = manifest
+	train.last_manifest_tick = map_data.total_ticks
 
 	train.entity.schedule = create_manifest_schedule(train.depot_name, p_station.entity_stop, r_station.entity_stop, manifest)
 	set_comb2(map_data, p_station)
@@ -227,6 +228,18 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	end
 end
 
+---@param map_data MapData
+---@param mod_settings CybersynModSettings
+local function tick_poll_train(map_data, mod_settings)
+	local tick_data = map_data.tick_data
+	--NOTE: the following has undefined behavior if last_train is deleted, this should be ok since the following doesn't care how inconsistent our access pattern is
+	local train_id, train = next(map_data.trains, tick_data.last_train)
+	tick_data.last_train = train_id
+
+	if train and train.manifest and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
+		send_stuck_train_alert(train.entity, train.depot_name)
+	end
+end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 local function tick_poll_station(map_data, mod_settings)
@@ -467,7 +480,7 @@ function tick(map_data, mod_settings)
 		for i, id in pairs(map_data.warmup_station_ids) do
 			local station = map_data.stations[id]
 			if station then
-				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps <= map_data.total_ticks then
+				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
 					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
 					map_data.warmup_station_ids[i] = nil
 				end
@@ -475,6 +488,7 @@ function tick(map_data, mod_settings)
 				map_data.warmup_station_ids[i] = nil
 			end
 		end
+		tick_poll_train(map_data, mod_settings)
 	end
 
 	if map_data.tick_state == STATE_POLL_STATIONS then

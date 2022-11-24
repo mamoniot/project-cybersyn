@@ -266,3 +266,20 @@ function send_nonempty_train_in_depot_alert(train)
 		end
 	end
 end
+
+
+local send_stuck_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
+---@param train LuaTrain
+---@param depot_name string
+function send_stuck_train_alert(train, depot_name)
+	local loco = train.front_stock or train.back_stock
+	if loco then
+		for _, player in pairs(loco.force.players) do
+			player.add_custom_alert(
+			loco,
+			send_stuck_train_alert_icon,
+			{"cybersyn-messages.stuck-train", depot_name},
+			true)
+		end
+	end
+end

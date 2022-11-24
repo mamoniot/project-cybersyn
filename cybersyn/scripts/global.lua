@@ -56,6 +56,7 @@
 ---@field public p_station_id uint
 ---@field public r_station_id uint
 ---@field public manifest Manifest
+---@field public last_manifest_tick int
 ---@field public has_filtered_wagon boolean
 ---@field public depot_id uint?
 ---@field public depot_name string
@@ -78,6 +79,7 @@
 ---@field public r_threshold int
 ---@field public network_flag int
 ---@field public warmup_time int
+---@field public stuck_train_time int
 
 ---@type CybersynModSettings
 mod_settings = {}

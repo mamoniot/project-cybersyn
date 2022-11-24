@@ -75,6 +75,19 @@ local migrations_table = {
 			}
 		end
 	end,
+	["0.4.3"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		for id, station in pairs(map_data.stations) do
+			set_station_from_comb_state(station)
+			station.allow_all_trains = nil
+		end
+		for id, train in pairs(map_data.trains) do
+			train.last_manifest_tick = map_data.total_ticks
+		end
+		mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as int]]
+	end,
 }
 
 ---@param data ConfigurationChangedData

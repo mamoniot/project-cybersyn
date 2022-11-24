@@ -36,4 +36,13 @@ data:extend({
 		minimum_value = 0,
 		maximum_value = 2147483647,
 	},
+	{
+		type = "int-setting",
+		name = "cybersyn-stuck-train-time",
+		order = "ad",
+		setting_type = "runtime-global",
+		default_value = 600,
+		minimum_value = 0,
+		maximum_value = 2147483647,
+	},
 })

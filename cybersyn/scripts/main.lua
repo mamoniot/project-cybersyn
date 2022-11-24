@@ -558,6 +558,8 @@ end
 ---@param train_entity LuaTrain
 local function on_train_arrives_depot(map_data, depot_id, train_entity)
 	local contents = train_entity.get_contents()
+	local fluid_contents = train_entity.get_fluid_contents()
+	local is_train_empty = next(contents) == nil and next(fluid_contents) == nil
 	local train_id = train_entity.id
 	local train = map_data.trains[train_id]
 	if train then
@@ -576,15 +578,15 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			train.status = STATUS_D
 			add_available_train(map_data, depot_id, train_id)
 		end
-		if next(contents) ~= nil then
+		if is_train_empty then
+			train_entity.schedule = create_depot_schedule(train.depot_name)
+		else
 			--train still has cargo
 			train_entity.schedule = nil
 			remove_train(map_data, train, train_id)
 			send_nonempty_train_in_depot_alert(train_entity)
-		else
-			train_entity.schedule = create_depot_schedule(train.depot_name)
 		end
-	elseif next(contents) == nil then
+	elseif is_train_empty then
 		train = {
 			status = STATUS_D,
 			entity = train_entity,
@@ -593,6 +595,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			fluid_capacity = 0,
 			p_station_id = 0,
 			r_station_id = 0,
+			last_manifest_tick = map_data.total_ticks,
 			manifest = nil,
 		}
 		update_train_layout(map_data, train)
@@ -602,6 +605,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		local schedule = create_depot_schedule(train.depot_name)
 		train_entity.schedule = schedule
 	else
+		train_entity.schedule = nil
 		send_nonempty_train_in_depot_alert(train_entity)
 	end
 end
@@ -836,6 +840,7 @@ local function on_settings_changed(event)
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]
+	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as int]]
 	if event.setting == "cybersyn-ticks-per-second" then
 		local nth_tick = math.ceil(60/mod_settings.tps);
 		flib_event.on_nth_tick(nil)
@@ -866,6 +871,7 @@ local function main()
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]
+	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as int]]
 
 	--NOTE: There is a concern that it is possible to build or destroy important entities without one of these events being triggered, in which case the mod will have undefined behavior
 	flib_event.register(defines.events.on_built_entity, on_built, filter_built)
