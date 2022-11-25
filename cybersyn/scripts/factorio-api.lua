@@ -1,4 +1,5 @@
 --By Mami
+local get_distance = require("__flib__.misc").get_distance
 local abs = math.abs
 local floor = math.floor
 
@@ -7,6 +8,13 @@ local floor = math.floor
 ---@param item_name string
 function get_stack_size(map_data, item_name)
 	return game.item_prototypes[item_name].stack_size
+end
+
+
+---@param stop0 LuaEntity
+---@param stop1 LuaEntity
+function get_stop_dist(stop0, stop1)
+	return get_distance(stop0.position, stop1.position)
 end
 
 
@@ -47,29 +55,50 @@ end
 
 local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 1}}
 ---@param stop LuaEntity
-local function create_direct_to_station_order(stop)
-	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction,wait_conditions = create_direct_to_station_order_condition}
+function create_direct_to_station_order(stop)
+	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction, wait_conditions = create_direct_to_station_order_condition}
 end
 
+---@param train LuaTrain
 ---@param depot_name string
-function create_depot_schedule(depot_name)
-	return {current = 1, records = {create_inactivity_order(depot_name)}}
+function set_depot_schedule(train, depot_name)
+	train.schedule = {current = 1, records = {create_inactivity_order(depot_name)}}
 end
 
----@param depot_name string
+---@param train LuaTrain
+function lock_train(train)
+	train.manual_mode = true
+end
+--[[
+---@param train LuaTrain
+---@param depot_stop LuaEntity
 ---@param p_stop LuaEntity
 ---@param r_stop LuaEntity
 ---@param manifest Manifest
-function create_manifest_schedule(depot_name, p_stop, r_stop, manifest)
-	return {current = 1, records = {
-		create_inactivity_order(depot_name),
+function set_manifest_schedule(train, depot_stop, p_stop, r_stop, manifest)
+	train.schedule = {current = 1, records = {
+		create_inactivity_order(depot_stop.backer_name),
 		create_direct_to_station_order(p_stop),
 		create_loading_order(p_stop, manifest),
 		create_direct_to_station_order(r_stop),
 		create_unloading_order(r_stop),
 	}}
 end
-
+]]
+---@param train LuaTrain
+---@param stop LuaEntity
+---@param old_name string
+function rename_manifest_schedule(train, stop, old_name)
+	local new_name = stop.backer_name
+	local schedule = train.schedule
+	if not schedule then return end
+	for i, record in ipairs(schedule.records) do
+		if record.station == old_name then
+			record.station = new_name
+		end
+	end
+	train.schedule = schedule
+end
 function get_comb_params(comb)
 	return comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
 end
@@ -282,4 +311,90 @@ function send_stuck_train_alert(train, depot_name)
 			true)
 		end
 	end
+end
+
+--function se_create_placeholder_order()
+--end
+
+---@param surface LuaSurface
+local function se_get_space_elevator_name(surface)
+	--TODO: check how expensive the following is and potentially cache it's results
+	local entity = surface.find_entities_filtered({
+		name = SE_ELEVATOR_STOP_PROTO_NAME,
+		type = "train-stop",
+		limit = 1,
+	})[1]
+	if entity and entity.valid then
+		return string.sub(entity.backer_name, 1, string.len(entity.backer_name) - SE_ELEVATOR_SUFFIX_LENGTH)
+	end
+end
+
+---@param train LuaTrain
+---@param depot_stop LuaEntity
+---@param p_stop LuaEntity
+---@param r_stop LuaEntity
+---@param manifest Manifest
+function set_manifest_schedule(train, depot_stop, p_stop, r_stop, manifest)
+	--NOTE: train must be on same surface as depot_stop
+	local d_surface = depot_stop.surface
+	local p_surface = p_stop.surface
+	local r_surface = r_stop.surface
+	local d_surface_i = d_surface.index
+	local p_surface_i = p_surface.index
+	local r_surface_i = r_surface.index
+	if d_surface_i == p_surface_i and p_surface_i == r_surface_i then
+		train.schedule = {current = 1, records = {
+			create_inactivity_order(depot_stop.backer_name),
+			create_direct_to_station_order(p_stop),
+			create_loading_order(p_stop, manifest),
+			create_direct_to_station_order(r_stop),
+			create_unloading_order(r_stop),
+		}}
+		return
+	elseif IS_SE_PRESENT and (d_surface_i == p_surface_i or p_surface_i == r_surface_i or r_surface_i == d_surface_i) then
+		local d_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = d_surface_i})
+		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = (d_surface_i == p_surface_i) and r_surface_i or p_surface_i})
+		local is_train_in_orbit = other_zone.orbit_index == d_zone.index
+		if is_train_in_orbit or d_zone.orbit_index == other_zone.index then
+			local elevator_name = se_get_space_elevator_name(d_surface)
+			if elevator_name then
+				local records = {create_inactivity_order(depot_stop.backer_name)}
+				if d_surface_i == p_surface_i then
+					records[#records + 1] = create_direct_to_station_order(p_stop)
+				else
+					records[#records + 1] = {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
+					is_train_in_orbit = not is_train_in_orbit
+				end
+				records[#records + 1] = create_loading_order(p_stop, manifest)
+				if p_surface_i ~= r_surface_i then
+					records[#records + 1] = {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
+					is_train_in_orbit = not is_train_in_orbit
+				end
+				records[#records + 1] = create_unloading_order(r_stop)
+				if r_surface_i ~= d_surface_i then
+					records[#records + 1] = {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
+					is_train_in_orbit = not is_train_in_orbit
+				end
+
+				train.schedule = {current = 1, records = records}
+				return
+			end
+		end
+	end
+	--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
+	train.schedule = {current = 1, records = {
+		create_inactivity_order(depot_stop.backer_name),
+		create_loading_order(p_stop, manifest),
+		create_unloading_order(r_stop),
+	}}
+	lock_train(train)
+	send_lost_train_alert(train, depot_stop.backer_name)
+end
+
+---@param stop0 LuaEntity
+---@param stop1 LuaEntity
+function se_get_stop_dist(stop0, stop1)
+	local surface0 = stop0.surface.index
+	local surface1 = stop1.surface.index
+	return (surface0 == surface1 and get_distance(stop0.position, stop1.position) or DIFFERENT_SURFACE_DISTANCE)
 end

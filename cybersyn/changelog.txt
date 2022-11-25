@@ -47,3 +47,8 @@ Version: 0.4.4
 Date: 2022-11-25
   Features:
     - Greatly improved automatic train blacklist logic
+---------------------------------------------------------------------------------------------------
+Version: 0.5.0
+Date: 2022-11-25
+  Features:
+    - Added SE space elevator compat

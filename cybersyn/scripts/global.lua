@@ -18,6 +18,7 @@
 ---@field public tick_state uint
 ---@field public tick_data {}
 ---@field public economy Economy
+---@field public se_tele_old_id {[any]: uint}
 
 ---@class Station
 ---@field public is_p boolean
@@ -63,6 +64,8 @@
 ---@field public network_name string
 ---@field public network_flag int
 ---@field public priority int
+---@field public se_awaiting_removal any?
+---@field public se_awaiting_rename any?
 
 ---@alias Manifest {}[]
 ---@alias TrainClass {[uint]: true}
@@ -83,6 +86,8 @@
 
 ---@type CybersynModSettings
 mod_settings = {}
+
+IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 
 function init_global()
 	global.total_ticks = 0
@@ -107,4 +112,8 @@ function init_global()
 	global.layout_train_count = {}
 	global.layout_top_id = 1
 	global.is_player_cursor_blueprint = {}
+
+	if IS_SE_PRESENT then
+		global.se_tele_old_id = {}
+	end
 end

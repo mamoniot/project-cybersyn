@@ -1,6 +1,7 @@
 --By Mami
 local flib_event = require("__flib__.event")
 local floor = math.floor
+local table_insert = table.insert
 
 
 ---@param map_data MapData
@@ -67,6 +68,7 @@ local function add_available_train(map_data, depot_id, train_id)
 		network[train_id] = depot_id
 	end
 	depot.available_train_id = train_id
+	train.status = STATUS_D
 	train.depot_id = depot_id
 	train.depot_name = depot.entity_stop.backer_name
 	train.network_name = network_name
@@ -105,7 +107,6 @@ function remove_available_train(map_data, train, depot)
 			end
 		end
 	end
-	train.depot_id = nil
 	depot.available_train_id = nil
 end
 
@@ -128,7 +129,7 @@ local function on_depot_broken(map_data, depot)
 	local train_id = depot.available_train_id
 	if train_id then
 		local train = map_data.trains[train_id]
-		train.entity.schedule = nil
+		lock_train(train.entity)
 		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
 		remove_available_train(map_data, train, depot)
 		map_data.trains[train_id] = nil
@@ -181,9 +182,13 @@ local function on_station_broken(map_data, station_id, station)
 				if (is_r and not is_r_delivery_made) or (is_p and not is_p_delivery_made) then
 					--train is attempting delivery to a stop that was destroyed, stop it
 					on_failed_delivery(map_data, train)
-					train.entity.schedule = nil
-					remove_train(map_data, train, train_id)
-					send_lost_train_alert(train.entity, train.depot_name)
+					if train.entity then
+						remove_train(map_data, train, train_id)
+						lock_train(train.entity)
+						send_lost_train_alert(train.entity, train.depot_name)
+					else
+						train.se_awaiting_removal = train_id
+					end
 				end
 			end
 		end
@@ -510,7 +515,8 @@ local function on_stop_broken(map_data, stop)
 end
 ---@param map_data MapData
 ---@param stop LuaEntity
-local function on_station_rename(map_data, stop)
+---@param old_name string
+local function on_station_rename(map_data, stop, old_name)
 	--search for trains coming to the renamed station
 	local station_id = stop.unit_number
 	local station = map_data.stations[station_id]
@@ -521,13 +527,21 @@ local function on_station_rename(map_data, stop)
 			if is_p or is_r then
 				local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
 				local is_r_delivery_made = train.status == STATUS_R_TO_D
-				if (is_r and not is_r_delivery_made) or (is_p and not is_p_delivery_made) then
+				if is_r and not is_r_delivery_made then
+					local r_station = map_data.stations[train.r_station_id]
+					if train.entity then
+						rename_manifest_schedule(train.entity, r_station.entity_stop, old_name)
+					elseif IS_SE_PRESENT then
+						train.se_awaiting_rename = {r_station.entity_stop, old_name}
+					end
+				elseif is_p and not is_p_delivery_made then
 					--train is attempting delivery to a stop that was renamed
 					local p_station = map_data.stations[train.p_station_id]
-					local r_station = map_data.stations[train.r_station_id]
-					local schedule = create_manifest_schedule(train.depot_name, p_station.entity_stop, r_station.entity_stop, train.manifest)
-					schedule.current = train.entity.schedule.current
-					train.entity.schedule = schedule
+					if train.entity then
+						rename_manifest_schedule(train.entity, p_station.entity_stop, old_name)
+					elseif IS_SE_PRESENT then
+						train.se_awaiting_rename = {p_station.entity_stop, old_name}
+					end
 				end
 			end
 		end
@@ -568,21 +582,19 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			train.p_station_id = 0
 			train.r_station_id = 0
 			train.manifest = nil
-			train.status = STATUS_D
 			add_available_train(map_data, depot_id, train_id)
 		else
 			if train.manifest then
 				on_failed_delivery(map_data, train)
 				send_unexpected_train_alert(train.entity)
 			end
-			train.status = STATUS_D
 			add_available_train(map_data, depot_id, train_id)
 		end
 		if is_train_empty then
-			train_entity.schedule = create_depot_schedule(train.depot_name)
+			set_depot_schedule(train_entity, train.depot_name)
 		else
 			--train still has cargo
-			train_entity.schedule = nil
+			lock_train(train.entity)
 			remove_train(map_data, train, train_id)
 			send_nonempty_train_in_depot_alert(train_entity)
 		end
@@ -596,16 +608,15 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			p_station_id = 0,
 			r_station_id = 0,
 			last_manifest_tick = map_data.total_ticks,
-			manifest = nil,
+			--manifest = nil,
 		}
 		update_train_layout(map_data, train)
 		map_data.trains[train_id] = train
 		add_available_train(map_data, depot_id, train_id)
 
-		local schedule = create_depot_schedule(train.depot_name)
-		train_entity.schedule = schedule
+		set_depot_schedule(train_entity, train.depot_name)
 	else
-		train_entity.schedule = nil
+		lock_train(train.entity)
 		send_nonempty_train_in_depot_alert(train_entity)
 	end
 end
@@ -635,7 +646,7 @@ local function on_train_arrives_buffer(map_data, stop, train)
 		else
 			on_failed_delivery(map_data, train)
 			remove_train(map_data, train, train.entity.id)
-			train.entity.schedule = nil
+			lock_train(train.entity)
 			send_lost_train_alert(train.entity, train.depot_name)
 		end
 	else
@@ -674,7 +685,7 @@ local function on_train_leaves_station(map_data, train)
 			set_comb1(map_data, station, nil)
 			unset_wagon_combs(map_data, station)
 		end
-	elseif train.depot_id then
+	elseif train.status == STATUS_D then
 		local depot = map_data.depots[train.depot_id]
 		remove_available_train(map_data, train, depot)
 	end
@@ -684,11 +695,12 @@ end
 ---@param map_data MapData
 ---@param train Train
 local function on_train_broken(map_data, train)
-	if train.manifest then
+	--NOTE: train.entity is only absent if the train is climbing a space elevator as of 0.5.0
+	if train.manifest and train.entity then
 		on_failed_delivery(map_data, train)
 		remove_train(map_data, train, train.entity.id)
 		if train.entity.valid then
-			train.entity.schedule = nil
+			lock_train(train.entity)
 		end
 	end
 end
@@ -697,13 +709,14 @@ end
 ---@param train_entity LuaEntity
 local function on_train_modified(map_data, pre_train_id, train_entity)
 	local train = map_data.trains[pre_train_id]
-	if train then
+	--NOTE: train.entity is only absent if the train is climbing a space elevator as of 0.5.0
+	if train and train.entity then
 		if train.manifest then
 			on_failed_delivery(map_data, train)
 		end
 		remove_train(map_data, train, pre_train_id)
 		if train.entity.valid then
-			train.entity.schedule = nil
+			lock_train(train.entity)
 		end
 	end
 end
@@ -756,7 +769,7 @@ local function on_rotate(event)
 end
 local function on_rename(event)
 	if event.entity.name == "train-stop" then
-		on_station_rename(global, event.entity)
+		on_station_rename(global, event.entity, event.old_name)
 	end
 end
 
@@ -771,26 +784,25 @@ local function on_train_built(event)
 end
 local function on_train_changed(event)
 	local train_e = event.train
-	if train_e.valid then
-		local train = global.trains[train_e.id]
-		if train_e.state == defines.train_state.wait_station then
-			local stop = train_e.station
-			if stop and stop.valid and stop.name == "train-stop" then
-				if global.stations[stop.unit_number] then
-					if train then
-						on_train_arrives_buffer(global, stop, train)
-					end
-				else
-					local depot_id = stop.unit_number
-					if global.depots[depot_id] then
-						on_train_arrives_depot(global, depot_id, train_e)
-					end
+	if not train_e.valid then return end
+	local train = global.trains[train_e.id]
+	if train_e.state == defines.train_state.wait_station then
+		local stop = train_e.station
+		if stop and stop.valid and stop.name == "train-stop" then
+			if global.stations[stop.unit_number] then
+				if train then
+					on_train_arrives_buffer(global, stop, train)
+				end
+			else
+				local depot_id = stop.unit_number
+				if global.depots[depot_id] then
+					on_train_arrives_depot(global, depot_id, train_e)
 				end
 			end
-		elseif event.old_state == defines.train_state.wait_station then
-			if train then
-				on_train_leaves_station(global, train)
-			end
+		end
+	elseif event.old_state == defines.train_state.wait_station then
+		if train then
+			on_train_leaves_station(global, train)
 		end
 	end
 end
@@ -800,7 +812,7 @@ local function on_surface_removed(event)
 	if surface then
 		local train_stops = surface.find_entities_filtered({type = "train-stop"})
 		for _, entity in pairs(train_stops) do
-			if entity.name == "train-stop" then
+			if entity.valid and entity.name == "train-stop" then
 				on_stop_broken(global, entity)
 			end
 		end
@@ -915,6 +927,87 @@ local function main()
 	flib_event.on_init(init_global)
 
 	flib_event.on_configuration_changed(on_config_changed)
+
+
+	if IS_SE_PRESENT then
+		flib_event.on_load(function()
+			local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event")
+			local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event")
+
+
+			flib_event.register(se_on_train_teleport_started_event, function(event)
+				---@type MapData
+				local map_data = global
+				local old_id = event.old_train_id_1
+				local old_surface_index = event.old_surface_index
+				--NOTE: this is not guaranteed to be unique, it should be fine since the window of time for another train to mistakenly steal this train's event data is miniscule
+				--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
+				local train_unique_identifier = event.train.front_stock.backer_name
+
+				local train = map_data.trains[old_id]
+				if not train then return end
+				--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; very few of our events care about this and the ones that do should be impossible to trigger until teleportation is finished
+				train.entity = nil
+				map_data.se_tele_old_id[train_unique_identifier] = old_id
+			end)
+			flib_event.register(se_on_train_teleport_finished_event, function(event)
+				---@type MapData
+				local map_data = global
+				---@type LuaTrain
+				local train_entity = event.train
+				---@type uint
+				local new_id = train_entity.id
+				local old_surface_index = event.old_surface_index
+				local train_unique_identifier = event.train.front_stock.backer_name
+
+				--NOTE: event.old_train_id_1 from this event is useless, it's for one of the many transient trains SE spawns while teleporting the old train, only se_on_train_teleport_started_event returns the correct old train id
+				--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
+				local old_id = map_data.se_tele_old_id[train_unique_identifier]
+				map_data.se_tele_old_id[train_unique_identifier] = nil
+				local train = map_data.trains[old_id]
+				if not train then return end
+
+				map_data.trains[new_id] = train
+				map_data.trains[old_id] = nil
+				train.entity = train_entity
+
+				if train.se_awaiting_removal then
+					remove_train(map_data, train, train.se_awaiting_removal)
+					lock_train(train.entity)
+					send_lost_train_alert(train.entity, train.depot_name)
+					return
+				elseif train.se_awaiting_rename then
+					rename_manifest_schedule(train.entity, train.se_awaiting_rename[1], train.se_awaiting_rename[2])
+					train.se_awaiting_rename = nil
+				end
+
+				if not (train.status == STATUS_D_TO_P or train.status == STATUS_P_TO_R) then return end
+
+				local schedule = train_entity.schedule
+				if schedule then
+					local p_station = map_data.stations[train.p_station_id]
+					local p_name = p_station.entity_stop.backer_name
+					local p_surface_i = p_station.entity_stop.surface.index
+					local r_station = map_data.stations[train.r_station_id]
+					local r_name = r_station.entity_stop.backer_name
+					local r_surface_i = r_station.entity_stop.surface.index
+					local records = schedule.records
+					local i = schedule.current
+					while i <= #records do
+						if records[i].station == p_name and p_surface_i ~= old_surface_index then
+							table_insert(records, i, create_direct_to_station_order(p_station.entity_stop))
+							i = i + 1
+						elseif records[i].station == r_name and r_surface_i ~= old_surface_index then
+							table_insert(records, i, create_direct_to_station_order(r_station.entity_stop))
+							i = i + 1
+						end
+						i = i + 1
+					end
+					train_entity.schedule = schedule
+				end
+			end)
+		end)
+	end
 end
 
 

@@ -6,3 +6,4 @@ models & art
 space elevator compat
 railloader compat
 major bug with copy-paste when the operation is changed by blueprint but it gets copied to the old settings before it's checked for update
+go over init and make it agree with type info

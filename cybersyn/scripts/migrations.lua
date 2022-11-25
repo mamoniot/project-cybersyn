@@ -109,10 +109,13 @@ local migrations_table = {
 		for id, station in pairs(map_data.stations) do
 			reset_station_layout(map_data, station)
 		end
-	end,
+	end
 }
 
 ---@param data ConfigurationChangedData
 function on_config_changed(data)
 	flib_migration.on_config_changed(data, migrations_table)
+	if IS_SE_PRESENT and not global.se_tele_old_id then
+		global.se_tele_old_id = {}
+	end
 end

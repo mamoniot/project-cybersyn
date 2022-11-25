@@ -43,7 +43,7 @@ end
 ---@param train Train
 ---@param train_id uint
 function remove_train(map_data, train, train_id)
-	if train.depot_id then
+	if train.status == STATUS_D then
 		local depot = map_data.depots[train.depot_id]
 		remove_available_train(map_data, train, depot)
 	end
@@ -84,7 +84,7 @@ function update_train_layout(map_data, train)
 		i = i + 1
 	end
 	local back_movers = train.entity.locomotives["back_movers"]
-	if back_movers and #back_movers > 0 then
+	if #back_movers > 0 then
 		--mark the layout as reversible
 		layout[0] = true
 	end

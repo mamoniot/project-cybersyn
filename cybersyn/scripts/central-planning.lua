@@ -1,5 +1,4 @@
 --By Mami
-local get_distance = require("__flib__.misc").get_distance
 local min = math.min
 local max = math.max
 local abs = math.abs
@@ -11,12 +10,6 @@ local table_remove = table.remove
 local table_sort = table.sort
 local random = math.random
 
-
----@param stop0 LuaEntity
----@param stop1 LuaEntity
-local function get_stop_dist(stop0, stop1)
-	return get_distance(stop0.position, stop1.position)
-end
 
 
 ---@param map_data MapData
@@ -217,7 +210,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	train.manifest = manifest
 	train.last_manifest_tick = map_data.total_ticks
 
-	train.entity.schedule = create_manifest_schedule(train.depot_name, p_station.entity_stop, r_station.entity_stop, manifest)
+	set_manifest_schedule(train.entity, depot.entity_stop, p_station.entity_stop, r_station.entity_stop, manifest)
 	set_comb2(map_data, p_station)
 	set_comb2(map_data, r_station)
 	if p_station.entity_comb1.valid then
