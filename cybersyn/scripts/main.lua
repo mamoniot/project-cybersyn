@@ -710,7 +710,7 @@ end
 
 
 local function on_built(event)
-	local entity = event.entity or event.created_entity or event.destination
+	local entity = event.entity or event.created_entity
 	if not entity or not entity.valid then return end
 
 	if entity.name == "train-stop" then
@@ -744,6 +744,14 @@ local function on_broken(event)
 		if train then
 			on_train_broken(global, train)
 		end
+	end
+end
+local function on_rotate(event)
+	local entity = event.entity or event.created_entity
+	if not entity or not entity.valid then return end
+
+	if entity.type == "inserter" then
+		update_station_from_inserter(global, entity)
 	end
 end
 local function on_rename(event)
@@ -877,6 +885,8 @@ local function main()
 	flib_event.register(defines.events.on_built_entity, on_built, filter_built)
 	flib_event.register(defines.events.on_robot_built_entity, on_built, filter_built)
 	flib_event.register({defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, on_built)
+
+	flib_event.register(defines.events.on_player_rotated_entity, on_rotate)
 
 	flib_event.register(defines.events.on_pre_player_mined_item, on_broken, filter_broken)
 	flib_event.register(defines.events.on_robot_pre_mined, on_broken, filter_broken)

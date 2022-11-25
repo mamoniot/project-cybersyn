@@ -5,6 +5,7 @@ local floor = math.floor
 local ceil = math.ceil
 local string_find = string.find
 local string_sub = string.sub
+local table_compare = table.compare
 
 local function iterr(a, i)
 	i = i + 1
@@ -17,6 +18,26 @@ local function irpairs(a)
 	return iterr, a, 0
 end
 
+
+local function is_layout_accepted(layout_pattern, layout)
+	local valid = true
+	for i, v in ipairs(layout) do
+		local p = layout_pattern[i] or 0
+		if (v == 0 and p == 2) or (v == 1 and (p == 0 or p == 2)) or (v == 2 and (p == 0 or p == 1)) then
+			valid = false
+			break
+		end
+	end
+	if valid or not layout[0] then return valid end
+	for i, v in irpairs(layout) do
+		local p = layout_pattern[i] or 0
+		if (v == 0 and p == 2) or (v == 1 and (p == 0 or p == 2)) or (v == 2 and (p == 0 or p == 1)) then
+			valid = false
+			break
+		end
+	end
+	return valid
+end
 
 ---@param map_data MapData
 ---@param train Train
@@ -40,32 +61,37 @@ function remove_train(map_data, train, train_id)
 	map_data.trains[train_id] = nil
 end
 
+
 ---@param map_data MapData
 ---@param train Train
 function update_train_layout(map_data, train)
 	local carriages = train.entity.carriages
-	local layout = ""
+	local layout = {}
 	local i = 1
 	local item_slot_capacity = 0
 	local fluid_capacity = 0
 	for _, carriage in pairs(carriages) do
 		if carriage.type == "cargo-wagon" then
-			layout = layout..TRAIN_LAYOUT_CARGO
+			layout[#layout + 1] = 1
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
 			item_slot_capacity = item_slot_capacity + #inv
 		elseif carriage.type == "fluid-wagon" then
-			layout = layout..TRAIN_LAYOUT_FLUID
+			layout[#layout + 1] = 2
 			fluid_capacity = fluid_capacity + carriage.prototype.fluid_capacity
-			--elseif carriage.type == "artillery-wagon" then
-			--layout = layout..TRAIN_LAYOUT_ARTILLERY
 		else
-			layout = layout..TRAIN_LAYOUT_NA
+			layout[#layout + 1] = 0
 		end
 		i = i + 1
 	end
+	local back_movers = train.entity.locomotives["back_movers"]
+	if back_movers and #back_movers > 0 then
+		--mark the layout as reversible
+		layout[0] = true
+	end
+
 	local layout_id = 0
 	for id, cur_layout in pairs(map_data.layouts) do
-		if layout == cur_layout then
+		if table_compare(layout, cur_layout) then
 			layout = cur_layout
 			layout_id = id
 			break
@@ -79,8 +105,8 @@ function update_train_layout(map_data, train)
 		map_data.layouts[layout_id] = layout
 		map_data.layout_train_count[layout_id] = 1
 		for _, station in pairs(map_data.stations) do
-			if station.layout_pattern and string.find(layout, station.layout_pattern) ~= nil then
-				station.accepted_layouts[layout_id] = true
+			if station.layout_pattern then
+				station.accepted_layouts[layout_id] = is_layout_accepted(station.layout_pattern, layout) or nil
 			end
 		end
 	else
@@ -298,12 +324,12 @@ end
 ---@param map_data MapData
 ---@param station Station
 ---@param forbidden_entity LuaEntity?
-local function reset_station_layout(map_data, station, forbidden_entity)
+function reset_station_layout(map_data, station, forbidden_entity)
 	--NOTE: station must be in auto mode
 	local station_rail = station.entity_stop.connected_rail
 	if station_rail == nil then
 		--cannot accept deliveries
-		station.layout_pattern = "X"
+		station.layout_pattern = nil
 		station.accepted_layouts = {}
 		return
 	end
@@ -347,12 +373,10 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 	end
 	local length = 2
 	local pre_rail = station_rail
-	local layout_pattern = "^"
+	local layout_pattern = {0}
 	local type_filter = {"inserter", "pump", "arithmetic-combinator"}
 	local wagon_number = 0
-	local pattern_length = 1
-	local is_break = false
-	for i = 1, 100 do
+	for i = 1, 112 do
 		local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({rail_direction = rail_direction_from_station, rail_connection_direction = defines.rail_connection_direction.straight})
 		if not rail or rail_connection_direction ~= defines.rail_connection_direction.straight or not rail.valid then
 			is_break = true
@@ -421,32 +445,21 @@ local function reset_station_layout(map_data, station, forbidden_entity)
 
 			if supports_cargo then
 				if supports_fluid then
-					layout_pattern = layout_pattern..STATION_LAYOUT_ALL
+					layout_pattern[wagon_number] = 3
 				else
-					layout_pattern = layout_pattern..STATION_LAYOUT_NOT_FLUID
+					layout_pattern[wagon_number] = 2
 				end
-				pattern_length = #layout_pattern
 			elseif supports_fluid then
-				layout_pattern = layout_pattern..STATION_LAYOUT_NOT_CARGO
-				pattern_length = #layout_pattern
+				layout_pattern[wagon_number] = 1
 			else
-				layout_pattern = layout_pattern..STATION_LAYOUT_NA
+				--layout_pattern[wagon_number] = nil
 			end
 			search_area = area.move(search_area, area_delta)
 		end
 	end
-	layout_pattern = string_sub(layout_pattern, 1, pattern_length)
-	if is_break then
-		layout_pattern = layout_pattern..STATION_LAYOUT_NA.."*$"
-	end
 	station.layout_pattern = layout_pattern
-	local accepted_layouts = station.accepted_layouts
 	for id, layout in pairs(map_data.layouts) do
-		if string_find(layout, layout_pattern) ~= nil then
-			accepted_layouts[id] = true
-		else
-			accepted_layouts[id] = nil
-		end
+		station.accepted_layouts[id] = is_layout_accepted(layout_pattern, layout) or nil
 	end
 end
 
@@ -472,7 +485,7 @@ function update_station_from_rail(map_data, rail, forbidden_entity, force)
 		rail_direction = defines.rail_direction.front
 		entity = rail.get_rail_segment_entity(rail_direction, false)
 	end
-	for i = 1, 100 do
+	for i = 1, 112 do
 		if not entity or not entity.valid then
 			return
 		end

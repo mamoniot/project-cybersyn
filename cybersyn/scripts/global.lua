@@ -13,7 +13,7 @@
 ---@field public depots {[uint]: Depot}
 ---@field public trains {[uint]: Train}
 ---@field public available_trains {[string]: {[uint]: uint}} --{[network_name]: {[train_id]: depot_id}}
----@field public layouts {[uint]: string}
+---@field public layouts {[uint]: int[]}
 ---@field public layout_train_count {[uint]: int}
 ---@field public tick_state uint
 ---@field public tick_data {}
@@ -36,7 +36,7 @@
 ---@field public network_name string?
 ---@field public network_flag int --transient
 ---@field public accepted_layouts TrainClass
----@field public layout_pattern string?
+---@field public layout_pattern {[uint]: int}
 ---@field public tick_signals {[uint]: Signal}? --transient
 ---@field public p_count_or_r_threshold_per_item {[string]: int} --transient
 ---@field public display_failed_request true?

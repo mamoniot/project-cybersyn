@@ -88,6 +88,28 @@ local migrations_table = {
 		end
 		mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as int]]
 	end,
+	["0.4.4"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		for id, layout in pairs(map_data.layouts) do
+			local new_layout = {}
+			local i = 1
+			for c in string.gmatch(layout, ".") do
+				if c == "N" then
+				elseif c == "C" then
+					new_layout[i] = 1
+				elseif c == "F" then
+					new_layout[i] = 2
+				end
+				i = i + 1
+			end
+			map_data.layouts[id] = new_layout
+		end
+		for id, station in pairs(map_data.stations) do
+			reset_station_layout(map_data, station)
+		end
+	end,
 }
 
 ---@param data ConfigurationChangedData
