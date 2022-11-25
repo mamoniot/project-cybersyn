@@ -300,6 +300,7 @@ local function tick_poll_station(map_data, mod_settings)
 				end
 				if item_name == station.network_name then
 					station.network_flag = item_count
+					signals[k] = nil
 				end
 			else
 				signals[k] = nil

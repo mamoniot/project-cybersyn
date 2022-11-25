@@ -42,7 +42,6 @@ Date: 2022-11-24
     - Added a stuck train alert
     - Improved localization
     - Fixed bug with fluid cargo not being detected by depots
-
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.4
 Date: 2022-11-25
