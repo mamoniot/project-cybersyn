@@ -1,9 +1,13 @@
-close gui when the combinator is destroyed
-do not play close sound when a different gui is opened
-gui can desync if settings are changed outside of it while it is open
-do hardcore testing
-models & art
-space elevator compat
-railloader compat
-major bug with copy-paste when the operation is changed by blueprint but it gets copied to the old settings before it's checked for update
-go over init and make it agree with type info
+bugs:
+
+
+major:
+	do hardcore testing
+	models & art
+	railloader compat
+
+minor:
+	close gui when the combinator is destroyed
+	do not play close sound when a different gui is opened
+	gui can desync if settings are changed outside of it while it is open
+	go over init and make it agree with type info

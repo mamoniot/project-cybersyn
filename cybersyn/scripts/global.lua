@@ -2,7 +2,6 @@
 ---@class MapData
 ---@field public total_ticks uint
 ---@field public layout_top_id uint
----@field public is_player_cursor_blueprint {[uint]: true|nil}
 ---@field public to_comb {[uint]: LuaEntity}
 ---@field public to_comb_params {[uint]: ArithmeticCombinatorParameters}
 ---@field public to_output {[uint]: LuaEntity}
@@ -36,7 +35,7 @@
 ---@field public deliveries {[string]: int}
 ---@field public network_name string?
 ---@field public network_flag int --transient
----@field public accepted_layouts TrainClass
+---@field public accepted_layouts {[uint]: true?}
 ---@field public layout_pattern {[uint]: int}
 ---@field public tick_signals {[uint]: Signal}? --transient
 ---@field public p_count_or_r_threshold_per_item {[string]: int} --transient
@@ -61,21 +60,20 @@
 ---@field public has_filtered_wagon boolean
 ---@field public depot_id uint?
 ---@field public depot_name string
----@field public network_name string
+---@field public network_name string?
 ---@field public network_flag int
 ---@field public priority int
 ---@field public se_awaiting_removal any?
 ---@field public se_awaiting_rename any?
 
 ---@alias Manifest {}[]
----@alias TrainClass {[uint]: true}
 ---@alias cybersyn.global MapData
 
 ---@class Economy
 ---could contain invalid stations
----@field public all_r_stations {[string]: uint[]} --{[network_name:item_name]: count}
----@field public all_p_stations {[string]: uint[]} --{[network_name:item_name]: count}
----@field public all_names {[string]: uint[]} --{[network_name:item_name]: count}
+---@field public all_r_stations {[string]: uint[]} --{[network_name:item_name]: station_id}
+---@field public all_p_stations {[string]: uint[]} --{[network_name:item_name]: station_id}
+---@field public all_names (string|SignalID)[]
 
 ---@class CybersynModSettings
 ---@field public tps int
@@ -111,7 +109,6 @@ function init_global()
 	global.layouts = {}
 	global.layout_train_count = {}
 	global.layout_top_id = 1
-	global.is_player_cursor_blueprint = {}
 
 	if IS_SE_PRESENT then
 		global.se_tele_old_id = {}

@@ -5,7 +5,19 @@ local floor = math.floor
 local ceil = math.ceil
 local string_find = string.find
 local string_sub = string.sub
-local table_compare = table.compare
+
+
+local function table_compare(t0, t1)
+	if #t0 ~= #t1 then
+		return false
+	end
+	for i = 0, #t0 do
+		if t0[i] ~= t1[i] then
+			return false
+		end
+	end
+	return true
+end
 
 local function iterr(a, i)
 	i = i + 1
@@ -447,10 +459,10 @@ function reset_station_layout(map_data, station, forbidden_entity)
 				if supports_fluid then
 					layout_pattern[wagon_number] = 3
 				else
-					layout_pattern[wagon_number] = 2
+					layout_pattern[wagon_number] = 1
 				end
 			elseif supports_fluid then
-				layout_pattern[wagon_number] = 1
+				layout_pattern[wagon_number] = 2
 			else
 				--layout_pattern[wagon_number] = nil
 			end

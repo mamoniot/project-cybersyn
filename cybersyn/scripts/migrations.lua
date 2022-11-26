@@ -2,20 +2,6 @@ local flib_migration = require("__flib__.migration")
 
 
 local migrations_table = {
-	["0.2.0"] = function()
-		---@type MapData
-		local map_data = global
-		map_data.tick_state = STATE_INIT
-		map_data.all_station_ids = {}
-		for id, station in pairs(map_data.stations) do
-			station.p_count_or_r_threshold_per_item = {}
-			station.p_threshold = nil
-			station.is_all = nil
-			set_station_from_comb_state(station)
-			set_combinator_operation(station.entity_comb1, OPERATION_PRIMARY_IO)
-			map_data.all_station_ids[#map_data.all_station_ids + 1] = id
-		end
-	end,
 	["0.2.1"] = function()
 		---@type MapData
 		local map_data = global
@@ -103,6 +89,28 @@ local migrations_table = {
 					new_layout[i] = 2
 				end
 				i = i + 1
+			end
+			map_data.layouts[id] = new_layout
+		end
+	end,
+	["0.5.1"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		map_data.is_player_cursor_blueprint = nil
+		for id, layout in pairs(map_data.layouts) do
+			local new_layout = {}
+			local max_i = 0
+			for i, v in pairs(layout) do
+				new_layout[i] = v
+				if i > max_i then
+					max_i = i
+				end
+			end
+			for i = 1, max_i do
+				if new_layout[i] == nil then
+					new_layout[i] = 0
+				end
 			end
 			map_data.layouts[id] = new_layout
 		end

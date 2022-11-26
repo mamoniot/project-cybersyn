@@ -26,7 +26,7 @@ function remove_manifest(map_data, station, manifest, sign)
 	set_comb2(map_data, station)
 	station.deliveries_total = station.deliveries_total - 1
 	if station.deliveries_total == 0 and station.entity_comb1.valid then
-		map_data.to_comb_params[station.entity_comb1.unit_number] = set_combinator_operation(station.entity_comb1, OPERATION_PRIMARY_IO)
+		set_comb_operation_with_check(map_data, station.entity_comb1, OPERATION_PRIMARY_IO)
 	end
 end
 
@@ -214,10 +214,10 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	set_comb2(map_data, p_station)
 	set_comb2(map_data, r_station)
 	if p_station.entity_comb1.valid then
-		map_data.to_comb_params[p_station.entity_comb1.unit_number] = set_combinator_operation(p_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+		set_comb_operation_with_check(map_data, p_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
 	end
 	if r_station.entity_comb1.valid then
-		map_data.to_comb_params[r_station.entity_comb1.unit_number] = set_combinator_operation(r_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+		set_comb_operation_with_check(map_data, r_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
 	end
 end
 
@@ -229,8 +229,19 @@ local function tick_poll_train(map_data, mod_settings)
 	local train_id, train = next(map_data.trains, tick_data.last_train)
 	tick_data.last_train = train_id
 
-	if train and train.manifest and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
+	if train and train.manifest and train.entity and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
 		send_stuck_train_alert(train.entity, train.depot_name)
+	end
+end
+---@param map_data MapData
+local function tick_poll_comb(map_data)
+	local tick_data = map_data.tick_data
+	--NOTE: the following has undefined behavior if last_comb is deleted
+	local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
+	tick_data.last_comb = comb_id
+
+	if comb and comb.valid then
+		combinator_update(map_data, comb)
 	end
 end
 ---@param map_data MapData
@@ -254,7 +265,7 @@ local function tick_poll_station(map_data, mod_settings)
 		station = map_data.stations[station_id]
 		if station then
 			if station.display_update then
-				map_data.to_comb_params[station.entity_comb1.unit_number] = update_combinator_display(station.entity_comb1, station.display_failed_request)
+				update_combinator_display(map_data, station.entity_comb1, station.display_failed_request)
 				station.display_update = station.display_failed_request
 				station.display_failed_request = nil
 			end
@@ -373,6 +384,7 @@ local function tick_dispatch(map_data, mod_settings)
 			local name_i = size <= 2 and 2 or 2*random(size/2)
 			local item_network_name = all_names[name_i - 1]
 			local signal = all_names[name_i]
+
 			--swap remove
 			all_names[name_i - 1] = all_names[size - 1]
 			all_names[name_i] = all_names[size]
@@ -384,7 +396,7 @@ local function tick_dispatch(map_data, mod_settings)
 			if p_stations then
 				tick_data.r_stations = r_stations
 				tick_data.p_stations = p_stations
-				tick_data.item_name = signal.name
+				tick_data.item_name = signal.name--[[@as string]]
 				tick_data.item_type = signal.type
 				table_sort(r_stations, function(a_id, b_id)
 					local a = stations[a_id]
@@ -417,6 +429,7 @@ local function tick_dispatch(map_data, mod_settings)
 	if r_station and r_station.deliveries_total < r_station.entity_stop.trains_limit then
 		local item_name = tick_data.item_name
 		local item_type = tick_data.item_type
+		--NOTE: the station at r_station_id could have been deleted and reregistered since last poll, this check here prevents it from being processed for a delivery in that case
 		local r_threshold = r_station.p_count_or_r_threshold_per_item[item_name]
 
 		if r_threshold then
@@ -483,6 +496,7 @@ function tick(map_data, mod_settings)
 			end
 		end
 		tick_poll_train(map_data, mod_settings)
+		tick_poll_comb(map_data)
 	end
 
 	if map_data.tick_state == STATE_POLL_STATIONS then
