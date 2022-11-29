@@ -29,7 +29,7 @@ Date: 2022-11-15
 Version: 0.4.1
 Date: 2022-11-20
   Features:
-    - Bugfix with train blacklisting
+    - Bugfix with train allow-list
 ---------------------------------------------------------------------------------------------------
 Version: 0.4.2
 Date: 2022-11-22
@@ -46,7 +46,7 @@ Date: 2022-11-24
 Version: 0.4.4
 Date: 2022-11-25
   Features:
-    - Greatly improved automatic train blacklist logic
+    - Greatly improved automatic train allow-list logic
 ---------------------------------------------------------------------------------------------------
 Version: 0.5.0
 Date: 2022-11-25
@@ -57,7 +57,7 @@ Version: 0.5.1
 Date: 2022-11-25
   Features:
     - Re-added combinator copy-paste after fixing major bug
-    - Fixed bugs within train blacklist logic
+    - Fixed bugs within train allow-list logic
     - Fixed a crash
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.0
