@@ -12,7 +12,7 @@ Behold one of the most feature-rich and performant logistics mods Factorio has t
 * Read out item loading or unloading orders per train wagon, instead of just for the entire train.
 * Set item filters per cargo wagon, making multi-item deliveries far less of a headache.
 
-These all combine to make it possible to create **"universal" stations**; stations that provide any arbitrary number of different items for a train of any arbitrary length! Build stations that supply you all items from your mall, stations that grab selected items from your disorganized storage chests, or stations that transfer any item between two otherwise completely distinct networks! The possibilities are far less limited.
+These all combine to make it possible to **create "universal" stations**; stations that provide any arbitrary number of different items for a train of any arbitrary length! Build stations that supply you all items from your mall, stations that grab selected items from your disorganized storage chests, or stations that transfer any item between two otherwise completely distinct networks! The possibilities are far less limited.
 
 **Improved fault handling**. Mistakes and misconfigured stations are much less likely to result in items being delivered to places they shouldn't.
 
