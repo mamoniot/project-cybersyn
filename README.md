@@ -4,7 +4,7 @@ Behold one of the most feature-rich and performant logistics mods Factorio has t
 
 ## Features
 
-Intuitive and easy to learn, without sacrificing features. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
+**Intuitive and easy to learn**, without sacrificing features. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
 
 ### A whole suite of new and optional circuit network inputs and outputs to control your stations precisely
 * Natively read out all deliveries currently in progress for a station, not just the loading or unloading orders of the parked train.
@@ -12,19 +12,19 @@ Intuitive and easy to learn, without sacrificing features. Configure your statio
 * Read out item loading or unloading orders per train wagon, instead of just for the entire train.
 * Set item filters per cargo wagon, making multi-item deliveries far less of a headache.
 
-These all combine to make it possible to create "universal" stations; stations that provide any arbitrary number of different items for a train of any arbitrary length! Build stations that supply you all items from your mall, stations that grab selected items from your disorganized storage chests, or stations that transfer any item between two otherwise completely distinct networks! The possibilities are far less limited.
+These all combine to make it possible to create **"universal" stations**; stations that provide any arbitrary number of different items for a train of any arbitrary length! Build stations that supply you all items from your mall, stations that grab selected items from your disorganized storage chests, or stations that transfer any item between two otherwise completely distinct networks! The possibilities are far less limited.
 
-Improved fault handling. Mistakes and misconfigured stations are much less likely to result in items being delivered to places they shouldn't.
+**Improved fault handling**. Mistakes and misconfigured stations are much less likely to result in items being delivered to places they shouldn't.
 
-Stations can automatically blacklist trains they cannot load or unload. Inserters or pumps adjacent to the station's tracks are auto-detected. No more deadlocks caused by trains mistakenly attempting to fulfill a delivery to a station that cannot unload it. This feature is compatible with the miniloaders mod.
+Stations can **automatically blacklist trains** they cannot load or unload. Inserters or pumps adjacent to the station's tracks are auto-detected. No more deadlocks caused by trains mistakenly attempting to fulfill a delivery to a station that cannot unload it. This feature is compatible with the miniloaders mod.
 
-Easier and more versatile ways to define separate or partially separated train networks. Bitwise network masks are now optional! The total number of possible train networks is 32 times the total number of circuit signals in the game.
+**Easy and versatile ways to define separate train networks**. Bitwise network masks are now optional! The total number of possible train networks is 32 times the total number of circuit signals in the game.
 
-Runs a custom, highly optimized central planning algorithm, resulting in exceptionally good performance. Outperforms LTN in testing (disclaimer: there is no perfectly apples-to-apples performance test since the features and algorithms of these mods aren't the same). The station update rate is twice that of LTN by default, and depots don't count towards station updates.
+Runs a custom, **highly optimized central planning algorithm**, resulting in exceptionally good performance. Outperforms LTN in testing (disclaimer: there is no perfectly apples-to-apples performance test since the features and algorithms of these mods aren't the same). The station update rate is twice that of LTN by default, and depots don't count towards station updates.
 
-Native space exploration compatibility! Without any trouble this mod will automatically detect any space elevator on the planet and add it to the orders of trains which want to travel between surfaces. Unless there is a space elevator connecting the surfaces, each surface must be set to its own network.
+**Native space exploration compatibility**! Without any trouble this mod will automatically detect any space elevator on the planet and add it to the orders of trains which want to travel between surfaces. Unless there is a space elevator connecting the surfaces, each surface must be set to its own network.
 
-Built from the ground up to be free and open source forever. ¡Viva la Revolución!
+Built from the ground up to be **free and open source forever**. ¡Viva la Revolución!
 
 Custom art and models to come in future updates!
 
