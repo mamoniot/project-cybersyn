@@ -14,15 +14,15 @@ These all combine to make it possible to **create "universal" stations**; statio
 
 **Intuitive and easy to learn**, without sacrificing features. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
 
-**Improved fault handling**. Mistakes and misconfigured stations are much less likely to result in items being delivered to places they shouldn't.
+**Improved fault handling.** Mistakes and misconfigured stations are unlikely to result in items being delivered to places they shouldn't, and the player will be alerted immediately about the fault.
 
-Stations can **automatically blacklist trains** they cannot load or unload. Inserters or pumps adjacent to the station's tracks are auto-detected. No more deadlocks caused by trains mistakenly attempting to fulfill a delivery to a station that cannot unload it. This feature is compatible with the miniloaders mod.
+Stations can **automatically blacklist trains** they cannot load or unload. Inserters or pumps adjacent to the station's tracks are auto-detected. No more deadlocks caused by trains mistakenly attempting to fulfill a delivery to a station that cannot unload it. This feature is compatible with miniloaders.
 
-**Easy and versatile ways to define separate train networks**. Bitwise network masks are now optional! The total number of possible train networks is 32 times the total number of circuit signals in the game.
+**Easy and versatile ways to define separate train networks.** Bitwise network masks are now optional! The total number of possible train networks is 32 times the total number of circuit signals in the game.
 
-Runs a custom, **highly optimized central planning algorithm**, resulting in exceptionally good performance. Outperforms LTN in testing (disclaimer: there is no perfectly apples-to-apples performance test since the features and algorithms of these mods aren't the same). The station update rate is twice that of LTN by default, and depots don't count towards station updates.
+Runs a custom, **highly optimized central planning algorithm**, resulting in exceptionally good performance. Outperforms LTN in testing *(disclaimer: there is no perfectly apples-to-apples performance test since the features and algorithms of these mods are not the same)*. The station update rate is twice that of LTN by default, and depots don't count towards station updates.
 
-**Native space exploration compatibility**! Without any trouble this mod will automatically detect any space elevator on the planet and add it to the orders of trains which want to travel between surfaces. Unless there is a space elevator connecting the surfaces, each surface must be set to its own network.
+**Native space exploration compatibility!** Without any trouble this mod will automatically detect any space elevator on the planet and add it to the orders of trains which want to travel between surfaces. Unless there is a space elevator connecting the surfaces, each surface must be set to its own network.
 
 Built from the ground up to be **free and open source forever**. *¡Viva la Revolución!*
 
