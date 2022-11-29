@@ -1,6 +1,6 @@
 # Project Cybersyn
 
-Behold one of the most feature-rich and performant logistics mods Factorio has to offer. Named for Project Cybersyn of Allende's Chile, with just this mod you can coordinate the economic inputs and outputs of your entire megabase.
+Behold one of the most feature-rich and performant logistics mods Factorio has to offer. Named for [Project Cybersyn](https://en.wikipedia.org//wiki/Project_Cybersyn) of Allende's Chile, with just this mod you can coordinate the economic inputs and outputs of your entire megabase.
 
 ## Features
 
