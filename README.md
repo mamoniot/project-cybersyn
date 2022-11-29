@@ -4,8 +4,6 @@ Behold one of the most feature-rich and performant logistics mods Factorio has t
 
 ## Features
 
-**Intuitive and easy to learn**, without sacrificing features. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
-
 ### A whole suite of new and optional circuit network inputs and outputs to control your stations precisely
 * Natively read out all deliveries currently in progress for a station, not just the loading or unloading orders of the parked train.
 * Set request thresholds per item instead of just for the entire station.
@@ -13,6 +11,8 @@ Behold one of the most feature-rich and performant logistics mods Factorio has t
 * Set item filters per cargo wagon, making multi-item deliveries far less of a headache.
 
 These all combine to make it possible to **create "universal" stations**; stations that provide any arbitrary number of different items for a train of any arbitrary length! Build stations that supply you all items from your mall, stations that grab selected items from your disorganized storage chests, or stations that transfer any item between two otherwise completely distinct networks! The possibilities are far less limited.
+
+**Intuitive and easy to learn**, without sacrificing features. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
 
 **Improved fault handling**. Mistakes and misconfigured stations are much less likely to result in items being delivered to places they shouldn't.
 
@@ -24,7 +24,7 @@ Runs a custom, **highly optimized central planning algorithm**, resulting in exc
 
 **Native space exploration compatibility**! Without any trouble this mod will automatically detect any space elevator on the planet and add it to the orders of trains which want to travel between surfaces. Unless there is a space elevator connecting the surfaces, each surface must be set to its own network.
 
-Built from the ground up to be **free and open source forever**. ¡Viva la Revolución!
+Built from the ground up to be **free and open source forever**. *¡Viva la Revolución!*
 
 Custom art and models to come in future updates!
 
