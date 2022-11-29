@@ -1,0 +1,13 @@
+bugs:
+	request threshold is being bypassed somehow
+
+major:
+	do hardcore testing
+	models & art
+
+minor:
+	railloader compat
+	close gui when the combinator is destroyed
+	do not play close sound when a different gui is opened
+	gui can desync if settings are changed outside of it while it is open
+	go over init and make it agree with type info

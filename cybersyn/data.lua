@@ -16,7 +16,6 @@ data:extend({
 	cybersyn_tech,
 	subgroup_signal,
 	priority_signal,
-	p_threshold_signal,
 	r_threshold_signal,
 	locked_slots_signal,
 	missing_train_icon,

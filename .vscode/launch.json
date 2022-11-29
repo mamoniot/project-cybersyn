@@ -21,6 +21,19 @@
         {
             "type": "factoriomod",
             "request": "launch",
+            "name": "Factorio Mod Debug (Modded)",
+            "modsPath": "C:\\Users\\mmoni\\AppData\\Roaming\\Factorio\\mods",
+            "manageMod": true,
+            "adjustMods": {
+                "debugadapter": true,
+                "flib": true,
+                "cybersyn": true,
+            },
+            "disableExtraMods": false
+        },
+        {
+            "type": "factoriomod",
+            "request": "launch",
             "name": "Factorio Mod Debug (Settings & Data)",
             "hookSettings": true,
             "hookData": true,
@@ -28,7 +41,6 @@
                 "debugadapter": true,
                 "flib": true,
                 "cybersyn": true,
-                "creative-mod": true,
             },
             "disableExtraMods": true
         },
@@ -41,9 +53,7 @@
                 "debugadapter": true,
                 "flib": true,
                 "cybersyn": true,
-                "creative-mod": true,
             },
-            "disableExtraMods": true
         }
     ]
 }
