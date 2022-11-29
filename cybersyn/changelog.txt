@@ -56,6 +56,12 @@ Date: 2022-11-25
 Version: 0.5.1
 Date: 2022-11-25
   Features:
-    - Re-added combinator copy-paste
+    - Re-added combinator copy-paste after fixing major bug
     - Fixed bugs within train blacklist logic
     - Fixed a crash
+---------------------------------------------------------------------------------------------------
+Version: 1.0.0
+Date: 2022-11-29
+  Features:
+    - Minor bugfix
+    - Added placeholder sprites

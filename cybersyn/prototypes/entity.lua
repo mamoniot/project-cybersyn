@@ -12,89 +12,207 @@ combinator_entity.radius_visualisation_specification = {
 	distance = 1.5,
 }
 combinator_entity.active_energy_usage = "10KW"
---combinator_entity.allow_copy_paste = false
 
 
+local COMBINATOR_SPRITE = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
+local COMBINATOR_HR_SPRITE = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator.png"
+local COMBINATOR_SHADOW = "__cybersyn__/graphics/combinator/cybernetic-combinator-shadow.png"
+local COMBINATOR_HR_SHADOW = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
+combinator_entity.sprites = {
+	north = {layers = {
+		{
+			filename=COMBINATOR_SPRITE,
+			priority="high",
+			x=0, y=0,
+			width=74, height=64,
+			frame_count=1,
+			shift={ 0.03125, 0.25, },
+			scale=1,
+			hr_version={
+				filename=COMBINATOR_HR_SPRITE,
+				priority="high",
+				x=0, y=0,
+				width=144, height=124,
+				frame_count=1,
+				shift={ 0.015625, 0.234375, },
+				scale=0.5,
+			},
+		},
+		{
+			filename=COMBINATOR_SHADOW,
+			priority="high",
+			x=0, y=0,
+			width=76, height=78,
+			frame_count=1,
+			shift={ 0.4375, 0.75, },
+			draw_as_shadow=true,
+			scale=1,
+			hr_version={
+				filename=COMBINATOR_HR_SHADOW,
+				priority="high",
+				x=0, y=0,
+				width=148, height=156,
+				frame_count=1,
+				shift={ 0.421875, 0.765625, },
+				draw_as_shadow=true,
+				scale=0.5,
+			},
+		}
+	}},
+	east = {layers={
+		{
+			filename=COMBINATOR_SPRITE,
+			priority="high",
+			x=74, y=0,
+			width=74, height=64,
+			frame_count=1,
+			shift={ 0.03125, 0.25, },
+			scale=1,
+			hr_version={
+				filename=COMBINATOR_HR_SPRITE,
+				priority="high",
+				x=144, y=0,
+				width=144, height=124,
+				frame_count=1,
+				shift={ 0.015625, 0.234375, },
+				scale=0.5,
+			},
+		},
+		{
+			filename=COMBINATOR_SHADOW,
+			priority="high",
+			x=76, y=0,
+			width=76, height=78,
+			frame_count=1,
+			shift={ 0.4375, 0.75, },
+			draw_as_shadow=true,
+			scale=1,
+			hr_version={
+				filename=COMBINATOR_HR_SHADOW,
+				priority="high",
+				x=148, y=0,
+				width=148, height=156,
+				frame_count=1,
+				shift={ 0.421875, 0.765625, },
+				draw_as_shadow=true,
+				scale=0.5,
+			},
+		},
+	}},
+	south = {layers={
+		{
+			filename=COMBINATOR_SPRITE,
+			priority="high",
+			x=148, y=0,
+			width=74, height=64,
+			frame_count=1,
+			shift={ 0.03125, 0.25, },
+			scale=1,
+			hr_version={
+				filename=COMBINATOR_HR_SPRITE,
+				priority="high",
+				x=288, y=0,
+				width=144, height=124,
+				frame_count=1,
+				shift={ 0.015625, 0.234375, },
+				scale=0.5,
+			},
+		},
+		{
+			filename=COMBINATOR_SHADOW,
+			priority="high",
+			x=152, y=0,
+			width=76, height=78,
+			frame_count=1,
+			shift={ 0.4375, 0.75, },
+			draw_as_shadow=true,
+			scale=1,
+			hr_version={
+				filename=COMBINATOR_HR_SHADOW,
+				priority="high",
+				x=296, y=0,
+				width=148, height=156,
+				frame_count=1,
+				shift={ 0.421875, 0.765625, },
+				draw_as_shadow=true,
+				scale=0.5,
+			},
+		}
+	}},
+	west = {layers={
+		{
+			filename=COMBINATOR_SPRITE,
+			priority="high",
+			x=222, y=0,
+			width=74, height=64,
+			frame_count=1,
+			shift={ 0.03125, 0.25, },
+			scale=1,
+			hr_version={
+				filename=COMBINATOR_HR_SPRITE,
+				priority="high",
+				x=432, y=0,
+				width=144, height=124,
+				frame_count=1,
+				shift={ 0.015625, 0.234375, },
+				scale=0.5,
+			},
+		},
+		{
+			filename=COMBINATOR_SHADOW,
+			priority="high",
+			x=228, y=0,
+			width=76, height=78,
+			frame_count=1,
+			shift={ 0.4375, 0.75, },
+			draw_as_shadow=true,
+			scale=1,
+			hr_version={
+				filename=COMBINATOR_HR_SHADOW,
+				priority="high",
+				x=444, y=0,
+				width=148, height=156,
+				frame_count=1,
+				shift={ 0.421875, 0.765625, },
+				draw_as_shadow=true,
+				scale=0.5,
+			},
+		}
+	}},
+}
 
-local comb = combinator_entity
---local display_base = {
---  filename = "__cybersyn__/graphics/combinator/combinator-displays.png",
---  width = 15,
---  height = 11,
---  hr_version = {
---    filename = "__cybersyn__/graphics/combinator/hr-combinator-displays.png",
---    width = 30,
---    height = 21,
---  }
---}
-
---local north = table.deepcopy(display_base)
---north.scale = comb.and_symbol_sprites.north.scale
---north.shift = comb.and_symbol_sprites.north.shift
---north.hr_version.scale = comb.and_symbol_sprites.north.hr_version.scale
---north.hr_version.shift = comb.and_symbol_sprites.north.hr_version.shift
---local east = table.deepcopy(display_base)
---east.scale = comb.and_symbol_sprites.east.scale
---east.shift = comb.and_symbol_sprites.east.shift
---east.hr_version.scale = comb.and_symbol_sprites.east.hr_version.scale
---east.hr_version.shift = comb.and_symbol_sprites.east.hr_version.shift
---local south = table.deepcopy(display_base)
---south.scale = comb.and_symbol_sprites.south.scale
---south.shift = comb.and_symbol_sprites.south.shift
---south.hr_version.scale = comb.and_symbol_sprites.south.hr_version.scale
---south.hr_version.shift = comb.and_symbol_sprites.south.hr_version.shift
---local west = table.deepcopy(display_base)
---west.scale = comb.and_symbol_sprites.west.scale
---west.shift = comb.and_symbol_sprites.west.shift
---west.hr_version.scale = comb.and_symbol_sprites.west.hr_version.scale
---west.hr_version.shift = comb.and_symbol_sprites.west.hr_version.shift
-
---local display = {
---  north = north,
---  east = east,
---  south = south,
---  west = west
---}
---comb.and_symbol_sprites = table.deepcopy(display)
---comb.divide_symbol_sprites = table.deepcopy(display)
---comb.left_shift_symbol_sprites = table.deepcopy(display)
---comb.minus_symbol_sprites = table.deepcopy(display)
---comb.modulo_symbol_sprites = table.deepcopy(display)
---comb.multiply_symbol_sprites = table.deepcopy(display)
---comb.or_symbol_sprites = table.deepcopy(display)
---comb.plus_symbol_sprites = table.deepcopy(display)
---comb.power_symbol_sprites = table.deepcopy(display)
---comb.right_shift_symbol_sprites = table.deepcopy(display)
---comb.xor_symbol_sprites = table.deepcopy(display)
-
-
---local sprite_base = {
---	filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png",
---	hr_version = {
---		filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png",
---	}
---}
-
---comb.sprites.north.layers[1].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
---comb.sprites.north.layers[1].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
---comb.sprites.north.layers[2].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
---comb.sprites.north.layers[2].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
-
---comb.sprites.east.layers[1].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
---comb.sprites.east.layers[1].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
---comb.sprites.east.layers[2].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
---comb.sprites.east.layers[2].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
-
---comb.sprites.south.layers[1].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
---comb.sprites.south.layers[1].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
---comb.sprites.south.layers[2].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
---comb.sprites.south.layers[2].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
-
---comb.sprites.west.layers[1].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
---comb.sprites.west.layers[1].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
---comb.sprites.west.layers[2].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
---comb.sprites.west.layers[2].hr_version.filename = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator-shadow.png"
-
+local function create_combinator_display_direction(x, y, shift)
+	return {
+			filename="__cybersyn__/graphics/combinator/cybernetic-displays.png",
+			x=x, y=y,
+			width=15, height=11,
+			shift=shift,
+			draw_as_glow=true,
+			hr_version={
+				scale=0.5,
+				filename="__cybersyn__/graphics/combinator/hr-cybernetic-displays.png",
+				x=2*x, y=2*y,
+				width=30, height=22,
+				shift=shift,
+				draw_as_glow=true,
+			},
+		}
+end
+local function create_combinator_display(x, y, shiftv, shifth)
+	return {
+		north=create_combinator_display_direction(x, y, shiftv),
+		east=create_combinator_display_direction(x, y, shifth),
+		south=create_combinator_display_direction(x, y, shiftv),
+		west=create_combinator_display_direction(x, y, shifth),
+	}
+end
+combinator_entity.plus_symbol_sprites = create_combinator_display(15, 0, { 0, -0.140625, }, { 0, -0.328125, })
+combinator_entity.minus_symbol_sprites = create_combinator_display(30, 0, { 0, -0.140625, }, { 0, -0.328125, })
+combinator_entity.divide_symbol_sprites = create_combinator_display(60, 0, { 0, -0.140625, }, { 0, -0.328125, })
+combinator_entity.modulo_symbol_sprites = create_combinator_display(75, 0, { 0, -0.140625, }, { 0, -0.328125, })
+combinator_entity.power_symbol_sprites = create_combinator_display(0, 11, { 0, -0.140625, }, { 0, -0.328125, })
+combinator_entity.left_shift_symbol_sprites = create_combinator_display(15, 11, { 0, -0.140625, }, { 0, -0.328125, })
+combinator_entity.multiply_symbol_sprites = combinator_entity.divide_symbol_sprites
 
 
 combinator_out_entity = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"], COMBINATOR_OUT_NAME)
