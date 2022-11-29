@@ -39,7 +39,7 @@ end
 ------------------------------------------------------------------------------
 
 
-local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = 120}
+local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
 ---@param stop LuaEntity
 ---@param manifest Manifest
 function create_loading_order(stop, manifest)
@@ -68,7 +68,7 @@ function create_unloading_order(stop)
 	return {station = stop.backer_name, wait_conditions = create_unloading_order_condition}
 end
 
-local create_inactivity_order_condition = {{type = "inactivity", compare_type = "and", ticks = 120}}
+local create_inactivity_order_condition = {{type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}}
 ---@param depot_name string
 function create_inactivity_order(depot_name)
 	return {station = depot_name, wait_conditions = create_inactivity_order_condition}

@@ -645,7 +645,9 @@ local function on_train_arrives_buffer(map_data, stop, train)
 				set_r_wagon_combs(map_data, station, train)
 			end
 		elseif train.status == STATUS_P and train.p_station_id == station_id then
-		elseif train.status == STATUS_R and train.r_station_id == station_id then
+			--this player intervention that is considered valid
+		elseif (train.status == STATUS_R or train.status == STATUS_R_TO_D) and train.r_station_id == station_id then
+			--this player intervention that is considered valid
 		else
 			on_failed_delivery(map_data, train)
 			remove_train(map_data, train, train.entity.id)
