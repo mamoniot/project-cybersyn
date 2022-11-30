@@ -9,6 +9,15 @@ data:extend({
 		minimum_value = 1,
 		maximum_value = 60,
 	},
+	{
+		type = "int-setting",
+		name = "cybersyn-update-rate",
+		order = "ab",
+		setting_type = "runtime-global",
+		default_value = 2,
+		minimum_value = 1,
+		maximum_value = 2147483647,
+	},
 	--{
 	--	type = "int-setting",
 	--	name = "cybersyn-wait-time",

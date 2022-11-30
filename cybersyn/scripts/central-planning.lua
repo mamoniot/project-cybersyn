@@ -500,7 +500,7 @@ function tick(map_data, mod_settings)
 	end
 
 	if map_data.tick_state == STATE_POLL_STATIONS then
-		for i = 1, 2 do
+		for i = 1, mod_settings.update_rate do
 			if tick_poll_station(map_data, mod_settings) then break end
 		end
 	elseif map_data.tick_state == STATE_DISPATCH then

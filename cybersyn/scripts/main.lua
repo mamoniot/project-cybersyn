@@ -837,6 +837,7 @@ end
 
 local function on_settings_changed(event)
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]
+	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]
@@ -868,6 +869,7 @@ local filter_broken = {
 }
 local function main()
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]
+	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]

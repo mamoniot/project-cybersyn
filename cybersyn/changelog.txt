@@ -65,3 +65,9 @@ Date: 2022-11-29
   Features:
     - Minor bugfix
     - Added placeholder sprites
+---------------------------------------------------------------------------------------------------
+Version: 1.0.2
+Date: 2022-11-29
+  Features:
+    - Added mod description
+    - Added update rate setting
