@@ -358,27 +358,22 @@ function reset_station_layout(map_data, station, forbidden_entity)
 	local reach = LONGEST_INSERTER_REACH + 1
 	local search_area
 	local area_delta
-	local direction_filter
 	local is_ver
 	if station_direction == defines.direction.north then
 		search_area = {left_top = {x = middle_x - reach, y = middle_y}, right_bottom = {x = middle_x + reach, y = middle_y + 6}}
 		area_delta = {x = 0, y = 7}
-		direction_filter = {defines.direction.east, defines.direction.west}
 		is_ver = true
 	elseif station_direction == defines.direction.east then
 		search_area = {left_top = {y = middle_y - reach, x = middle_x - 6}, right_bottom = {y = middle_y + reach, x = middle_x}}
 		area_delta = {x = -7, y = 0}
-		direction_filter = {defines.direction.north, defines.direction.south}
 		is_ver = false
 	elseif station_direction == defines.direction.south then
 		search_area = {left_top = {x = middle_x - reach, y = middle_y - 6}, right_bottom = {x = middle_x + reach, y = middle_y}}
 		area_delta = {x = 0, y = -7}
-		direction_filter = {defines.direction.east, defines.direction.west}
 		is_ver = true
 	elseif station_direction == defines.direction.west then
 		search_area = {left_top = {y = middle_y - reach, x = middle_x}, right_bottom = {y = middle_y + reach, x = middle_x + 6}}
 		area_delta = {x = 7, y = 0}
-		direction_filter = {defines.direction.north, defines.direction.south}
 		is_ver = false
 	else
 		assert(false, "cybersyn: invalid station direction")
@@ -403,7 +398,6 @@ function reset_station_layout(map_data, station, forbidden_entity)
 			local entities = surface.find_entities_filtered({
 				area = search_area,
 				type = type_filter,
-				direction = direction_filter,
 			})
 			for _, entity in pairs(entities) do
 				if entity.valid and entity ~= forbidden_entity then
@@ -432,7 +426,14 @@ function reset_station_layout(map_data, station, forbidden_entity)
 						end
 					elseif entity.type == "pump" then
 						if not supports_fluid and entity.pump_rail_target then
-							supports_fluid = true
+							local direction = entity.direction
+							if is_ver then
+								if direction == defines.direction.east or direction == defines.direction.west then
+									supports_fluid = true
+								end
+							elseif direction == defines.direction.north or direction == defines.direction.south then
+								supports_fluid = true
+							end
 						end
 					elseif entity.name == COMBINATOR_NAME then
 						local param = map_data.to_comb_params[entity.unit_number]

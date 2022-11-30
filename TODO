@@ -1,5 +1,6 @@
 bugs:
 	request threshold is being bypassed somehow
+	wagon control combinators don't work parallel to the tracks
 
 major:
 	do hardcore testing
