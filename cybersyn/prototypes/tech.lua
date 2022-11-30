@@ -10,8 +10,8 @@ cybersyn_tech = {
 	type = "technology",
 	name = "cybersyn-train-network",
 	icon = "__cybersyn__/graphics/icons/tech.png",
-	icon_size = 64,
-	icon_mipmaps = 4,
+	icon_size = 256,
+	--icon_mipmaps = 4,
 	prerequisites = {
 		"automated-rail-transportation",
 		"circuit-network",
