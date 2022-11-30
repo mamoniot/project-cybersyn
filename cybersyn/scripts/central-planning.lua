@@ -395,7 +395,7 @@ local function tick_dispatch(map_data, mod_settings)
 	end
 	local max_threshold = INF
 	while true do
-		local r_station_id = nil
+		local r_station_i = nil
 		local r_threshold = nil
 		local best_prior = -INF
 		local best_lru = INF
@@ -405,20 +405,20 @@ local function tick_dispatch(map_data, mod_settings)
 			if station and station.deliveries_total < station.entity_stop.trains_limit then
 				local threshold = station.p_count_or_r_threshold_per_item[item_name]
 				if threshold <= max_threshold and (station.priority > best_prior or (station.priority == best_prior and station.last_delivery_tick < best_lru)) then
-					r_station_id = id
+					r_station_i = i
 					r_threshold = threshold
 					best_prior = station.priority
 					best_lru = station.last_delivery_tick
 				end
 			end
 		end
-		if not r_station_id then
+		if not r_station_i then
 			return false
 		end
 
+		local r_station_id = r_stations[r_station_i]
 		local r_station = stations[r_station_id]
 
-		local pre_max_threshold = max_threshold
 		max_threshold = 0
 		local best_i = 0
 		local best_depot = nil
@@ -445,9 +445,8 @@ local function tick_dispatch(map_data, mod_settings)
 							can_be_serviced = true
 						end
 					end
-				elseif effective_count < pre_max_threshold and effective_count > max_threshold then
-					--set the max_threshold to the highest seen number that is strictly lower that the previous used
-					--due to where in the algorithm we are this will find a valid request and provide pair or abort in just one iteration
+				end
+				if effective_count > max_threshold then
 					max_threshold = effective_count
 				end
 			end
@@ -466,6 +465,8 @@ local function tick_dispatch(map_data, mod_settings)
 			r_station.display_failed_request = true
 			r_station.display_update = true
 		end
+
+		table_remove(r_stations, r_station_i)
 	end
 end
 ---@param map_data MapData
