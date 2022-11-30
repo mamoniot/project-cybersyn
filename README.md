@@ -24,7 +24,7 @@ These all combine to make it possible to **create "universal" stations**; statio
 
 Stations can **automatically build allow-lists for trains** they can load or unload. Inserters or pumps adjacent to the station's tracks are auto-detected. No more deadlocks caused by trains mistakenly attempting to fulfill a delivery to a station that cannot unload it. This feature is compatible with miniloaders.
 
-**Easy and versatile ways to define separate train networks.** Bitwise network masks are now optional! The total number of possible train networks is 32 times the total number of circuit signals in the game.
+**Easy and versatile ways to define separate train networks.** Bitwise network masks are now optional! Networks are identified by signal id first, then by signal strength.
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/fault-alert.png)
 
