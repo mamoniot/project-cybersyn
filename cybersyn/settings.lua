@@ -1,12 +1,12 @@
 --By Mami
 data:extend({
 	{
-		type = "int-setting",
+		type = "double-setting",
 		name = "cybersyn-ticks-per-second",
 		order = "aa",
 		setting_type = "runtime-global",
 		default_value = 30,
-		minimum_value = 1,
+		minimum_value = 0,
 		maximum_value = 60,
 	},
 	{

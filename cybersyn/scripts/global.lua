@@ -76,7 +76,7 @@
 ---@field public all_names (string|SignalID)[]
 
 ---@class CybersynModSettings
----@field public tps int
+---@field public tps double
 ---@field public update_rate int
 ---@field public r_threshold int
 ---@field public network_flag int

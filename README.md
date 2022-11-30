@@ -50,7 +50,6 @@ This mod adds a single new entity to the game, the cybernetic combinator. This c
 
 When placed adjacent to a vanilla train stop, a Cybersyn station is created. This station can provide or request items to your train network. Connect the input of the combinator to a circuit network; When a positive item signal is received, this station will provide that item to the network, when a negative signal is received, this station will request that item from the network. When a station is providing an item that another station is requesting, a train order will automatically be generated to transfer those items from the providing station to the requesting station. When a train arrives to fulfill this order, the output of the combinator will give the full list of items expected to be loaded (positive) or unloaded (negative) from the train.
 
-
 ### Depot control combinator
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/big-depot.png)
@@ -61,8 +60,7 @@ When placed adjacent to a vanilla train stop, a Cybersyn depot is created. Any t
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/science.png)
 
-When placed adjacent to the train stop of an already existing Cybersyn station, this combinator will provide a second set of inputs and outputs that can be used to more precisely control this station. The combinator input allows for request thresholds to be set per-item. Any non-zero item signal given on the input circuit network will override the station's request thresholds for just that item. The output of the combinator gives the sum total of all item loading or unloading orders in progress for the station. The very tick a train is dispatched for a new order to the station, that order is added to the output of this combinator, and it is removed as soon as the train leaves the station. The primary use case for this is to prevent duplicate orders from being generated for stations that provide the same pool of items. Only one train can be dispatched per-tick specifically to accommodate this.
-
+When placed adjacent to the train stop of an already existing Cybersyn station, this combinator will provide a second set of inputs and outputs that can be used to more precisely control this station. The combinator input allows for request thresholds to be set per-item. Any non-zero item signal given on the input circuit network will override the station's request thresholds for just that item. The output of the combinator gives the sum total of all item loading or unloading orders in progress for the station. The very tick a train is dispatched for a new order to the station, that order is added to the output of this combinator, and it is removed as soon as the train leaves the station. The primary use case for this is to prevent duplicate orders from being generated for stations that provide the same pool of items. Only one train can be dispatched per-tick per-item specifically to accommodate this.
 
 ### Wagon control combinator
 

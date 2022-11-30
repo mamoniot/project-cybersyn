@@ -1,6 +1,7 @@
 --By Mami
 local flib_event = require("__flib__.event")
 local floor = math.floor
+local ceil = math.ceil
 local table_insert = table.insert
 
 
@@ -843,11 +844,13 @@ local function on_settings_changed(event)
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as int]]
 	if event.setting == "cybersyn-ticks-per-second" then
-		local nth_tick = math.ceil(60/mod_settings.tps);
 		flib_event.on_nth_tick(nil)
-		flib_event.on_nth_tick(nth_tick, function()
-			tick(global, mod_settings)
-		end)
+		if mod_settings.tps > DELTA then
+			local nth_tick = ceil(60/mod_settings.tps);
+			flib_event.on_nth_tick(nth_tick, function()
+				tick(global, mod_settings)
+			end)
+		end
 	end
 end
 
@@ -868,7 +871,7 @@ local filter_broken = {
 	{filter = "rolling-stock"},
 }
 local function main()
-	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]
+	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
@@ -891,10 +894,14 @@ local function main()
 
 	flib_event.register(defines.events.on_entity_settings_pasted, on_paste)
 
-	local nth_tick = math.ceil(60/mod_settings.tps);
-	flib_event.on_nth_tick(nth_tick, function()
-		tick(global, mod_settings)
-	end)
+	if mod_settings.tps > DELTA then
+		local nth_tick = ceil(60/mod_settings.tps);
+		flib_event.on_nth_tick(nth_tick, function()
+			tick(global, mod_settings)
+		end)
+	else
+		flib_event.on_nth_tick(nil)
+	end
 
 	flib_event.register(defines.events.on_train_created, on_train_built)
 	flib_event.register(defines.events.on_train_changed_state, on_train_changed)
