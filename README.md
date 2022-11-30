@@ -18,6 +18,8 @@ Behold one of the most feature-rich and performant logistics mods Factorio has t
 
 These all combine to make it possible to **create "universal" stations**; stations that provide any arbitrary number of different items for a train of any arbitrary length! Build stations that supply you all items from your mall, stations that grab selected items from your disorganized storage chests, or stations that transfer any item between two otherwise completely distinct networks! The possibilities are far less limited.
 
+![Alt text](/previews/gui-allow-list.png)
+
 Stations can **automatically build allow-lists for trains** they can load or unload. Inserters or pumps adjacent to the station's tracks are auto-detected. No more deadlocks caused by trains mistakenly attempting to fulfill a delivery to a station that cannot unload it. This feature is compatible with miniloaders.
 
 **Easy and versatile ways to define separate train networks.** Bitwise network masks are now optional! The total number of possible train networks is 32 times the total number of circuit signals in the game.
@@ -47,13 +49,13 @@ When placed adjacent to a vanilla train stop, a Cybersyn station is created. Thi
 
 ### Depot control combinator
 
-![Alt text](/previews/gui-depot.png)
+![Alt text](/previews/big-depot.png)
 
 When placed adjacent to a vanilla train stop, a Cybersyn depot is created. Any train which parks at this depot will automatically be added to the train network. Whenever a train order is generated, if this train has the cargo capacity to fulfill it, and is allow-listed by both stations, then it will automatically be dispatched to fulfill the order. When the order is completed, the train will return to any train stop with the same name as the depot it first parked in. This almost always means it returns to a Cybersyn depot where it will again await to fulfill a new order. To save on UPS the input of a depot control combinator is only read when a train parks at the depot; this only matters for networks which make extensive use of network masks on depots.
 
 ### Optional station control combinator
 
-![Alt text](/previews/outpost-resuply-station.png)
+![Alt text](/previews/outpost-resupply-station.png)
 
 When placed adjacent to the train stop of an already existing Cybersyn station, this combinator will provide a second set of inputs and outputs that can be used to more precisely control this station. The combinator input allows for request thresholds to be set per-item. Any non-zero item signal given on the input circuit network will override the station's request thresholds for just that item. The output of the combinator gives the sum total of all item loading or unloading orders in progress for the station. The very tick a train is dispatched for a new order to the station, that order is added to the output of this combinator, and it is removed as soon as the train leaves the station. The primary use case for this is to prevent duplicate orders from being generated for stations that provide the same pool of items. Only one train can be dispatched per-tick specifically to accommodate this.
 
