@@ -30,7 +30,7 @@ Stations can **automatically build allow-lists for trains** they can load or unl
 
 **Improved fault handling.** Mistakes and misconfigured stations are unlikely to result in items being delivered to places they shouldn't, and the player will be alerted immediately about the fault.
 
-Runs a custom, **highly optimized central planning algorithm**, resulting in exceptionally good performance. Outperforms LTN in testing *(disclaimer: there is no perfectly apples-to-apples performance test since the features and algorithms of these mods are not the same)*. The station update rate is twice that of LTN by default, and depots don't count towards station updates.
+Runs a custom, **highly optimized central planning algorithm**, resulting in exceptionally good performance. Greatly outperforms LTN in testing *(disclaimer: there is no perfectly apples-to-apples performance test since the features and algorithms of these mods are not the same, see /previews/performance/ )*. The station update rate is twice that of LTN by default, and depots don't count towards station updates.
 
 ![Alt text](/previews/se-compat.png)
 

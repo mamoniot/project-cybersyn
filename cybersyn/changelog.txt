@@ -71,3 +71,8 @@ Date: 2022-11-29
   Features:
     - Added mod description
     - Added update rate setting
+---------------------------------------------------------------------------------------------------
+Version: 1.0.3
+Date: 2022-11-30
+  Features:
+    - Fixed a bug where duplicate orders could not be prevented on stations that share the same pool of items

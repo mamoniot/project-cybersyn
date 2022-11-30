@@ -1,6 +1,6 @@
 # Project Cybersyn
 
-Behold one of the most feature-rich and performant logistics mods Factorio has to offer. Named for [Project Cybersyn](https://en.wikipedia.org//wiki/Project_Cybersyn) of Allende's Chile, with just this mod you can coordinate the economic inputs and outputs of your entire megabase.
+Behold one of the most feature-rich and performant logistics mods Factorio has to offer. Named for [Project Cybersyn](https://en.wikipedia.org//wiki/Project_Cybersyn) of Allende's Chile, with just this mod you can coordinate the economic inputs and outputs of your entire megabase. Similar in functionality to the famous Logistics Train Network mod, but with a much broader scope.
 
 ![Image](https://github.com/mamoniot/project-cybersyn/blob/main/previews/outpost-resupply-station.png?raw=true)
 
@@ -8,7 +8,7 @@ Behold one of the most feature-rich and performant logistics mods Factorio has t
 
 ![Image](https://github.com/mamoniot/project-cybersyn/blob/main/previews/gui-modes.png?raw=true)
 
-**Intuitive and easy to learn**, without sacrificing features. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
+**Intuitive and easy to learn**, without sacrificing features. Eases the player into building a train logistics network using parallels between the robot logistics network. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
 
 ### A whole suite of new and optional circuit network inputs and outputs to control your stations precisely
 * Natively read out all deliveries currently in progress for a station, not just the loading or unloading orders of the parked train.

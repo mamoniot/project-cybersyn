@@ -1,10 +1,10 @@
 {
     "name": "cybersyn",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "title": "Project Cybersyn",
     "author": "Mami",
     "factorio_version": "1.1",
-    "description": "Adds cybernetic combinators to the game, which connect to adjacent train stops to create a train logistics network. With just this mod you can coordinate the economic inputs and outputs of your entire megabase.",
+    "description": "Creates a feature-rich train logistics network through cybernetic combinators. With just this mod you can coordinate the economic inputs and outputs of your entire megabase.",
     "dependencies": [
         "base",
         "flib >= 0.6.0",

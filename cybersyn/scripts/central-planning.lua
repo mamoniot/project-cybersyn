@@ -118,6 +118,7 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 		if r_effective_item_count < 0 and r_item_count < 0 then
 			local r_threshold = r_station.p_count_or_r_threshold_per_item[item_name]
 			local p_effective_item_count = p_station.p_count_or_r_threshold_per_item[item_name]
+			--could be an item that is not present at the station
 			if p_effective_item_count and p_effective_item_count >= r_threshold then
 				local item = {name = item_name, type = item_type, count = min(-r_effective_item_count, p_effective_item_count)}
 				if item_name == primary_item_name then
@@ -142,6 +143,9 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 	local i = 1
 	while i <= #manifest do
 		local item = manifest[i]
+		if item.count < 1000 then
+			local hello = true
+		end
 		local keep_item = false
 		if item.type == "fluid" then
 			if total_liquid_left > 0 then
@@ -181,25 +185,10 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 		p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
 
 		if item_i > 1 then
+			--prevent deliveries from being processed for these items until their stations are re-polled
 			local item_network_name = network_name..":"..item.name
-			local r_stations = economy.all_r_stations[item_network_name]
-			local p_stations = economy.all_p_stations[item_network_name]
-			if r_stations then
-				for j, id in ipairs(r_stations) do
-					if id == r_station_id then
-						table_remove(r_stations, j)
-						break
-					end
-				end
-			end
-			if p_stations then
-				for j, id in ipairs(p_stations) do
-					if id == p_station_id then
-						table_remove(p_stations, j)
-						break
-					end
-				end
-			end
+			economy.all_r_stations[item_network_name] = nil
+			economy.all_p_stations[item_network_name] = nil
 		end
 	end
 
@@ -358,59 +347,40 @@ local function tick_dispatch(map_data, mod_settings)
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
 	--NOTE: It may be better for performance to update stations one tick at a time rather than all at once, however this does mean more  redundant data will be generated and discarded each tick. Once we have a performance test-bed it will probably be worth checking.
 	--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
-	local tick_data = map_data.tick_data
 	local all_r_stations = map_data.economy.all_r_stations
 	local all_p_stations = map_data.economy.all_p_stations
 	local all_names = map_data.economy.all_names
 	local stations = map_data.stations
 
-	---@type {}
-	local r_stations = tick_data.r_stations
-	---@type {}
-	local p_stations = tick_data.p_stations
-	if p_stations == nil or #p_stations == 0 or #r_stations == 0 then
-		while true do
-			local size = #all_names
-			if size == 0 then
-				tick_data.r_stations = nil
-				tick_data.p_stations = nil
-				tick_data.item_name = nil
-				tick_data.item_type = nil
-				map_data.tick_state = STATE_INIT
-				return true
-			end
+	local r_stations
+	local p_stations
+	local item_name
+	local item_type
+	while true do
+		local size = #all_names
+		if size == 0 then
+			map_data.tick_state = STATE_INIT
+			return true
+		end
 
-			--randomizing the ordering should only matter if we run out of available trains
-			local name_i = size <= 2 and 2 or 2*random(size/2)
-			local item_network_name = all_names[name_i - 1]
-			local signal = all_names[name_i]
+		--randomizing the ordering should only matter if we run out of available trains
+		local name_i = size <= 2 and 2 or 2*random(size/2)
 
-			--swap remove
-			all_names[name_i - 1] = all_names[size - 1]
-			all_names[name_i] = all_names[size]
-			all_names[size] = nil
-			all_names[size - 1] = nil
+		local item_network_name = all_names[name_i - 1]--[[@as string]]
+		local signal = all_names[name_i]--[[@as SignalID]]
 
-			r_stations = all_r_stations[item_network_name]
-			p_stations = all_p_stations[item_network_name]
+		--swap remove
+		all_names[name_i - 1] = all_names[size - 1]
+		all_names[name_i] = all_names[size]
+		all_names[size] = nil
+		all_names[size - 1] = nil
+
+		r_stations = all_r_stations[item_network_name]
+		p_stations = all_p_stations[item_network_name]
+		if r_stations then
 			if p_stations then
-				tick_data.r_stations = r_stations
-				tick_data.p_stations = p_stations
-				tick_data.item_name = signal.name--[[@as string]]
-				tick_data.item_type = signal.type
-				table_sort(r_stations, function(a_id, b_id)
-					local a = stations[a_id]
-					local b = stations[b_id]
-					if a and b then
-						if a.priority ~= b.priority then
-							return a.priority < b.priority
-						else
-							return a.last_delivery_tick > b.last_delivery_tick
-						end
-					else
-						return a == nil
-					end
-				end)
+				item_name = signal.name--[[@as string]]
+				item_type = signal.type
 				break
 			else
 				for i, id in ipairs(r_stations) do
@@ -423,57 +393,80 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 		end
 	end
+	local max_threshold = INF
+	while true do
+		local r_station_id = nil
+		local r_threshold = nil
+		local best_prior = -INF
+		local best_lru = INF
+		for i, id in ipairs(r_stations) do
+			local station = stations[id]
+			--NOTE: the station at r_station_id could have been deleted and reregistered since last poll, this check here prevents it from being processed for a delivery in that case
+			if station and station.deliveries_total < station.entity_stop.trains_limit then
+				local threshold = station.p_count_or_r_threshold_per_item[item_name]
+				if threshold <= max_threshold and (station.priority > best_prior or (station.priority == best_prior and station.last_delivery_tick < best_lru)) then
+					r_station_id = id
+					r_threshold = threshold
+					best_prior = station.priority
+					best_lru = station.last_delivery_tick
+				end
+			end
+		end
+		if not r_station_id then
+			return false
+		end
 
-	local r_station_id = table_remove(r_stations--[[@as uint[] ]])
-	local r_station = stations[r_station_id]
-	if r_station and r_station.deliveries_total < r_station.entity_stop.trains_limit then
-		local item_name = tick_data.item_name
-		local item_type = tick_data.item_type
-		--NOTE: the station at r_station_id could have been deleted and reregistered since last poll, this check here prevents it from being processed for a delivery in that case
-		local r_threshold = r_station.p_count_or_r_threshold_per_item[item_name]
+		local r_station = stations[r_station_id]
 
-		if r_threshold then
-			local best = 0
-			local best_depot = nil
-			local best_dist = INF
-			local highest_prior = -INF
-			local can_be_serviced = false
-			for j, p_station_id in ipairs(p_stations) do
-				local p_station = stations[p_station_id]
-				if p_station and (p_station.p_count_or_r_threshold_per_item[item_name] or -1) >= r_threshold and p_station.deliveries_total < p_station.entity_stop.trains_limit then
+		local pre_max_threshold = max_threshold
+		max_threshold = 0
+		local best_i = 0
+		local best_depot = nil
+		local best_dist = INF
+		local best_prior = -INF
+		local can_be_serviced = false
+		for j, p_station_id in ipairs(p_stations) do
+			local p_station = stations[p_station_id]
+			if p_station and p_station.deliveries_total < p_station.entity_stop.trains_limit then
+				local effective_count = p_station.p_count_or_r_threshold_per_item[item_name]
+				if effective_count >= r_threshold then
 					local prior = p_station.priority
 					local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
 					local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
-					if prior > highest_prior or (prior == highest_prior and d < best_dist) then
+					if prior > best_prior or (prior == best_prior and d < best_dist) then
 						if depot then
-							best = j
+							best_i = j
 							best_dist = d
 							best_depot = depot
-							highest_prior = prior
+							best_prior = prior
 							can_be_serviced = true
 						elseif d < INF then
-							best = j
+							best_i = j
 							can_be_serviced = true
 						end
 					end
+				elseif effective_count < pre_max_threshold and effective_count > max_threshold then
+					--set the max_threshold to the highest seen number that is strictly lower that the previous used
+					--due to where in the algorithm we are this will find a valid request and provide pair or abort in just one iteration
+					max_threshold = effective_count
 				end
-			end
-			if
-			best_depot and (
-			best_depot.entity_comb.status == defines.entity_status.working or
-			best_depot.entity_comb.status == defines.entity_status.low_power)
-			then
-				send_train_between(map_data, r_station_id, table_remove(p_stations--[[@as {}]], best), best_depot, item_name)
-			else
-				if can_be_serviced then
-					send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations--[[@as {}]][best]].entity_stop)
-				end
-				r_station.display_failed_request = true
-				r_station.display_update = true
 			end
 		end
+		if
+		best_depot and (
+		best_depot.entity_comb.status == defines.entity_status.working or
+		best_depot.entity_comb.status == defines.entity_status.low_power)
+		then
+			send_train_between(map_data, r_station_id, table_remove(p_stations, best_i), best_depot, item_name)
+			return false
+		else
+			if can_be_serviced then
+				send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best_i]].entity_stop)
+			end
+			r_station.display_failed_request = true
+			r_station.display_update = true
+		end
 	end
-	return false
 end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
@@ -504,6 +497,8 @@ function tick(map_data, mod_settings)
 			if tick_poll_station(map_data, mod_settings) then break end
 		end
 	elseif map_data.tick_state == STATE_DISPATCH then
-		tick_dispatch(map_data, mod_settings)
+		for i = 1, mod_settings.update_rate do
+			tick_dispatch(map_data, mod_settings)
+		end
 	end
 end

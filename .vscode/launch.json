@@ -52,7 +52,6 @@
             "adjustMods": {
                 "debugadapter": true,
                 "flib": true,
-                "cybersyn": true,
             },
         }
     ]

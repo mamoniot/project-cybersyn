@@ -117,7 +117,13 @@ local migrations_table = {
 		for id, station in pairs(map_data.stations) do
 			reset_station_layout(map_data, station)
 		end
-	end
+	end,
+	["1.0.3"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		map_data.tick_data = {}
+	end,
 }
 
 ---@param data ConfigurationChangedData

@@ -342,11 +342,16 @@ function set_combinator_output(map_data, comb, signals)
 	end
 end
 
+local WORKING = defines.entity_status.working
+local LOW_POWER = defines.entity_status.low_power
 ---@param station Station
 function get_signals(station)
 	local comb = station.entity_comb1
-	if comb.valid and (comb.status == defines.entity_status.working or comb.status == defines.entity_status.low_power) then
-		return comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
+	if comb.valid then
+		local status = comb.status
+		if status == WORKING or status == LOW_POWER then
+			return comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
+		end
 	else
 		return nil
 	end
