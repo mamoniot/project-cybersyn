@@ -42,7 +42,7 @@ Custom art and models to come in future updates!
 
 I'm accepting submissions for localizations/translations. If you can speak a non-English language, feel free to submit a pull request on my github for a new locale file. If you don't know how to do that, message me however you would like, such as a discussion thread on the mod portal, and I will walk you through how to create a translation for this mod.
 
-If you like my work, consider supporting me on [ko-fi](https://ko-fi.com/lesbianmami)
+If you like my work, consider supporting me on [ko-fi](https://ko-fi.com/lesbianmami).
 
 ## Mod Details
 
