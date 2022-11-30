@@ -83,3 +83,8 @@ Date: 2022-11-30
     - Allowed several settings to have floating point values
     - Allow updates per second to be set to 0
     - Fixed a bug where parallel wagon control combinators were not working
+---------------------------------------------------------------------------------------------------
+Version: 1.0.5
+Date: 2022-11-30
+  Features:
+    - Fixed a crash related to the central planner
