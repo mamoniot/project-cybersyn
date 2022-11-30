@@ -2,6 +2,8 @@
 
 Behold one of the most feature-rich and performant logistics mods Factorio has to offer. Named for [Project Cybersyn](https://en.wikipedia.org//wiki/Project_Cybersyn) of Allende's Chile, with just this mod you can coordinate the economic inputs and outputs of your entire megabase.
 
+![Alt text](/previews/outpost-resupply-station.png)
+
 ## Features
 
 ![Alt text](/previews/gui-modes.png)
@@ -57,7 +59,7 @@ When placed adjacent to a vanilla train stop, a Cybersyn depot is created. Any t
 
 ### Optional station control combinator
 
-![Alt text](/previews/outpost-resupply-station.png)
+![Alt text](/previews/science.png)
 
 When placed adjacent to the train stop of an already existing Cybersyn station, this combinator will provide a second set of inputs and outputs that can be used to more precisely control this station. The combinator input allows for request thresholds to be set per-item. Any non-zero item signal given on the input circuit network will override the station's request thresholds for just that item. The output of the combinator gives the sum total of all item loading or unloading orders in progress for the station. The very tick a train is dispatched for a new order to the station, that order is added to the output of this combinator, and it is removed as soon as the train leaves the station. The primary use case for this is to prevent duplicate orders from being generated for stations that provide the same pool of items. Only one train can be dispatched per-tick specifically to accommodate this.
 
