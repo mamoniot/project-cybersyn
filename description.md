@@ -20,13 +20,13 @@ Behold one of the most feature-rich and performant logistics mods Factorio has t
 
 These all combine to make it possible to **create "universal" stations**; stations that provide any arbitrary number of different items for a train of any arbitrary length! Build stations that supply you all items from your mall, stations that grab selected items from your disorganized storage chests, or stations that transfer any item between two otherwise completely distinct networks! The possibilities are far less limited.
 
-![Image](https://github.com/mamoniot/project-cybersyn/blob/main/previews/gui-allow-list?raw=true.png)
+![Image](https://github.com/mamoniot/project-cybersyn/blob/main/previews/gui-allow-list.png?raw=true.png)
 
 Stations can **automatically build allow-lists for trains** they can load or unload. Inserters or pumps adjacent to the station's tracks are auto-detected. No more deadlocks caused by trains mistakenly attempting to fulfill a delivery to a station that cannot unload it. This feature is compatible with miniloaders.
 
 **Easy and versatile ways to define separate train networks.** Bitwise network masks are now optional! The total number of possible train networks is 32 times the total number of circuit signals in the game.
 
-![Image](https://github.com/mamoniot/project-cybersyn/blob/main/previews/fault-alert?raw=true.png)
+![Image](https://github.com/mamoniot/project-cybersyn/blob/main/previews/fault-alert.png?raw=true.png)
 
 **Improved fault handling.** Mistakes and misconfigured stations are unlikely to result in items being delivered to places they shouldn't, and the player will be alerted immediately about the fault.
 
@@ -66,13 +66,13 @@ When placed adjacent to the train stop of an already existing Cybersyn station, 
 
 ### Wagon control combinator
 
-![Image](https://github.com/mamoniot/project-cybersyn/blob/main/previews/filtered-slots?raw=true.png)
+![Image](https://github.com/mamoniot/project-cybersyn/blob/main/previews/filtered-slots.png?raw=true.png)
 
 When placed adjacent to the tracks of an already existing Cybersyn station, this combinator will connect to any wagon that parks adjacent to it. The output of this combinator gives the list of items expected to be loaded or unloaded to just this specific wagon. In addition, if this wagon is a cargo wagon, its slots will automatically be filtered so items can only enter it in sorted order. These combined make it straightforward to precisely load a cargo wagon to the exact specification desired by the requesting station. Connect the output to a filter inserter, keep a count of how many items have been loaded into the wagon with a memory cell, and use an unloading inserter to remove any items that exceed the requested load amount. If done correctly you have built a universal item loader for this cargo wagon. Build one of these units for each cargo wagon along the station and you have created what I call a universal station. The input of a wagon control combinator has no function currently.
 
 ### Networks
 
-![Image](https://github.com/mamoniot/project-cybersyn/blob/main/previews/gui-network?raw=true.png)
+![Image](https://github.com/mamoniot/project-cybersyn/blob/main/previews/gui-network.png?raw=true.png)
 
 Stations and depots can be set to belong to a particular network by setting that network on the control combinator. By default all combinators belong to the "signal-A" network, by setting a different signal Id, the combinator will belong to that different network. Networks identified with different signal Ids do not share any trains or items; Orders will never be generated to transfer items between separate networks. In addition, if the combinator receives as input a signal of the same Id as its network signal Id, then the value of this signal will be interpreted as a bitmask to give 32 "sub-networks" to choose from. Each station can belong to any set of sub-networks based on its mask signal. A delivery will only be made between two stations if any bit matches between the two masks, i.e. if `mask1 & mask2 > 0`. When a network id is an item, that item will be ignored by stations, its signal will only ever be interpreted as the network mask.
 
