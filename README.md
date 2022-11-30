@@ -4,6 +4,10 @@ Behold one of the most feature-rich and performant logistics mods Factorio has t
 
 ## Features
 
+![Alt text](/previews/gui-modes.png)
+
+**Intuitive and easy to learn**, without sacrificing features. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
+
 ### A whole suite of new and optional circuit network inputs and outputs to control your stations precisely
 * Natively read out all deliveries currently in progress for a station, not just the loading or unloading orders of the parked train.
 * Set request thresholds per item instead of just for the entire station.
@@ -13,11 +17,6 @@ Behold one of the most feature-rich and performant logistics mods Factorio has t
 ![Alt text](/previews/universal-station.png)
 
 These all combine to make it possible to **create "universal" stations**; stations that provide any arbitrary number of different items for a train of any arbitrary length! Build stations that supply you all items from your mall, stations that grab selected items from your disorganized storage chests, or stations that transfer any item between two otherwise completely distinct networks! The possibilities are far less limited.
-
-![Alt text](/previews/gui-modes.png)
-
-**Intuitive and easy to learn**, without sacrificing features. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
-
 
 Stations can **automatically build allow-lists for trains** they can load or unload. Inserters or pumps adjacent to the station's tracks are auto-detected. No more deadlocks caused by trains mistakenly attempting to fulfill a delivery to a station that cannot unload it. This feature is compatible with miniloaders.
 
