@@ -837,12 +837,12 @@ end
 
 
 local function on_settings_changed(event)
-	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as int]]
+	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]
-	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as int]]
+	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
+	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	if event.setting == "cybersyn-ticks-per-second" then
 		flib_event.on_nth_tick(nil)
 		if mod_settings.tps > DELTA then
@@ -875,8 +875,8 @@ local function main()
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as int]]
-	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as int]]
+	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
+	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 
 	--NOTE: There is a concern that it is possible to build or destroy important entities without one of these events being triggered, in which case the mod will have undefined behavior
 	flib_event.register(defines.events.on_built_entity, on_built, filter_built)

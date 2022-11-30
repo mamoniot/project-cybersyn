@@ -80,8 +80,8 @@
 ---@field public update_rate int
 ---@field public r_threshold int
 ---@field public network_flag int
----@field public warmup_time int
----@field public stuck_train_time int
+---@field public warmup_time double
+---@field public stuck_train_time double
 
 ---@type CybersynModSettings
 mod_settings = {}

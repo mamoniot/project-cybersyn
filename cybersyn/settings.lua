@@ -46,7 +46,7 @@ data:extend({
 		maximum_value = 2147483647,
 	},
 	{
-		type = "int-setting",
+		type = "double-setting",
 		name = "cybersyn-warmup-time",
 		order = "ae",
 		setting_type = "runtime-global",
@@ -55,7 +55,7 @@ data:extend({
 		maximum_value = 2147483647,
 	},
 	{
-		type = "int-setting",
+		type = "double-setting",
 		name = "cybersyn-stuck-train-time",
 		order = "af",
 		setting_type = "runtime-global",
