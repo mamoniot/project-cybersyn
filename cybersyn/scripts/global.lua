@@ -61,7 +61,7 @@
 ---@field public is_available true?
 ---@field public parked_at_depot_id uint?
 ---@field public depot_name string
----@field public network_name string
+---@field public network_name string? --can only be nil when the train is parked at a depot
 ---@field public network_flag int
 ---@field public priority int
 ---@field public se_depot_surface_i uint --se only

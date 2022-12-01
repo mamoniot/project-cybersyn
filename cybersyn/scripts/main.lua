@@ -116,7 +116,7 @@ end
 ---@param train Train
 function remove_available_train(map_data, train_id, train)
 	---@type uint
-	if train.is_available then
+	if train.is_available and train.network_name then
 		local network = map_data.available_trains[train.network_name--[[@as string]]]
 		if network then
 			network[train_id] = nil

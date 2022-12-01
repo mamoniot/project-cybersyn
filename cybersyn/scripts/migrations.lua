@@ -154,16 +154,15 @@ local migrations_table = {
 			v.se_is_being_teleported = not v.entity and true or nil
 			--NOTE: we are guessing here because this information was never saved
 			v.se_depot_surface_i = v.entity.front_stock.surface.index
-			if v.parked_at_depot_id then
-				v.is_available = true
+			v.is_available = nil
+			if v.parked_at_depot_id and v.network_name then
 				local network = map_data.available_trains[v.network_name--[[@as string]]]
 				if not network then
 					network = {}
 					map_data.available_trains[v.network_name--[[@as string]]] = network
 				end
 				network[id] = true
-			else
-				v.is_available = nil
+				v.is_available = true
 			end
 		end
 	end,
