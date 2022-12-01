@@ -59,12 +59,13 @@
 ---@field public last_manifest_tick int
 ---@field public has_filtered_wagon boolean
 ---@field public is_available true?
----@field public depot_id uint?
+---@field public parked_at_depot_id uint?
 ---@field public depot_name string
----@field public se_depot_surface_i uint --se only
----@field public network_name string?
+---@field public network_name string
 ---@field public network_flag int
 ---@field public priority int
+---@field public se_depot_surface_i uint --se only
+---@field public se_is_being_teleported true? --se only
 ---@field public se_awaiting_removal any? --se only
 ---@field public se_awaiting_rename any? --se only
 

@@ -43,7 +43,7 @@ local migrations_table = {
 		for id, train in pairs(map_data.trains) do
 			local depot = train.depot
 			if depot then
-				train.depot_id = depot.entity_comb.unit_number
+				train.parked_at_depot_id = depot.entity_comb.unit_number
 				train.network_name = depot.network_name
 				train.network_flag = depot.network_flag
 				train.priority = depot.priority
@@ -138,7 +138,7 @@ local migrations_table = {
 		for k, v in pairs(map_data.trains) do
 			v.depot = nil
 			if not v.is_available then
-				v.depot_id = nil
+				v.parked_at_depot_id = nil
 			end
 		end
 	end,
@@ -147,21 +147,23 @@ local migrations_table = {
 		local map_data = global
 		map_data.tick_state = STATE_INIT
 		map_data.tick_data = {}
-		if IS_SE_PRESENT then
-			for k, v in pairs(map_data.available_trains) do
-				for id, _ in pairs(v) do
-					local train = map_data.trains[id]
-					if not train then
-						v[id] = nil
-					end
+		map_data.available_trains = {}
+		for id, v in pairs(map_data.trains) do
+			v.parked_at_depot_id = v.depot_id
+			v.depot_id = nil
+			v.se_is_being_teleported = not v.entity and true or nil
+			--NOTE: we are guessing here because this information was never saved
+			v.se_depot_surface_i = v.entity.front_stock.surface.index
+			if v.parked_at_depot_id then
+				v.is_available = true
+				local network = map_data.available_trains[v.network_name--[[@as string]]]
+				if not network then
+					network = {}
+					map_data.available_trains[v.network_name--[[@as string]]] = network
 				end
-			end
-			for id, v in pairs(map_data.trains) do
-				if v.is_available then
-					map_data.available_trains[v.network_name--[[@as string]]][id] = true
-				end
-				--NOTE: we are guessing here because this information was never saved
-				v.se_depot_surface_i = v.entity.front_stock.surface.index
+				network[id] = true
+			else
+				v.is_available = nil
 			end
 		end
 	end,

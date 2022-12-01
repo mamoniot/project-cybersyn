@@ -55,7 +55,7 @@ end
 ---@param train_id uint
 ---@param train Train
 function remove_train(map_data, train_id, train)
-	local parked_at_depot_id = train.depot_id
+	local parked_at_depot_id = train.parked_at_depot_id
 	if parked_at_depot_id then
 		local depot = map_data.depots[parked_at_depot_id]
 		depot.available_train_id = nil

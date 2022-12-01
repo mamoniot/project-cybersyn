@@ -87,7 +87,7 @@ local function add_available_train_to_depot(map_data, train_id, train, depot_id,
 	end
 	depot.available_train_id = train_id
 	train.status = STATUS_D
-	train.depot_id = depot_id
+	train.parked_at_depot_id = depot_id
 	train.depot_name = depot.entity_stop.backer_name
 	train.se_depot_surface_i = depot.entity_stop.surface.index
 	train.network_name = network_name
@@ -124,6 +124,7 @@ function remove_available_train(map_data, train_id, train)
 				map_data.available_trains[train.network_name] = nil
 			end
 		end
+		train.is_available = nil
 	end
 end
 
@@ -196,7 +197,7 @@ local function on_station_broken(map_data, station_id, station)
 				if (is_r and not is_r_delivery_made) or (is_p and not is_p_delivery_made) then
 					--train is attempting delivery to a stop that was destroyed, stop it
 					on_failed_delivery(map_data, train)
-					if train.entity then
+					if not train.se_is_being_teleported then
 						remove_train(map_data, train_id, train)
 						lock_train(train.entity)
 						send_lost_train_alert(train.entity, train.depot_name)
@@ -548,17 +549,17 @@ local function on_station_rename(map_data, stop, old_name)
 				local is_r_delivery_made = train.status == STATUS_R_TO_D
 				if is_r and not is_r_delivery_made then
 					local r_station = map_data.stations[train.r_station_id]
-					if train.entity then
+					if not train.se_is_being_teleported then
 						rename_manifest_schedule(train.entity, r_station.entity_stop, old_name)
-					elseif IS_SE_PRESENT then
+					else
 						train.se_awaiting_rename = {r_station.entity_stop, old_name}
 					end
 				elseif is_p and not is_p_delivery_made then
 					--train is attempting delivery to a stop that was renamed
 					local p_station = map_data.stations[train.p_station_id]
-					if train.entity then
+					if not train.se_is_being_teleported then
 						rename_manifest_schedule(train.entity, p_station.entity_stop, old_name)
-					elseif IS_SE_PRESENT then
+					else
 						train.se_awaiting_rename = {p_station.entity_stop, old_name}
 					end
 				end
@@ -737,7 +738,7 @@ local function on_train_leaves_station(map_data, mod_settings, train_id, train)
 		end
 	elseif train.status == STATUS_D then
 		--The train is leaving the depot without a manifest, the player likely intervened
-		local depot = map_data.depots[train.depot_id--[[@as uint]]]
+		local depot = map_data.depots[train.parked_at_depot_id--[[@as uint]]]
 		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
 		remove_train(map_data, train_id, train)
 	end
@@ -749,7 +750,7 @@ end
 ---@param train Train
 local function on_train_broken(map_data, train_id, train)
 	--NOTE: train.entity is only absent if the train is climbing a space elevator as of 0.5.0
-	if train.entity then
+	if not train.se_is_being_teleported then
 		if train.manifest then
 			on_failed_delivery(map_data, train)
 		end
@@ -761,7 +762,7 @@ end
 local function on_train_modified(map_data, pre_train_id)
 	local train = map_data.trains[pre_train_id]
 	--NOTE: train.entity is only absent if the train is climbing a space elevator as of 0.5.0
-	if train and train.entity then
+	if train and not train.se_is_being_teleported then
 		if train.manifest then
 			on_failed_delivery(map_data, train)
 		end
@@ -980,7 +981,7 @@ local function main()
 				local train = map_data.trains[old_id]
 				if not train then return end
 				--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; very few of our events care about this and the ones that do should be impossible to trigger until teleportation is finished
-				train.entity = nil
+				train.se_is_being_teleported = true
 				map_data.se_tele_old_id[train_unique_identifier] = old_id
 			end)
 			flib_event.register(se_on_train_teleport_finished_event, function(event)
@@ -1010,6 +1011,7 @@ local function main()
 
 				map_data.trains[new_id] = train
 				map_data.trains[old_id] = nil
+				train.se_is_being_teleported = nil
 				train.entity = train_entity
 
 				if train.se_awaiting_removal then

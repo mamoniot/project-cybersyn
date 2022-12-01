@@ -119,7 +119,11 @@ end
 ---@param manifest Manifest
 ---@param start_at_depot boolean?
 function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, manifest, start_at_depot)
-	--NOTE: train must be on same surface as depot_stop
+	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
+	local old_schedule
+	if not start_at_depot then
+		old_schedule = train.schedule
+	end
 	local t_surface = train.front_stock.surface
 	local p_surface = p_stop.surface
 	local r_surface = r_stop.surface
@@ -134,7 +138,12 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 			create_direct_to_station_order(r_stop),
 			create_unloading_order(r_stop),
 		}}
-		return
+		if old_schedule and not train.has_path then
+			train.schedule = old_schedule
+			return false
+		else
+			return true
+		end
 	elseif IS_SE_PRESENT and (t_surface_i == p_surface_i or p_surface_i == r_surface_i or r_surface_i == t_surface_i) then
 		local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})
 		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = (t_surface_i == p_surface_i) and r_surface_i or p_surface_i})
@@ -161,7 +170,12 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 				end
 
 				train.schedule = {current = start_at_depot and 1 or 2, records = records}
-				return
+				if old_schedule and not train.has_path then
+					train.schedule = old_schedule
+					return false
+				else
+					return true
+				end
 			end
 		end
 	end
@@ -173,6 +187,7 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 	}}
 	lock_train(train)
 	send_lost_train_alert(train, depot_name)
+	return true
 end
 
 

@@ -66,17 +66,17 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type, 
 			capacity >= min_slots_to_move and
 			btest(netand, train.network_flag) and
 			(r_station.allows_all_trains or r_station.accepted_layouts[layout_id]) and
-			(p_station.allows_all_trains or p_station.accepted_layouts[layout_id])
+			(p_station.allows_all_trains or p_station.accepted_layouts[layout_id]) and
+			not train.se_is_being_teleported
 			then
 				valid_train_exists = true
 				--check if exists valid path
 				--check if path is shortest so we prioritize locality
-				local d_to_p_dist = get_stop_dist(train.entity.front_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority
+				local t_to_p_dist = get_stop_dist(train.entity.front_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority
 
-				local dist = d_to_p_dist
-				if capacity > best_capacity or (capacity == best_capacity and dist < best_dist) then
+				if capacity > best_capacity or (capacity == best_capacity and t_to_p_dist < best_dist) then
 					best_capacity = capacity
-					best_dist = dist
+					best_dist = t_to_p_dist
 					best_train = train_id
 				end
 			end
@@ -170,47 +170,48 @@ local function send_train_between(map_data, r_station_id, p_station_id, train_id
 		end
 	end
 
-	r_station.last_delivery_tick = map_data.total_ticks
-	p_station.last_delivery_tick = map_data.total_ticks
-
-	r_station.deliveries_total = r_station.deliveries_total + 1
-	p_station.deliveries_total = p_station.deliveries_total + 1
-
-	for item_i, item in ipairs(manifest) do
-		assert(item.count > 0, "main.lua error, transfer amount was not positive")
-
-		r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
-		p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
-
-		if item_i > 1 then
-			--prevent deliveries from being processed for these items until their stations are re-polled
-			local item_network_name = network_name..":"..item.name
-			economy.all_r_stations[item_network_name] = nil
-			economy.all_p_stations[item_network_name] = nil
-		end
-	end
-
 	remove_available_train(map_data, train_id, train)
-	local depot_id = train.depot_id
+	local depot_id = train.parked_at_depot_id
 	if depot_id then
 		map_data.depots[depot_id].available_train_id = nil
-		train.depot_id = nil
+		train.parked_at_depot_id = nil
 	end
+	--NOTE: we assume that the train is not being teleported at this time
+	if set_manifest_schedule(train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, r_station.entity_stop, manifest, depot_id ~= nil) then
+		train.status = STATUS_D_TO_P
+		train.p_station_id = p_station_id
+		train.r_station_id = r_station_id
+		train.manifest = manifest
+		train.last_manifest_tick = map_data.total_ticks
 
-	train.status = STATUS_D_TO_P
-	train.p_station_id = p_station_id
-	train.r_station_id = r_station_id
-	train.manifest = manifest
-	train.last_manifest_tick = map_data.total_ticks
+		r_station.last_delivery_tick = map_data.total_ticks
+		p_station.last_delivery_tick = map_data.total_ticks
 
-	set_manifest_schedule(train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, r_station.entity_stop, manifest, depot_id ~= nil)
-	set_comb2(map_data, p_station)
-	set_comb2(map_data, r_station)
-	if p_station.entity_comb1.valid then
-		set_comb_operation_with_check(map_data, p_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
-	end
-	if r_station.entity_comb1.valid then
-		set_comb_operation_with_check(map_data, r_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+		r_station.deliveries_total = r_station.deliveries_total + 1
+		p_station.deliveries_total = p_station.deliveries_total + 1
+
+		for item_i, item in ipairs(manifest) do
+			assert(item.count > 0, "main.lua error, transfer amount was not positive")
+
+			r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
+			p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
+
+			if item_i > 1 then
+				--prevent deliveries from being processed for these items until their stations are re-polled
+				local item_network_name = network_name..":"..item.name
+				economy.all_r_stations[item_network_name] = nil
+				economy.all_p_stations[item_network_name] = nil
+			end
+		end
+
+		set_comb2(map_data, p_station)
+		set_comb2(map_data, r_station)
+		if p_station.entity_comb1.valid then
+			set_comb_operation_with_check(map_data, p_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+		end
+		if r_station.entity_comb1.valid then
+			set_comb_operation_with_check(map_data, r_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+		end
 	end
 end
 
@@ -222,7 +223,7 @@ local function tick_poll_train(map_data, mod_settings)
 	local train_id, train = next(map_data.trains, tick_data.last_train)
 	tick_data.last_train = train_id
 
-	if train and train.manifest and train.entity and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
+	if train and train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
 		send_stuck_train_alert(train.entity, train.depot_name)
 	end
 end
