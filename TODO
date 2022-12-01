@@ -5,6 +5,7 @@ bugs:
 major:
 	do hardcore testing
 	models & art
+	depot bypass
 
 minor:
 	railloader compat
