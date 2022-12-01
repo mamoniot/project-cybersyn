@@ -191,13 +191,21 @@ local function send_train_between(map_data, r_station_id, p_station_id, train_id
 	end
 
 	remove_available_train(map_data, train_id, train)
+	local depot_id = train.depot_id
+	if depot_id then
+		map_data.depots[depot_id].available_train_id = nil
+		train.depot_id = nil
+	else
+		local test
+	end
+
 	train.status = STATUS_D_TO_P
 	train.p_station_id = p_station_id
 	train.r_station_id = r_station_id
 	train.manifest = manifest
 	train.last_manifest_tick = map_data.total_ticks
 
-	set_manifest_schedule(train.entity, train.depot_name, p_station.entity_stop, r_station.entity_stop, manifest)
+	set_manifest_schedule(train.entity, train.depot_name, p_station.entity_stop, r_station.entity_stop, manifest, depot_id ~= nil)
 	set_comb2(map_data, p_station)
 	set_comb2(map_data, r_station)
 	if p_station.entity_comb1.valid then

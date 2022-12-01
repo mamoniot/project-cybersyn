@@ -147,9 +147,7 @@ local function on_depot_broken(map_data, depot)
 		local train = map_data.trains[train_id]
 		lock_train(train.entity)
 		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
-		remove_available_train(map_data, train_id, train)
-		map_data.trains[train_id] = nil
-		depot.available_train_id = nil
+		remove_train(map_data, train_id, train)
 	end
 	map_data.depots[depot.entity_stop.unit_number] = nil
 end
@@ -198,7 +196,7 @@ local function on_station_broken(map_data, station_id, station)
 					--train is attempting delivery to a stop that was destroyed, stop it
 					on_failed_delivery(map_data, train)
 					if train.entity then
-						remove_train(map_data, train, train_id)
+						remove_train(map_data, train_id, train)
 						lock_train(train.entity)
 						send_lost_train_alert(train.entity, train.depot_name)
 					else
@@ -367,7 +365,6 @@ function on_combinator_network_updated(map_data, comb, network_name)
 				if train_id then
 					local train = map_data.trains[train_id]
 					remove_available_train(map_data, train_id, train)
-					depot.available_train_id = nil
 					add_available_train_to_depot(map_data, train_id, train, depot_id, depot)
 				end
 			end
@@ -598,26 +595,25 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 	local train_id = train_entity.id
 	local train = map_data.trains[train_id]
 	if train then
-		remove_available_train(map_data, train_id, train)
-		if train.manifest and train.status == STATUS_R_TO_D then
-			--succeeded delivery
-			train.p_station_id = 0
-			train.r_station_id = 0
-			train.manifest = nil
-			add_available_train_to_depot(map_data, train_id, train, depot_id, map_data.depots[depot_id])
-		else
-			if train.manifest then
+		if train.manifest then
+			if train.status == STATUS_R_TO_D then
+				--succeeded delivery
+				train.p_station_id = 0
+				train.r_station_id = 0
+				train.manifest = nil
+			else
 				on_failed_delivery(map_data, train)
 				send_unexpected_train_alert(train.entity)
 			end
-			add_available_train_to_depot(map_data, train_id, train, depot_id, map_data.depots[depot_id])
 		end
 		if is_train_empty then
+			remove_available_train(map_data, train_id, train)
+			add_available_train_to_depot(map_data, train_id, train, depot_id, map_data.depots[depot_id])
 			set_depot_schedule(train_entity, train.depot_name)
 		else
 			--train still has cargo
 			lock_train(train_entity)
-			remove_train(map_data, train, train_id)
+			remove_train(map_data, train_id, train)
 			send_nonempty_train_in_depot_alert(train_entity)
 		end
 	elseif is_train_empty then
@@ -644,8 +640,9 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 end
 ---@param map_data MapData
 ---@param stop LuaEntity
+---@param train_id uint
 ---@param train Train
-local function on_train_arrives_buffer(map_data, stop, train)
+local function on_train_arrives_buffer(map_data, stop, train_id, train)
 	if train.manifest then
 		---@type uint
 		local station_id = stop.unit_number
@@ -669,19 +666,20 @@ local function on_train_arrives_buffer(map_data, stop, train)
 			--this player intervention that is considered valid
 		else
 			on_failed_delivery(map_data, train)
-			remove_train(map_data, train, train.entity.id)
+			remove_train(map_data, train_id, train)
 			lock_train(train.entity)
 			send_lost_train_alert(train.entity, train.depot_name)
 		end
 	else
 		--train is lost somehow, probably from player intervention
-		remove_train(map_data, train, train.entity.id)
+		remove_train(map_data, train_id, train)
 	end
 end
 ---@param map_data MapData
+---@param mod_settings CybersynModSettings
 ---@param train_id uint
 ---@param train Train
-local function on_train_leaves_station(map_data, train_id, train)
+local function on_train_leaves_station(map_data, mod_settings, train_id, train)
 	if train.manifest then
 		if train.status == STATUS_P then
 			train.status = STATUS_P_TO_R
@@ -691,14 +689,12 @@ local function on_train_leaves_station(map_data, train_id, train)
 			unset_wagon_combs(map_data, station)
 			if train.has_filtered_wagon then
 				train.has_filtered_wagon = false
-				for carriage_i, carriage in ipairs(train.entity.carriages) do
-					if carriage.type == "cargo-wagon" then
-						local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
-						if inv and inv.is_filtered() then
-							---@type uint
-							for i = 1, #inv do
-								inv.set_filter(i, nil)
-							end
+				for carriage_i, carriage in ipairs(train.entity.cargo_wagons) do
+					local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
+					if inv and inv.is_filtered() then
+						---@type uint
+						for i = 1, #inv do
+							inv.set_filter(i, nil)
 						end
 					end
 				end
@@ -709,41 +705,61 @@ local function on_train_leaves_station(map_data, train_id, train)
 			remove_manifest(map_data, station, train.manifest, -1)
 			set_comb1(map_data, station, nil)
 			unset_wagon_combs(map_data, station)
+			--add to available trains for depot bypass
+			local fuel_fill = 0
+			local total_slots = 0
+			for k, v in pairs(train.entity.locomotives) do
+				if v[1] then
+					local inv = v[1].get_fuel_inventory()
+					if inv then
+						local inv_size = #inv
+						total_slots = total_slots + inv_size
+						for i = 1, inv_size do
+							local item = inv[i--[[@as uint]]]
+							local count = item.count
+							if count > 0 then
+								fuel_fill = fuel_fill + count/get_stack_size(map_data, item.name)
+							end
+						end
+					end
+				end
+			end
+			--if total_slots == 0 it's probably a modded electric train
+			if total_slots == 0 or fuel_fill/total_slots > mod_settings.depot_bypass_threshold then
+				add_available_train(map_data, train_id, train)
+			end
 		end
 	elseif train.status == STATUS_D then
+		--The train is leaving the depot without a manifest, the player likely intervened
 		local depot = map_data.depots[train.depot_id--[[@as uint]]]
-		remove_available_train(map_data, train_id, train)
-		depot.available_train_id = nil
+		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
+		remove_train(map_data, train_id, train)
 	end
 end
 
 
 ---@param map_data MapData
+---@param train_id uint
 ---@param train Train
-local function on_train_broken(map_data, train)
+local function on_train_broken(map_data, train_id, train)
 	--NOTE: train.entity is only absent if the train is climbing a space elevator as of 0.5.0
-	if train.manifest and train.entity then
-		on_failed_delivery(map_data, train)
-		remove_train(map_data, train, train.entity.id)
-		if train.entity.valid then
-			lock_train(train.entity)
+	if train.entity then
+		if train.manifest then
+			on_failed_delivery(map_data, train)
 		end
+		remove_train(map_data, train_id, train)
 	end
 end
 ---@param map_data MapData
 ---@param pre_train_id uint
----@param train_entity LuaEntity
-local function on_train_modified(map_data, pre_train_id, train_entity)
+local function on_train_modified(map_data, pre_train_id)
 	local train = map_data.trains[pre_train_id]
 	--NOTE: train.entity is only absent if the train is climbing a space elevator as of 0.5.0
 	if train and train.entity then
 		if train.manifest then
 			on_failed_delivery(map_data, train)
 		end
-		remove_train(map_data, train, pre_train_id)
-		if train.entity.valid then
-			lock_train(train.entity)
-		end
+		remove_train(map_data, pre_train_id, train)
 	end
 end
 
@@ -779,9 +795,10 @@ local function on_broken(event)
 	elseif entity.type == "straight-rail" then
 		update_station_from_rail(global, entity, nil)
 	elseif entity.train then
-		local train = global.trains[entity.train.id]
+		local train_id = entity.train.id
+		local train = global.trains[train_id]
 		if train then
-			on_train_broken(global, train)
+			on_train_broken(global, train_id, train)
 		end
 	end
 end
@@ -802,10 +819,10 @@ end
 local function on_train_built(event)
 	local train_e = event.train
 	if event.old_train_id_1 then
-		on_train_modified(global, event.old_train_id_1, train_e)
+		on_train_modified(global, event.old_train_id_1)
 	end
 	if event.old_train_id_2 then
-		on_train_modified(global, event.old_train_id_2, train_e)
+		on_train_modified(global, event.old_train_id_2)
 	end
 end
 local function on_train_changed(event)
@@ -829,7 +846,7 @@ local function on_train_changed(event)
 		end
 	elseif event.old_state == defines.train_state.wait_station then
 		if train then
-			on_train_leaves_station(global, train_id, train)
+			on_train_leaves_station(global, mod_settings, train_id, train)
 		end
 	end
 end
@@ -862,6 +879,7 @@ local function on_settings_changed(event)
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
+	mod_settings.depot_bypass_threshold = settings.global["cybersyn-depot-bypass-threshold"].value--[[@as double]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	if event.setting == "cybersyn-ticks-per-second" then
@@ -896,6 +914,7 @@ local function main()
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
+	mod_settings.depot_bypass_threshold = settings.global["cybersyn-depot-bypass-threshold"].value--[[@as double]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 
@@ -980,7 +999,7 @@ local function main()
 				train.entity = train_entity
 
 				if train.se_awaiting_removal then
-					remove_train(map_data, train, train.se_awaiting_removal)
+					remove_train(map_data, train.se_awaiting_removal, train)
 					lock_train(train.entity)
 					send_lost_train_alert(train.entity, train.depot_name)
 					return

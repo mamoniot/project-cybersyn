@@ -135,6 +135,12 @@ local migrations_table = {
 				train.is_available = true
 			end
 		end
+		for k, v in pairs(map_data.trains) do
+			v.depot = nil
+			if not v.is_available then
+				v.depot_id = nil
+			end
+		end
 	end,
 }
 

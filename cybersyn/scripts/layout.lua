@@ -52,15 +52,15 @@ local function is_layout_accepted(layout_pattern, layout)
 end
 
 ---@param map_data MapData
----@param train Train
 ---@param train_id uint
-function remove_train(map_data, train, train_id)
+---@param train Train
+function remove_train(map_data, train_id, train)
 	local parked_at_depot_id = train.depot_id
 	if parked_at_depot_id then
 		local depot = map_data.depots[parked_at_depot_id]
-		remove_available_train(map_data, parked_at_depot_id, train)
 		depot.available_train_id = nil
 	end
+	remove_available_train(map_data, train_id, train)
 	local layout_id = train.layout_id
 	local count = map_data.layout_train_count[layout_id]
 	if count <= 1 then

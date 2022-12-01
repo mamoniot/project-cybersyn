@@ -47,8 +47,17 @@ data:extend({
 	},
 	{
 		type = "double-setting",
-		name = "cybersyn-warmup-time",
+		name = "cybersyn-depot-bypass-threshold",
 		order = "ae",
+		setting_type = "runtime-global",
+		default_value = .5,
+		minimum_value = 0,
+		maximum_value = 1,
+	},
+	{
+		type = "double-setting",
+		name = "cybersyn-warmup-time",
+		order = "af",
 		setting_type = "runtime-global",
 		default_value = 20,
 		minimum_value = 0,
@@ -57,7 +66,7 @@ data:extend({
 	{
 		type = "double-setting",
 		name = "cybersyn-stuck-train-time",
-		order = "af",
+		order = "ag",
 		setting_type = "runtime-global",
 		default_value = 600,
 		minimum_value = 0,

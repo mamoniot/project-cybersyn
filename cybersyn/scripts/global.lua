@@ -83,6 +83,7 @@
 ---@field public network_flag int
 ---@field public warmup_time double
 ---@field public stuck_train_time double
+---@field public depot_bypass_threshold double
 
 ---@type CybersynModSettings
 mod_settings = {}

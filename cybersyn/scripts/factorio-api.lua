@@ -111,7 +111,8 @@ end
 ---@param p_stop LuaEntity
 ---@param r_stop LuaEntity
 ---@param manifest Manifest
-function set_manifest_schedule(train, depot_name, p_stop, r_stop, manifest)
+---@param start_at_depot boolean?
+function set_manifest_schedule(train, depot_name, p_stop, r_stop, manifest, start_at_depot)
 	--NOTE: train must be on same surface as depot_stop
 	local d_surface = train.front_stock.surface
 	local p_surface = p_stop.surface
@@ -120,7 +121,7 @@ function set_manifest_schedule(train, depot_name, p_stop, r_stop, manifest)
 	local p_surface_i = p_surface.index
 	local r_surface_i = r_surface.index
 	if d_surface_i == p_surface_i and p_surface_i == r_surface_i then
-		train.schedule = {current = 1, records = {
+		train.schedule = {current = start_at_depot and 1 or 2, records = {
 			create_inactivity_order(depot_name),
 			create_direct_to_station_order(p_stop),
 			create_loading_order(p_stop, manifest),
