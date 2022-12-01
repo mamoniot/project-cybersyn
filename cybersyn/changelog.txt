@@ -96,6 +96,6 @@ Date: 2022-11-30
     - Increased inactivity time so burner inserters are fast enough to trigger it
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.7
-Date: 2022-11-30
+Date: 2022-12-1
   Features:
     - Fixed a crash relating to depot bypass through space elevators
