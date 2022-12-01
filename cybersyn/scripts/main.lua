@@ -835,7 +835,7 @@ local function on_train_changed(event)
 		if stop and stop.valid and stop.name == "train-stop" then
 			if global.stations[stop.unit_number] then
 				if train then
-					on_train_arrives_buffer(global, stop, train)
+					on_train_arrives_buffer(global, stop, train_id, train)
 				end
 			else
 				local depot_id = stop.unit_number--[[@as uint]]

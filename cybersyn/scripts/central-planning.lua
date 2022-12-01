@@ -195,8 +195,6 @@ local function send_train_between(map_data, r_station_id, p_station_id, train_id
 	if depot_id then
 		map_data.depots[depot_id].available_train_id = nil
 		train.depot_id = nil
-	else
-		local test
 	end
 
 	train.status = STATUS_D_TO_P
