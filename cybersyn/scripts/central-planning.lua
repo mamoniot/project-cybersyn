@@ -35,7 +35,7 @@ end
 ---@param item_type string
 ---@param min_slots_to_move int
 local function get_valid_train(map_data, r_station_id, p_station_id, item_type, min_slots_to_move)
-	--NOTE: this code is the critical section for run-time optimization
+	--NOTE: this code is the critical section for amortized run-time optimization
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
 	---@type string
@@ -349,8 +349,9 @@ end
 local function tick_dispatch(map_data, mod_settings)
 	--we do not dispatch more than one train per tick
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
-	--NOTE: It may be better for performance to update stations one tick at a time rather than all at once, however this does mean more  redundant data will be generated and discarded each tick. Once we have a performance test-bed it will probably be worth checking.
 	--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
+	--NOTE: the above isn't even the full story, we can only use one edge per item per tick, which might break the assumptions of the simplex algorithm causing it to give imperfect solutions.
+
 	local all_r_stations = map_data.economy.all_r_stations
 	local all_p_stations = map_data.economy.all_p_stations
 	local all_names = map_data.economy.all_names
