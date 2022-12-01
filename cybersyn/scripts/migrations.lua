@@ -138,7 +138,7 @@ local migrations_table = {
 		for k, v in pairs(map_data.trains) do
 			v.depot = nil
 			if not v.is_available then
-				v.parked_at_depot_id = nil
+				v.depot_id = nil
 			end
 		end
 	end,
