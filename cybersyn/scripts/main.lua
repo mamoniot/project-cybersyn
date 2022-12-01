@@ -724,8 +724,12 @@ local function on_train_leaves_station(map_data, mod_settings, train_id, train)
 					end
 				end
 			end
-			--if total_slots == 0 it's probably a modded electric train
-			if total_slots == 0 or fuel_fill/total_slots > mod_settings.depot_bypass_threshold then
+			if total_slots == 0 then
+				--if total_slots == 0 it's probably a modded electric train
+				if mod_settings.depot_bypass_threshold < 1 then
+					add_available_train(map_data, train_id, train)
+				end
+			elseif fuel_fill/total_slots > mod_settings.depot_bypass_threshold then
 				add_available_train(map_data, train_id, train)
 			end
 		end
