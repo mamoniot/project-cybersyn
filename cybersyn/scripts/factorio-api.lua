@@ -11,12 +11,12 @@ function get_stack_size(map_data, item_name)
 end
 
 
----@param stop0 LuaEntity
----@param stop1 LuaEntity
-function get_stop_dist(stop0, stop1)
-	local surface0 = stop0.surface.index
-	local surface1 = stop1.surface.index
-	return (surface0 == surface1 and get_distance(stop0.position, stop1.position) or DIFFERENT_SURFACE_DISTANCE)
+---@param entity0 LuaEntity
+---@param entity1 LuaEntity
+function get_stop_dist(entity0, entity1)
+	local surface0 = entity0.surface.index
+	local surface1 = entity1.surface.index
+	return (surface0 == surface1 and get_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE)
 end
 
 
@@ -107,13 +107,13 @@ function rename_manifest_schedule(train, stop, old_name)
 end
 
 ---@param train LuaTrain
----@param depot_stop LuaEntity
+---@param depot_name string
 ---@param p_stop LuaEntity
 ---@param r_stop LuaEntity
 ---@param manifest Manifest
-function set_manifest_schedule(train, depot_stop, p_stop, r_stop, manifest)
+function set_manifest_schedule(train, depot_name, p_stop, r_stop, manifest)
 	--NOTE: train must be on same surface as depot_stop
-	local d_surface = depot_stop.surface
+	local d_surface = train.front_stock.surface
 	local p_surface = p_stop.surface
 	local r_surface = r_stop.surface
 	local d_surface_i = d_surface.index
@@ -121,7 +121,7 @@ function set_manifest_schedule(train, depot_stop, p_stop, r_stop, manifest)
 	local r_surface_i = r_surface.index
 	if d_surface_i == p_surface_i and p_surface_i == r_surface_i then
 		train.schedule = {current = 1, records = {
-			create_inactivity_order(depot_stop.backer_name),
+			create_inactivity_order(depot_name),
 			create_direct_to_station_order(p_stop),
 			create_loading_order(p_stop, manifest),
 			create_direct_to_station_order(r_stop),
@@ -135,7 +135,7 @@ function set_manifest_schedule(train, depot_stop, p_stop, r_stop, manifest)
 		if is_train_in_orbit or d_zone.orbit_index == other_zone.index then
 			local elevator_name = se_get_space_elevator_name(d_surface)
 			if elevator_name then
-				local records = {create_inactivity_order(depot_stop.backer_name)}
+				local records = {create_inactivity_order(depot_name)}
 				if d_surface_i == p_surface_i then
 					records[#records + 1] = create_direct_to_station_order(p_stop)
 				else
@@ -160,12 +160,12 @@ function set_manifest_schedule(train, depot_stop, p_stop, r_stop, manifest)
 	end
 	--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
 	train.schedule = {current = 1, records = {
-		create_inactivity_order(depot_stop.backer_name),
+		create_inactivity_order(depot_name),
 		create_loading_order(p_stop, manifest),
 		create_unloading_order(r_stop),
 	}}
 	lock_train(train)
-	send_lost_train_alert(train, depot_stop.backer_name)
+	send_lost_train_alert(train, depot_name)
 end
 
 

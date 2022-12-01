@@ -52,12 +52,28 @@ local function on_failed_delivery(map_data, train)
 end
 
 
+
+---@param map_data MapData
+---@param train_id uint
+---@param train Train
+local function add_available_train(map_data, train_id, train)
+	local network_name = train.network_name
+	if network_name then
+		local network = map_data.available_trains[network_name]
+		if not network then
+			network = {}
+			map_data.available_trains[network_name] = network
+		end
+		network[train_id] = true
+		train.is_available = true
+	end
+end
 ---@param map_data MapData
 ---@param depot_id uint
+---@param depot Depot
 ---@param train_id uint
-local function add_available_train(map_data, depot_id, train_id)
-	local depot = map_data.depots[depot_id]
-	local train = map_data.trains[train_id]
+---@param train Train
+local function add_available_train_to_depot(map_data, train_id, train, depot_id, depot)
 	local comb = depot.entity_comb
 	local network_name = get_comb_network_name(comb)
 	if network_name then
@@ -66,7 +82,8 @@ local function add_available_train(map_data, depot_id, train_id)
 			network = {}
 			map_data.available_trains[network_name] = network
 		end
-		network[train_id] = depot_id
+		network[train_id] = true
+		train.is_available = true
 	end
 	depot.available_train_id = train_id
 	train.status = STATUS_D
@@ -94,13 +111,12 @@ local function add_available_train(map_data, depot_id, train_id)
 	end
 end
 ---@param map_data MapData
+---@param train_id uint
 ---@param train Train
----@param depot Depot
-function remove_available_train(map_data, train, depot)
+function remove_available_train(map_data, train_id, train)
 	---@type uint
-	local train_id = depot.available_train_id
-	if train.network_name then
-		local network = map_data.available_trains[train.network_name]
+	if train.is_available then
+		local network = map_data.available_trains[train.network_name--[[@as string]]]
 		if network then
 			network[train_id] = nil
 			if next(network) == nil then
@@ -108,7 +124,6 @@ function remove_available_train(map_data, train, depot)
 			end
 		end
 	end
-	depot.available_train_id = nil
 end
 
 
@@ -132,8 +147,9 @@ local function on_depot_broken(map_data, depot)
 		local train = map_data.trains[train_id]
 		lock_train(train.entity)
 		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
-		remove_available_train(map_data, train, depot)
+		remove_available_train(map_data, train_id, train)
 		map_data.trains[train_id] = nil
+		depot.available_train_id = nil
 	end
 	map_data.depots[depot.entity_stop.unit_number] = nil
 end
@@ -350,8 +366,9 @@ function on_combinator_network_updated(map_data, comb, network_name)
 				local train_id = depot.available_train_id
 				if train_id then
 					local train = map_data.trains[train_id]
-					remove_available_train(map_data, train, depot)
-					add_available_train(map_data, depot_id, train_id)
+					remove_available_train(map_data, train_id, train)
+					depot.available_train_id = nil
+					add_available_train_to_depot(map_data, train_id, train, depot_id, depot)
 				end
 			end
 		end
@@ -522,7 +539,7 @@ end
 ---@param old_name string
 local function on_station_rename(map_data, stop, old_name)
 	--search for trains coming to the renamed station
-	local station_id = stop.unit_number
+	local station_id = stop.unit_number--[[@as uint]]
 	local station = map_data.stations[station_id]
 	if station and station.deliveries_total > 0 then
 		for train_id, train in pairs(map_data.trains) do
@@ -552,7 +569,7 @@ local function on_station_rename(map_data, stop, old_name)
 	else
 		local depot = map_data.depots[station_id]
 		if depot and depot.available_train_id then
-			local train = map_data.trains[depot.available_train_id]
+			local train = map_data.trains[depot.available_train_id--[[@as uint]]]
 			train.depot_name = stop.backer_name
 		end
 	end
@@ -581,18 +598,19 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 	local train_id = train_entity.id
 	local train = map_data.trains[train_id]
 	if train then
+		remove_available_train(map_data, train_id, train)
 		if train.manifest and train.status == STATUS_R_TO_D then
 			--succeeded delivery
 			train.p_station_id = 0
 			train.r_station_id = 0
 			train.manifest = nil
-			add_available_train(map_data, depot_id, train_id)
+			add_available_train_to_depot(map_data, train_id, train, depot_id, map_data.depots[depot_id])
 		else
 			if train.manifest then
 				on_failed_delivery(map_data, train)
 				send_unexpected_train_alert(train.entity)
 			end
-			add_available_train(map_data, depot_id, train_id)
+			add_available_train_to_depot(map_data, train_id, train, depot_id, map_data.depots[depot_id])
 		end
 		if is_train_empty then
 			set_depot_schedule(train_entity, train.depot_name)
@@ -616,7 +634,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		}
 		update_train_layout(map_data, train)
 		map_data.trains[train_id] = train
-		add_available_train(map_data, depot_id, train_id)
+		add_available_train_to_depot(map_data, train_id, train, depot_id, map_data.depots[depot_id])
 
 		set_depot_schedule(train_entity, train.depot_name)
 	else
@@ -661,8 +679,9 @@ local function on_train_arrives_buffer(map_data, stop, train)
 	end
 end
 ---@param map_data MapData
+---@param train_id uint
 ---@param train Train
-local function on_train_leaves_station(map_data, train)
+local function on_train_leaves_station(map_data, train_id, train)
 	if train.manifest then
 		if train.status == STATUS_P then
 			train.status = STATUS_P_TO_R
@@ -692,8 +711,9 @@ local function on_train_leaves_station(map_data, train)
 			unset_wagon_combs(map_data, station)
 		end
 	elseif train.status == STATUS_D then
-		local depot = map_data.depots[train.depot_id]
-		remove_available_train(map_data, train, depot)
+		local depot = map_data.depots[train.depot_id--[[@as uint]]]
+		remove_available_train(map_data, train_id, train)
+		depot.available_train_id = nil
 	end
 end
 
@@ -789,9 +809,10 @@ local function on_train_built(event)
 	end
 end
 local function on_train_changed(event)
-	local train_e = event.train
+	local train_e = event.train--[[@as LuaTrain]]
 	if not train_e.valid then return end
-	local train = global.trains[train_e.id]
+	local train_id = train_e.id
+	local train = global.trains[train_id]
 	if train_e.state == defines.train_state.wait_station then
 		local stop = train_e.station
 		if stop and stop.valid and stop.name == "train-stop" then
@@ -800,7 +821,7 @@ local function on_train_changed(event)
 					on_train_arrives_buffer(global, stop, train)
 				end
 			else
-				local depot_id = stop.unit_number
+				local depot_id = stop.unit_number--[[@as uint]]
 				if global.depots[depot_id] then
 					on_train_arrives_depot(global, depot_id, train_e)
 				end
@@ -808,7 +829,7 @@ local function on_train_changed(event)
 		end
 	elseif event.old_state == defines.train_state.wait_station then
 		if train then
-			on_train_leaves_station(global, train)
+			on_train_leaves_station(global, train_id, train)
 		end
 	end
 end

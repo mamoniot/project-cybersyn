@@ -7,7 +7,6 @@ local INF = math.huge
 local btest = bit32.btest
 local band = bit32.band
 local table_remove = table.remove
-local table_sort = table.sort
 local random = math.random
 
 
@@ -48,8 +47,8 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type, 
 		return nil, INF
 	end
 
-	---@type Depot|nil
-	local best_depot = nil
+	---@type uint?
+	local best_train = nil
 	local best_capacity = 0
 	local best_dist = INF
 	local valid_train_exists = false
@@ -57,8 +56,7 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type, 
 	local is_fluid = item_type == "fluid"
 	local trains = map_data.available_trains[network_name]
 	if trains then
-		for train_id, depot_id in pairs(trains) do
-			local depot = map_data.depots[depot_id]
+		for train_id, _ in pairs(trains) do
 			local train = map_data.trains[train_id]
 			local layout_id = train.layout_id
 			--check cargo capabilities
@@ -73,20 +71,20 @@ local function get_valid_train(map_data, r_station_id, p_station_id, item_type, 
 				valid_train_exists = true
 				--check if exists valid path
 				--check if path is shortest so we prioritize locality
-				local d_to_p_dist = get_stop_dist(depot.entity_stop, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority
+				local d_to_p_dist = get_stop_dist(train.entity.front_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority
 
 				local dist = d_to_p_dist
 				if capacity > best_capacity or (capacity == best_capacity and dist < best_dist) then
 					best_capacity = capacity
 					best_dist = dist
-					best_depot = depot
+					best_train = train_id
 				end
 			end
 		end
 	end
 
 	if valid_train_exists then
-		return best_depot, best_dist + p_to_r_dist
+		return best_train, best_dist + p_to_r_dist
 	else
 		return nil, p_to_r_dist
 	end
@@ -96,14 +94,14 @@ end
 ---@param map_data MapData
 ---@param r_station_id uint
 ---@param p_station_id uint
----@param depot Depot
+---@param train_id uint
 ---@param primary_item_name string
-local function send_train_between(map_data, r_station_id, p_station_id, depot, primary_item_name)
+local function send_train_between(map_data, r_station_id, p_station_id, train_id, primary_item_name)
 	--trains and stations expected to be of the same network
 	local economy = map_data.economy
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
-	local train = map_data.trains[depot.available_train_id]
+	local train = map_data.trains[train_id]
 	---@type string
 	local network_name = r_station.network_name
 
@@ -192,14 +190,14 @@ local function send_train_between(map_data, r_station_id, p_station_id, depot, p
 		end
 	end
 
-	remove_available_train(map_data, train, depot)
+	remove_available_train(map_data, train_id, train)
 	train.status = STATUS_D_TO_P
 	train.p_station_id = p_station_id
 	train.r_station_id = r_station_id
 	train.manifest = manifest
 	train.last_manifest_tick = map_data.total_ticks
 
-	set_manifest_schedule(train.entity, depot.entity_stop, p_station.entity_stop, r_station.entity_stop, manifest)
+	set_manifest_schedule(train.entity, train.depot_name, p_station.entity_stop, r_station.entity_stop, manifest)
 	set_comb2(map_data, p_station)
 	set_comb2(map_data, r_station)
 	if p_station.entity_comb1.valid then
@@ -421,7 +419,7 @@ local function tick_dispatch(map_data, mod_settings)
 
 		max_threshold = 0
 		local best_i = 0
-		local best_depot = nil
+		local best_train = nil
 		local best_dist = INF
 		local best_prior = -INF
 		local can_be_serviced = false
@@ -432,12 +430,12 @@ local function tick_dispatch(map_data, mod_settings)
 				if effective_count >= r_threshold then
 					local prior = p_station.priority
 					local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
-					local depot, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
+					local train, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
 					if prior > best_prior or (prior == best_prior and d < best_dist) then
-						if depot then
+						if train then
 							best_i = j
 							best_dist = d
-							best_depot = depot
+							best_train = train
 							best_prior = prior
 							can_be_serviced = true
 						elseif d < INF then
@@ -451,12 +449,8 @@ local function tick_dispatch(map_data, mod_settings)
 				end
 			end
 		end
-		if
-		best_depot and (
-		best_depot.entity_comb.status == defines.entity_status.working or
-		best_depot.entity_comb.status == defines.entity_status.low_power)
-		then
-			send_train_between(map_data, r_station_id, table_remove(p_stations, best_i), best_depot, item_name)
+		if best_train then
+			send_train_between(map_data, r_station_id, table_remove(p_stations, best_i), best_train, item_name)
 			return false
 		else
 			if can_be_serviced then

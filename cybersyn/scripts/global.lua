@@ -11,7 +11,7 @@
 ---@field public warmup_station_ids uint[]
 ---@field public depots {[uint]: Depot}
 ---@field public trains {[uint]: Train}
----@field public available_trains {[string]: {[uint]: uint}} --{[network_name]: {[train_id]: depot_id}}
+---@field public available_trains {[string]: {[uint]: true?}} --{[network_name]: {[train_id]: depot_id}}
 ---@field public layouts {[uint]: int[]}
 ---@field public layout_train_count {[uint]: int}
 ---@field public tick_state uint
@@ -58,6 +58,7 @@
 ---@field public manifest Manifest
 ---@field public last_manifest_tick int
 ---@field public has_filtered_wagon boolean
+---@field public is_available true?
 ---@field public depot_id uint?
 ---@field public depot_name string
 ---@field public network_name string?
