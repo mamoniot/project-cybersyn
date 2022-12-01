@@ -5,7 +5,7 @@ bugs:
 major:
 	do hardcore testing
 	models & art
-	depot bypass
+	add a modding interface (the moment someone asks for this I will make sure it's in the next update)
 
 minor:
 	railloader compat
