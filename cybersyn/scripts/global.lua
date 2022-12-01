@@ -61,11 +61,12 @@
 ---@field public is_available true?
 ---@field public depot_id uint?
 ---@field public depot_name string
+---@field public se_depot_surface_i uint --se only
 ---@field public network_name string?
 ---@field public network_flag int
 ---@field public priority int
----@field public se_awaiting_removal any?
----@field public se_awaiting_rename any?
+---@field public se_awaiting_removal any? --se only
+---@field public se_awaiting_rename any? --se only
 
 ---@alias Manifest {}[]
 ---@alias cybersyn.global MapData

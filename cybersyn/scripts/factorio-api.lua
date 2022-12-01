@@ -106,21 +106,27 @@ function rename_manifest_schedule(train, stop, old_name)
 	train.schedule = schedule
 end
 
+---@param elevator_name string
+---@param is_train_in_orbit boolean
+local function se_create_elevator_order(elevator_name, is_train_in_orbit)
+	return {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
+end
 ---@param train LuaTrain
 ---@param depot_name string
+---@param d_surface_i int
 ---@param p_stop LuaEntity
 ---@param r_stop LuaEntity
 ---@param manifest Manifest
 ---@param start_at_depot boolean?
-function set_manifest_schedule(train, depot_name, p_stop, r_stop, manifest, start_at_depot)
+function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, manifest, start_at_depot)
 	--NOTE: train must be on same surface as depot_stop
-	local d_surface = train.front_stock.surface
+	local t_surface = train.front_stock.surface
 	local p_surface = p_stop.surface
 	local r_surface = r_stop.surface
-	local d_surface_i = d_surface.index
+	local t_surface_i = t_surface.index
 	local p_surface_i = p_surface.index
 	local r_surface_i = r_surface.index
-	if d_surface_i == p_surface_i and p_surface_i == r_surface_i then
+	if t_surface_i == p_surface_i and p_surface_i == r_surface_i then
 		train.schedule = {current = start_at_depot and 1 or 2, records = {
 			create_inactivity_order(depot_name),
 			create_direct_to_station_order(p_stop),
@@ -129,32 +135,32 @@ function set_manifest_schedule(train, depot_name, p_stop, r_stop, manifest, star
 			create_unloading_order(r_stop),
 		}}
 		return
-	elseif IS_SE_PRESENT and (d_surface_i == p_surface_i or p_surface_i == r_surface_i or r_surface_i == d_surface_i) then
-		local d_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = d_surface_i})
-		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = (d_surface_i == p_surface_i) and r_surface_i or p_surface_i})
-		local is_train_in_orbit = other_zone.orbit_index == d_zone.index
-		if is_train_in_orbit or d_zone.orbit_index == other_zone.index then
-			local elevator_name = se_get_space_elevator_name(d_surface)
+	elseif IS_SE_PRESENT and (t_surface_i == p_surface_i or p_surface_i == r_surface_i or r_surface_i == t_surface_i) then
+		local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})
+		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = (t_surface_i == p_surface_i) and r_surface_i or p_surface_i})
+		local is_train_in_orbit = other_zone.orbit_index == t_zone.index
+		if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
+			local elevator_name = se_get_space_elevator_name(t_surface)
 			if elevator_name then
 				local records = {create_inactivity_order(depot_name)}
-				if d_surface_i == p_surface_i then
+				if t_surface_i == p_surface_i then
 					records[#records + 1] = create_direct_to_station_order(p_stop)
 				else
-					records[#records + 1] = {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
+					records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
 					is_train_in_orbit = not is_train_in_orbit
 				end
 				records[#records + 1] = create_loading_order(p_stop, manifest)
 				if p_surface_i ~= r_surface_i then
-					records[#records + 1] = {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
+					records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
 					is_train_in_orbit = not is_train_in_orbit
 				end
 				records[#records + 1] = create_unloading_order(r_stop)
 				if r_surface_i ~= d_surface_i then
-					records[#records + 1] = {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
+					records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
 					is_train_in_orbit = not is_train_in_orbit
 				end
 
-				train.schedule = {current = 1, records = records}
+				train.schedule = {current = start_at_depot and 1 or 2, records = records}
 				return
 			end
 		end

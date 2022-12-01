@@ -89,6 +89,7 @@ local function add_available_train_to_depot(map_data, train_id, train, depot_id,
 	train.status = STATUS_D
 	train.depot_id = depot_id
 	train.depot_name = depot.entity_stop.backer_name
+	train.se_depot_surface_i = depot.entity_stop.surface.index
 	train.network_name = network_name
 	train.network_flag = mod_settings.network_flag
 	train.priority = 0
@@ -568,6 +569,7 @@ local function on_station_rename(map_data, stop, old_name)
 		if depot and depot.available_train_id then
 			local train = map_data.trains[depot.available_train_id--[[@as uint]]]
 			train.depot_name = stop.backer_name
+			--train.se_depot_surface_i = stop.surface.index
 		end
 	end
 end

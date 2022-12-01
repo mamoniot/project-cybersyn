@@ -160,6 +160,8 @@ local migrations_table = {
 				if v.is_available then
 					map_data.available_trains[v.network_name--[[@as string]]][id] = true
 				end
+				--NOTE: we are guessing here because this information was never saved
+				v.se_depot_surface_i = v.entity.front_stock.surface.index
 			end
 		end
 	end,
