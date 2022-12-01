@@ -998,6 +998,14 @@ local function main()
 				local train = map_data.trains[old_id]
 				if not train then return end
 
+				if train.is_available then
+					local network = map_data.available_trains[train.network_name--[[@as string]]]
+					if network then
+						network[new_id] = true
+						network[old_id] = nil
+					end
+				end
+
 				map_data.trains[new_id] = train
 				map_data.trains[old_id] = nil
 				train.entity = train_entity

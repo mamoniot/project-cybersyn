@@ -142,6 +142,27 @@ local migrations_table = {
 			end
 		end
 	end,
+	["1.0.7"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		map_data.tick_data = {}
+		if IS_SE_PRESENT then
+			for k, v in pairs(map_data.available_trains) do
+				for id, _ in pairs(v) do
+					local train = map_data.trains[id]
+					if not train then
+						v[id] = nil
+					end
+				end
+			end
+			for id, v in pairs(map_data.trains) do
+				if v.is_available then
+					map_data.available_trains[v.network_name--[[@as string]]][id] = true
+				end
+			end
+		end
+	end,
 }
 
 ---@param data ConfigurationChangedData
