@@ -11,3 +11,4 @@ minor:
 	close gui when the combinator is destroyed
 	do not play close sound when a different gui is opened
 	gui can desync if settings are changed outside of it while it is open
+	give the combinators a sensible reaction to low or no power

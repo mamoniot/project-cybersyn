@@ -372,6 +372,7 @@ local function tick_poll_station(map_data, mod_settings)
 		station_id = map_data.active_station_ids[tick_data.i]
 		station = map_data.stations[station_id]
 		if station then
+			--NOTE: polling trains_limit here is expensive and not strictly necessary but using it to early out saves more ups
 			if station.network_name and station.deliveries_total < station.entity_stop.trains_limit then
 				break
 			end
