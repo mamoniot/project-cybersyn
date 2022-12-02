@@ -420,9 +420,11 @@ local function tick_poll_station(map_data, mod_settings)
 			local item_count = v.count
 			local effective_item_count = item_count + (station.deliveries[item_name] or 0)
 
+			local is_not_requesting = true
 			if station.is_r then
 				local r_threshold = get_threshold(map_data, station, v.signal)
 				if -effective_item_count >= r_threshold and -item_count >= r_threshold then
+					is_not_requesting = false
 					is_requesting_nothing = false
 					local item_network_name = station.network_name..":"..item_name
 					local stations = all_r_stations[item_network_name]
@@ -436,17 +438,19 @@ local function tick_poll_station(map_data, mod_settings)
 					station.p_count_or_r_threshold_per_item[item_name] = r_threshold
 				end
 			end
-			if station.is_p and effective_item_count > 0 and item_count > 0 then
-				local item_network_name = station.network_name..":"..item_name
-				local stations = all_p_stations[item_network_name]
-				if stations == nil then
-					stations = {}
-					all_p_stations[item_network_name] = stations
+			if is_not_requesting then
+				if station.is_p and effective_item_count > 0 and item_count > 0 then
+					local item_network_name = station.network_name..":"..item_name
+					local stations = all_p_stations[item_network_name]
+					if stations == nil then
+						stations = {}
+						all_p_stations[item_network_name] = stations
+					end
+					stations[#stations + 1] = station_id
+					station.p_count_or_r_threshold_per_item[item_name] = effective_item_count
+				else
+					signals[k] = nil
 				end
-				stations[#stations + 1] = station_id
-				station.p_count_or_r_threshold_per_item[item_name] = effective_item_count
-			else
-				signals[k] = nil
 			end
 		end
 		if is_requesting_nothing and station.display_state%2 == 1 then
