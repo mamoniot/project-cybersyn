@@ -286,9 +286,7 @@ function update_display(map_data, station)
 		local control = get_comb_control(comb)
 		local params = control.parameters
 		if not has_comb_params_changed(map_data, unit_number, params) then
-			if station.display_state == 3 then
-				params.operation = OPERATION_PRIMARY_IO_ACTIVE
-			elseif station.display_state == 2 then
+			if station.display_state >= 2 then
 				params.operation = OPERATION_PRIMARY_IO_ACTIVE
 			elseif station.display_state == 1 then
 				params.operation = OPERATION_PRIMARY_IO_FAILED_REQUEST
@@ -346,19 +344,18 @@ function set_combinator_output(map_data, comb, signals)
 	end
 end
 
-local WORKING = defines.entity_status.working
-local LOW_POWER = defines.entity_status.low_power
+local DEFINES_WORKING = defines.entity_status.working
+local DEFINES_LOW_POWER = defines.entity_status.low_power
+local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 ---@param station Station
 function get_signals(station)
+	--NOTE: the combinator must be valid, but checking for valid every time is too slow
 	local comb = station.entity_comb1
-	if comb.valid then
-		local status = comb.status
-		if status == WORKING or status == LOW_POWER then
-			return comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
-		end
-	else
-		return nil
+	local status = comb.status
+	if status == DEFINES_WORKING or status == DEFINES_LOW_POWER then
+		return comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
 	end
+	return nil
 end
 
 ---@param map_data MapData
@@ -382,7 +379,7 @@ end
 ---@param signal SignalID
 function get_threshold(map_data, station, signal)
 	local comb2 = station.entity_comb2
-	if comb2 and comb2.valid then
+	if comb2 then
 		local count = comb2.get_merged_signal(signal, defines.circuit_connector_id.combinator_input)
 		if count ~= 0 then
 			return abs(count)
