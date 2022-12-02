@@ -286,19 +286,16 @@ function update_display(map_data, station)
 		local control = get_comb_control(comb)
 		local params = control.parameters
 		if not has_comb_params_changed(map_data, unit_number, params) then
-			if station.display_state >= 2 then
+			if station.display_state == 3 then
 				params.operation = OPERATION_PRIMARY_IO_ACTIVE
-				control.parameters = params
-				params.operation = OPERATION_PRIMARY_IO
+			elseif station.display_state == 2 then
+				params.operation = OPERATION_PRIMARY_IO_ACTIVE
 			elseif station.display_state == 1 then
 				params.operation = OPERATION_PRIMARY_IO_FAILED_REQUEST
-				control.parameters = params
-				params.operation = OPERATION_PRIMARY_IO
 			else
 				params.operation = OPERATION_PRIMARY_IO
-				control.parameters = params
 			end
-			map_data.to_comb_params[unit_number] = params
+			control.parameters = params
 		end
 	end
 end
