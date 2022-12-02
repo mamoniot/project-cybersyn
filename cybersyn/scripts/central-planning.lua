@@ -9,8 +9,6 @@ local band = bit32.band
 local table_remove = table.remove
 local random = math.random
 
-
-
 ---@param map_data MapData
 ---@param station Station
 ---@param manifest Manifest
@@ -24,8 +22,9 @@ function remove_manifest(map_data, station, manifest, sign)
 	end
 	set_comb2(map_data, station)
 	station.deliveries_total = station.deliveries_total - 1
-	if station.deliveries_total == 0 and station.entity_comb1.valid then
-		set_comb_operation_with_check(map_data, station.entity_comb1, OPERATION_PRIMARY_IO)
+	if station.deliveries_total == 0 and station.display_state >= 2 then
+		station.display_state = station.display_state - 2
+		update_display(map_data, station)
 	end
 end
 
@@ -206,11 +205,14 @@ local function send_train_between(map_data, r_station_id, p_station_id, train_id
 
 		set_comb2(map_data, p_station)
 		set_comb2(map_data, r_station)
-		if p_station.entity_comb1.valid then
-			set_comb_operation_with_check(map_data, p_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+
+		if p_station.display_state < 2 then
+			p_station.display_state = 2
+			update_display(map_data, p_station)
 		end
-		if r_station.entity_comb1.valid then
-			set_comb_operation_with_check(map_data, r_station.entity_comb1, OPERATION_PRIMARY_IO_ACTIVE)
+		if r_station.display_state < 2 then
+			r_station.display_state = 2
+			update_display(map_data, r_station)
 		end
 	end
 end
@@ -258,11 +260,6 @@ local function tick_poll_station(map_data, mod_settings)
 		station_id = map_data.active_station_ids[tick_data.i]
 		station = map_data.stations[station_id]
 		if station then
-			if station.display_update then
-				update_combinator_display(map_data, station.entity_comb1, station.display_failed_request)
-				station.display_update = station.display_failed_request
-				station.display_failed_request = nil
-			end
 			if station.network_name and station.deliveries_total < station.entity_stop.trains_limit then
 				break
 			end
@@ -325,6 +322,9 @@ local function tick_poll_station(map_data, mod_settings)
 					end
 					stations[#stations + 1] = station_id
 					station.p_count_or_r_threshold_per_item[item_name] = r_threshold
+				elseif station.display_state%2 == 1 then
+					station.display_state = station.display_state - 1
+					update_display(map_data, station)
 				end
 			end
 			if flag then
@@ -391,9 +391,9 @@ local function tick_dispatch(map_data, mod_settings)
 			else
 				for i, id in ipairs(r_stations) do
 					local station = stations[id]
-					if station then
-						station.display_failed_request = true
-						station.display_update = true
+					if station and station.display_state%2 == 0 then
+						station.display_state = station.display_state + 1
+						update_display(map_data, station)
 					end
 				end
 			end
@@ -419,6 +419,13 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 		end
 		if not r_station_i then
+			for i, id in ipairs(r_stations) do
+				local station = stations[id]
+				if station and station.display_state%2 == 0 then
+					station.display_state = station.display_state + 1
+					update_display(map_data, station)
+				end
+			end
 			return false
 		end
 
@@ -464,8 +471,10 @@ local function tick_dispatch(map_data, mod_settings)
 			if can_be_serviced then
 				send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best_i]].entity_stop)
 			end
-			r_station.display_failed_request = true
-			r_station.display_update = true
+			if r_station.display_state%2 == 0 then
+				r_station.display_state = r_station.display_state + 1
+				update_display(map_data, r_station)
+			end
 		end
 
 		table_remove(r_stations, r_station_i)

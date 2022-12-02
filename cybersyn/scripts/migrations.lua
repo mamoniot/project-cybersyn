@@ -166,6 +166,24 @@ local migrations_table = {
 			end
 		end
 	end,
+	["1.0.8"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		map_data.tick_data = {}
+		for id, station in pairs(map_data.stations) do
+			local params = get_comb_params(station.entity_comb1)
+			if params.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST then
+				station.display_state = 1
+			elseif params.operation == OPERATION_PRIMARY_IO_ACTIVE then
+				station.display_state = 2
+			else
+				station.display_state = 0
+			end
+			station.display_failed_request = nil
+			station.update_display = nil
+		end
+	end,
 }
 
 ---@param data ConfigurationChangedData

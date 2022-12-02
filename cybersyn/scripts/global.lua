@@ -20,6 +20,9 @@
 ---@field public se_tele_old_id {[any]: uint}
 
 ---@class Station
+---@field public entity_stop LuaEntity
+---@field public entity_comb1 LuaEntity
+---@field public entity_comb2 LuaEntity?
 ---@field public is_p boolean
 ---@field public is_r boolean
 ---@field public allows_all_trains boolean
@@ -28,19 +31,15 @@
 ---@field public priority int --transient
 ---@field public r_threshold int >= 0 --transient
 ---@field public locked_slots int >= 0 --transient
----@field public entity_stop LuaEntity
----@field public entity_comb1 LuaEntity
----@field public entity_comb2 LuaEntity?
----@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
----@field public deliveries {[string]: int}
 ---@field public network_name string?
 ---@field public network_flag int --transient
+---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
+---@field public deliveries {[string]: int}
 ---@field public accepted_layouts {[uint]: true?}
 ---@field public layout_pattern {[uint]: int}
 ---@field public tick_signals {[uint]: Signal}? --transient
 ---@field public p_count_or_r_threshold_per_item {[string]: int} --transient
----@field public display_failed_request true?
----@field public display_update true?
+---@field public display_state 0|1|2|3 --low bit is if this station's request has failed, high bit is if a train is heading to this station
 
 ---@class Depot
 ---@field public entity_stop LuaEntity
@@ -57,7 +56,7 @@
 ---@field public r_station_id uint
 ---@field public manifest Manifest
 ---@field public last_manifest_tick int
----@field public has_filtered_wagon boolean
+---@field public has_filtered_wagon true?
 ---@field public is_available true?
 ---@field public parked_at_depot_id uint?
 ---@field public depot_name string
@@ -73,7 +72,7 @@
 ---@alias cybersyn.global MapData
 
 ---@class Economy
----could contain invalid stations
+---could contain invalid stations or stations with modified settings from when they were first appended
 ---@field public all_r_stations {[string]: uint[]} --{[network_name:item_name]: station_id}
 ---@field public all_p_stations {[string]: uint[]} --{[network_name:item_name]: station_id}
 ---@field public all_names (string|SignalID)[]

@@ -1,6 +1,5 @@
 bugs:
-	request threshold is being bypassed somehow
-	wagon control combinators don't work parallel to the tracks
+	request threshold is being bypassed somehow (hasn't been seen in a long time)
 
 major:
 	do hardcore testing
@@ -12,4 +11,3 @@ minor:
 	close gui when the combinator is destroyed
 	do not play close sound when a different gui is opened
 	gui can desync if settings are changed outside of it while it is open
-	go over init and make it agree with type info

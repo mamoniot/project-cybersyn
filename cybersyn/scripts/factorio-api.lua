@@ -256,7 +256,7 @@ end
 ---@param map_data MapData
 ---@param unit_number uint
 ---@param params ArithmeticCombinatorParameters
-function has_comb_params_changed(map_data, unit_number, params)
+local function has_comb_params_changed(map_data, unit_number, params)
 	local old_params = map_data.to_comb_params[unit_number]
 
 	if params.operation ~= old_params.operation then
@@ -278,41 +278,26 @@ function has_comb_params_changed(map_data, unit_number, params)
 	return false
 end
 ---@param map_data MapData
----@param comb LuaEntity
----@param op string
-function set_comb_operation_with_check(map_data, comb, op)
-	---@type uint
-	local unit_number = comb.unit_number
-	local control = get_comb_control(comb)
-	local params = control.parameters
-	if not has_comb_params_changed(map_data, unit_number, params) then
-		params.operation = op
-		control.parameters = params
-		if (op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_FAILED_REQUEST) then
-			params.operation = OPERATION_PRIMARY_IO
-		end
-		map_data.to_comb_params[unit_number] = params
-	end
-end
----@param map_data MapData
----@param comb LuaEntity
----@param is_failed boolean
-function update_combinator_display(map_data, comb, is_failed)
-	---@type uint
-	local unit_number = comb.unit_number
-	local control = get_comb_control(comb)
-	local params = control.parameters
-	if not has_comb_params_changed(map_data, unit_number, params) then
-		if is_failed then
-			if params.operation == OPERATION_PRIMARY_IO then
+---@param station Station
+function update_display(map_data, station)
+	local comb = station.entity_comb1
+	if comb.valid then
+		local unit_number = comb.unit_number--[[@as uint]]
+		local control = get_comb_control(comb)
+		local params = control.parameters
+		if not has_comb_params_changed(map_data, unit_number, params) then
+			if station.display_state >= 2 then
+				params.operation = OPERATION_PRIMARY_IO_ACTIVE
+				control.parameters = params
+				params.operation = OPERATION_PRIMARY_IO
+			elseif station.display_state == 1 then
 				params.operation = OPERATION_PRIMARY_IO_FAILED_REQUEST
 				control.parameters = params
 				params.operation = OPERATION_PRIMARY_IO
-				map_data.to_comb_params[unit_number] = params
+			else
+				params.operation = OPERATION_PRIMARY_IO
+				control.parameters = params
 			end
-		elseif params.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST then
-			params.operation = OPERATION_PRIMARY_IO
-			control.parameters = params
 			map_data.to_comb_params[unit_number] = params
 		end
 	end

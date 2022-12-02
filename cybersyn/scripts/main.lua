@@ -69,11 +69,12 @@ local function add_available_train(map_data, train_id, train)
 	end
 end
 ---@param map_data MapData
+---@param mod_settings CybersynModSettings
 ---@param depot_id uint
 ---@param depot Depot
 ---@param train_id uint
 ---@param train Train
-local function add_available_train_to_depot(map_data, train_id, train, depot_id, depot)
+local function add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
 	local comb = depot.entity_comb
 	local network_name = get_comb_network_name(comb)
 	if network_name then
@@ -133,10 +134,11 @@ end
 ---@param stop LuaEntity
 ---@param comb LuaEntity
 local function on_depot_built(map_data, stop, comb)
+		--NOTE: only place where new Depot
 	local depot = {
 		entity_stop = stop,
 		entity_comb = comb,
-		--available_train = nil,
+		available_train_id = nil,
 	}
 	map_data.depots[stop.unit_number] = depot
 end
@@ -159,21 +161,28 @@ end
 ---@param comb1 LuaEntity
 ---@param comb2 LuaEntity
 local function on_station_built(map_data, stop, comb1, comb2)
+	--NOTE: only place where new Station
 	local station = {
 		entity_stop = stop,
 		entity_comb1 = comb1,
 		entity_comb2 = comb2,
-		wagon_combs = nil,
+		--is_p = set_station_from_comb_state,
+		--is_r = set_station_from_comb_state,
+		--allows_all_trains = set_station_from_comb_state,
 		deliveries_total = 0,
 		last_delivery_tick = map_data.total_ticks,
 		priority = 0,
 		r_threshold = 0,
 		locked_slots = 0,
+		--network_name = set_station_from_comb_state,
 		network_flag = 0,
+		wagon_combs = nil,
 		deliveries = {},
 		accepted_layouts = {},
 		layout_pattern = nil,
+		tick_signals = nil,
 		p_count_or_r_threshold_per_item = {},
+		display_state = 0,
 	}
 	set_station_from_comb_state(station)
 	local id = stop.unit_number--[[@as uint]]
@@ -367,7 +376,7 @@ function on_combinator_network_updated(map_data, comb, network_name)
 				if train_id then
 					local train = map_data.trains[train_id]
 					remove_available_train(map_data, train_id, train)
-					add_available_train_to_depot(map_data, train_id, train, depot_id, depot)
+					add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
 				end
 			end
 		end
@@ -611,7 +620,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		end
 		if is_train_empty then
 			remove_available_train(map_data, train_id, train)
-			add_available_train_to_depot(map_data, train_id, train, depot_id, map_data.depots[depot_id])
+			add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, map_data.depots[depot_id])
 			set_depot_schedule(train_entity, train.depot_name)
 		else
 			--train still has cargo
@@ -620,20 +629,28 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			send_nonempty_train_in_depot_alert(train_entity)
 		end
 	elseif is_train_empty then
+		--NOTE: only place where new Train
 		train = {
-			status = STATUS_D,
 			entity = train_entity,
-			layout_id = 0,
-			item_slot_capacity = 0,
-			fluid_capacity = 0,
+			--layout_id = update_train_layout,
+			--item_slot_capacity = update_train_layout,
+			--fluid_capacity = update_train_layout,
+			--status = add_available_train_to_depot,
 			p_station_id = 0,
 			r_station_id = 0,
+			manifest = nil,
 			last_manifest_tick = map_data.total_ticks,
-			--manifest = nil,
+			has_filtered_wagon = nil,
+			--is_available = add_available_train_to_depot,
+			--parked_at_depot_id = add_available_train_to_depot,
+			--depot_name = add_available_train_to_depot,
+			--network_name = add_available_train_to_depot,
+			--network_flag = add_available_train_to_depot,
+			--priority = add_available_train_to_depot,
 		}
 		update_train_layout(map_data, train)
 		map_data.trains[train_id] = train
-		add_available_train_to_depot(map_data, train_id, train, depot_id, map_data.depots[depot_id])
+		add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, map_data.depots[depot_id])
 
 		set_depot_schedule(train_entity, train.depot_name)
 	else
@@ -691,7 +708,7 @@ local function on_train_leaves_station(map_data, mod_settings, train_id, train)
 			set_comb1(map_data, station, nil)
 			unset_wagon_combs(map_data, station)
 			if train.has_filtered_wagon then
-				train.has_filtered_wagon = false
+				train.has_filtered_wagon = nil
 				for carriage_i, carriage in ipairs(train.entity.cargo_wagons) do
 					local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
 					if inv and inv.is_filtered() then
