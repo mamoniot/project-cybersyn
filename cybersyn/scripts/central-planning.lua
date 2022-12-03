@@ -12,6 +12,7 @@ local random = math.random
 ---@param map_data MapData
 ---@param station Station
 ---@param manifest Manifest
+---@param sign -1|1
 function remove_manifest(map_data, station, manifest, sign)
 	local deliveries = station.deliveries
 	for i, item in ipairs(manifest) do
@@ -94,8 +95,8 @@ end
 ---@param r_station_id uint
 ---@param p_station_id uint
 ---@param train_id uint
----@param primary_item_name string
-local function send_train_between(map_data, r_station_id, p_station_id, train_id, primary_item_name)
+---@param primary_item_name string?
+function send_train_between(map_data, r_station_id, p_station_id, train_id, primary_item_name)
 	--trains and stations expected to be of the same network
 	local economy = map_data.economy
 	local r_station = map_data.stations[r_station_id]
@@ -140,9 +141,6 @@ local function send_train_between(map_data, r_station_id, p_station_id, train_id
 	local i = 1
 	while i <= #manifest do
 		local item = manifest[i]
-		if item.count < 1000 then
-			local hello = true
-		end
 		local keep_item = false
 		if item.type == "fluid" then
 			if total_liquid_left > 0 then
@@ -214,6 +212,9 @@ local function send_train_between(map_data, r_station_id, p_station_id, train_id
 			r_station.display_state = 2
 			update_display(map_data, r_station)
 		end
+		interface_raise_train_dispatched(map_data, train_id)
+	else
+		interface_raise_train_dispatch_failed(map_data, train_id)
 	end
 end
 
@@ -471,6 +472,7 @@ local function tick_poll_train(map_data, mod_settings)
 
 	if train and train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
 		send_stuck_train_alert(train.entity, train.depot_name)
+		interface_raise_train_stuck(map_data, train_id)
 	end
 end
 ---@param map_data MapData
@@ -492,7 +494,6 @@ function tick(map_data, mod_settings)
 		map_data.economy.all_p_stations = {}
 		map_data.economy.all_r_stations = {}
 		map_data.economy.all_names = {}
-		map_data.tick_state = STATE_POLL_STATIONS
 		for i, id in pairs(map_data.warmup_station_ids) do
 			local station = map_data.stations[id]
 			if station then
@@ -504,6 +505,8 @@ function tick(map_data, mod_settings)
 				map_data.warmup_station_ids[i] = nil
 			end
 		end
+		map_data.tick_state = STATE_POLL_STATIONS
+		interface_raise_tick_init(map_data)
 		tick_poll_train(map_data, mod_settings)
 		tick_poll_comb(map_data)
 	end

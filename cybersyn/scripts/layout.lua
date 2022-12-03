@@ -3,8 +3,6 @@ local area = require("__flib__.area")
 local abs = math.abs
 local floor = math.floor
 local ceil = math.ceil
-local string_find = string.find
-local string_sub = string.sub
 
 
 local function table_compare(t0, t1)
@@ -73,6 +71,7 @@ function remove_train(map_data, train_id, train)
 		map_data.layout_train_count[layout_id] = count - 1
 	end
 	map_data.trains[train_id] = nil
+	interface_raise_train_removed(map_data, train_id, train)
 end
 
 

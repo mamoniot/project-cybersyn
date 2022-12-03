@@ -47,7 +47,7 @@
 ---@field public available_train_id uint?--train_id
 
 ---@class Train
----@field public entity LuaTrain
+---@field public entity LuaTrain --should only be invalid if se_is_being_teleported is true
 ---@field public layout_id uint
 ---@field public item_slot_capacity int
 ---@field public fluid_capacity int
