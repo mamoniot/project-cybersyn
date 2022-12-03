@@ -128,6 +128,7 @@ function interface_raise_train_dispatched(train_id)
 end
 ---@param train_id uint
 function interface_raise_train_dispatch_failed(train_id)
+	--this event is rare, it can only occur when a train is bypassing the depot and can't find a path to the provide station, that train is marked as unavailable but not dispatched
 	if on_train_dispatch_failed then
 		raise_event(on_train_dispatch_failed, {
 			train_id = train_id,
@@ -136,13 +137,19 @@ function interface_raise_train_dispatch_failed(train_id)
 end
 ---@param train_id uint
 ---@param was_p_in_progress boolean
+---@param p_station_id uint
 ---@param was_r_in_progress boolean
-function interface_raise_train_failed_delivery(train_id, was_p_in_progress, was_r_in_progress)
+---@param r_station_id uint
+---@param manifest Manifest
+function interface_raise_train_failed_delivery(train_id, was_p_in_progress, p_station_id, was_r_in_progress, r_station_id, manifest)
 	if on_train_failed_delivery then
 		raise_event(on_train_failed_delivery, {
 			train_id = train_id,
 			was_p_in_progress = was_p_in_progress,
+			p_station_id = p_station_id,
 			was_r_in_progress = was_r_in_progress,
+			r_station_id = r_station_id,
+			manifest = manifest,
 		})
 	end
 end

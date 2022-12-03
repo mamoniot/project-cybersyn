@@ -29,28 +29,31 @@ end
 ---@param train Train
 function on_failed_delivery(map_data, train_id, train)
 	--NOTE: must either change this train's status or remove it after this call
+	local p_station_id = train.p_station_id
+	local r_station_id = train.r_station_id
+	local manifest = train.manifest
 	local is_p_in_progress = train.status == STATUS_D_TO_P or train.status == STATUS_P
 	local is_r_in_progress = is_p_in_progress or train.status == STATUS_P_TO_R or train.status == STATUS_R
 	if is_p_in_progress then
-		local station = map_data.stations[train.p_station_id]
-		remove_manifest(map_data, station, train.manifest, 1)
+		local station = map_data.stations[p_station_id]
+		remove_manifest(map_data, station, manifest, 1)
 		if train.status == STATUS_P then
 			set_comb1(map_data, station, nil)
 			unset_wagon_combs(map_data, station)
 		end
 	end
 	if is_r_in_progress then
-		local station = map_data.stations[train.r_station_id]
-		remove_manifest(map_data, station, train.manifest, -1)
+		local station = map_data.stations[r_station_id]
+		remove_manifest(map_data, station, manifest, -1)
 		if train.status == STATUS_R then
 			set_comb1(map_data, station, nil)
 			unset_wagon_combs(map_data, station)
 		end
 	end
-	interface_raise_train_failed_delivery(train_id, is_p_in_progress, is_r_in_progress)
 	train.r_station_id = 0
 	train.p_station_id = 0
 	train.manifest = nil
+	interface_raise_train_failed_delivery(train_id, is_p_in_progress, p_station_id, is_r_in_progress, r_station_id, manifest)
 end
 
 
