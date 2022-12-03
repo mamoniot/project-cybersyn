@@ -23,9 +23,9 @@ local on_train_failed_delivery = nil
 local on_train_completed_provide = nil
 local on_train_completed_request = nil
 local on_train_parked_at_depot = nil
+local on_train_stuck = nil
 local on_train_teleport_started = nil
 local on_train_teleported = nil
-local on_train_stuck = nil
 local on_tick_init = nil
 
 ---@param entity LuaEntity
