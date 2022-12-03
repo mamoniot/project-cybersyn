@@ -76,8 +76,8 @@
 
 ---@class Economy
 ---could contain invalid stations or stations with modified settings from when they were first appended
----@field public all_r_stations {[string]: uint[]} --{[network_name:item_name]: station_id}
----@field public all_p_stations {[string]: uint[]} --{[network_name:item_name]: station_id}
+---@field public all_r_stations {[string]: uint[]} --{["network_name:item_name"]: station_id}
+---@field public all_p_stations {[string]: uint[]} --{["network_name:item_name"]: station_id}
 ---@field public all_names (string|SignalID)[]
 
 --NOTE: any setting labeled as an interface setting can only be changed through the remote-interface, these settings are not save and have to be set at initialization
