@@ -403,6 +403,20 @@ function interface.remove_available_train(train_id)
 	remove_available_train(global, train_id, train)
 end
 
+------------------------------------------------------------------
+--[[train schedule]]
+------------------------------------------------------------------
+
+interface.create_loading_order = create_loading_order
+interface.create_unloading_order = create_unloading_order
+interface.create_inactivity_order = create_inactivity_order
+interface.create_direct_to_station_order = create_direct_to_station_order
+interface.set_depot_schedule = set_depot_schedule
+interface.lock_train = lock_train
+interface.rename_manifest_schedule = rename_manifest_schedule
+interface.se_get_space_elevator_name = se_get_space_elevator_name
+interface.se_create_elevator_order = se_create_elevator_order
+interface.set_manifest_schedule = set_manifest_schedule
 
 ------------------------------------------------------------------
 --[[alerts]]
