@@ -28,107 +28,89 @@ local on_train_teleported = nil
 local on_train_stuck = nil
 local on_tick_init = nil
 
----@param map_data MapData
 ---@param entity LuaEntity
 ---@param old_parameters ArithmeticCombinatorParameters
-function interface_raise_combinator_changed(map_data, entity, old_parameters)
+function interface_raise_combinator_changed(entity, old_parameters)
 	if on_combinator_changed then
 		raise_event(on_combinator_changed, {
-			map_data = map_data,
 			entity = entity,
 			old_parameters = old_parameters,
 		})
 	end
 end
 
----@param map_data MapData
 ---@param station_id uint
-function interface_raise_station_created(map_data, station_id)
+function interface_raise_station_created(station_id)
 	if on_station_created then
 		raise_event(on_station_created, {
-			map_data = map_data,
 			station_id = station_id,
 		})
 	end
 end
----@param map_data MapData
 ---@param old_station_id uint
 ---@param old_station Station
-function interface_raise_station_removed(map_data, old_station_id, old_station)
+function interface_raise_station_removed(old_station_id, old_station)
 	if on_station_removed then
 		raise_event(on_station_removed, {
-			map_data = map_data,
 			old_station_id = old_station_id, --this id is now invalid
 			old_station = old_station, --this is the data that used to be stored at the old id
 		})
 	end
 end
 
----@param map_data MapData
 ---@param depot_id uint
-function interface_raise_depot_created(map_data, depot_id)
+function interface_raise_depot_created(depot_id)
 	if on_depot_created then
 		raise_event(on_depot_created, {
-			map_data = map_data,
 			depot_id = depot_id,
 		})
 	end
 end
----@param map_data MapData
 ---@param old_depot_id uint
 ---@param old_depot Depot
-function interface_raise_depot_removed(map_data, old_depot_id, old_depot)
+function interface_raise_depot_removed(old_depot_id, old_depot)
 	if on_depot_removed then
 		raise_event(on_depot_removed, {
-			map_data = map_data,
 			old_depot_id = old_depot_id, --this id is now invalid
 			old_depot = old_depot, --this is the data that used to be stored at the old id
 		})
 	end
 end
 
----@param map_data MapData
 ---@param train_id uint
 ---@param depot_id uint
-function interface_raise_train_created(map_data, train_id, depot_id)
+function interface_raise_train_created(train_id, depot_id)
 	if on_train_created then
 		raise_event(on_train_created, {
-			map_data = map_data,
 			train_id = train_id,
 			depot_id = depot_id,
 		})
 	end
 end
----@param map_data MapData
 ---@param old_train_id uint
 ---@param old_train Train
-function interface_raise_train_removed(map_data, old_train_id, old_train)
+function interface_raise_train_removed(old_train_id, old_train)
 	if on_train_removed then
 		raise_event(on_train_removed, {
-			map_data = map_data,
 			old_train_id = old_train_id, --this id is now invalid
 			old_train = old_train, --this is the data that used to be stored at the old id
 		})
 	end
 end
----@param map_data MapData
 ---@param train_id uint
-function interface_raise_train_available(map_data, train_id)
+function interface_raise_train_available(train_id)
 	if on_train_available then
 		raise_event(on_train_available, {
-			map_data = map_data,
 			train_id = train_id,
 		})
 	end
 end
----@param map_data MapData
 ---@param depot_id uint
 ---@param train_entity LuaTrain
 ---@param train_id uint?
-function interface_raise_train_nonempty_in_depot(map_data, depot_id, train_entity, train_id)
+function interface_raise_train_nonempty_in_depot(depot_id, train_entity, train_id)
 	if on_train_nonempty_in_depot then
 		raise_event(on_train_nonempty_in_depot, {
-			map_data = map_data,
 			train_entity = train_entity,
 			train_id = train_id,
 			depot_id = depot_id,
@@ -136,110 +118,90 @@ function interface_raise_train_nonempty_in_depot(map_data, depot_id, train_entit
 	end
 end
 
----@param map_data MapData
 ---@param train_id uint
-function interface_raise_train_dispatched(map_data, train_id)
+function interface_raise_train_dispatched(train_id)
 	if on_train_dispatched then
 		raise_event(on_train_dispatched, {
-			map_data = map_data,
 			train_id = train_id,
 		})
 	end
 end
----@param map_data MapData
 ---@param train_id uint
-function interface_raise_train_dispatch_failed(map_data, train_id)
+function interface_raise_train_dispatch_failed(train_id)
 	if on_train_dispatch_failed then
 		raise_event(on_train_dispatch_failed, {
-			map_data = map_data,
 			train_id = train_id,
 		})
 	end
 end
----@param map_data MapData
 ---@param train_id uint
----@param is_p_delivery_made boolean
----@param is_r_delivery_made boolean
-function interface_raise_train_failed_delivery(map_data, train_id, is_p_delivery_made, is_r_delivery_made)
+---@param was_p_in_progress boolean
+---@param was_r_in_progress boolean
+function interface_raise_train_failed_delivery(train_id, was_p_in_progress, was_r_in_progress)
 	if on_train_failed_delivery then
 		raise_event(on_train_failed_delivery, {
-			map_data = map_data,
 			train_id = train_id,
-			is_p_delivery_made = is_p_delivery_made,
-			is_r_delivery_made = is_r_delivery_made,
+			was_p_in_progress = was_p_in_progress,
+			was_r_in_progress = was_r_in_progress,
 		})
 	end
 end
----@param map_data MapData
 ---@param train_id uint
-function interface_raise_train_completed_provide(map_data, train_id)
+function interface_raise_train_completed_provide(train_id)
 	if on_train_completed_provide then
 		raise_event(on_train_completed_provide, {
-			map_data = map_data,
 			train_id = train_id,
 		})
 	end
 end
----@param map_data MapData
 ---@param train_id uint
-function interface_raise_train_completed_request(map_data, train_id)
+function interface_raise_train_completed_request(train_id)
 	if on_train_completed_request then
 		raise_event(on_train_completed_request, {
-			map_data = map_data,
 			train_id = train_id,
 		})
 	end
 end
----@param map_data MapData
 ---@param train_id uint
 ---@param depot_id uint
-function interface_raise_train_parked_at_depot(map_data, train_id, depot_id)
+function interface_raise_train_parked_at_depot(train_id, depot_id)
 	if on_train_parked_at_depot then
 		raise_event(on_train_parked_at_depot, {
-			map_data = map_data,
 			train_id = train_id,
 			depot_id = depot_id,
 		})
 	end
 end
----@param map_data MapData
 ---@param train_id uint
-function interface_raise_train_stuck(map_data, train_id)
+function interface_raise_train_stuck(train_id)
 	if on_train_stuck then
 		raise_event(on_train_stuck, {
-			map_data = map_data,
 			train_id = train_id,
 		})
 	end
 end
----@param map_data MapData
 ---@param old_train_id uint
-function interface_raise_train_teleport_started(map_data, old_train_id)
+function interface_raise_train_teleport_started(old_train_id)
 	if on_train_teleport_started then
 		raise_event(on_train_teleport_started, {
-			map_data = map_data,
 			old_train_id = old_train_id,--this id is currently valid but will become valid just before on_train_teleported is raised
 		})
 	end
 end
----@param map_data MapData
 ---@param new_train_id uint
 ---@param old_train_id uint
-function interface_raise_train_teleported(map_data, new_train_id, old_train_id)
+function interface_raise_train_teleported(new_train_id, old_train_id)
 	if on_train_teleported then
 		raise_event(on_train_teleported, {
-			map_data = map_data,
 			new_train_id = new_train_id,--this id stores the train
 			old_train_id = old_train_id,--this id is now invalid
 		})
 	end
 end
 
----@param map_data MapData
-function interface_raise_tick_init(map_data)
+function interface_raise_tick_init()
 	if on_tick_init then
 		raise_event(on_tick_init, {
-			map_data = map_data,
 		})
 	end
 end
@@ -330,14 +292,63 @@ end
 
 
 ------------------------------------------------------------------
---[[internal API access]]
+--[[safe API]]
 ------------------------------------------------------------------
---NOTE: The following, while they can be called from outside the mod safely, can cause serious longterm damage if they are given bad parameters. Extercise caution.
+--NOTE: These functions can be called whenever however so long as their parameters have the correct types. Their ability to cause harm is extremely minimal.
+
+---@param comb LuaEntity
+function interface.combinator_update(comb)
+	combinator_update(global, comb)
+end
+
+---@param train_id uint
+function interface.update_train_layout(train_id)
+	local train = global.trains[train_id]
+	assert(train)
+	local old_layout_id = train.layout_id
+	local count = global.layout_train_count[old_layout_id]
+	if count <= 1 then
+		global.layout_train_count[old_layout_id] = nil
+		global.layouts[old_layout_id] = nil
+		for station_id, station in pairs(global.stations) do
+			station.accepted_layouts[old_layout_id] = nil
+		end
+	else
+		global.layout_train_count[old_layout_id] = count - 1
+	end
+	set_train_layout(global, train)
+end
+---@param layout_pattern (0|1|2|3)[]
+---@param layout (0|1|2)[]
+function interface.is_layout_accepted(layout_pattern, layout)
+	return is_layout_accepted(layout_pattern, layout)
+end
+---@param station_id uint
+---@param forbidden_entity LuaEntity?
+---@param force_update boolean?
+function interface.reset_station_layout(station_id, forbidden_entity, force_update)
+	local station = global.stations[station_id]
+	assert(station)
+	if force_update or not station.allows_all_trains then
+		reset_station_layout(global, station, forbidden_entity)
+	end
+end
+---@param rail LuaEntity
+---@param forbidden_entity LuaEntity?
+---@param force_update boolean?
+function interface.update_station_from_rail(rail, forbidden_entity, force_update)
+	update_station_from_rail(global, rail, forbidden_entity, force_update)
+end
+
+------------------------------------------------------------------
+--[[unsafe API]]
+------------------------------------------------------------------
+--NOTE: The following functions can cause serious longterm damage to someone's world if they are given bad parameters. Use caution.
 
 ---@param station_id Station
 ---@param manifest Manifest
 ---@param sign -1|1
-function interface.remove_manifest(station_id, manifest, sign)
+function interface.remove_manifest_from_station_deliveries(station_id, manifest, sign)
 	local station = global.stations[station_id]
 	assert(station)
 	remove_manifest(global, station, manifest, sign)
@@ -346,16 +357,22 @@ end
 ---@param p_station_id uint
 ---@param train_id uint
 ---@param primary_item_name string?
-function interface.send_train_between(r_station_id, p_station_id, train_id, primary_item_name)
+function interface.create_new_delivery_between_stations(r_station_id, p_station_id, train_id, primary_item_name)
 	local train = global.trains[train_id]
 	assert(global.stations[r_station_id] and global.stations[p_station_id] and train and train.is_available)
 	send_train_between(global, r_station_id, p_station_id, train_id, primary_item_name)
 end
 ---@param train_id uint
-function interface.failed_delivery(train_id)
+function interface.fail_delivery(train_id)
 	local train = global.trains[train_id]
 	assert(train)
 	on_failed_delivery(global, train_id, train)
+end
+---@param train_id uint
+function interface.remove_train(train_id)
+	local train = global.trains[train_id]
+	assert(train)
+	remove_train(global, train_id, train)
 end
 
 ---@param train_id uint
@@ -378,16 +395,23 @@ function interface.remove_available_train(train_id)
 	assert(train)
 	remove_available_train(global, train_id, train)
 end
----@param comb LuaEntity
-function interface.combinator_update(comb)
-	combinator_update(global, comb)
-end
+
+
+------------------------------------------------------------------
+--[[alerts]]
+------------------------------------------------------------------
+
+interface.send_missing_train_alert = send_missing_train_alert
+interface.send_lost_train_alert = send_lost_train_alert
+interface.send_unexpected_train_alert = send_unexpected_train_alert
+interface.send_nonempty_train_in_depot_alert = send_nonempty_train_in_depot_alert
+interface.send_stuck_train_alert = send_stuck_train_alert
 
 ------------------------------------------------------------------
 --[[helper functions]]
 ------------------------------------------------------------------
 --NOTE: the policy of cybersyn is to give modders access to the raw data of the mod, please either treat all tables returned from the modding interface as "read only", or if you do modify them take responsibility that your modification does not result in an error occuring in cybersyn later on.
---NOTE: the follow functions are unnecessary, the are provided more as a guide how the mod api works rather than as practical functions.
+--NOTE: the follow functions aren't strictly necessary; they are provided more as a guide how the mod api works rather than as practical functions.
 
 function interface.get_map_data()
 	return global

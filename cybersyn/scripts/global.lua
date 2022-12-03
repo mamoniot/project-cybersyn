@@ -12,7 +12,7 @@
 ---@field public depots {[uint]: Depot}
 ---@field public trains {[uint]: Train}
 ---@field public available_trains {[string]: {[uint]: true?}} --{[network_name]: {[train_id]: depot_id}}
----@field public layouts {[uint]: int[]}
+---@field public layouts {[uint]: (0|1|2)[]}
 ---@field public layout_train_count {[uint]: int}
 ---@field public tick_state uint
 ---@field public tick_data {}
@@ -36,7 +36,7 @@
 ---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
 ---@field public deliveries {[string]: int}
 ---@field public accepted_layouts {[uint]: true?}
----@field public layout_pattern {[uint]: int}
+---@field public layout_pattern (0|1|2|3)[]?
 ---@field public tick_signals {[uint]: Signal}? --transient
 ---@field public p_count_or_r_threshold_per_item {[string]: int} --transient
 ---@field public display_state 0|1|2|3 --low bit is if this station's request has failed, high bit is if a train is heading to this station
@@ -68,8 +68,11 @@
 ---@field public se_awaiting_removal any? --se only
 ---@field public se_awaiting_rename any? --se only
 
----@alias Manifest {}[]
----@alias cybersyn.global MapData
+---@alias Manifest ManifestEntry[]
+---@class ManifestEntry
+---@field public type string
+---@field public name string
+---@field public count uint
 
 ---@class Economy
 ---could contain invalid stations or stations with modified settings from when they were first appended
@@ -77,6 +80,7 @@
 ---@field public all_p_stations {[string]: uint[]} --{[network_name:item_name]: station_id}
 ---@field public all_names (string|SignalID)[]
 
+--NOTE: any setting labeled as an interface setting can only be changed through the remote-interface, these settings are not save and have to be set at initialization
 ---@class CybersynModSettings
 ---@field public tps double
 ---@field public update_rate int
@@ -85,7 +89,13 @@
 ---@field public warmup_time double
 ---@field public stuck_train_time double
 ---@field public depot_bypass_threshold double
+---@field public missing_train_alert_enabled boolean --interface setting
+---@field public stuck_train_alert_enabled boolean --interface setting
+---@field public react_to_nonempty_train_in_depot boolean --interface setting
+---@field public react_to_train_at_incorrect_station boolean --interface setting
+---@field public react_to_train_early_to_depot boolean --interface setting
 
+---@alias cybersyn.global MapData
 ---@type CybersynModSettings
 mod_settings = {}
 

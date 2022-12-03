@@ -28,9 +28,10 @@ end
 ---@param train_id uint
 ---@param train Train
 function on_failed_delivery(map_data, train_id, train)
-	--NOTE: must change train status to STATUS_D or remove it from tracked trains after this call
-	local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
-	if not is_p_delivery_made then
+	--NOTE: must either change this train's status or remove it after this call
+	local is_p_in_progress = train.status == STATUS_D_TO_P or train.status == STATUS_P
+	local is_r_in_progress = is_p_in_progress or train.status == STATUS_P_TO_R or train.status == STATUS_R
+	if is_p_in_progress then
 		local station = map_data.stations[train.p_station_id]
 		remove_manifest(map_data, station, train.manifest, 1)
 		if train.status == STATUS_P then
@@ -38,8 +39,7 @@ function on_failed_delivery(map_data, train_id, train)
 			unset_wagon_combs(map_data, station)
 		end
 	end
-	local is_r_delivery_made = train.status == STATUS_R_TO_D
-	if not is_r_delivery_made then
+	if is_r_in_progress then
 		local station = map_data.stations[train.r_station_id]
 		remove_manifest(map_data, station, train.manifest, -1)
 		if train.status == STATUS_R then
@@ -47,10 +47,10 @@ function on_failed_delivery(map_data, train_id, train)
 			unset_wagon_combs(map_data, station)
 		end
 	end
+	interface_raise_train_failed_delivery(train_id, is_p_in_progress, is_r_in_progress)
 	train.r_station_id = 0
 	train.p_station_id = 0
 	train.manifest = nil
-	interface_raise_train_failed_delivery(map_data, train_id, is_p_delivery_made, is_r_delivery_made)
 end
 
 
@@ -68,7 +68,7 @@ function add_available_train(map_data, train_id, train)
 		end
 		network[train_id] = true
 		train.is_available = true
-		interface_raise_train_available(map_data, train_id)
+		interface_raise_train_available(train_id)
 	end
 end
 ---@param map_data MapData
@@ -113,7 +113,7 @@ function add_available_train_to_depot(map_data, mod_settings, train_id, train, d
 				end
 			end
 		end
-		interface_raise_train_available(map_data, train_id)
+		interface_raise_train_available(train_id)
 	end
 end
 ---@param map_data MapData
@@ -146,7 +146,7 @@ local function on_depot_built(map_data, stop, comb)
 	}
 	local depot_id = stop.unit_number--[[@as uint]]
 	map_data.depots[depot_id] = depot
-	interface_raise_depot_created(map_data, depot_id)
+	interface_raise_depot_created(depot_id)
 end
 
 ---@param map_data MapData
@@ -161,7 +161,7 @@ local function on_depot_broken(map_data, depot)
 	end
 	local depot_id = depot.entity_stop.unit_number--[[@as uint]]
 	map_data.depots[depot_id] = nil
-	interface_raise_depot_removed(map_data, depot_id, depot)
+	interface_raise_depot_removed(depot_id, depot)
 end
 
 ---@param map_data MapData
@@ -198,7 +198,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 	map_data.warmup_station_ids[#map_data.warmup_station_ids + 1] = id
 
 	update_station_if_auto(map_data, station, nil)
-	interface_raise_station_created(map_data, id)
+	interface_raise_station_created(id)
 end
 ---@param map_data MapData
 ---@param station_id uint
@@ -210,9 +210,10 @@ local function on_station_broken(map_data, station_id, station)
 			local is_r = train.r_station_id == station_id
 			local is_p = train.p_station_id == station_id
 			if is_p or is_r then
-				local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
-				local is_r_delivery_made = train.status == STATUS_R_TO_D
-				if (is_r and not is_r_delivery_made) or (is_p and not is_p_delivery_made) then
+
+				local is_p_in_progress = train.status == STATUS_D_TO_P or train.status == STATUS_P
+				local is_r_in_progress = is_p_in_progress or train.status == STATUS_P_TO_R or train.status == STATUS_R
+				if (is_p and is_p_in_progress) or (is_r and is_r_in_progress) then
 					--train is attempting delivery to a stop that was destroyed, stop it
 					on_failed_delivery(map_data, train_id, train)
 					if not train.se_is_being_teleported then
@@ -227,7 +228,7 @@ local function on_station_broken(map_data, station_id, station)
 		end
 	end
 	map_data.stations[station_id] = nil
-	interface_raise_station_removed(map_data, station_id, station)
+	interface_raise_station_removed(station_id, station)
 end
 
 ---@param map_data MapData
@@ -461,7 +462,7 @@ function combinator_update(map_data, comb)
 			--NOTE: This is rather dangerous, we may need to actually implement operation changing
 			on_combinator_broken(map_data, comb)
 			on_combinator_built(map_data, comb)
-			interface_raise_combinator_changed(map_data, comb, old_params)
+			interface_raise_combinator_changed(comb, old_params)
 			return
 		end
 	end
@@ -491,7 +492,7 @@ function combinator_update(map_data, comb)
 	end
 	if has_changed then
 		map_data.to_comb_params[unit_number] = params
-		interface_raise_combinator_changed(map_data, comb, old_params)
+		interface_raise_combinator_changed(comb, old_params)
 	end
 end
 
@@ -568,16 +569,16 @@ local function on_station_rename(map_data, stop, old_name)
 			local is_p = train.p_station_id == station_id
 			local is_r = train.r_station_id == station_id
 			if is_p or is_r then
-				local is_p_delivery_made = train.status ~= STATUS_D_TO_P and train.status ~= STATUS_P
-				local is_r_delivery_made = train.status == STATUS_R_TO_D
-				if is_r and not is_r_delivery_made then
+				local is_p_in_progress = train.status == STATUS_D_TO_P or train.status == STATUS_P
+				local is_r_in_progress = is_p_in_progress or train.status == STATUS_P_TO_R or train.status == STATUS_R
+				if is_r and is_r_in_progress then
 					local r_station = map_data.stations[train.r_station_id]
 					if not train.se_is_being_teleported then
 						rename_manifest_schedule(train.entity, r_station.entity_stop, old_name)
 					else
 						train.se_awaiting_rename = {r_station.entity_stop, old_name}
 					end
-				elseif is_p and not is_p_delivery_made then
+				elseif is_p and is_p_in_progress then
 					--train is attempting delivery to a stop that was renamed
 					local p_station = map_data.stations[train.p_station_id]
 					if not train.se_is_being_teleported then
@@ -627,30 +628,34 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 				train.p_station_id = 0
 				train.r_station_id = 0
 				train.manifest = nil
-			else
+			elseif mod_settings.react_to_train_early_to_depot then
 				on_failed_delivery(map_data, train_id, train)
 				send_unexpected_train_alert(train.entity)
+			else
+				return
 			end
 		end
 		if is_train_empty then
 			remove_available_train(map_data, train_id, train)
 			add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, map_data.depots[depot_id])
 			set_depot_schedule(train_entity, train.depot_name)
-			interface_raise_train_parked_at_depot(map_data, train_id, depot_id)
+			interface_raise_train_parked_at_depot(train_id, depot_id)
 		else
 			--train still has cargo
-			lock_train(train_entity)
-			remove_train(map_data, train_id, train)
-			send_nonempty_train_in_depot_alert(train_entity)
-			interface_raise_train_nonempty_in_depot(map_data, depot_id, train_entity, train_id)
+			if mod_settings.react_to_nonempty_train_in_depot then
+				lock_train(train_entity)
+				remove_train(map_data, train_id, train)
+				send_nonempty_train_in_depot_alert(train_entity)
+			end
+			interface_raise_train_nonempty_in_depot(depot_id, train_entity, train_id)
 		end
 	elseif is_train_empty then
 		--NOTE: only place where new Train
 		train = {
 			entity = train_entity,
-			--layout_id = update_train_layout,
-			--item_slot_capacity = update_train_layout,
-			--fluid_capacity = update_train_layout,
+			--layout_id = set_train_layout,
+			--item_slot_capacity = set_train_layout,
+			--fluid_capacity = set_train_layout,
 			--status = add_available_train_to_depot,
 			p_station_id = 0,
 			r_station_id = 0,
@@ -664,16 +669,18 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			--network_flag = add_available_train_to_depot,
 			--priority = add_available_train_to_depot,
 		}
-		update_train_layout(map_data, train)
+		set_train_layout(map_data, train)
 		map_data.trains[train_id] = train
 		add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, map_data.depots[depot_id])
 
 		set_depot_schedule(train_entity, train.depot_name)
-		interface_raise_train_created(map_data, train_id, depot_id)
+		interface_raise_train_created(train_id, depot_id)
 	else
-		lock_train(train_entity)
-		send_nonempty_train_in_depot_alert(train_entity)
-		interface_raise_train_nonempty_in_depot(map_data, depot_id, train_entity)
+		if mod_settings.react_to_nonempty_train_in_depot then
+			lock_train(train_entity)
+			send_nonempty_train_in_depot_alert(train_entity)
+		end
+		interface_raise_train_nonempty_in_depot(depot_id, train_entity)
 	end
 end
 ---@param map_data MapData
@@ -702,15 +709,16 @@ local function on_train_arrives_buffer(map_data, stop, train_id, train)
 			--this player intervention that is considered valid
 		elseif (train.status == STATUS_R or train.status == STATUS_R_TO_D) and train.r_station_id == station_id then
 			--this player intervention that is considered valid
-		else
+		elseif mod_settings.react_to_train_at_incorrect_station then
 			on_failed_delivery(map_data, train_id, train)
 			remove_train(map_data, train_id, train)
 			lock_train(train.entity)
 			send_lost_train_alert(train.entity, train.depot_name)
 		end
-	else
+	elseif mod_settings.react_to_train_at_incorrect_station then
 		--train is lost somehow, probably from player intervention
 		remove_train(map_data, train_id, train)
+		send_lost_train_alert(train.entity, train.depot_name)
 	end
 end
 ---@param map_data MapData
@@ -737,7 +745,7 @@ local function on_train_leaves_station(map_data, mod_settings, train_id, train)
 					end
 				end
 			end
-			interface_raise_train_completed_provide(map_data, train_id)
+			interface_raise_train_completed_provide(train_id)
 		elseif train.status == STATUS_R then
 			train.status = STATUS_R_TO_D
 			local station = map_data.stations[train.r_station_id]
@@ -771,13 +779,13 @@ local function on_train_leaves_station(map_data, mod_settings, train_id, train)
 			elseif fuel_fill/total_slots > mod_settings.depot_bypass_threshold then
 				add_available_train(map_data, train_id, train)
 			end
-			interface_raise_train_completed_request(map_data, train_id)
+			interface_raise_train_completed_request(train_id)
 		end
 	elseif train.status == STATUS_D then
 		--The train is leaving the depot without a manifest, the player likely intervened
 		local depot = map_data.depots[train.parked_at_depot_id--[[@as uint]]]
-		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
 		remove_train(map_data, train_id, train)
+		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
 	end
 end
 
@@ -962,6 +970,12 @@ local function main()
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 
+	mod_settings.missing_train_alert_enabled = true
+	mod_settings.stuck_train_alert_enabled = true
+	mod_settings.react_to_nonempty_train_in_depot = true
+	mod_settings.react_to_train_at_incorrect_station = true
+	mod_settings.react_to_train_early_to_depot = true
+
 	--NOTE: There is a concern that it is possible to build or destroy important entities without one of these events being triggered, in which case the mod will have undefined behavior
 	flib_event.register(defines.events.on_built_entity, on_built, filter_built)
 	flib_event.register(defines.events.on_robot_built_entity, on_built, filter_built)
@@ -1020,7 +1034,7 @@ local function main()
 				--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; our events have either been set up to account for this or should be impossible to trigger until teleportation is finished
 				train.se_is_being_teleported = true
 				map_data.se_tele_old_id[train_unique_identifier] = old_id
-				interface_raise_train_teleport_started(map_data, old_id)
+				interface_raise_train_teleport_started(old_id)
 			end)
 			flib_event.register(se_on_train_teleport_finished_event, function(event)
 				---@type MapData
@@ -1086,7 +1100,7 @@ local function main()
 					end
 					train_entity.schedule = schedule
 				end
-				interface_raise_train_teleported(map_data, new_id, old_id)
+				interface_raise_train_teleported(new_id, old_id)
 			end)
 		end)
 	end

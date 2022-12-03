@@ -397,7 +397,7 @@ end
 local send_missing_train_alert_for_stop_icon = {name = MISSING_TRAIN_NAME, type = "fluid"}
 ---@param r_stop LuaEntity
 ---@param p_stop LuaEntity
-function send_missing_train_alert_for_stops(r_stop, p_stop)
+function send_missing_train_alert(r_stop, p_stop)
 	for _, player in pairs(r_stop.force.players) do
 		player.add_custom_alert(
 		r_stop,

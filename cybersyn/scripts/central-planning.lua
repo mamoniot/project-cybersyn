@@ -212,9 +212,9 @@ function send_train_between(map_data, r_station_id, p_station_id, train_id, prim
 			r_station.display_state = 2
 			update_display(map_data, r_station)
 		end
-		interface_raise_train_dispatched(map_data, train_id)
+		interface_raise_train_dispatched(train_id)
 	else
-		interface_raise_train_dispatch_failed(map_data, train_id)
+		interface_raise_train_dispatch_failed(train_id)
 	end
 end
 
@@ -341,8 +341,8 @@ local function tick_dispatch(map_data, mod_settings)
 			send_train_between(map_data, r_station_id, table_remove(p_stations, best_i), best_train, item_name)
 			return false
 		else
-			if can_be_serviced then
-				send_missing_train_alert_for_stops(r_station.entity_stop, stations[p_stations[best_i]].entity_stop)
+			if can_be_serviced and mod_settings.missing_train_alert_enabled then
+				send_missing_train_alert(r_station.entity_stop, stations[p_stations[best_i]].entity_stop)
 			end
 			if r_station.display_state%2 == 0 then
 				r_station.display_state = r_station.display_state + 1
@@ -471,8 +471,10 @@ local function tick_poll_train(map_data, mod_settings)
 	tick_data.last_train = train_id
 
 	if train and train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
-		send_stuck_train_alert(train.entity, train.depot_name)
-		interface_raise_train_stuck(map_data, train_id)
+		if mod_settings.stuck_train_alert_enabled then
+			send_stuck_train_alert(train.entity, train.depot_name)
+		end
+		interface_raise_train_stuck(train_id)
 	end
 end
 ---@param map_data MapData
@@ -506,7 +508,7 @@ function tick(map_data, mod_settings)
 			end
 		end
 		map_data.tick_state = STATE_POLL_STATIONS
-		interface_raise_tick_init(map_data)
+		interface_raise_tick_init()
 		tick_poll_train(map_data, mod_settings)
 		tick_poll_comb(map_data)
 	end
