@@ -21,7 +21,7 @@ end
 
 
 ---@param surface LuaSurface
-local function se_get_space_elevator_name(surface)
+function se_get_space_elevator_name(surface)
 	--TODO: check how expensive the following is and potentially cache it's results
 	local entity = surface.find_entities_filtered({
 		name = SE_ELEVATOR_STOP_PROTO_NAME,
@@ -108,7 +108,7 @@ end
 
 ---@param elevator_name string
 ---@param is_train_in_orbit boolean
-local function se_create_elevator_order(elevator_name, is_train_in_orbit)
+function se_create_elevator_order(elevator_name, is_train_in_orbit)
 	return {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
 end
 ---@param train LuaTrain
