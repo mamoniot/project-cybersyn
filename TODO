@@ -1,15 +1,14 @@
 bugs:
-	request threshold is being bypassed somehow
-	wagon control combinators don't work parallel to the tracks
+	request threshold is being bypassed somehow (hasn't been seen in a long time)
 
 major:
 	do hardcore testing
 	models & art
-	add a modding interface (the moment someone asks for this I will make sure it's in the next update)
+	add a refueling option on depots
 
 minor:
 	railloader compat
 	close gui when the combinator is destroyed
 	do not play close sound when a different gui is opened
 	gui can desync if settings are changed outside of it while it is open
-	go over init and make it agree with type info
+	give the combinators a sensible reaction to low or no power

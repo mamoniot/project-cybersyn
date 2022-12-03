@@ -34,6 +34,7 @@ STATUS_P = 2
 STATUS_P_TO_R = 3
 STATUS_R = 4
 STATUS_R_TO_D = 5
+STATUS_CUSTOM = 256 --this status and any status greater than it can be used by other mods (I've reserved the lower integers for myself in case I want to add more statuses)
 
 LONGEST_INSERTER_REACH = 2
 

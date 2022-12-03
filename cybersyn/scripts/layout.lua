@@ -3,8 +3,6 @@ local area = require("__flib__.area")
 local abs = math.abs
 local floor = math.floor
 local ceil = math.ceil
-local string_find = string.find
-local string_sub = string.sub
 
 
 local function table_compare(t0, t1)
@@ -30,8 +28,9 @@ local function irpairs(a)
 	return iterr, a, 0
 end
 
-
-local function is_layout_accepted(layout_pattern, layout)
+---@param layout_pattern (0|1|2|3)[]
+---@param layout (0|1|2)[]
+function is_layout_accepted(layout_pattern, layout)
 	local valid = true
 	for i, v in ipairs(layout) do
 		local p = layout_pattern[i] or 0
@@ -61,24 +60,14 @@ function remove_train(map_data, train_id, train)
 		depot.available_train_id = nil
 	end
 	remove_available_train(map_data, train_id, train)
-	local layout_id = train.layout_id
-	local count = map_data.layout_train_count[layout_id]
-	if count <= 1 then
-		map_data.layout_train_count[layout_id] = nil
-		map_data.layouts[layout_id] = nil
-		for station_id, station in pairs(map_data.stations) do
-			station.accepted_layouts[layout_id] = nil
-		end
-	else
-		map_data.layout_train_count[layout_id] = count - 1
-	end
 	map_data.trains[train_id] = nil
+	interface_raise_train_removed(train_id, train)
 end
 
 
 ---@param map_data MapData
 ---@param train Train
-function update_train_layout(map_data, train)
+function set_train_layout(map_data, train)
 	local carriages = train.entity.carriages
 	local layout = {}
 	local i = 1
@@ -187,7 +176,7 @@ function set_p_wagon_combs(map_data, station, train)
 				while item_slots_capacity > 0 do
 					local do_inc = false
 					if item.type == "item" then
-						local stack_size = game.item_prototypes[item.name].stack_size
+						local stack_size = get_stack_size(map_data, item.name)
 						local item_slots = ceil(item_count/stack_size)
 						local i = #signals + 1
 						local slots_to_filter
