@@ -5,6 +5,7 @@ major:
 	do hardcore testing
 	models & art
 	add a refueling option on depots
+	move to an event based algorithm
 
 minor:
 	railloader compat
