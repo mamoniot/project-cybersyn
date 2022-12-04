@@ -124,6 +124,7 @@ function init_global()
 	global.layout_train_count = {}
 	global.layout_top_id = 1
 
+	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if IS_SE_PRESENT then
 		global.se_tele_old_id = {}
 	end
