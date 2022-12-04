@@ -191,7 +191,7 @@ end
 function interface_raise_train_teleport_started(old_train_id)
 	if on_train_teleport_started then
 		raise_event(on_train_teleport_started, {
-			old_train_id = old_train_id,--this id is currently valid but will become valid just before on_train_teleported is raised
+			old_train_id = old_train_id,--this id is currently valid but will become invalid just before on_train_teleported is raised
 		})
 	end
 end
