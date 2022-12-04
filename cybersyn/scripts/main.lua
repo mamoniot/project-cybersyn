@@ -1111,7 +1111,9 @@ local function main()
 
 	script.on_configuration_changed(on_config_changed)
 
-	script.on_load(setup_se_compat)
+	script.on_load(function()
+		setup_se_compat()
+	end)
 end
 
 
