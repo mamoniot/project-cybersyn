@@ -106,3 +106,8 @@ Date: 2022-12-2
     - Fixed a bug with combinator displays not updating correctly
     - Improved combinator display performance
     - Added a modding interface
+---------------------------------------------------------------------------------------------------
+Version: 1.0.9
+Date: 2022-12-3
+  Features:
+    - Fixed a bug with SE compat preventing players from joining multiplayer games
