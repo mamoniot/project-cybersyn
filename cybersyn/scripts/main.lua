@@ -1,5 +1,4 @@
 --By Mami
-local flib_event = require("__flib__.event")
 local floor = math.floor
 local ceil = math.ceil
 local table_insert = table.insert
@@ -938,10 +937,10 @@ local function on_settings_changed(event)
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	if event.setting == "cybersyn-ticks-per-second" then
-		flib_event.on_nth_tick(nil)
+		script.on_nth_tick(nil)
 		if mod_settings.tps > DELTA then
-			local nth_tick = ceil(60/mod_settings.tps);
-			flib_event.on_nth_tick(nth_tick, function()
+			local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
+			script.on_nth_tick(nth_tick, function()
 				tick(global, mod_settings)
 			end)
 		end
@@ -980,51 +979,51 @@ local function main()
 	mod_settings.react_to_train_early_to_depot = true
 
 	--NOTE: There is a concern that it is possible to build or destroy important entities without one of these events being triggered, in which case the mod will have undefined behavior
-	flib_event.register(defines.events.on_built_entity, on_built, filter_built)
-	flib_event.register(defines.events.on_robot_built_entity, on_built, filter_built)
-	flib_event.register({defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, on_built)
+	script.on_event(defines.events.on_built_entity, on_built, filter_built)
+	script.on_event(defines.events.on_robot_built_entity, on_built, filter_built)
+	script.on_event({defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, on_built)
 
-	flib_event.register(defines.events.on_player_rotated_entity, on_rotate)
+	script.on_event(defines.events.on_player_rotated_entity, on_rotate)
 
-	flib_event.register(defines.events.on_pre_player_mined_item, on_broken, filter_broken)
-	flib_event.register(defines.events.on_robot_pre_mined, on_broken, filter_broken)
-	flib_event.register(defines.events.on_entity_died, on_broken, filter_broken)
-	flib_event.register(defines.events.script_raised_destroy, on_broken)
+	script.on_event(defines.events.on_pre_player_mined_item, on_broken, filter_broken)
+	script.on_event(defines.events.on_robot_pre_mined, on_broken, filter_broken)
+	script.on_event(defines.events.on_entity_died, on_broken, filter_broken)
+	script.on_event(defines.events.script_raised_destroy, on_broken)
 
-	flib_event.register({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
+	script.on_event({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
 
-	flib_event.register(defines.events.on_entity_settings_pasted, on_paste)
+	script.on_event(defines.events.on_entity_settings_pasted, on_paste)
 
 	if mod_settings.tps > DELTA then
-		local nth_tick = ceil(60/mod_settings.tps);
-		flib_event.on_nth_tick(nth_tick, function()
+		local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
+		script.on_nth_tick(nth_tick, function()
 			tick(global, mod_settings)
 		end)
 	else
-		flib_event.on_nth_tick(nil)
+		script.on_nth_tick(nil)
 	end
 
-	flib_event.register(defines.events.on_train_created, on_train_built)
-	flib_event.register(defines.events.on_train_changed_state, on_train_changed)
+	script.on_event(defines.events.on_train_created, on_train_built)
+	script.on_event(defines.events.on_train_changed_state, on_train_changed)
 
-	flib_event.register(defines.events.on_entity_renamed, on_rename)
+	script.on_event(defines.events.on_entity_renamed, on_rename)
 
-	flib_event.register(defines.events.on_runtime_mod_setting_changed, on_settings_changed)
+	script.on_event(defines.events.on_runtime_mod_setting_changed, on_settings_changed)
 
 	register_gui_actions()
 
-	flib_event.on_init(init_global)
+	script.on_init(init_global)
 
-	flib_event.on_configuration_changed(on_config_changed)
+	script.on_configuration_changed(on_config_changed)
 
 
 	if IS_SE_PRESENT then
-		flib_event.on_load(function()
+		script.on_load(function()
 			local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event")
 			local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event")
 
 
-			flib_event.register(se_on_train_teleport_started_event, function(event)
+			script.on_event(se_on_train_teleport_started_event, function(event)
 				---@type MapData
 				local map_data = global
 				local old_id = event.old_train_id_1
@@ -1039,7 +1038,7 @@ local function main()
 				map_data.se_tele_old_id[train_unique_identifier] = old_id
 				interface_raise_train_teleport_started(old_id)
 			end)
-			flib_event.register(se_on_train_teleport_finished_event, function(event)
+			script.on_event(se_on_train_teleport_finished_event, function(event)
 				---@type MapData
 				local map_data = global
 				---@type LuaTrain
