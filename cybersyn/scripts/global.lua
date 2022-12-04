@@ -98,8 +98,8 @@
 ---@alias cybersyn.global MapData
 ---@type CybersynModSettings
 mod_settings = {}
-
-IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
+---@type boolean
+IS_SE_PRESENT = nil
 
 function init_global()
 	global.total_ticks = 0
@@ -124,6 +124,7 @@ function init_global()
 	global.layout_train_count = {}
 	global.layout_top_id = 1
 
+	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if IS_SE_PRESENT then
 		global.se_tele_old_id = {}
 	end

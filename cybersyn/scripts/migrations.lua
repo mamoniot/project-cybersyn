@@ -189,6 +189,8 @@ local migrations_table = {
 ---@param data ConfigurationChangedData
 function on_config_changed(data)
 	flib_migration.on_config_changed(data, migrations_table)
+
+	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if IS_SE_PRESENT and not global.se_tele_old_id then
 		global.se_tele_old_id = {}
 	end

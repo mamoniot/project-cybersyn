@@ -1,5 +1,4 @@
 --By Mami
-local flib_event = require("__flib__.event")
 local floor = math.floor
 local ceil = math.ceil
 local table_insert = table.insert
@@ -938,14 +937,107 @@ local function on_settings_changed(event)
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	if event.setting == "cybersyn-ticks-per-second" then
-		flib_event.on_nth_tick(nil)
 		if mod_settings.tps > DELTA then
-			local nth_tick = ceil(60/mod_settings.tps);
-			flib_event.on_nth_tick(nth_tick, function()
+			local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
+			script.on_nth_tick(nth_tick, function()
 				tick(global, mod_settings)
 			end)
+		else
+			script.on_nth_tick(nil)
 		end
 	end
+end
+
+local function setup_se_compat()
+	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
+	if not IS_SE_PRESENT then return end
+
+	local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event")
+	local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event")
+
+	---@param event {}
+	script.on_event(se_on_train_teleport_started_event, function(event)
+		---@type MapData
+		local map_data = global
+		local old_id = event.old_train_id_1
+		--NOTE: this is not guaranteed to be unique, it should be fine since the window of time for another train to mistakenly steal this train's event data is miniscule
+		--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
+		local train_unique_identifier = event.train.front_stock.backer_name
+
+		local train = map_data.trains[old_id]
+		if not train then return end
+		--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; our events have either been set up to account for this or should be impossible to trigger until teleportation is finished
+		train.se_is_being_teleported = true
+		map_data.se_tele_old_id[train_unique_identifier] = old_id
+		interface_raise_train_teleport_started(old_id)
+	end)
+	---@param event {}
+	script.on_event(se_on_train_teleport_finished_event, function(event)
+		---@type MapData
+		local map_data = global
+		---@type LuaTrain
+		local train_entity = event.train
+		---@type uint
+		local new_id = train_entity.id
+		local old_surface_index = event.old_surface_index
+		local train_unique_identifier = event.train.front_stock.backer_name
+
+		--NOTE: event.old_train_id_1 from this event is useless, it's for one of the many transient trains SE spawns while teleporting the old train, only se_on_train_teleport_started_event returns the correct old train id
+		--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
+		local old_id = map_data.se_tele_old_id[train_unique_identifier]
+		map_data.se_tele_old_id[train_unique_identifier] = nil
+		local train = map_data.trains[old_id]
+		if not train then return end
+
+		if train.is_available then
+			local network = map_data.available_trains[train.network_name--[[@as string]]]
+			if network then
+				network[new_id] = true
+				network[old_id] = nil
+			end
+		end
+
+		map_data.trains[new_id] = train
+		map_data.trains[old_id] = nil
+		train.se_is_being_teleported = nil
+		train.entity = train_entity
+
+		if train.se_awaiting_removal then
+			remove_train(map_data, train.se_awaiting_removal, train)
+			lock_train(train.entity)
+			send_lost_train_alert(train.entity, train.depot_name)
+			return
+		elseif train.se_awaiting_rename then
+			rename_manifest_schedule(train.entity, train.se_awaiting_rename[1], train.se_awaiting_rename[2])
+			train.se_awaiting_rename = nil
+		end
+
+		if not (train.status == STATUS_D_TO_P or train.status == STATUS_P_TO_R) then return end
+
+		local schedule = train_entity.schedule
+		if schedule then
+			local p_station = map_data.stations[train.p_station_id]
+			local p_name = p_station.entity_stop.backer_name
+			local p_surface_i = p_station.entity_stop.surface.index
+			local r_station = map_data.stations[train.r_station_id]
+			local r_name = r_station.entity_stop.backer_name
+			local r_surface_i = r_station.entity_stop.surface.index
+			local records = schedule.records
+			local i = schedule.current
+			while i <= #records do
+				if records[i].station == p_name and p_surface_i ~= old_surface_index then
+					table_insert(records, i, create_direct_to_station_order(p_station.entity_stop))
+					i = i + 1
+				elseif records[i].station == r_name and r_surface_i ~= old_surface_index then
+					table_insert(records, i, create_direct_to_station_order(r_station.entity_stop))
+					i = i + 1
+				end
+				i = i + 1
+			end
+			train_entity.schedule = schedule
+		end
+		interface_raise_train_teleported(new_id, old_id)
+	end)
 end
 
 
@@ -980,133 +1072,49 @@ local function main()
 	mod_settings.react_to_train_early_to_depot = true
 
 	--NOTE: There is a concern that it is possible to build or destroy important entities without one of these events being triggered, in which case the mod will have undefined behavior
-	flib_event.register(defines.events.on_built_entity, on_built, filter_built)
-	flib_event.register(defines.events.on_robot_built_entity, on_built, filter_built)
-	flib_event.register({defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, on_built)
+	script.on_event(defines.events.on_built_entity, on_built, filter_built)
+	script.on_event(defines.events.on_robot_built_entity, on_built, filter_built)
+	script.on_event({defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, on_built)
 
-	flib_event.register(defines.events.on_player_rotated_entity, on_rotate)
+	script.on_event(defines.events.on_player_rotated_entity, on_rotate)
 
-	flib_event.register(defines.events.on_pre_player_mined_item, on_broken, filter_broken)
-	flib_event.register(defines.events.on_robot_pre_mined, on_broken, filter_broken)
-	flib_event.register(defines.events.on_entity_died, on_broken, filter_broken)
-	flib_event.register(defines.events.script_raised_destroy, on_broken)
+	script.on_event(defines.events.on_pre_player_mined_item, on_broken, filter_broken)
+	script.on_event(defines.events.on_robot_pre_mined, on_broken, filter_broken)
+	script.on_event(defines.events.on_entity_died, on_broken, filter_broken)
+	script.on_event(defines.events.script_raised_destroy, on_broken)
 
-	flib_event.register({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
+	script.on_event({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
 
-	flib_event.register(defines.events.on_entity_settings_pasted, on_paste)
+	script.on_event(defines.events.on_entity_settings_pasted, on_paste)
 
 	if mod_settings.tps > DELTA then
-		local nth_tick = ceil(60/mod_settings.tps);
-		flib_event.on_nth_tick(nth_tick, function()
+		local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
+		script.on_nth_tick(nth_tick, function()
 			tick(global, mod_settings)
 		end)
 	else
-		flib_event.on_nth_tick(nil)
+		script.on_nth_tick(nil)
 	end
 
-	flib_event.register(defines.events.on_train_created, on_train_built)
-	flib_event.register(defines.events.on_train_changed_state, on_train_changed)
+	script.on_event(defines.events.on_train_created, on_train_built)
+	script.on_event(defines.events.on_train_changed_state, on_train_changed)
 
-	flib_event.register(defines.events.on_entity_renamed, on_rename)
+	script.on_event(defines.events.on_entity_renamed, on_rename)
 
-	flib_event.register(defines.events.on_runtime_mod_setting_changed, on_settings_changed)
+	script.on_event(defines.events.on_runtime_mod_setting_changed, on_settings_changed)
 
 	register_gui_actions()
 
-	flib_event.on_init(init_global)
+	script.on_init(function()
+		init_global()
+		setup_se_compat()
+	end)
 
-	flib_event.on_configuration_changed(on_config_changed)
+	script.on_configuration_changed(on_config_changed)
 
-
-	if IS_SE_PRESENT then
-		flib_event.on_load(function()
-			local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event")
-			local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event")
-
-
-			flib_event.register(se_on_train_teleport_started_event, function(event)
-				---@type MapData
-				local map_data = global
-				local old_id = event.old_train_id_1
-				--NOTE: this is not guaranteed to be unique, it should be fine since the window of time for another train to mistakenly steal this train's event data is miniscule
-				--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
-				local train_unique_identifier = event.train.front_stock.backer_name
-
-				local train = map_data.trains[old_id]
-				if not train then return end
-				--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; our events have either been set up to account for this or should be impossible to trigger until teleportation is finished
-				train.se_is_being_teleported = true
-				map_data.se_tele_old_id[train_unique_identifier] = old_id
-				interface_raise_train_teleport_started(old_id)
-			end)
-			flib_event.register(se_on_train_teleport_finished_event, function(event)
-				---@type MapData
-				local map_data = global
-				---@type LuaTrain
-				local train_entity = event.train
-				---@type uint
-				local new_id = train_entity.id
-				local old_surface_index = event.old_surface_index
-				local train_unique_identifier = event.train.front_stock.backer_name
-
-				--NOTE: event.old_train_id_1 from this event is useless, it's for one of the many transient trains SE spawns while teleporting the old train, only se_on_train_teleport_started_event returns the correct old train id
-				--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
-				local old_id = map_data.se_tele_old_id[train_unique_identifier]
-				map_data.se_tele_old_id[train_unique_identifier] = nil
-				local train = map_data.trains[old_id]
-				if not train then return end
-
-				if train.is_available then
-					local network = map_data.available_trains[train.network_name--[[@as string]]]
-					if network then
-						network[new_id] = true
-						network[old_id] = nil
-					end
-				end
-
-				map_data.trains[new_id] = train
-				map_data.trains[old_id] = nil
-				train.se_is_being_teleported = nil
-				train.entity = train_entity
-
-				if train.se_awaiting_removal then
-					remove_train(map_data, train.se_awaiting_removal, train)
-					lock_train(train.entity)
-					send_lost_train_alert(train.entity, train.depot_name)
-					return
-				elseif train.se_awaiting_rename then
-					rename_manifest_schedule(train.entity, train.se_awaiting_rename[1], train.se_awaiting_rename[2])
-					train.se_awaiting_rename = nil
-				end
-
-				if not (train.status == STATUS_D_TO_P or train.status == STATUS_P_TO_R) then return end
-
-				local schedule = train_entity.schedule
-				if schedule then
-					local p_station = map_data.stations[train.p_station_id]
-					local p_name = p_station.entity_stop.backer_name
-					local p_surface_i = p_station.entity_stop.surface.index
-					local r_station = map_data.stations[train.r_station_id]
-					local r_name = r_station.entity_stop.backer_name
-					local r_surface_i = r_station.entity_stop.surface.index
-					local records = schedule.records
-					local i = schedule.current
-					while i <= #records do
-						if records[i].station == p_name and p_surface_i ~= old_surface_index then
-							table_insert(records, i, create_direct_to_station_order(p_station.entity_stop))
-							i = i + 1
-						elseif records[i].station == r_name and r_surface_i ~= old_surface_index then
-							table_insert(records, i, create_direct_to_station_order(r_station.entity_stop))
-							i = i + 1
-						end
-						i = i + 1
-					end
-					train_entity.schedule = schedule
-				end
-				interface_raise_train_teleported(new_id, old_id)
-			end)
-		end)
-	end
+	script.on_load(function()
+		setup_se_compat()
+	end)
 end
 
 
