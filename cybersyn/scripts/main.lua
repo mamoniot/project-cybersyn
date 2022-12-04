@@ -1017,95 +1017,97 @@ local function main()
 	script.on_configuration_changed(on_config_changed)
 
 
-	if IS_SE_PRESENT then
-		script.on_load(function()
-			local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event")
-			local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event")
+	script.on_load(function()
+		IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
+		if not IS_SE_PRESENT then return end
 
+		local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event")
+		local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event")
 
-			script.on_event(se_on_train_teleport_started_event, function(event)
-				---@type MapData
-				local map_data = global
-				local old_id = event.old_train_id_1
-				--NOTE: this is not guaranteed to be unique, it should be fine since the window of time for another train to mistakenly steal this train's event data is miniscule
-				--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
-				local train_unique_identifier = event.train.front_stock.backer_name
+		---@param event {}
+		script.on_event(se_on_train_teleport_started_event, function(event)
+			---@type MapData
+			local map_data = global
+			local old_id = event.old_train_id_1
+			--NOTE: this is not guaranteed to be unique, it should be fine since the window of time for another train to mistakenly steal this train's event data is miniscule
+			--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
+			local train_unique_identifier = event.train.front_stock.backer_name
 
-				local train = map_data.trains[old_id]
-				if not train then return end
-				--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; our events have either been set up to account for this or should be impossible to trigger until teleportation is finished
-				train.se_is_being_teleported = true
-				map_data.se_tele_old_id[train_unique_identifier] = old_id
-				interface_raise_train_teleport_started(old_id)
-			end)
-			script.on_event(se_on_train_teleport_finished_event, function(event)
-				---@type MapData
-				local map_data = global
-				---@type LuaTrain
-				local train_entity = event.train
-				---@type uint
-				local new_id = train_entity.id
-				local old_surface_index = event.old_surface_index
-				local train_unique_identifier = event.train.front_stock.backer_name
+			local train = map_data.trains[old_id]
+			if not train then return end
+			--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; our events have either been set up to account for this or should be impossible to trigger until teleportation is finished
+			train.se_is_being_teleported = true
+			map_data.se_tele_old_id[train_unique_identifier] = old_id
+			interface_raise_train_teleport_started(old_id)
+		end)
+		---@param event {}
+		script.on_event(se_on_train_teleport_finished_event, function(event)
+			---@type MapData
+			local map_data = global
+			---@type LuaTrain
+			local train_entity = event.train
+			---@type uint
+			local new_id = train_entity.id
+			local old_surface_index = event.old_surface_index
+			local train_unique_identifier = event.train.front_stock.backer_name
 
-				--NOTE: event.old_train_id_1 from this event is useless, it's for one of the many transient trains SE spawns while teleporting the old train, only se_on_train_teleport_started_event returns the correct old train id
-				--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
-				local old_id = map_data.se_tele_old_id[train_unique_identifier]
-				map_data.se_tele_old_id[train_unique_identifier] = nil
-				local train = map_data.trains[old_id]
-				if not train then return end
+			--NOTE: event.old_train_id_1 from this event is useless, it's for one of the many transient trains SE spawns while teleporting the old train, only se_on_train_teleport_started_event returns the correct old train id
+			--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
+			local old_id = map_data.se_tele_old_id[train_unique_identifier]
+			map_data.se_tele_old_id[train_unique_identifier] = nil
+			local train = map_data.trains[old_id]
+			if not train then return end
 
-				if train.is_available then
-					local network = map_data.available_trains[train.network_name--[[@as string]]]
-					if network then
-						network[new_id] = true
-						network[old_id] = nil
-					end
+			if train.is_available then
+				local network = map_data.available_trains[train.network_name--[[@as string]]]
+				if network then
+					network[new_id] = true
+					network[old_id] = nil
 				end
+			end
 
-				map_data.trains[new_id] = train
-				map_data.trains[old_id] = nil
-				train.se_is_being_teleported = nil
-				train.entity = train_entity
+			map_data.trains[new_id] = train
+			map_data.trains[old_id] = nil
+			train.se_is_being_teleported = nil
+			train.entity = train_entity
 
-				if train.se_awaiting_removal then
-					remove_train(map_data, train.se_awaiting_removal, train)
-					lock_train(train.entity)
-					send_lost_train_alert(train.entity, train.depot_name)
-					return
-				elseif train.se_awaiting_rename then
-					rename_manifest_schedule(train.entity, train.se_awaiting_rename[1], train.se_awaiting_rename[2])
-					train.se_awaiting_rename = nil
-				end
+			if train.se_awaiting_removal then
+				remove_train(map_data, train.se_awaiting_removal, train)
+				lock_train(train.entity)
+				send_lost_train_alert(train.entity, train.depot_name)
+				return
+			elseif train.se_awaiting_rename then
+				rename_manifest_schedule(train.entity, train.se_awaiting_rename[1], train.se_awaiting_rename[2])
+				train.se_awaiting_rename = nil
+			end
 
-				if not (train.status == STATUS_D_TO_P or train.status == STATUS_P_TO_R) then return end
+			if not (train.status == STATUS_D_TO_P or train.status == STATUS_P_TO_R) then return end
 
-				local schedule = train_entity.schedule
-				if schedule then
-					local p_station = map_data.stations[train.p_station_id]
-					local p_name = p_station.entity_stop.backer_name
-					local p_surface_i = p_station.entity_stop.surface.index
-					local r_station = map_data.stations[train.r_station_id]
-					local r_name = r_station.entity_stop.backer_name
-					local r_surface_i = r_station.entity_stop.surface.index
-					local records = schedule.records
-					local i = schedule.current
-					while i <= #records do
-						if records[i].station == p_name and p_surface_i ~= old_surface_index then
-							table_insert(records, i, create_direct_to_station_order(p_station.entity_stop))
-							i = i + 1
-						elseif records[i].station == r_name and r_surface_i ~= old_surface_index then
-							table_insert(records, i, create_direct_to_station_order(r_station.entity_stop))
-							i = i + 1
-						end
+			local schedule = train_entity.schedule
+			if schedule then
+				local p_station = map_data.stations[train.p_station_id]
+				local p_name = p_station.entity_stop.backer_name
+				local p_surface_i = p_station.entity_stop.surface.index
+				local r_station = map_data.stations[train.r_station_id]
+				local r_name = r_station.entity_stop.backer_name
+				local r_surface_i = r_station.entity_stop.surface.index
+				local records = schedule.records
+				local i = schedule.current
+				while i <= #records do
+					if records[i].station == p_name and p_surface_i ~= old_surface_index then
+						table_insert(records, i, create_direct_to_station_order(p_station.entity_stop))
+						i = i + 1
+					elseif records[i].station == r_name and r_surface_i ~= old_surface_index then
+						table_insert(records, i, create_direct_to_station_order(r_station.entity_stop))
 						i = i + 1
 					end
-					train_entity.schedule = schedule
+					i = i + 1
 				end
-				interface_raise_train_teleported(new_id, old_id)
-			end)
+				train_entity.schedule = schedule
+			end
+			interface_raise_train_teleported(new_id, old_id)
 		end)
-	end
+	end)
 end
 
 
