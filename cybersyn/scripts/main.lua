@@ -937,12 +937,13 @@ local function on_settings_changed(event)
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	if event.setting == "cybersyn-ticks-per-second" then
-		script.on_nth_tick(nil)
 		if mod_settings.tps > DELTA then
 			local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
 			script.on_nth_tick(nth_tick, function()
 				tick(global, mod_settings)
 			end)
+		else
+			script.on_nth_tick(nil)
 		end
 	end
 end
@@ -1105,8 +1106,8 @@ local function main()
 	register_gui_actions()
 
 	script.on_init(function()
-		setup_se_compat()
 		init_global()
+		setup_se_compat()
 	end)
 
 	script.on_configuration_changed(on_config_changed)
