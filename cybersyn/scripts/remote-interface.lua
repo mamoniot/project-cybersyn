@@ -350,7 +350,31 @@ end
 ------------------------------------------------------------------
 --[[unsafe API]]
 ------------------------------------------------------------------
---NOTE: The following functions can cause serious longterm damage to someone's world if they are given bad parameters. Use caution.
+--NOTE: The following functions can cause serious longterm damage to someone's world if they are given bad parameters. Please refer to global.lua for type information. Use caution.
+
+---@param key string
+---@param value any
+function interface.write_setting(key, value)
+	--be careful that the value you write is of the correct type specified in global.lua
+	mod_settings[key] = value
+end
+
+---@param ... string|uint|any
+function interface.write_global(value, ...)
+	--this can write anything into cybersyn's map_data, please be very careful with anything you write, it can cause permanent damage
+	--so interface.read_global(nil, "trains", 31415, "manifest") will cause global.trains[31415].manifest = nil (or return false if train 31415 does not exist)
+	local params = {...}
+	local size = #params
+	local key = params[size]
+	assert(key ~= nil)
+	local base = global
+	for i = 1, size - 1 do
+		base = base[params[i]]
+		if not base then return false end
+	end
+	base[key] = value
+	return true
+end
 
 ---@param station_id Station
 ---@param manifest Manifest
@@ -384,6 +408,9 @@ end
 
 ---@param train_id uint
 function interface.add_available_train(train_id)
+	--This function marks a train as available but not in a depot so it can do depot bypass, be sure the train has no active deliveries before calling this
+	--available trains can be chosen by the dispatcher to be rescheduled and dispatched for a new delivery
+	--when this train parks at a depot add_available_train_to_depot will be called on it automatically
 	local train = global.trains[train_id]
 	assert(train)
 	add_available_train(global, train_id, train)
@@ -391,6 +418,8 @@ end
 ---@param depot_id uint
 ---@param train_id uint
 function interface.add_available_train_to_depot(train_id, depot_id)
+	--This function marks a train as available and in a depot, be sure the train has no active deliveries before calling this
+	--available trains can be chosen by the dispatcher to be rescheduled and dispatched for a new delivery
 	local train = global.trains[train_id]
 	local depot = global.depots[depot_id]
 	assert(train and depot)
@@ -398,6 +427,7 @@ function interface.add_available_train_to_depot(train_id, depot_id)
 end
 ---@param train_id uint
 function interface.remove_available_train(train_id)
+	--this function removes a train from the available trains list so it cannot be rescheduled and dispatched. if the train was not already available nothing will happen
 	local train = global.trains[train_id]
 	assert(train)
 	remove_available_train(global, train_id, train)
@@ -431,14 +461,27 @@ interface.send_stuck_train_alert = send_stuck_train_alert
 ------------------------------------------------------------------
 --[[helper functions]]
 ------------------------------------------------------------------
---NOTE: the policy of cybersyn is to give modders access to the raw data of the mod, please either treat all tables returned from the modding interface as "read only", or if you do modify them take responsibility that your modification does not result in an error occuring in cybersyn later on.
---NOTE: the follow functions aren't strictly necessary; they are provided more as a guide how the mod api works rather than as practical functions.
+--NOTE: the policy of cybersyn is to give modders access to as much of the raw data of the mod as possible. Factorio only allows me to return copies of the original data rather than the actual thing, which sucks. The unsafe api has some tools to help you bypass this limitation.
 
-function interface.get_map_data()
-	return global
-end
 function interface.get_mod_settings()
 	return mod_settings
+end
+---@param key string
+function interface.read_setting(key)
+	return mod_settings[key]
+end
+---@param ... string|uint
+function interface.read_global(...)
+	--this can read anything off of cybersyn's map_data
+	--so interface.read_global("trains", 31415, "manifest") == global.trains[31415].manifest (or nil if train 31415 does not exist)
+	local base = global
+	local depth = 0
+	for i, v in ipairs({...}) do
+		depth = i
+		base = base[v]
+		if not base then break end
+	end
+	return base, depth
 end
 ---@param id uint
 function interface.get_station(id)

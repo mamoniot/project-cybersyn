@@ -17,7 +17,7 @@
 ---@field public tick_state uint
 ---@field public tick_data {}
 ---@field public economy Economy
----@field public se_tele_old_id {[any]: uint}
+---@field public se_tele_old_id {[string]: uint}
 
 ---@class Station
 ---@field public entity_stop LuaEntity
