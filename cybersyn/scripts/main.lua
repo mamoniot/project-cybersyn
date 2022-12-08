@@ -54,6 +54,14 @@ local function on_refueler_built(map_data, stop, comb)
 	local id = stop.unit_number--[[@as uint]]
 	map_data.refuelers[id] = refueler
 	update_stop_if_auto(map_data, refueler, false)
+	if refueler.network_name then
+		local network = map_data.to_refuelers[refueler.network_name]
+		if not network then
+			network = {}
+			map_data.to_refuelers[refueler.network_name] = network
+		end
+		network[id] = true
+	end
 	interface_raise_refueler_created(id)
 end
 ---@param map_data MapData
@@ -233,13 +241,13 @@ local function on_combinator_built(map_data, comb)
 	local params = control.parameters
 	local op = params.operation
 
-	if op == OPERATION_DEFAULT then
-		op = OPERATION_PRIMARY_IO
+	if op == MODE_DEFAULT then
+		op = MODE_PRIMARY_IO
 		params.operation = op
 		params.first_signal = NETWORK_SIGNAL_DEFAULT
 		control.parameters = params
-	elseif op ~= OPERATION_PRIMARY_IO and op ~= OPERATION_SECONDARY_IO and op ~= OPERATION_DEPOT and op ~= OPERATION_WAGON_MANIFEST then
-		op = OPERATION_PRIMARY_IO
+	elseif op ~= MODE_PRIMARY_IO and op ~= MODE_SECONDARY_IO and op ~= MODE_DEPOT and op ~= MODE_REFUELER and op ~= MODE_WAGON_MANIFEST then
+		op = MODE_PRIMARY_IO
 		params.operation = op
 		control.parameters = params
 	end
@@ -249,7 +257,7 @@ local function on_combinator_built(map_data, comb)
 	map_data.to_output[comb.unit_number] = out
 	map_data.to_stop[comb.unit_number] = stop
 
-	if op == OPERATION_WAGON_MANIFEST then
+	if op == MODE_WAGON_MANIFEST then
 		if rail then
 			update_stop_from_rail(map_data, rail, nil, true)
 		end
@@ -258,22 +266,22 @@ local function on_combinator_built(map_data, comb)
 		local station = map_data.stations[id]
 		local depot = map_data.depots[id]
 		local refueler = map_data.refuelers[id]
-		if op == OPERATION_DEPOT then
+		if op == MODE_DEPOT then
 			if refueler then
 				on_refueler_broken(map_data, id, refueler)
 			end
 			if not station and not depot then
 				on_depot_built(map_data, stop, comb)
 			end
-		elseif op == OPERATION_REFUELER then
+		elseif op == MODE_REFUELER then
 			if not station and not depot and not refueler then
-				on_depot_built(map_data, stop, comb)
+				on_refueler_built(map_data, stop, comb)
 			end
-		elseif op == OPERATION_SECONDARY_IO then
+		elseif op == MODE_SECONDARY_IO then
 			if station and not station.entity_comb2 then
 				station.entity_comb2 = comb
 			end
-		elseif op == OPERATION_PRIMARY_IO then
+		elseif op == MODE_PRIMARY_IO then
 			if refueler then
 				on_refueler_broken(map_data, id, refueler)
 			end
@@ -281,7 +289,7 @@ local function on_combinator_built(map_data, comb)
 				on_depot_broken(map_data, id, depot)
 			end
 			if not station then
-				local comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
+				local comb2 = search_for_station_combinator(map_data, stop, MODE_SECONDARY_IO, comb)
 				on_station_built(map_data, stop, comb, comb2)
 			end
 		end
@@ -353,7 +361,7 @@ function on_combinator_broken(map_data, comb)
 				on_station_broken(map_data, id, station)
 				on_stop_built(map_data, stop, comb)
 			elseif station.entity_comb2 == comb then
-				station.entity_comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
+				station.entity_comb2 = search_for_station_combinator(map_data, stop, MODE_SECONDARY_IO, comb)
 			end
 		else
 			local depot = map_data.depots[id]
@@ -391,9 +399,9 @@ function combinator_update(map_data, comb)
 	local has_changed = false
 
 	if params.operation ~= old_params.operation then
-		if (old_params.operation == OPERATION_PRIMARY_IO) and (params.operation == OPERATION_PRIMARY_IO_ACTIVE or params.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST) then
-			--make sure only OPERATION_PRIMARY_IO gets stored on map_data.to_comb_params
-			params.operation = OPERATION_PRIMARY_IO
+		if (old_params.operation == MODE_PRIMARY_IO) and (params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST) then
+			--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
+			params.operation = MODE_PRIMARY_IO
 		else
 			--NOTE: This is rather dangerous, we may need to actually implement operation changing
 			on_combinator_broken(map_data, comb)
@@ -461,13 +469,13 @@ function on_stop_built(map_data, stop, comb_forbidden)
 			map_data.to_stop[entity.unit_number] = stop
 			local param = get_comb_params(entity)
 			local op = param.operation
-			if op == OPERATION_PRIMARY_IO then
+			if op == MODE_PRIMARY_IO then
 				comb1 = entity
-			elseif op == OPERATION_SECONDARY_IO then
+			elseif op == MODE_SECONDARY_IO then
 				comb2 = entity
-			elseif op == OPERATION_DEPOT then
+			elseif op == MODE_DEPOT then
 				depot_comb = entity
-			elseif op == OPERATION_REFUELER then
+			elseif op == MODE_REFUELER then
 				refueler_comb = entity
 			end
 		end

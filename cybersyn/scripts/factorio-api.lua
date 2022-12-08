@@ -268,15 +268,15 @@ function get_comb_gui_settings(comb)
 		switch_state = "right"
 	end
 
-	if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_FAILED_REQUEST then
+	if op == MODE_PRIMARY_IO or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
 		selected_index = 1
-	elseif op == OPERATION_SECONDARY_IO then
+	elseif op == MODE_SECONDARY_IO then
 		selected_index = 2
-	elseif op == OPERATION_DEPOT then
+	elseif op == MODE_DEPOT then
 		selected_index = 3
-	elseif op == OPERATION_REFUELER then
+	elseif op == MODE_REFUELER then
 		selected_index = 4
-	elseif op == OPERATION_WAGON_MANIFEST then
+	elseif op == MODE_WAGON_MANIFEST then
 		selected_index = 5
 	end
 	return selected_index, params.first_signal, not allows_all_trains, switch_state
@@ -336,13 +336,13 @@ function update_display(map_data, station)
 		local control = get_comb_control(comb)
 		local params = control.parameters
 		--NOTE: the following check can cause a bug where the display desyncs if the player changes the operation of the combinator and then changes it back before the mod can notice, however removing it causes a bug where the user's change is overwritten and ignored. Everything's bad we need an event to catch copy-paste by blueprint.
-		if params.operation == OPERATION_PRIMARY_IO or params.operation == OPERATION_PRIMARY_IO_ACTIVE or params.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST then
+		if params.operation == MODE_PRIMARY_IO or params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
 			if station.display_state >= 2 then
-				params.operation = OPERATION_PRIMARY_IO_ACTIVE
+				params.operation = MODE_PRIMARY_IO_ACTIVE
 			elseif station.display_state == 1 then
-				params.operation = OPERATION_PRIMARY_IO_FAILED_REQUEST
+				params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
 			else
-				params.operation = OPERATION_PRIMARY_IO
+				params.operation = MODE_PRIMARY_IO
 			end
 			control.parameters = params
 		end

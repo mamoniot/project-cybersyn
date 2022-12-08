@@ -330,7 +330,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 				local best_refueler_id = nil
 				local best_dist = INF
 				local best_prior = -INF
-				for i, id in ipairs(refuelers) do
+				for id, _ in pairs(refuelers) do
 					local refueler = map_data.refuelers[id]
 					set_refueler_from_comb(mod_settings, refueler)
 					if bit32.btest(train.network_flag, refueler.network_flag) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then

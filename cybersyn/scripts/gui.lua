@@ -145,35 +145,35 @@ function register_gui_actions()
 				local bottom_flow = all_flow.bottom
 				local param
 				if element.selected_index == 1 then
-					set_comb_operation(comb, OPERATION_PRIMARY_IO)
+					set_comb_operation(comb, MODE_PRIMARY_IO)
 					top_flow["switch"].visible = true
 					all_flow["network_label"].visible = true
 					bottom_flow["network"].visible = true
 					bottom_flow["radio_button"].visible = true
 					bottom_flow["radio_label"].visible = true
 				elseif element.selected_index == 2 then
-					set_comb_operation(comb, OPERATION_SECONDARY_IO)
+					set_comb_operation(comb, MODE_SECONDARY_IO)
 					top_flow["switch"].visible = false
 					all_flow["network_label"].visible = false
 					bottom_flow["network"].visible = false
 					bottom_flow["radio_button"].visible = false
 					bottom_flow["radio_label"].visible = false
 				elseif element.selected_index == 3 then
-					set_comb_operation(comb, OPERATION_DEPOT)
+					set_comb_operation(comb, MODE_DEPOT)
 					top_flow["switch"].visible = false
 					all_flow["network_label"].visible = true
 					bottom_flow["network"].visible = true
 					bottom_flow["radio_button"].visible = false
 					bottom_flow["radio_label"].visible = false
 				elseif element.selected_index == 4 then
-					set_comb_operation(comb, OPERATION_REFUELER)
+					set_comb_operation(comb, MODE_REFUELER)
 					top_flow["switch"].visible = false
 					all_flow["network_label"].visible = true
 					bottom_flow["network"].visible = true
 					bottom_flow["radio_button"].visible = true
 					bottom_flow["radio_label"].visible = true
 				elseif element.selected_index == 5 then
-					set_comb_operation(comb, OPERATION_WAGON_MANIFEST)
+					set_comb_operation(comb, MODE_WAGON_MANIFEST)
 					top_flow["switch"].visible = false
 					all_flow["network_label"].visible = false
 					bottom_flow["network"].visible = false
