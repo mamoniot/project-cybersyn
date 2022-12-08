@@ -658,7 +658,8 @@ local function on_settings_changed(event)
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.depot_bypass_threshold = settings.global["cybersyn-depot-bypass-threshold"].value--[[@as double]]
+	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
+	mod_settings.depot_bypass_enabled = settings.global["cybersyn-depot-bypass-enabled"].value--[[@as boolean]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	if event.setting == "cybersyn-ticks-per-second" then
@@ -802,9 +803,10 @@ local function main()
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.depot_bypass_threshold = settings.global["cybersyn-depot-bypass-threshold"].value--[[@as double]]
+	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
+	mod_settings.depot_bypass_enabled = settings.global["cybersyn-depot-bypass-enabled"].value--[[@as boolean]]
 
 	mod_settings.missing_train_alert_enabled = true
 	mod_settings.stuck_train_alert_enabled = true

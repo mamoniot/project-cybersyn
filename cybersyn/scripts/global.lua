@@ -105,7 +105,8 @@
 ---@field public network_flag int
 ---@field public warmup_time double
 ---@field public stuck_train_time double
----@field public depot_bypass_threshold double
+---@field public fuel_threshold double
+---@field public depot_bypass_enabled boolean
 ---@field public missing_train_alert_enabled boolean --interface setting
 ---@field public stuck_train_alert_enabled boolean --interface setting
 ---@field public react_to_nonempty_train_in_depot boolean --interface setting

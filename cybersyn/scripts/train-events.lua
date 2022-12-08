@@ -311,19 +311,14 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 				end
 			end
 		end
-		if total_slots == 0 then
-			--if total_slots == 0 it's probably a modded electric train
-			if mod_settings.depot_bypass_threshold < 1 then
+		if total_slots == 0 or fuel_fill/total_slots > mod_settings.fuel_threshold then
+			--if total_slots == 0, it's probably a modded electric train
+			if mod_settings.depot_bypass_enabled then
 				train.status = STATUS_TO_D_BYPASS
 				add_available_train(map_data, train_id, train)
 				interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_D_BYPASS)
 				return
 			end
-		elseif fuel_fill/total_slots > mod_settings.depot_bypass_threshold then
-			train.status = STATUS_TO_D_BYPASS
-			add_available_train(map_data, train_id, train)
-			interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_D_BYPASS)
-			return
 		else
 			local refuelers = map_data.to_refuelers[train.network_name]
 			if refuelers then
@@ -363,13 +358,17 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_D)
 	elseif train.status == STATUS_F then
 		local refueler = map_data.refuelers[train.refueler_id]
-		train.status = STATUS_TO_D_BYPASS
 		train.refueler_id = nil
 		refueler.trains_total = refueler.trains_total - 1
-		add_available_train(map_data, train_id, train)
 		unset_wagon_combs(map_data, refueler)
 		set_combinator_output(map_data, refueler.entity_comb, nil)
-		interface_raise_train_status_changed(train_id, STATUS_F, STATUS_TO_D_BYPASS)
+		if mod_settings.depot_bypass_enabled then
+			train.status = STATUS_TO_D_BYPASS
+			add_available_train(map_data, train_id, train)
+		else
+			train.status = STATUS_TO_D
+		end
+		interface_raise_train_status_changed(train_id, STATUS_F, train.status)
 	elseif train.status == STATUS_D then
 		--The train is leaving the depot without a manifest, the player likely intervened
 		local depot = map_data.depots[train.parked_at_depot_id--[[@as uint]]]
