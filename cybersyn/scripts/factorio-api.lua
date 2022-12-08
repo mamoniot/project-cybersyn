@@ -291,11 +291,11 @@ function get_comb_gui_settings(comb)
 
 	if op == MODE_PRIMARY_IO or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
 		selected_index = 1
-	elseif op == MODE_SECONDARY_IO then
-		selected_index = 2
 	elseif op == MODE_DEPOT then
-		selected_index = 3
+		selected_index = 2
 	elseif op == MODE_REFUELER then
+		selected_index = 3
+	elseif op == MODE_SECONDARY_IO then
 		selected_index = 4
 	elseif op == MODE_WAGON_MANIFEST then
 		selected_index = 5

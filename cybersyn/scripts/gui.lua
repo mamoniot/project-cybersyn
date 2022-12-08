@@ -60,9 +60,9 @@ function gui_opened(comb, player)
 							on_selection_state_changed={"drop-down", comb.unit_number}
 						}, selected_index=selected_index, items={
 							{"cybersyn-gui.comb1"},
-							{"cybersyn-gui.comb2"},
 							{"cybersyn-gui.depot"},
 							{"cybersyn-gui.refueler"},
+							{"cybersyn-gui.comb2"},
 							{"cybersyn-gui.wagon-manifest"},
 						}},
 						{type="switch", name="switch", ref={"switch"}, allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, actions={
@@ -152,26 +152,26 @@ function register_gui_actions()
 					bottom_flow["radio_button"].visible = true
 					bottom_flow["radio_label"].visible = true
 				elseif element.selected_index == 2 then
-					set_comb_operation(comb, MODE_SECONDARY_IO)
-					top_flow["switch"].visible = false
-					all_flow["network_label"].visible = false
-					bottom_flow["network"].visible = false
-					bottom_flow["radio_button"].visible = false
-					bottom_flow["radio_label"].visible = false
-				elseif element.selected_index == 3 then
 					set_comb_operation(comb, MODE_DEPOT)
 					top_flow["switch"].visible = false
 					all_flow["network_label"].visible = true
 					bottom_flow["network"].visible = true
 					bottom_flow["radio_button"].visible = false
 					bottom_flow["radio_label"].visible = false
-				elseif element.selected_index == 4 then
+				elseif element.selected_index == 3 then
 					set_comb_operation(comb, MODE_REFUELER)
 					top_flow["switch"].visible = false
 					all_flow["network_label"].visible = true
 					bottom_flow["network"].visible = true
 					bottom_flow["radio_button"].visible = true
 					bottom_flow["radio_label"].visible = true
+				elseif element.selected_index == 4 then
+					set_comb_operation(comb, MODE_SECONDARY_IO)
+					top_flow["switch"].visible = false
+					all_flow["network_label"].visible = false
+					bottom_flow["network"].visible = false
+					bottom_flow["radio_button"].visible = false
+					bottom_flow["radio_label"].visible = false
 				elseif element.selected_index == 5 then
 					set_comb_operation(comb, MODE_WAGON_MANIFEST)
 					top_flow["switch"].visible = false
