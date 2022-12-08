@@ -175,7 +175,7 @@ function send_train_between(map_data, r_station_id, p_station_id, train_id, prim
 	end
 	--NOTE: we assume that the train is not being teleported at this time
 	if set_manifest_schedule(train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, r_station.entity_stop, manifest, depot_id ~= nil) then
-		train.status = STATUS_D_TO_P
+		train.status = STATUS_TO_P
 		train.p_station_id = p_station_id
 		train.r_station_id = r_station_id
 		train.manifest = manifest

@@ -117,4 +117,5 @@ Date: 2022-12-5
   Features:
     - Added the ability to use the priority signal as input to optional station control so one can override priority on items with optional station control thresholds
     - Added refueler stations
+    - Slightly more permissive allow-list logic
     - Fixed a crash relating to wagon control combinators on request stations

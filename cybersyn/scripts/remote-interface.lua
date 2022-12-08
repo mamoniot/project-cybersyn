@@ -330,21 +330,27 @@ end
 function interface.is_layout_accepted(layout_pattern, layout)
 	return is_layout_accepted(layout_pattern, layout)
 end
----@param station_id uint
+---@param stop_id uint
 ---@param forbidden_entity LuaEntity?
 ---@param force_update boolean?
-function interface.reset_station_layout(station_id, forbidden_entity, force_update)
-	local station = global.stations[station_id]
-	assert(station)
-	if force_update or not station.allows_all_trains then
-		reset_station_layout(global, station, forbidden_entity)
+function interface.reset_stop_layout(stop_id, forbidden_entity, force_update)
+	local is_station = true
+	---@type Refueler|Station
+	local stop = global.stations[stop_id]
+	if not stop then
+		is_station = false
+		stop = global.refuelers[stop_id]
+	end
+	assert(stop)
+	if force_update or not stop.allows_all_trains then
+		reset_stop_layout(global, stop, is_station, forbidden_entity)
 	end
 end
 ---@param rail LuaEntity
 ---@param forbidden_entity LuaEntity?
 ---@param force_update boolean?
-function interface.update_station_from_rail(rail, forbidden_entity, force_update)
-	update_station_from_rail(global, rail, forbidden_entity, force_update)
+function interface.update_stop_from_rail(rail, forbidden_entity, force_update)
+	update_stop_from_rail(global, rail, forbidden_entity, force_update)
 end
 
 ------------------------------------------------------------------

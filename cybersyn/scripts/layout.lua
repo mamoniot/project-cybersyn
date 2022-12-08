@@ -30,11 +30,11 @@ end
 
 ---@param layout_pattern (0|1|2|3)[]
 ---@param layout (0|1|2)[]
-function is_layout_accepted(layout_pattern, layout)
+function is_refuel_layout_accepted(layout_pattern, layout)
 	local valid = true
 	for i, v in ipairs(layout) do
 		local p = layout_pattern[i] or 0
-		if (v == 0 and p == 2) or (v == 1 and (p == 0 or p == 2)) or (v == 2 and (p == 0 or p == 1)) then
+		if (v == 1 and (p == 1 or p == 3)) or (v == 2 and (p == 2 or p == 3)) then
 			valid = false
 			break
 		end
@@ -42,7 +42,28 @@ function is_layout_accepted(layout_pattern, layout)
 	if valid or not layout[0] then return valid end
 	for i, v in irpairs(layout) do
 		local p = layout_pattern[i] or 0
-		if (v == 0 and p == 2) or (v == 1 and (p == 0 or p == 2)) or (v == 2 and (p == 0 or p == 1)) then
+		if (v == 1 and (p == 1 or p == 3)) or (v == 2 and (p == 2 or p == 3)) then
+			valid = false
+			break
+		end
+	end
+	return valid
+end
+---@param layout_pattern (0|1|2|3)[]
+---@param layout (0|1|2)[]
+function is_layout_accepted(layout_pattern, layout)
+	local valid = true
+	for i, v in ipairs(layout) do
+		local p = layout_pattern[i] or 0
+		if (v == 1 and not (p == 1 or p == 3)) or (v == 2 and not (p == 2 or p == 3)) then
+			valid = false
+			break
+		end
+	end
+	if valid or not layout[0] then return valid end
+	for i, v in irpairs(layout) do
+		local p = layout_pattern[i] or 0
+		if (v == 1 and not (p == 1 or p == 3)) or (v == 2 and not (p == 2 or p == 3)) then
 			valid = false
 			break
 		end
@@ -142,7 +163,7 @@ end
 function set_p_wagon_combs(map_data, station, train)
 	if not station.wagon_combs or not next(station.wagon_combs) then return end
 	local carriages = train.entity.carriages
-	local manifest = train.manifest
+	local manifest = train.manifest--[[@as Manifest]]
 
 	local is_reversed = get_train_direction(station.entity_stop, train.entity)
 
@@ -325,57 +346,58 @@ end
 
 
 ---@param map_data MapData
----@param station Station
+---@param stop Station|Refueler
+---@param is_station_or_refueler boolean
 ---@param forbidden_entity LuaEntity?
-function reset_station_layout(map_data, station, forbidden_entity)
+function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_entity)
 	--NOTE: station must be in auto mode
-	local station_rail = station.entity_stop.connected_rail
-	if station_rail == nil then
+	local stop_rail = stop.entity_stop.connected_rail
+	if stop_rail == nil then
 		--cannot accept deliveries
-		station.layout_pattern = nil
-		station.accepted_layouts = {}
+		stop.layout_pattern = nil
+		stop.accepted_layouts = {}
 		return
 	end
-	local rail_direction_from_station
-	if station.entity_stop.connected_rail_direction == defines.rail_direction.front then
-		rail_direction_from_station = defines.rail_direction.back
+	local rail_direction_from_stop
+	if stop.entity_stop.connected_rail_direction == defines.rail_direction.front then
+		rail_direction_from_stop = defines.rail_direction.back
 	else
-		rail_direction_from_station = defines.rail_direction.front
+		rail_direction_from_stop = defines.rail_direction.front
 	end
-	local station_direction = station.entity_stop.direction
-	local surface = station.entity_stop.surface
-	local middle_x = station_rail.position.x
-	local middle_y = station_rail.position.y
+	local stop_direction = stop.entity_stop.direction
+	local surface = stop.entity_stop.surface
+	local middle_x = stop_rail.position.x
+	local middle_y = stop_rail.position.y
 	local reach = LONGEST_INSERTER_REACH + 1
 	local search_area
 	local area_delta
 	local is_ver
-	if station_direction == defines.direction.north then
+	if stop_direction == defines.direction.north then
 		search_area = {left_top = {x = middle_x - reach, y = middle_y}, right_bottom = {x = middle_x + reach, y = middle_y + 6}}
 		area_delta = {x = 0, y = 7}
 		is_ver = true
-	elseif station_direction == defines.direction.east then
+	elseif stop_direction == defines.direction.east then
 		search_area = {left_top = {y = middle_y - reach, x = middle_x - 6}, right_bottom = {y = middle_y + reach, x = middle_x}}
 		area_delta = {x = -7, y = 0}
 		is_ver = false
-	elseif station_direction == defines.direction.south then
+	elseif stop_direction == defines.direction.south then
 		search_area = {left_top = {x = middle_x - reach, y = middle_y - 6}, right_bottom = {x = middle_x + reach, y = middle_y}}
 		area_delta = {x = 0, y = -7}
 		is_ver = true
-	elseif station_direction == defines.direction.west then
+	elseif stop_direction == defines.direction.west then
 		search_area = {left_top = {y = middle_y - reach, x = middle_x}, right_bottom = {y = middle_y + reach, x = middle_x + 6}}
 		area_delta = {x = 7, y = 0}
 		is_ver = false
 	else
-		assert(false, "cybersyn: invalid station direction")
+		assert(false, "cybersyn: invalid stop direction")
 	end
 	local length = 2
-	local pre_rail = station_rail
+	local pre_rail = stop_rail
 	local layout_pattern = {0}
 	local type_filter = {"inserter", "pump", "arithmetic-combinator"}
 	local wagon_number = 0
 	for i = 1, 112 do
-		local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({rail_direction = rail_direction_from_station, rail_connection_direction = defines.rail_connection_direction.straight})
+		local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({rail_direction = rail_direction_from_stop, rail_connection_direction = defines.rail_connection_direction.straight})
 		if not rail or rail_connection_direction ~= defines.rail_connection_direction.straight or not rail.valid then
 			is_break = true
 			break
@@ -426,7 +448,7 @@ function reset_station_layout(map_data, station, forbidden_entity)
 								supports_fluid = true
 							end
 						end
-					elseif entity.name == COMBINATOR_NAME then
+					elseif entity.name == COMBINATOR_NAME and is_station_or_refueler then
 						local param = map_data.to_comb_params[entity.unit_number]
 						if param.operation == OPERATION_WAGON_MANIFEST then
 							local pos = entity.position
@@ -437,10 +459,10 @@ function reset_station_layout(map_data, station, forbidden_entity)
 								is_there = middle_y - 2.1 <= pos.y and pos.y <= middle_y + 2.1
 							end
 							if is_there then
-								if not station.wagon_combs then
-									station.wagon_combs = {}
+								if not stop.wagon_combs then
+									stop.wagon_combs = {}
 								end
-								station.wagon_combs[wagon_number] = entity
+								stop.wagon_combs[wagon_number] = entity
 							end
 						end
 					end
@@ -461,18 +483,19 @@ function reset_station_layout(map_data, station, forbidden_entity)
 			search_area = area.move(search_area, area_delta)
 		end
 	end
-	station.layout_pattern = layout_pattern
+	stop.layout_pattern = layout_pattern
 	for id, layout in pairs(map_data.layouts) do
-		station.accepted_layouts[id] = is_layout_accepted(layout_pattern, layout) or nil
+		stop.accepted_layouts[id] = is_layout_accepted(layout_pattern, layout) or nil
 	end
 end
 
 ---@param map_data MapData
----@param station Station
+---@param stop Station|Refueler
+---@param is_station_or_refueler boolean
 ---@param forbidden_entity LuaEntity?
-function update_station_if_auto(map_data, station, forbidden_entity)
-	if not station.allows_all_trains then
-		reset_station_layout(map_data, station, forbidden_entity)
+function update_stop_if_auto(map_data, stop, is_station_or_refueler, forbidden_entity)
+	if not stop.allows_all_trains then
+		reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_entity)
 	end
 end
 
@@ -480,7 +503,7 @@ end
 ---@param rail LuaEntity
 ---@param forbidden_entity LuaEntity?
 ---@param force boolean?
-function update_station_from_rail(map_data, rail, forbidden_entity, force)
+function update_stop_from_rail(map_data, rail, forbidden_entity, force)
 	--NOTE: is this a correct way to figure out the direction?
 	---@type defines.rail_direction
 	local rail_direction = defines.rail_direction.back
@@ -494,12 +517,18 @@ function update_station_from_rail(map_data, rail, forbidden_entity, force)
 			return
 		end
 		if entity.name == "train-stop" then
-			local station = map_data.stations[entity.unit_number]
-			if station then
+			local id = entity.unit_number
+			local is_station = true
+			local stop = map_data.stations[id]
+			if not stop then
+				stop = map_data.refuelers[id]
+				is_station = false
+			end
+			if stop then
 				if force then
-					reset_station_layout(map_data, station, forbidden_entity)
-				else
-					update_station_if_auto(map_data, station, forbidden_entity)
+					reset_stop_layout(map_data, stop, is_station, forbidden_entity)
+				elseif not stop.allows_all_trains then
+					reset_stop_layout(map_data, stop, is_station, forbidden_entity)
 				end
 			end
 			return
@@ -516,15 +545,15 @@ end
 ---@param map_data MapData
 ---@param pump LuaEntity
 ---@param forbidden_entity LuaEntity?
-function update_station_from_pump(map_data, pump, forbidden_entity)
+function update_stop_from_pump(map_data, pump, forbidden_entity)
 	if pump.pump_rail_target then
-		update_station_from_rail(map_data, pump.pump_rail_target, forbidden_entity)
+		update_stop_from_rail(map_data, pump.pump_rail_target, forbidden_entity)
 	end
 end
 ---@param map_data MapData
 ---@param inserter LuaEntity
 ---@param forbidden_entity LuaEntity?
-function update_station_from_inserter(map_data, inserter, forbidden_entity)
+function update_stop_from_inserter(map_data, inserter, forbidden_entity)
 	local surface = inserter.surface
 
 	--NOTE: we don't use find_entity solely for miniloader compat
@@ -534,7 +563,7 @@ function update_station_from_inserter(map_data, inserter, forbidden_entity)
 		radius = 1,
 	})
 	if rails[1] then
-		update_station_from_rail(map_data, rails[1], forbidden_entity)
+		update_stop_from_rail(map_data, rails[1], forbidden_entity)
 	end
 	rails = surface.find_entities_filtered({
 		type = "straight-rail",
@@ -542,6 +571,6 @@ function update_station_from_inserter(map_data, inserter, forbidden_entity)
 		radius = 1,
 	})
 	if rails[1] then
-		update_station_from_rail(map_data, rails[1], forbidden_entity)
+		update_stop_from_rail(map_data, rails[1], forbidden_entity)
 	end
 end
