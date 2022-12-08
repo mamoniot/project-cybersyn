@@ -672,6 +672,7 @@ local function on_settings_changed(event)
 			script.on_nth_tick(nil)
 		end
 	end
+	interface_raise_on_mod_settings_changed(event)
 end
 
 local function setup_se_compat()

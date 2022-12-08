@@ -26,6 +26,7 @@ local on_train_stuck = nil
 local on_train_teleport_started = nil
 local on_train_teleported = nil
 local on_tick_init = nil
+local on_mod_settings_changed = nil
 
 local interface = {}
 ------------------------------------------------------------------
@@ -103,6 +104,10 @@ end
 function interface.get_on_tick_init()
 	if not on_tick_init then on_tick_init = script_generate_event_name() end
 	return on_tick_init
+end
+function interface.get_on_mod_settings_changed()
+	if not on_mod_settings_changed then on_mod_settings_changed = script_generate_event_name() end
+	return on_mod_settings_changed
 end
 
 
@@ -535,5 +540,10 @@ function interface_raise_tick_init()
 	if on_tick_init then
 		raise_event(on_tick_init, {
 		})
+	end
+end
+function interface_raise_on_mod_settings_changed(e)
+	if on_mod_settings_changed then
+		raise_event(on_mod_settings_changed, e)
 	end
 end
