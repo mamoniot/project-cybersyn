@@ -133,7 +133,10 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 	local t_surface_i = t_surface.index
 	local p_surface_i = p_surface.index
 	local r_surface_i = r_surface.index
-	if t_surface_i == p_surface_i and p_surface_i == r_surface_i and d_surface_i == t_surface_i then
+	local is_p_on_t = t_surface_i == p_surface_i
+	local is_r_on_t = t_surface_i == r_surface_i
+	local is_d_on_t = t_surface_i == d_surface_i
+	if is_p_on_t and is_r_on_t and is_d_on_t then
 		train.schedule = {current = start_at_depot and 1 or 2, records = {
 			create_inactivity_order(depot_name),
 			create_direct_to_station_order(p_stop),
@@ -147,39 +150,43 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 		else
 			return true
 		end
-	elseif IS_SE_PRESENT and (t_surface_i == p_surface_i or p_surface_i == r_surface_i or r_surface_i == t_surface_i) then
-		local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})
-		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = (t_surface_i == p_surface_i) and r_surface_i or p_surface_i})
-		local is_train_in_orbit = other_zone.orbit_index == t_zone.index
-		if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
-			local elevator_name = se_get_space_elevator_name(t_surface)
-			if elevator_name then
-				local records = {create_inactivity_order(depot_name)}
-				if t_surface_i == p_surface_i then
-					records[#records + 1] = create_direct_to_station_order(p_stop)
-				else
-					records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
-					is_train_in_orbit = not is_train_in_orbit
-				end
-				records[#records + 1] = create_loading_order(p_stop, manifest)
-				if t_surface_i == r_surface_i then
-					records[#records + 1] = create_direct_to_station_order(r_stop)
-				elseif p_surface_i ~= r_surface_i then
-					records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
-					is_train_in_orbit = not is_train_in_orbit
-				end
-				records[#records + 1] = create_unloading_order(r_stop)
-				if r_surface_i ~= d_surface_i then
-					records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
-					is_train_in_orbit = not is_train_in_orbit
-				end
+	elseif IS_SE_PRESENT then
+		local other_surface_i = (not is_p_on_t and p_surface_i) or (not is_r_on_t and r_surface_i) or d_surface_i
+		if (is_p_on_t or p_surface_i == other_surface_i) and (is_r_on_t or r_surface_i == other_surface_i) and (is_d_on_t or d_surface_i == other_surface_i) then
+			local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})
+			local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = other_surface_i})
+			local is_train_in_orbit = other_zone.orbit_index == t_zone.index
+			if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
+				local elevator_name = se_get_space_elevator_name(t_surface)
+				if elevator_name then
+					local records = {create_inactivity_order(depot_name)}
+					if t_surface_i == p_surface_i then
+						records[#records + 1] = create_direct_to_station_order(p_stop)
+					else
+						records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
+						is_train_in_orbit = not is_train_in_orbit
+					end
+					records[#records + 1] = create_loading_order(p_stop, manifest)
 
-				train.schedule = {current = start_at_depot and 1 or 2, records = records}
-				if old_schedule and not train.has_path then
-					train.schedule = old_schedule
-					return false
-				else
-					return true
+					if p_surface_i ~= r_surface_i then
+						records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
+						is_train_in_orbit = not is_train_in_orbit
+					elseif t_surface_i == r_surface_i then
+						records[#records + 1] = create_direct_to_station_order(r_stop)
+					end
+					records[#records + 1] = create_unloading_order(r_stop)
+					if r_surface_i ~= d_surface_i then
+						records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
+						is_train_in_orbit = not is_train_in_orbit
+					end
+
+					train.schedule = {current = start_at_depot and 1 or 2, records = records}
+					if old_schedule and not train.has_path then
+						train.schedule = old_schedule
+						return false
+					else
+						return true
+					end
 				end
 			end
 		end
@@ -197,7 +204,8 @@ end
 
 ---@param train LuaTrain
 ---@param stop LuaEntity
-function add_refueler_schedule(train, stop)
+---@param depot_name string
+function add_refueler_schedule(train, stop, depot_name)
 	local schedule = train.schedule or {current = 1, records = {}}
 	local i = schedule.current
 	if i == 1 then
@@ -215,9 +223,10 @@ function add_refueler_schedule(train, stop)
 		table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
 
 		train.schedule = schedule
+		return
 	elseif IS_SE_PRESENT then
 		local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})
-		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = f_surface})
+		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = f_surface_i})
 		local is_train_in_orbit = other_zone.orbit_index == t_zone.index
 		if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
 			local elevator_name = se_get_space_elevator_name(t_surface)
@@ -235,8 +244,16 @@ function add_refueler_schedule(train, stop)
 				i = i + 1
 				is_train_in_orbit = not is_train_in_orbit
 			end
+
+			train.schedule = schedule
+			return
 		end
 	end
+	--create an order that probably cannot be fulfilled and alert the player
+	table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
+	lock_train(train)
+	send_lost_train_alert(train, depot_name)
+	train.schedule = schedule
 end
 
 

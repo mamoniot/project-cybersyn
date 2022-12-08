@@ -352,7 +352,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 					train.refueler_id = best_refueler_id
 					local refueler = map_data.refuelers[best_refueler_id]
 					refueler.trains_total = refueler.trains_total + 1
-					add_refueler_schedule(train.entity, refueler.entity_stop)
+					add_refueler_schedule(train.entity, refueler.entity_stop, train.depot_name)
 					interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_F)
 					return
 				end
