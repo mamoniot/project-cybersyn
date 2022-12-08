@@ -73,8 +73,26 @@ local migrations_table = {
 		local map_data = global
 		map_data.tick_state = STATE_INIT
 		map_data.tick_data = {}
+		map_data.refuelers = {}
+		map_data.to_refuelers = {}
 		for id, station in pairs(map_data.stations) do
 			station.p_count_or_r_threshold_per_item = nil
+		end
+
+		local OLD_STATUS_R_TO_D = 5
+		local NEW_STATUS_TO_D = 5
+		local NEW_STATUS_TO_D_BYPASS = 6
+		for id, train in pairs(map_data.trains) do
+			if train.status == OLD_STATUS_R_TO_D then
+				train.manifest = nil
+				train.p_station_id = nil
+				train.r_station_id = nil
+				if train.is_available then
+					train.status = NEW_STATUS_TO_D_BYPASS
+				else
+					train.status = NEW_STATUS_TO_D
+				end
+			end
 		end
 	end,
 }

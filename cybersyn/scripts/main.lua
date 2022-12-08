@@ -54,7 +54,7 @@ local function on_refueler_built(map_data, stop, comb)
 	local id = stop.unit_number--[[@as uint]]
 	map_data.refuelers[id] = refueler
 	update_stop_if_auto(map_data, refueler, false)
-	interface_raise_refueler_created(depot_id)
+	interface_raise_refueler_created(id)
 end
 ---@param map_data MapData
 ---@param refueler_id uint
@@ -76,10 +76,10 @@ local function on_refueler_broken(map_data, refueler_id, refueler)
 		end
 	end
 	if refueler.network_name then
-		local network = map_data.to_refueler[refueler.network_name]
+		local network = map_data.to_refuelers[refueler.network_name]
 		network[refueler_id] = nil
 		if next(network) == nil then
-			map_data.to_refueler[refueler.network_name] = nil
+			map_data.to_refuelers[refueler.network_name] = nil
 		end
 	end
 	map_data.stations[refueler_id] = nil
@@ -309,24 +309,25 @@ function on_combinator_network_updated(map_data, comb, network_name)
 						local train = map_data.trains[train_id]
 						remove_available_train(map_data, train_id, train)
 						add_available_train_to_depot(map_data, mod_settings, train_id, train, id, depot)
+						interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
 					end
 				end
 			else
 				local refueler = map_data.refuelers[id]
 				if refueler and refueler.entity_comb == comb then
 					if refueler.network_name then
-						local network = map_data.to_refueler[refueler.network_name]
+						local network = map_data.to_refuelers[refueler.network_name]
 						network[id] = nil
 						if next(network) == nil then
-							map_data.to_refueler[refueler.network_name] = nil
+							map_data.to_refuelers[refueler.network_name] = nil
 						end
 					end
 					refueler.network_name = network_name
 					if network_name then
-						local network = map_data.to_refueler[network_name]
+						local network = map_data.to_refuelers[network_name]
 						if network == nil then
 							network = {}
-							map_data.to_refueler[network_name] = network
+							map_data.to_refuelers[network_name] = network
 						end
 						network[id] = true
 					end

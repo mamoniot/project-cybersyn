@@ -95,9 +95,8 @@ end
 ---@param r_station_id uint
 ---@param p_station_id uint
 ---@param train_id uint
----@param primary_item_name string?
-function send_train_between(map_data, r_station_id, p_station_id, train_id, primary_item_name)
-	--trains and stations expected to be of the same network
+---@param manifest Manifest
+function create_delivery(map_data, r_station_id, p_station_id, train_id, manifest)
 	local economy = map_data.economy
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
@@ -105,6 +104,69 @@ function send_train_between(map_data, r_station_id, p_station_id, train_id, prim
 	---@type string
 	local network_name = r_station.network_name
 
+	remove_available_train(map_data, train_id, train)
+	local depot_id = train.parked_at_depot_id
+	if depot_id then
+		map_data.depots[depot_id].available_train_id = nil
+		train.parked_at_depot_id = nil
+	end
+	--NOTE: we assume that the train is not being teleported at this time
+	if set_manifest_schedule(train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, r_station.entity_stop, manifest, depot_id ~= nil) then
+		local old_status = train.status
+		train.status = STATUS_TO_P
+		train.p_station_id = p_station_id
+		train.r_station_id = r_station_id
+		train.manifest = manifest
+		train.last_manifest_tick = map_data.total_ticks
+
+		r_station.last_delivery_tick = map_data.total_ticks
+		p_station.last_delivery_tick = map_data.total_ticks
+
+		r_station.deliveries_total = r_station.deliveries_total + 1
+		p_station.deliveries_total = p_station.deliveries_total + 1
+
+		for item_i, item in ipairs(manifest) do
+			assert(item.count > 0, "main.lua error, transfer amount was not positive")
+
+			r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
+			p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
+
+			if item_i > 1 then
+				--prevent deliveries from being processed for these items until their stations are re-polled
+				local item_network_name = network_name..":"..item.name
+				economy.all_r_stations[item_network_name] = nil
+				economy.all_p_stations[item_network_name] = nil
+			end
+		end
+
+		set_comb2(map_data, p_station)
+		set_comb2(map_data, r_station)
+
+		if p_station.display_state < 2 then
+			p_station.display_state = 2
+			update_display(map_data, p_station)
+		end
+		if r_station.display_state < 2 then
+			r_station.display_state = 2
+			update_display(map_data, r_station)
+		end
+		interface_raise_train_status_changed(train_id, old_status, STATUS_TO_P)
+	else
+		interface_raise_train_dispatch_failed(train_id)
+	end
+end
+---@param map_data MapData
+---@param r_station_id uint
+---@param p_station_id uint
+---@param train_id uint
+---@param primary_item_name string?
+function create_manifest(map_data, r_station_id, p_station_id, train_id, primary_item_name)
+	--trains and stations expected to be of the same network
+	local r_station = map_data.stations[r_station_id]
+	local p_station = map_data.stations[p_station_id]
+	local train = map_data.trains[train_id]
+
+	---@type Manifest
 	local manifest = {}
 
 	for k, v in pairs(r_station.tick_signals) do
@@ -167,55 +229,7 @@ function send_train_between(map_data, r_station_id, p_station_id, train_id, prim
 		end
 	end
 
-	remove_available_train(map_data, train_id, train)
-	local depot_id = train.parked_at_depot_id
-	if depot_id then
-		map_data.depots[depot_id].available_train_id = nil
-		train.parked_at_depot_id = nil
-	end
-	--NOTE: we assume that the train is not being teleported at this time
-	if set_manifest_schedule(train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, r_station.entity_stop, manifest, depot_id ~= nil) then
-		train.status = STATUS_TO_P
-		train.p_station_id = p_station_id
-		train.r_station_id = r_station_id
-		train.manifest = manifest
-		train.last_manifest_tick = map_data.total_ticks
-
-		r_station.last_delivery_tick = map_data.total_ticks
-		p_station.last_delivery_tick = map_data.total_ticks
-
-		r_station.deliveries_total = r_station.deliveries_total + 1
-		p_station.deliveries_total = p_station.deliveries_total + 1
-
-		for item_i, item in ipairs(manifest) do
-			assert(item.count > 0, "main.lua error, transfer amount was not positive")
-
-			r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
-			p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
-
-			if item_i > 1 then
-				--prevent deliveries from being processed for these items until their stations are re-polled
-				local item_network_name = network_name..":"..item.name
-				economy.all_r_stations[item_network_name] = nil
-				economy.all_p_stations[item_network_name] = nil
-			end
-		end
-
-		set_comb2(map_data, p_station)
-		set_comb2(map_data, r_station)
-
-		if p_station.display_state < 2 then
-			p_station.display_state = 2
-			update_display(map_data, p_station)
-		end
-		if r_station.display_state < 2 then
-			r_station.display_state = 2
-			update_display(map_data, r_station)
-		end
-		interface_raise_train_dispatched(train_id)
-	else
-		interface_raise_train_dispatch_failed(train_id)
-	end
+	return manifest
 end
 
 ---@param map_data MapData
@@ -350,7 +364,9 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 		end
 		if best_train then
-			send_train_between(map_data, r_station_id, table_remove(p_stations, best_i), best_train, item_name)
+			local p_station_id = table_remove(p_stations, best_i)
+			local manifest = create_manifest(map_data, r_station_id, p_station_id, best_train, item_name)
+			create_delivery(map_data, r_station_id, p_station_id, best_train, manifest)
 			return false
 		else
 			if can_be_serviced and mod_settings.missing_train_alert_enabled then

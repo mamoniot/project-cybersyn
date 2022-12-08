@@ -147,7 +147,8 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 	local train = map_data.trains[train_id]
 	if train then
 		if train.status == STATUS_TO_D then
-		elseif train.status == STATUS_TO_D_BYPASS then
+		elseif train.status == STATUS_TO_D_BYPASS or train.status == STATUS_D then
+			--shouldn't be possible to get train.status == STATUS_D
 			remove_available_train(map_data, train_id, train)
 		elseif mod_settings.react_to_train_early_to_depot then
 			if train.manifest then
@@ -158,9 +159,10 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			return
 		end
 		if is_train_empty then
+			local old_status = train.status
 			add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, map_data.depots[depot_id])
 			set_depot_schedule(train_entity, train.depot_name)
-			interface_raise_train_parked_at_depot(train_id, depot_id)
+			interface_raise_train_status_changed(train_id, old_status, STATUS_D)
 		else
 			--train still has cargo
 			if mod_settings.react_to_nonempty_train_in_depot then
@@ -217,6 +219,7 @@ local function on_train_arrives_station(map_data, station_id, train_id, train)
 				local station = map_data.stations[station_id]
 				set_comb1(map_data, station, train.manifest, 1)
 				set_p_wagon_combs(map_data, station, train)
+				interface_raise_train_status_changed(train_id, STATUS_TO_P, STATUS_P)
 			end
 		elseif train.status == STATUS_TO_R then
 			if train.r_station_id == station_id then
@@ -224,6 +227,7 @@ local function on_train_arrives_station(map_data, station_id, train_id, train)
 				local station = map_data.stations[station_id]
 				set_comb1(map_data, station, train.manifest, -1)
 				set_r_wagon_combs(map_data, station, train)
+				interface_raise_train_status_changed(train_id, STATUS_TO_R, STATUS_R)
 			end
 		elseif train.status == STATUS_P and train.p_station_id == station_id then
 			--this is player intervention that is considered valid
@@ -251,6 +255,7 @@ local function on_train_arrives_refueler(map_data, refueler_id, train_id, train)
 		local refueler = map_data.refuelers[refueler_id]
 		train.status = STATUS_F
 		set_refueler_combs(map_data, refueler, train)
+		interface_raise_train_status_changed(train_id, STATUS_TO_F, STATUS_F)
 	end
 end
 
@@ -277,7 +282,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 				end
 			end
 		end
-		interface_raise_train_completed_provide(train_id)
+		interface_raise_train_status_changed(train_id, STATUS_P, STATUS_TO_R)
 	elseif train.status == STATUS_R then
 		local station = map_data.stations[train.r_station_id]
 		remove_manifest(map_data, station, train.manifest, -1)
@@ -311,12 +316,16 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 			if mod_settings.depot_bypass_threshold < 1 then
 				train.status = STATUS_TO_D_BYPASS
 				add_available_train(map_data, train_id, train)
+				interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_D_BYPASS)
+				return
 			end
 		elseif fuel_fill/total_slots > mod_settings.depot_bypass_threshold then
 			train.status = STATUS_TO_D_BYPASS
 			add_available_train(map_data, train_id, train)
+			interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_D_BYPASS)
+			return
 		else
-			local refuelers = map_data.to_refueler[train.network_name]
+			local refuelers = map_data.to_refuelers[train.network_name]
 			if refuelers then
 				local best_refueler_id = nil
 				local best_dist = INF
@@ -344,14 +353,14 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 					local refueler = map_data.refuelers[best_refueler_id]
 					refueler.trains_total = refueler.trains_total + 1
 					add_refueler_schedule(train.entity, refueler.entity_stop)
+					interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_F)
+					return
 				end
 			end
 		end
-		if train.status == STATUS_R then
-			--the train has not qualified for depot bypass nor refueling
-			train.status = STATUS_TO_D
-		end
-		interface_raise_train_completed_request(train_id)
+		--the train has not qualified for depot bypass nor refueling
+		train.status = STATUS_TO_D
+		interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_D)
 	elseif train.status == STATUS_F then
 		local refueler = map_data.refuelers[train.refueler_id]
 		train.status = STATUS_TO_D_BYPASS
@@ -360,6 +369,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		add_available_train(map_data, train_id, train)
 		unset_wagon_combs(map_data, refueler)
 		set_combinator_output(map_data, refueler.entity_comb, nil)
+		interface_raise_train_status_changed(train_id, STATUS_F, STATUS_TO_D_BYPASS)
 	elseif train.status == STATUS_D then
 		--The train is leaving the depot without a manifest, the player likely intervened
 		local depot = map_data.depots[train.parked_at_depot_id--[[@as uint]]]

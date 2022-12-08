@@ -119,3 +119,4 @@ Date: 2022-12-5
     - Added refueler stations
     - Slightly more permissive allow-list logic
     - Fixed a crash relating to wagon control combinators on request stations
+    - Made non-backwards compatible improvements and bugfixes to the modding interface

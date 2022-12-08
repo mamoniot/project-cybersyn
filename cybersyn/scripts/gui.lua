@@ -62,6 +62,7 @@ function gui_opened(comb, player)
 							{"cybersyn-gui.comb1"},
 							{"cybersyn-gui.comb2"},
 							{"cybersyn-gui.depot"},
+							{"cybersyn-gui.refueler"},
 							{"cybersyn-gui.wagon-manifest"},
 						}},
 						{type="switch", name="switch", ref={"switch"}, allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, actions={
@@ -88,10 +89,12 @@ function gui_opened(comb, player)
 	window.preview.entity = comb
 	window.titlebar.drag_target = window.main_window
 	window.main_window.force_auto_center()
-	window.network.visible = selected_index == 1 or selected_index == 3
-	window.network_label.visible = selected_index == 1 or selected_index == 3
-	window.radio_button.visible = selected_index == 1
-	window.radio_label.visible = selected_index == 1
+	local uses_network = selected_index == 1 or selected_index == 3 or selected_index == 4
+	local uses_allow_list = selected_index == 1 or selected_index == 4
+	window.network.visible = uses_network
+	window.network_label.visible = uses_network
+	window.radio_button.visible = uses_allow_list
+	window.radio_label.visible = uses_allow_list
 	window.switch.visible = selected_index == 1
 
 	player.opened = window.main_window
@@ -163,6 +166,13 @@ function register_gui_actions()
 					bottom_flow["radio_button"].visible = false
 					bottom_flow["radio_label"].visible = false
 				elseif element.selected_index == 4 then
+					set_comb_operation(comb, OPERATION_REFUELER)
+					top_flow["switch"].visible = false
+					all_flow["network_label"].visible = true
+					bottom_flow["network"].visible = true
+					bottom_flow["radio_button"].visible = true
+					bottom_flow["radio_label"].visible = true
+				elseif element.selected_index == 5 then
 					set_comb_operation(comb, OPERATION_WAGON_MANIFEST)
 					top_flow["switch"].visible = false
 					all_flow["network_label"].visible = false

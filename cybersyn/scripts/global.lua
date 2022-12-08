@@ -13,7 +13,7 @@
 ---@field public refuelers {[uint]: Refueler}
 ---@field public trains {[uint]: Train}
 ---@field public available_trains {[string]: {[uint]: true?}} --{[network_name]: {[train_id]: true}}
----@field public to_refueler {[string]: {[uint]: true?}} --{[network_name]: {[refeuler_id]: true}}
+---@field public to_refuelers {[string]: {[uint]: true?}} --{[network_name]: {[refeuler_id]: true}}
 ---@field public layouts {[uint]: (0|1|2)[]}
 ---@field public layout_train_count {[uint]: int}
 ---@field public tick_state uint
@@ -67,7 +67,7 @@
 ---@field public layout_id uint
 ---@field public item_slot_capacity int
 ---@field public fluid_capacity int
----@field public status int
+---@field public status uint
 ---@field public p_station_id uint?
 ---@field public r_station_id uint?
 ---@field public manifest Manifest?
@@ -89,7 +89,7 @@
 ---@class ManifestEntry
 ---@field public type string
 ---@field public name string
----@field public count uint
+---@field public count int
 
 ---@class Economy
 ---could contain invalid stations or stations with modified settings from when they were first appended

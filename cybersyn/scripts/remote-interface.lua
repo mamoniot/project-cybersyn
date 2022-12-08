@@ -13,16 +13,15 @@ local on_station_created = nil
 local on_station_removed = nil
 local on_depot_created = nil
 local on_depot_removed = nil
+local on_refueler_created = nil
+local on_refueler_removed = nil
 local on_train_created = nil
 local on_train_removed = nil
 local on_train_available = nil
 local on_train_nonempty_in_depot = nil
-local on_train_dispatched = nil
 local on_train_dispatch_failed = nil
 local on_train_failed_delivery = nil
-local on_train_completed_provide = nil
-local on_train_completed_request = nil
-local on_train_parked_at_depot = nil
+local on_train_status_changed = nil
 local on_train_stuck = nil
 local on_train_teleport_started = nil
 local on_train_teleported = nil
@@ -77,6 +76,25 @@ function interface_raise_depot_removed(old_depot_id, old_depot)
 	end
 end
 
+---@param refueler_id uint
+function interface_raise_refueler_created(refueler_id)
+	if on_refueler_created then
+		raise_event(on_refueler_created, {
+			refueler_id = refueler_id,
+		})
+	end
+end
+---@param old_refueler_id uint
+---@param old_refueler Refueler
+function interface_raise_refueler_removed(old_refueler_id, old_refueler)
+	if on_refueler_removed then
+		raise_event(on_refueler_removed, {
+			old_refueler_id = old_refueler_id, --this id is now invalid
+			old_refueler = old_refueler, --this is the data that used to be stored at the old id
+		})
+	end
+end
+
 ---@param train_id uint
 ---@param depot_id uint
 function interface_raise_train_created(train_id, depot_id)
@@ -119,14 +137,6 @@ function interface_raise_train_nonempty_in_depot(depot_id, train_entity, train_i
 end
 
 ---@param train_id uint
-function interface_raise_train_dispatched(train_id)
-	if on_train_dispatched then
-		raise_event(on_train_dispatched, {
-			train_id = train_id,
-		})
-	end
-end
----@param train_id uint
 function interface_raise_train_dispatch_failed(train_id)
 	--this event is rare, it can only occur when a train is bypassing the depot and can't find a path to the provide station, that train is marked as unavailable but not dispatched
 	if on_train_dispatch_failed then
@@ -154,28 +164,14 @@ function interface_raise_train_failed_delivery(train_id, was_p_in_progress, p_st
 	end
 end
 ---@param train_id uint
-function interface_raise_train_completed_provide(train_id)
-	if on_train_completed_provide then
-		raise_event(on_train_completed_provide, {
+---@param old_status uint
+---@param new_status uint
+function interface_raise_train_status_changed(train_id, old_status, new_status)
+	if on_train_status_changed then
+		raise_event(on_train_status_changed, {
 			train_id = train_id,
-		})
-	end
-end
----@param train_id uint
-function interface_raise_train_completed_request(train_id)
-	if on_train_completed_request then
-		raise_event(on_train_completed_request, {
-			train_id = train_id,
-		})
-	end
-end
----@param train_id uint
----@param depot_id uint
-function interface_raise_train_parked_at_depot(train_id, depot_id)
-	if on_train_parked_at_depot then
-		raise_event(on_train_parked_at_depot, {
-			train_id = train_id,
-			depot_id = depot_id,
+			old_status = old_status,
+			new_status = new_status,
 		})
 	end
 end
@@ -240,6 +236,14 @@ function interface.get_on_depot_removed()
 	if not on_depot_removed then on_depot_removed = script_generate_event_name() end
 	return on_depot_removed
 end
+function interface.get_on_refueler_created()
+	if not on_refueler_created then on_refueler_created = script_generate_event_name() end
+	return on_refueler_created
+end
+function interface.get_on_refueler_removed()
+	if not on_refueler_removed then on_refueler_removed = script_generate_event_name() end
+	return on_refueler_removed
+end
 function interface.get_on_train_created()
 	if not on_train_created then on_train_created = script_generate_event_name() end
 	return on_train_created
@@ -256,10 +260,6 @@ function interface.get_on_train_nonempty_in_depot()
 	if not on_train_nonempty_in_depot then on_train_nonempty_in_depot = script_generate_event_name() end
 	return on_train_nonempty_in_depot
 end
-function interface.get_on_train_dispatched()
-	if not on_train_dispatched then on_train_dispatched = script_generate_event_name() end
-	return on_train_dispatched
-end
 function interface.get_on_train_dispatch_failed()
 	if not on_train_dispatch_failed then on_train_dispatch_failed = script_generate_event_name() end
 	return on_train_dispatch_failed
@@ -268,17 +268,9 @@ function interface.get_on_train_failed_delivery()
 	if not on_train_failed_delivery then on_train_failed_delivery = script_generate_event_name() end
 	return on_train_failed_delivery
 end
-function interface.get_on_train_completed_provide()
-	if not on_train_completed_provide then on_train_completed_provide = script_generate_event_name() end
-	return on_train_completed_provide
-end
-function interface.get_on_train_completed_request()
-	if not on_train_completed_request then on_train_completed_request = script_generate_event_name() end
-	return on_train_completed_request
-end
-function interface.get_on_train_parked_at_depot()
-	if not on_train_parked_at_depot then on_train_parked_at_depot = script_generate_event_name() end
-	return on_train_parked_at_depot
+function interface.get_on_train_status_changed()
+	if not on_train_status_changed then on_train_status_changed = script_generate_event_name() end
+	return on_train_status_changed
 end
 function interface.get_on_train_stuck()
 	if not on_train_stuck then on_train_stuck = script_generate_event_name() end
@@ -299,9 +291,77 @@ end
 
 
 ------------------------------------------------------------------
+--[[helper functions]]
+------------------------------------------------------------------
+--NOTE: the policy of cybersyn is to give modders access to as much of the raw data of the mod as possible. Factorio only allows me to return copies of the original data rather than the actual thing, which sucks. The unsafe api has some tools to help you bypass this limitation.
+
+function interface.get_mod_settings()
+	return mod_settings
+end
+---@param key string
+function interface.read_setting(key)
+	return mod_settings[key]
+end
+---@param ... string|int
+function interface.read_global(...)
+	--this can read anything off of cybersyn's map_data
+	--so interface.read_global("trains", 31415, "manifest") == global.trains[31415].manifest (or nil if train 31415 does not exist)
+	--the second return value is how many parameters could be processed before a nil value was encountered (in the above example it's useful for telling apart global.trains[31415] == nil vs global.trains[31415].manifest == nil)
+	local base = global
+	local depth = 0
+	for i, v in ipairs({...}) do
+		depth = i
+		base = base[v]
+		if not base then break end
+	end
+	return base, depth
+end
+---@param id uint
+function interface.get_station(id)
+	return global.stations[id]
+end
+---@param id uint
+function interface.get_depot(id)
+	return global.depots[id]
+end
+---@param id uint
+function interface.get_refueler(id)
+	return global.refuelers[id]
+end
+---@param id uint
+function interface.get_train(id)
+	return global.trains[id]
+end
+---@param train_entity LuaTrain
+function interface.get_train_id_from_luatrain(train_entity)
+	return train_entity.id
+end
+---@param stop LuaEntity
+function interface.get_id_from_stop(stop)
+	return stop.unit_number
+end
+---@param comb LuaEntity
+function interface.get_id_from_comb(comb)
+	local stop = global.to_stop[comb.unit_number]
+	if stop then
+		return stop.unit_number
+	end
+end
+
+
+------------------------------------------------------------------
 --[[safe API]]
 ------------------------------------------------------------------
 --NOTE: These functions can be called whenever however so long as their parameters have the correct types. Their ability to cause harm is extremely minimal.
+
+---@param key string
+---@param value any
+function interface.write_setting(key, value)
+	--be careful that the value you write is of the correct type specified in global.lua
+	--these settings are not saved and have to be set on load and on init
+	mod_settings[key] = value
+end
+
 
 ---@param comb LuaEntity
 function interface.combinator_update(comb)
@@ -329,6 +389,11 @@ end
 ---@param layout (0|1|2)[]
 function interface.is_layout_accepted(layout_pattern, layout)
 	return is_layout_accepted(layout_pattern, layout)
+end
+---@param layout_pattern (0|1|2|3)[]
+---@param layout (0|1|2)[]
+function interface.is_refuel_layout_accepted(layout_pattern, layout)
+	return is_refuel_layout_accepted(layout_pattern, layout)
 end
 ---@param stop_id uint
 ---@param forbidden_entity LuaEntity?
@@ -358,14 +423,8 @@ end
 ------------------------------------------------------------------
 --NOTE: The following functions can cause serious longterm damage to someone's world if they are given bad parameters. Please refer to global.lua for type information. Use caution.
 
----@param key string
 ---@param value any
-function interface.write_setting(key, value)
-	--be careful that the value you write is of the correct type specified in global.lua
-	mod_settings[key] = value
-end
-
----@param ... string|uint|any
+---@param ... string|int
 function interface.write_global(value, ...)
 	--this can write anything into cybersyn's map_data, please be very careful with anything you write, it can cause permanent damage
 	--so interface.read_global(nil, "trains", 31415, "manifest") will cause global.trains[31415].manifest = nil (or return false if train 31415 does not exist)
@@ -393,11 +452,19 @@ end
 ---@param r_station_id uint
 ---@param p_station_id uint
 ---@param train_id uint
----@param primary_item_name string?
-function interface.create_new_delivery_between_stations(r_station_id, p_station_id, train_id, primary_item_name)
+function interface.create_manifest(r_station_id, p_station_id, train_id)
 	local train = global.trains[train_id]
 	assert(global.stations[r_station_id] and global.stations[p_station_id] and train and train.is_available)
-	send_train_between(global, r_station_id, p_station_id, train_id, primary_item_name)
+	create_manifest(global, r_station_id, p_station_id, train_id)
+end
+---@param r_station_id uint
+---@param p_station_id uint
+---@param train_id uint
+---@param manifest Manifest
+function interface.create_delivery(r_station_id, p_station_id, train_id, manifest)
+	local train = global.trains[train_id]
+	assert(global.stations[r_station_id] and global.stations[p_station_id] and train and train.is_available and manifest)
+	create_delivery(global, r_station_id, p_station_id, train_id, manifest)
 end
 ---@param train_id uint
 function interface.fail_delivery(train_id)
@@ -453,6 +520,7 @@ interface.rename_manifest_schedule = rename_manifest_schedule
 interface.se_get_space_elevator_name = se_get_space_elevator_name
 interface.se_create_elevator_order = se_create_elevator_order
 interface.set_manifest_schedule = set_manifest_schedule
+interface.add_refueler_schedule = add_refueler_schedule
 
 ------------------------------------------------------------------
 --[[alerts]]
@@ -463,59 +531,6 @@ interface.send_lost_train_alert = send_lost_train_alert
 interface.send_unexpected_train_alert = send_unexpected_train_alert
 interface.send_nonempty_train_in_depot_alert = send_nonempty_train_in_depot_alert
 interface.send_stuck_train_alert = send_stuck_train_alert
-
-------------------------------------------------------------------
---[[helper functions]]
-------------------------------------------------------------------
---NOTE: the policy of cybersyn is to give modders access to as much of the raw data of the mod as possible. Factorio only allows me to return copies of the original data rather than the actual thing, which sucks. The unsafe api has some tools to help you bypass this limitation.
-
-function interface.get_mod_settings()
-	return mod_settings
-end
----@param key string
-function interface.read_setting(key)
-	return mod_settings[key]
-end
----@param ... string|uint
-function interface.read_global(...)
-	--this can read anything off of cybersyn's map_data
-	--so interface.read_global("trains", 31415, "manifest") == global.trains[31415].manifest (or nil if train 31415 does not exist)
-	local base = global
-	local depth = 0
-	for i, v in ipairs({...}) do
-		depth = i
-		base = base[v]
-		if not base then break end
-	end
-	return base, depth
-end
----@param id uint
-function interface.get_station(id)
-	return global.stations[id]
-end
----@param id uint
-function interface.get_depot(id)
-	return global.depots[id]
-end
----@param id uint
-function interface.get_train(id)
-	return global.trains[id]
-end
----@param train_entity LuaTrain
-function interface.get_train_id_from_luatrain(train_entity)
-	return train_entity.id
-end
----@param stop LuaEntity
-function interface.get_station_or_depot_id_from_stop(stop)
-	return stop.unit_number
-end
----@param comb LuaEntity
-function interface.get_station_or_depot_id_from_comb(comb)
-	local stop = global.to_stop[comb.unit_number]
-	if stop then
-		return stop.unit_number
-	end
-end
 
 
 remote.add_interface("cybersyn", interface)

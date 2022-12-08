@@ -274,8 +274,10 @@ function get_comb_gui_settings(comb)
 		selected_index = 2
 	elseif op == OPERATION_DEPOT then
 		selected_index = 3
-	elseif op == OPERATION_WAGON_MANIFEST then
+	elseif op == OPERATION_REFUELER then
 		selected_index = 4
+	elseif op == OPERATION_WAGON_MANIFEST then
+		selected_index = 5
 	end
 	return selected_index, params.first_signal, not allows_all_trains, switch_state
 end
