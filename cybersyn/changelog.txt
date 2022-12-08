@@ -1,117 +1,4 @@
 ---------------------------------------------------------------------------------------------------
-Version: 0.1.0
-Date: 2022-11-04
-  Changes:
-    - Pre-Alpha release
----------------------------------------------------------------------------------------------------
-Version: 0.2.0
-Date: 2022-11-10
-  Changes:
-    - Removed provide-threshold
-    - Added ability to specify station type on a cybernetic combinator
----------------------------------------------------------------------------------------------------
-Version: 0.2.1
-Date: 2022-11-11
-  Changes:
-    - Minor bugfixes and performance improvements
----------------------------------------------------------------------------------------------------
-Version: 0.3.0
-Date: 2022-11-13
-  Changes:
-    - Added warmup period on just built stations
----------------------------------------------------------------------------------------------------
-Version: 0.4.0
-Date: 2022-11-15
-  Changes:
-    - Fixed copy-paste
-    - Added alert sounds
----------------------------------------------------------------------------------------------------
-Version: 0.4.1
-Date: 2022-11-20
-  Changes:
-    - Bugfix with train allow-list
----------------------------------------------------------------------------------------------------
-Version: 0.4.2
-Date: 2022-11-22
-  Changes:
-    - Bugfix with station warmup time
----------------------------------------------------------------------------------------------------
-Version: 0.4.3
-Date: 2022-11-24
-  Changes:
-    - Added a stuck train alert
-    - Improved localization
-    - Fixed bug with fluid cargo not being detected by depots
----------------------------------------------------------------------------------------------------
-Version: 0.4.4
-Date: 2022-11-25
-  Changes:
-    - Greatly improved automatic train allow-list logic
----------------------------------------------------------------------------------------------------
-Version: 0.5.0
-Date: 2022-11-25
-  Changes:
-    - Added SE space elevator compat
----------------------------------------------------------------------------------------------------
-Version: 0.5.1
-Date: 2022-11-25
-  Changes:
-    - Re-added combinator copy-paste after fixing major bug
-    - Fixed bugs within train allow-list logic
-    - Fixed a crash
----------------------------------------------------------------------------------------------------
-Version: 1.0.0
-Date: 2022-11-29
-  Changes:
-    - Minor bugfix
-    - Added placeholder sprites
----------------------------------------------------------------------------------------------------
-Version: 1.0.2
-Date: 2022-11-29
-  Changes:
-    - Added mod description
-    - Added update rate setting
----------------------------------------------------------------------------------------------------
-Version: 1.0.3
-Date: 2022-11-30
-  Changes:
-    - Fixed a bug where duplicate orders could not be prevented on stations that share the same pool of items
----------------------------------------------------------------------------------------------------
-Version: 1.0.4
-Date: 2022-11-30
-  Changes:
-    - Allowed several settings to have floating point values
-    - Allow updates per second to be set to 0
-    - Fixed a bug where parallel wagon control combinators were not working
----------------------------------------------------------------------------------------------------
-Version: 1.0.5
-Date: 2022-11-30
-  Changes:
-    - Fixed a crash related to the central planner
----------------------------------------------------------------------------------------------------
-Version: 1.0.6
-Date: 2022-11-30
-  Changes:
-    - Added depot bypass
-    - Increased inactivity time so burner inserters are fast enough to trigger it
----------------------------------------------------------------------------------------------------
-Version: 1.0.7
-Date: 2022-12-1
-  Changes:
-    - Fixed a crash relating to depot bypass through space elevators
----------------------------------------------------------------------------------------------------
-Version: 1.0.8
-Date: 2022-12-2
-  Changes:
-    - Fixed a bug with combinator displays not updating correctly
-    - Improved combinator display performance
-    - Added a modding interface
----------------------------------------------------------------------------------------------------
-Version: 1.0.9
-Date: 2022-12-3
-  Changes:
-    - Fixed a bug with SE compat preventing players from joining multiplayer games
----------------------------------------------------------------------------------------------------
 Version: 1.1.0
 Date: 2022-12-8
   Changes:
@@ -121,3 +8,55 @@ Date: 2022-12-8
     - Made non-backwards compatible improvements and bugfixes to the modding interface
     - Updated localization
     - Fixed a crash relating to wagon control combinators on request stations
+---------------------------------------------------------------------------------------------------
+Version: 1.0.9
+Date: 2022-12-3
+  Changes:
+    - Fixed a bug with SE compat preventing players from joining multiplayer games
+---------------------------------------------------------------------------------------------------
+Version: 1.0.8
+Date: 2022-12-2
+  Changes:
+    - Fixed a bug with combinator displays not updating correctly
+    - Improved combinator display performance
+    - Added a modding interface
+---------------------------------------------------------------------------------------------------
+Version: 1.0.7
+Date: 2022-12-1
+  Changes:
+    - Fixed a crash relating to depot bypass through space elevators
+---------------------------------------------------------------------------------------------------
+Version: 1.0.6
+Date: 2022-11-30
+  Changes:
+    - Added depot bypass
+    - Increased inactivity time so burner inserters are fast enough to trigger it
+---------------------------------------------------------------------------------------------------
+Version: 1.0.5
+Date: 2022-11-30
+  Changes:
+    - Fixed a crash related to the central planner
+---------------------------------------------------------------------------------------------------
+Version: 1.0.4
+Date: 2022-11-30
+  Changes:
+    - Allowed several settings to have floating point values
+    - Allow updates per second to be set to 0
+    - Fixed a bug where parallel wagon control combinators were not working
+---------------------------------------------------------------------------------------------------
+Version: 1.0.3
+Date: 2022-11-30
+  Changes:
+    - Fixed a bug where duplicate orders could not be prevented on stations that share the same pool of items
+---------------------------------------------------------------------------------------------------
+Version: 1.0.2
+Date: 2022-11-29
+  Changes:
+    - Added mod description
+    - Added update rate setting
+---------------------------------------------------------------------------------------------------
+Version: 1.0.0
+Date: 2022-11-29
+  Changes:
+    - Minor bugfix
+    - Added placeholder sprites
