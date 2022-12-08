@@ -200,6 +200,10 @@ end
 function add_refueler_schedule(train, stop)
 	local schedule = train.schedule or {current = 1, records = {}}
 	local i = schedule.current
+	if i == 1 then
+		i = #schedule.records + 1--[[@as uint]]
+		schedule.current = i
+	end
 
 	local t_surface = train.front_stock.surface
 	local f_surface = stop.surface
