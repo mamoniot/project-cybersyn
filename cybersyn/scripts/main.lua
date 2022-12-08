@@ -373,7 +373,7 @@ function on_combinator_broken(map_data, comb)
 			else
 				local refueler = map_data.refuelers[id]
 				if refueler and refueler.entity_comb == comb then
-					on_refueler_broken(map_data, id, depot)
+					on_refueler_broken(map_data, id, refueler)
 					on_stop_built(map_data, stop, comb)
 				end
 			end
