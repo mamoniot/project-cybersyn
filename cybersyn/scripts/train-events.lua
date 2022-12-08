@@ -248,8 +248,9 @@ end
 ---@param train Train
 local function on_train_arrives_refueler(map_data, refueler_id, train_id, train)
 	if train.status == STATUS_TO_F then
-		--local refueler = map_data.refuelers[refueler_id]
+		local refueler = map_data.refuelers[refueler_id]
 		train.status = STATUS_F
+		set_refueler_combs(map_data, refueler, train)
 	end
 end
 
@@ -357,6 +358,8 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		train.refueler_id = nil
 		refueler.trains_total = refueler.trains_total - 1
 		add_available_train(map_data, train_id, train)
+		unset_wagon_combs(map_data, refueler)
+		set_combinator_output(map_data, refueler.entity_comb, nil)
 	elseif train.status == STATUS_D then
 		--The train is leaving the depot without a manifest, the player likely intervened
 		local depot = map_data.depots[train.parked_at_depot_id--[[@as uint]]]

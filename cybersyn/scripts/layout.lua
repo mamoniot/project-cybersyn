@@ -17,13 +17,19 @@ local function table_compare(t0, t1)
 	return true
 end
 
+---@param a any[]
+---@param i uint
 local function iterr(a, i)
 	i = i + 1
 	if i <= #a then
-		return i, a[#a - i + 1]
+		local r = a[#a - i + 1]
+		return i, r
+	else
+		return nil, nil
 	end
 end
 
+---@param a any[]
 local function irpairs(a)
 	return iterr, a, 0
 end
@@ -327,20 +333,83 @@ function set_r_wagon_combs(map_data, station, train)
 	end
 end
 
----@param map_data MapData
----@param station Station
-function unset_wagon_combs(map_data, station)
-	if not station.wagon_combs then return end
 
-	for i, comb in pairs(station.wagon_combs) do
+---@param map_data MapData
+---@param refueler Refueler
+---@param train Train
+function set_refueler_combs(map_data, refueler, train)
+	if not refueler.wagon_combs then return end
+	local carriages = train.entity.carriages
+
+	local signals = {}
+
+	local is_reversed = get_train_direction(refueler.entity_stop, train.entity)
+	local ivpairs = is_reversed and irpairs or ipairs
+	for carriage_i, carriage in ivpairs(carriages) do
+		---@type LuaEntity?
+		local comb = refueler.wagon_combs[carriage_i]
+		if comb and not comb.valid then
+			comb = nil
+			refueler.wagon_combs[carriage_i] = nil
+			if next(refueler.wagon_combs) == nil then
+				refueler.wagon_combs = nil
+				break
+			end
+		end
+		local inv = carriage.get_fuel_inventory()
+		if inv then
+			local wagon_signals
+			if comb then
+				wagon_signals = {}
+				local array = carriage.prototype.items_to_place_this
+				if array then
+					local a = array[1]
+					local name
+					if type(a) == "string" then
+						name = a
+					else
+						name = a.name
+					end
+					if game.item_prototypes[name] then
+						wagon_signals[1] = {index = 1, signal = {type = "item", name = a.name}, count = 1}
+					end
+				end
+			end
+			for stack_i = 1, #inv do
+				local stack = inv[stack_i]
+				if stack.valid_for_read then
+					if comb then
+						local i = #wagon_signals + 1
+						wagon_signals[i] = {index = i, signal = {type = "item", name = stack.name}, count = stack.count}
+					end
+					local j = #signals + 1
+					signals[j] = {index = j, signal = {type = "item", name = stack.name}, count = stack.count}
+				end
+			end
+			if comb then
+				set_combinator_output(map_data, comb, wagon_signals)
+			end
+		end
+	end
+
+	set_combinator_output(map_data, refueler.entity_comb, signals)
+end
+
+
+---@param map_data MapData
+---@param stop Station|Refueler
+function unset_wagon_combs(map_data, stop)
+	if not stop.wagon_combs then return end
+
+	for i, comb in pairs(stop.wagon_combs) do
 		if comb.valid then
 			set_combinator_output(map_data, comb, nil)
 		else
-			station.wagon_combs[i] = nil
+			stop.wagon_combs[i] = nil
 		end
 	end
-	if next(station.wagon_combs) == nil then
-		station.wagon_combs = nil
+	if next(stop.wagon_combs) == nil then
+		stop.wagon_combs = nil
 	end
 end
 
@@ -448,7 +517,7 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 								supports_fluid = true
 							end
 						end
-					elseif entity.name == COMBINATOR_NAME and is_station_or_refueler then
+					elseif entity.name == COMBINATOR_NAME then
 						local param = map_data.to_comb_params[entity.unit_number]
 						if param.operation == OPERATION_WAGON_MANIFEST then
 							local pos = entity.position
@@ -484,8 +553,14 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 		end
 	end
 	stop.layout_pattern = layout_pattern
-	for id, layout in pairs(map_data.layouts) do
-		stop.accepted_layouts[id] = is_layout_accepted(layout_pattern, layout) or nil
+	if is_station_or_refueler then
+		for id, layout in pairs(map_data.layouts) do
+			stop.accepted_layouts[id] = is_layout_accepted(layout_pattern, layout) or nil
+		end
+	else
+		for id, layout in pairs(map_data.layouts) do
+			stop.accepted_layouts[id] = is_refuel_layout_accepted(layout_pattern, layout) or nil
+		end
 	end
 end
 

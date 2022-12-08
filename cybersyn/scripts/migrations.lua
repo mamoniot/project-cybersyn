@@ -68,7 +68,7 @@ local migrations_table = {
 			station.update_display = nil
 		end
 	end,
-	["1.0.10"] = function()
+	["1.1.0"] = function()
 		---@type MapData
 		local map_data = global
 		map_data.tick_state = STATE_INIT

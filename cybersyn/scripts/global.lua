@@ -56,6 +56,7 @@
 ---@field public trains_total int
 ---@field public accepted_layouts {[uint]: true?}
 ---@field public layout_pattern (0|1|2|3)[]?
+---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
 ---@field public allows_all_trains boolean
 ---@field public priority int
 ---@field public network_name string?

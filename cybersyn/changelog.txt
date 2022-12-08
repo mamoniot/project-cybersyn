@@ -112,7 +112,7 @@ Date: 2022-12-3
   Features:
     - Fixed a bug with SE compat preventing players from joining multiplayer games
 ---------------------------------------------------------------------------------------------------
-Version: 1.0.10
+Version: 1.1.0
 Date: 2022-12-5
   Features:
     - Added the ability to use the priority signal as input to optional station control so one can override priority on items with optional station control thresholds
