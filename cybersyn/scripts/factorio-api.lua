@@ -254,38 +254,14 @@ function set_station_from_comb_state(station)
 	station.is_r = is_pr_state == 0 or is_pr_state == 2
 end
 ---@param map_data MapData
----@param unit_number uint
----@param params ArithmeticCombinatorParameters
-local function has_comb_params_changed(map_data, unit_number, params)
-	local old_params = map_data.to_comb_params[unit_number]
-
-	if params.operation ~= old_params.operation then
-		if (old_params.operation == OPERATION_PRIMARY_IO) and (params.operation == OPERATION_PRIMARY_IO_ACTIVE or params.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST) then
-		else
-			return true
-		end
-	end
-	local new_signal = params.first_signal
-	local old_signal = old_params.first_signal
-	local new_network = new_signal and new_signal.name or nil
-	local old_network = old_signal and old_signal.name or nil
-	if new_network ~= old_network then
-		return true
-	end
-	if params.second_constant ~= old_params.second_constant then
-		return true
-	end
-	return false
-end
----@param map_data MapData
 ---@param station Station
 function update_display(map_data, station)
 	local comb = station.entity_comb1
 	if comb.valid then
-		local unit_number = comb.unit_number--[[@as uint]]
 		local control = get_comb_control(comb)
 		local params = control.parameters
-		if not has_comb_params_changed(map_data, unit_number, params) then
+		--NOTE: the following check can cause a bug where the display desyncs if the player changes the operation of the combinator and then changes it back before the mod can notice, however removing it causes a bug where the user's change is overwritten and ignored. Everything's bad we need an event to catch copy-paste by blueprint.
+		if params.operation == OPERATION_PRIMARY_IO or params.operation == OPERATION_PRIMARY_IO_ACTIVE or params.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST then
 			if station.display_state >= 2 then
 				params.operation = OPERATION_PRIMARY_IO_ACTIVE
 			elseif station.display_state == 1 then
@@ -350,12 +326,23 @@ local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 ---@param station Station
 function get_signals(station)
 	--NOTE: the combinator must be valid, but checking for valid every time is too slow
-	local comb = station.entity_comb1
-	local status = comb.status
-	if status == DEFINES_WORKING or status == DEFINES_LOW_POWER then
-		return comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+	local comb1 = station.entity_comb1
+	local status1 = comb1.status
+	---@type Signal[]?
+	local comb1_signals = nil
+	---@type Signal[]?
+	local comb2_signals = nil
+	if status1 == DEFINES_WORKING or status1 == DEFINES_LOW_POWER then
+		comb1_signals = comb1.get_merged_signals(DEFINES_COMBINATOR_INPUT)
 	end
-	return nil
+	local comb2 = station.entity_comb2
+	if comb2 then
+		local status2 = comb2.status
+		if status2 == DEFINES_WORKING or status2 == DEFINES_LOW_POWER then
+			comb2_signals = comb2.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+		end
+	end
+	return comb1_signals, comb2_signals
 end
 
 ---@param map_data MapData
@@ -372,22 +359,6 @@ function set_comb2(map_data, station)
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end
 end
-
-
----@param map_data MapData
----@param station Station
----@param signal SignalID
-function get_threshold(map_data, station, signal)
-	local comb2 = station.entity_comb2
-	if comb2 then
-		local count = comb2.get_merged_signal(signal, defines.circuit_connector_id.combinator_input)
-		if count ~= 0 then
-			return abs(count)
-		end
-	end
-	return station.r_threshold
-end
-
 
 ------------------------------------------------------------------------------
 --[[alerts]]--

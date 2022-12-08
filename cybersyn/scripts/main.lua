@@ -182,6 +182,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		deliveries_total = 0,
 		last_delivery_tick = map_data.total_ticks,
 		priority = 0,
+		item_priotity = nil,
 		r_threshold = 0,
 		locked_slots = 0,
 		--network_name = set_station_from_comb_state,
@@ -191,7 +192,8 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		accepted_layouts = {},
 		layout_pattern = nil,
 		tick_signals = nil,
-		p_count_or_r_threshold_per_item = {},
+		item_p_counts = {},
+		item_thresholds = nil,
 		display_state = 0,
 	}
 	set_station_from_comb_state(station)
@@ -473,9 +475,11 @@ function combinator_update(map_data, comb)
 	local new_network = new_signal and new_signal.name or nil
 	local old_network = old_signal and old_signal.name or nil
 	if new_network ~= old_network then
+		has_changed = true
 		on_combinator_network_updated(map_data, comb, new_network)
 	end
 	if params.second_constant ~= old_params.second_constant then
+		has_changed = true
 		local stop = global.to_stop[comb.unit_number]
 		if stop then
 			local station = global.stations[stop.unit_number]
@@ -708,9 +712,9 @@ local function on_train_arrives_buffer(map_data, stop, train_id, train)
 				set_r_wagon_combs(map_data, station, train)
 			end
 		elseif train.status == STATUS_P and train.p_station_id == station_id then
-			--this player intervention that is considered valid
+			--this is player intervention that is considered valid
 		elseif (train.status == STATUS_R or train.status == STATUS_R_TO_D) and train.r_station_id == station_id then
-			--this player intervention that is considered valid
+			--this is player intervention that is considered valid
 		elseif mod_settings.react_to_train_at_incorrect_station then
 			on_failed_delivery(map_data, train_id, train)
 			remove_train(map_data, train_id, train)

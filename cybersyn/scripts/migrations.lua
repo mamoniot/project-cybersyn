@@ -184,6 +184,15 @@ local migrations_table = {
 			station.update_display = nil
 		end
 	end,
+	["1.0.10"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		map_data.tick_data = {}
+		for id, station in pairs(map_data.stations) do
+			station.p_count_or_r_threshold_per_item = nil
+		end
+	end,
 }
 
 ---@param data ConfigurationChangedData

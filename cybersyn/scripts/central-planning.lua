@@ -114,8 +114,8 @@ function send_train_between(map_data, r_station_id, p_station_id, train_id, prim
 		local r_item_count = v.count
 		local r_effective_item_count = r_item_count + (r_station.deliveries[item_name] or 0)
 		if r_effective_item_count < 0 and r_item_count < 0 then
-			local r_threshold = r_station.p_count_or_r_threshold_per_item[item_name]
-			local p_effective_item_count = p_station.p_count_or_r_threshold_per_item[item_name]
+			local r_threshold = r_station.item_thresholds and r_station.item_thresholds[item_name] or r_station.r_threshold
+			local p_effective_item_count = p_station.item_p_counts[item_name]
 			--could be an item that is not present at the station
 			if p_effective_item_count and p_effective_item_count >= r_threshold then
 				local item = {name = item_name, type = item_type, count = min(-r_effective_item_count, p_effective_item_count)}
@@ -282,11 +282,19 @@ local function tick_dispatch(map_data, mod_settings)
 			local station = stations[id]
 			--NOTE: the station at r_station_id could have been deleted and reregistered since last poll, this check here prevents it from being processed for a delivery in that case
 			if station and station.deliveries_total < station.entity_stop.trains_limit then
-				local threshold = station.p_count_or_r_threshold_per_item[item_name]
-				if threshold <= max_threshold and (station.priority > best_prior or (station.priority == best_prior and station.last_delivery_tick < best_lru)) then
+				local item_threshold = station.item_thresholds and station.item_thresholds[item_name] or nil
+				local threshold = station.r_threshold
+				local prior = station.priority
+				if item_threshold then
+					threshold = item_threshold
+					if station.item_priority then
+						prior = station.item_priority--[[@as int]]
+					end
+				end
+				if threshold <= max_threshold and (prior > best_prior or (prior == best_prior and station.last_delivery_tick < best_lru)) then
 					r_station_i = i
 					r_threshold = threshold
-					best_prior = station.priority
+					best_prior = prior
 					best_lru = station.last_delivery_tick
 				end
 			end
@@ -314,9 +322,13 @@ local function tick_dispatch(map_data, mod_settings)
 		for j, p_station_id in ipairs(p_stations) do
 			local p_station = stations[p_station_id]
 			if p_station and p_station.deliveries_total < p_station.entity_stop.trains_limit then
-				local effective_count = p_station.p_count_or_r_threshold_per_item[item_name]
+				local effective_count = p_station.item_p_counts[item_name]
 				if effective_count >= r_threshold then
+					local item_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name] or nil
 					local prior = p_station.priority
+					if item_threshold then
+						prior = p_station.item_priority--[[@as int]]
+					end
 					local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
 					local train, d = get_valid_train(map_data, r_station_id, p_station_id, item_type, slot_threshold)
 					if prior > best_prior or (prior == best_prior and d < best_dist) then
@@ -385,13 +397,34 @@ local function tick_poll_station(map_data, mod_settings)
 	end
 	station.r_threshold = mod_settings.r_threshold
 	station.priority = 0
+	station.item_priority = nil
 	station.locked_slots = 0
 	station.network_flag = mod_settings.network_flag
-	local signals = get_signals(station)
-	station.tick_signals = signals
-	station.p_count_or_r_threshold_per_item = {}
-	if signals then
-		for k, v in pairs(signals) do
+	local comb1_signals, comb2_signals = get_signals(station)
+	station.tick_signals = comb1_signals
+	station.item_p_counts = {}
+
+	if comb1_signals then
+		if comb2_signals then
+			station.item_thresholds = {}
+			for k, v in pairs(comb2_signals) do
+				local item_name = v.signal.name
+				local item_count = v.count
+				local item_type = v.signal.type
+				if item_name then
+					if item_type == "virtual" then
+						if item_name == SIGNAL_PRIORITY then
+							station.item_priority = item_count
+						end
+					else
+						station.item_thresholds[item_name] = abs(item_count)
+					end
+				end
+			end
+		else
+			station.item_thresholds = nil
+		end
+		for k, v in pairs(comb1_signals) do
 			local item_name = v.signal.name
 			local item_count = v.count
 			local item_type = v.signal.type
@@ -405,18 +438,18 @@ local function tick_poll_station(map_data, mod_settings)
 					elseif item_name == LOCKED_SLOTS then
 						station.locked_slots = max(item_count, 0)
 					end
-					signals[k] = nil
+					comb1_signals[k] = nil
 				end
 				if item_name == station.network_name then
 					station.network_flag = item_count
-					signals[k] = nil
+					comb1_signals[k] = nil
 				end
 			else
-				signals[k] = nil
+				comb1_signals[k] = nil
 			end
 		end
 		local is_requesting_nothing = true
-		for k, v in pairs(signals) do
+		for k, v in pairs(comb1_signals) do
 			---@type string
 			local item_name = v.signal.name
 			local item_count = v.count
@@ -424,7 +457,7 @@ local function tick_poll_station(map_data, mod_settings)
 
 			local is_not_requesting = true
 			if station.is_r then
-				local r_threshold = get_threshold(map_data, station, v.signal)
+				local r_threshold = station.item_thresholds and station.item_thresholds[item_name] or station.r_threshold
 				if -effective_item_count >= r_threshold and -item_count >= r_threshold then
 					is_not_requesting = false
 					is_requesting_nothing = false
@@ -437,7 +470,6 @@ local function tick_poll_station(map_data, mod_settings)
 						all_names[#all_names + 1] = v.signal
 					end
 					stations[#stations + 1] = station_id
-					station.p_count_or_r_threshold_per_item[item_name] = r_threshold
 				end
 			end
 			if is_not_requesting then
@@ -449,9 +481,9 @@ local function tick_poll_station(map_data, mod_settings)
 						all_p_stations[item_network_name] = stations
 					end
 					stations[#stations + 1] = station_id
-					station.p_count_or_r_threshold_per_item[item_name] = effective_item_count
+					station.item_p_counts[item_name] = effective_item_count
 				else
-					signals[k] = nil
+					comb1_signals[k] = nil
 				end
 			end
 		end
