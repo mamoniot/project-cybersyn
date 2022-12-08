@@ -13,13 +13,14 @@ COMBINATOR_OUT_NAME = "cybersyn-combinator-output"
 COMBINATOR_CLOSE_SOUND = "entity-close/cybersyn-combinator"
 ALERT_SOUND = "utility/console_message"
 
-OPERATION_DEFAULT = "*"
-OPERATION_PRIMARY_IO = "/"
-OPERATION_PRIMARY_IO_FAILED_REQUEST = "^"
-OPERATION_PRIMARY_IO_ACTIVE = "<<"
-OPERATION_SECONDARY_IO = "%"
-OPERATION_DEPOT = "+"
-OPERATION_WAGON_MANIFEST = "-"
+MODE_DEFAULT = "*"
+MODE_PRIMARY_IO = "/"
+MODE_PRIMARY_IO_FAILED_REQUEST = "^"
+MODE_PRIMARY_IO_ACTIVE = "<<"
+MODE_SECONDARY_IO = "%"
+MODE_DEPOT = "+"
+MODE_WAGON_MANIFEST = "-"
+MODE_REFUELER = ">>"
 
 NETWORK_SIGNAL_DEFAULT = {name="signal-A", type="virtual"}
 INACTIVITY_TIME = 100
@@ -29,11 +30,14 @@ DELTA = 1/2048
 DEPOT_PRIORITY_MULT = 2048
 
 STATUS_D = 0
-STATUS_D_TO_P = 1
+STATUS_TO_P = 1
 STATUS_P = 2
-STATUS_P_TO_R = 3
+STATUS_TO_R = 3
 STATUS_R = 4
-STATUS_R_TO_D = 5
+STATUS_TO_D = 5
+STATUS_TO_D_BYPASS = 6
+STATUS_TO_F = 7
+STATUS_F = 8
 STATUS_CUSTOM = 256 --this status and any status greater than it can be used by other mods (I've reserved the lower integers for myself in case I want to add more statuses)
 
 LONGEST_INSERTER_REACH = 2

@@ -5,138 +5,6 @@ local table_insert = table.insert
 
 
 ---@param map_data MapData
----@param station Station
----@param manifest Manifest
----@param sign int?
-local function set_comb1(map_data, station, manifest, sign)
-	local comb = station.entity_comb1
-	if comb.valid then
-		if manifest then
-			local signals = {}
-			for i, item in ipairs(manifest) do
-				signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = sign*item.count}
-			end
-			set_combinator_output(map_data, comb, signals)
-		else
-			set_combinator_output(map_data, comb, nil)
-		end
-	end
-end
-
----@param map_data MapData
----@param train_id uint
----@param train Train
-function on_failed_delivery(map_data, train_id, train)
-	--NOTE: must either change this train's status or remove it after this call
-	local p_station_id = train.p_station_id
-	local r_station_id = train.r_station_id
-	local manifest = train.manifest
-	local is_p_in_progress = train.status == STATUS_D_TO_P or train.status == STATUS_P
-	local is_r_in_progress = is_p_in_progress or train.status == STATUS_P_TO_R or train.status == STATUS_R
-	if is_p_in_progress then
-		local station = map_data.stations[p_station_id]
-		remove_manifest(map_data, station, manifest, 1)
-		if train.status == STATUS_P then
-			set_comb1(map_data, station, nil)
-			unset_wagon_combs(map_data, station)
-		end
-	end
-	if is_r_in_progress then
-		local station = map_data.stations[r_station_id]
-		remove_manifest(map_data, station, manifest, -1)
-		if train.status == STATUS_R then
-			set_comb1(map_data, station, nil)
-			unset_wagon_combs(map_data, station)
-		end
-	end
-	train.r_station_id = 0
-	train.p_station_id = 0
-	train.manifest = nil
-	interface_raise_train_failed_delivery(train_id, is_p_in_progress, p_station_id, is_r_in_progress, r_station_id, manifest)
-end
-
-
-
----@param map_data MapData
----@param train_id uint
----@param train Train
-function add_available_train(map_data, train_id, train)
-	local network_name = train.network_name
-	if network_name then
-		local network = map_data.available_trains[network_name]
-		if not network then
-			network = {}
-			map_data.available_trains[network_name] = network
-		end
-		network[train_id] = true
-		train.is_available = true
-		interface_raise_train_available(train_id)
-	end
-end
----@param map_data MapData
----@param mod_settings CybersynModSettings
----@param depot_id uint
----@param depot Depot
----@param train_id uint
----@param train Train
-function add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
-	local comb = depot.entity_comb
-	local network_name = get_comb_network_name(comb)
-	if network_name then
-		local network = map_data.available_trains[network_name]
-		if not network then
-			network = {}
-			map_data.available_trains[network_name] = network
-		end
-		network[train_id] = true
-		train.is_available = true
-	end
-	depot.available_train_id = train_id
-	train.status = STATUS_D
-	train.parked_at_depot_id = depot_id
-	train.depot_name = depot.entity_stop.backer_name
-	train.se_depot_surface_i = depot.entity_stop.surface.index
-	train.network_name = network_name
-	train.network_flag = mod_settings.network_flag
-	train.priority = 0
-	if network_name then
-		local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
-		if signals then
-			for k, v in pairs(signals) do
-				local item_name = v.signal.name
-				local item_count = v.count
-				if item_name then
-					if item_name == SIGNAL_PRIORITY then
-						train.priority = item_count
-					end
-					if item_name == network_name then
-						train.network_flag = item_count
-					end
-				end
-			end
-		end
-		interface_raise_train_available(train_id)
-	end
-end
----@param map_data MapData
----@param train_id uint
----@param train Train
-function remove_available_train(map_data, train_id, train)
-	---@type uint
-	if train.is_available and train.network_name then
-		local network = map_data.available_trains[train.network_name--[[@as string]]]
-		if network then
-			network[train_id] = nil
-			if next(network) == nil then
-				map_data.available_trains[train.network_name] = nil
-			end
-		end
-		train.is_available = nil
-	end
-end
-
-
----@param map_data MapData
 ---@param stop LuaEntity
 ---@param comb LuaEntity
 local function on_depot_built(map_data, stop, comb)
@@ -152,8 +20,9 @@ local function on_depot_built(map_data, stop, comb)
 end
 
 ---@param map_data MapData
+---@param depot_id uint
 ---@param depot Depot
-local function on_depot_broken(map_data, depot)
+local function on_depot_broken(map_data, depot_id, depot)
 	local train_id = depot.available_train_id
 	if train_id then
 		local train = map_data.trains[train_id]
@@ -161,9 +30,68 @@ local function on_depot_broken(map_data, depot)
 		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
 		remove_train(map_data, train_id, train)
 	end
-	local depot_id = depot.entity_stop.unit_number--[[@as uint]]
 	map_data.depots[depot_id] = nil
 	interface_raise_depot_removed(depot_id, depot)
+end
+
+---@param map_data MapData
+---@param stop LuaEntity
+---@param comb LuaEntity
+local function on_refueler_built(map_data, stop, comb)
+	--NOTE: only place where new Depot
+	local refueler = {
+		entity_stop = stop,
+		entity_comb = comb,
+		trains_total = 0,
+		accepted_layouts = {},
+		layout_pattern = {},
+		--allows_all_trains = set_refueler_from_comb,
+		--priority = set_refueler_from_comb,
+		--network_name = set_refueler_from_comb,
+		--network_flag = set_refueler_from_comb,
+	}
+	set_refueler_from_comb(mod_settings, refueler)
+	local id = stop.unit_number--[[@as uint]]
+	map_data.refuelers[id] = refueler
+	update_stop_if_auto(map_data, refueler, false)
+	if refueler.network_name then
+		local network = map_data.to_refuelers[refueler.network_name]
+		if not network then
+			network = {}
+			map_data.to_refuelers[refueler.network_name] = network
+		end
+		network[id] = true
+	end
+	interface_raise_refueler_created(id)
+end
+---@param map_data MapData
+---@param refueler_id uint
+---@param refueler Refueler
+local function on_refueler_broken(map_data, refueler_id, refueler)
+	if refueler.trains_total > 0 then
+		--search for trains coming to the destroyed refueler
+		for train_id, train in pairs(map_data.trains) do
+			local is_f = train.refueler_id == refueler_id
+			if is_f then
+				if not train.se_is_being_teleported then
+					remove_train(map_data, train_id, train)
+					lock_train(train.entity)
+					send_lost_train_alert(train.entity, train.depot_name)
+				else
+					train.se_awaiting_removal = train_id
+				end
+			end
+		end
+	end
+	if refueler.network_name then
+		local network = map_data.to_refuelers[refueler.network_name]
+		network[refueler_id] = nil
+		if next(network) == nil then
+			map_data.to_refuelers[refueler.network_name] = nil
+		end
+	end
+	map_data.stations[refueler_id] = nil
+	interface_raise_refueler_removed(refueler_id, refueler)
 end
 
 ---@param map_data MapData
@@ -182,6 +110,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		deliveries_total = 0,
 		last_delivery_tick = map_data.total_ticks,
 		priority = 0,
+		item_priotity = nil,
 		r_threshold = 0,
 		locked_slots = 0,
 		--network_name = set_station_from_comb_state,
@@ -191,7 +120,8 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		accepted_layouts = {},
 		layout_pattern = nil,
 		tick_signals = nil,
-		p_count_or_r_threshold_per_item = {},
+		item_p_counts = {},
+		item_thresholds = nil,
 		display_state = 0,
 	}
 	set_station_from_comb_state(station)
@@ -199,7 +129,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 	map_data.stations[id] = station
 	map_data.warmup_station_ids[#map_data.warmup_station_ids + 1] = id
 
-	update_station_if_auto(map_data, station, nil)
+	update_stop_if_auto(map_data, station, true)
 	interface_raise_station_created(id)
 end
 ---@param map_data MapData
@@ -213,8 +143,8 @@ local function on_station_broken(map_data, station_id, station)
 			local is_p = train.p_station_id == station_id
 			if is_p or is_r then
 
-				local is_p_in_progress = train.status == STATUS_D_TO_P or train.status == STATUS_P
-				local is_r_in_progress = is_p_in_progress or train.status == STATUS_P_TO_R or train.status == STATUS_R
+				local is_p_in_progress = train.status == STATUS_TO_P or train.status == STATUS_P
+				local is_r_in_progress = is_p_in_progress or train.status == STATUS_TO_R or train.status == STATUS_R
 				if (is_p and is_p_in_progress) or (is_r and is_r_in_progress) then
 					--train is attempting delivery to a stop that was destroyed, stop it
 					on_failed_delivery(map_data, train_id, train)
@@ -311,13 +241,13 @@ local function on_combinator_built(map_data, comb)
 	local params = control.parameters
 	local op = params.operation
 
-	if op == OPERATION_DEFAULT then
-		op = OPERATION_PRIMARY_IO
+	if op == MODE_DEFAULT then
+		op = MODE_PRIMARY_IO
 		params.operation = op
 		params.first_signal = NETWORK_SIGNAL_DEFAULT
 		control.parameters = params
-	elseif op ~= OPERATION_PRIMARY_IO and op ~= OPERATION_SECONDARY_IO and op ~= OPERATION_DEPOT and op ~= OPERATION_WAGON_MANIFEST then
-		op = OPERATION_PRIMARY_IO
+	elseif op ~= MODE_PRIMARY_IO and op ~= MODE_SECONDARY_IO and op ~= MODE_DEPOT and op ~= MODE_REFUELER and op ~= MODE_WAGON_MANIFEST then
+		op = MODE_PRIMARY_IO
 		params.operation = op
 		control.parameters = params
 	end
@@ -327,43 +257,39 @@ local function on_combinator_built(map_data, comb)
 	map_data.to_output[comb.unit_number] = out
 	map_data.to_stop[comb.unit_number] = stop
 
-	if op == OPERATION_WAGON_MANIFEST then
+	if op == MODE_WAGON_MANIFEST then
 		if rail then
-			update_station_from_rail(map_data, rail, nil, true)
+			update_stop_from_rail(map_data, rail, nil, true)
 		end
-	elseif op == OPERATION_DEPOT then
-		if stop then
-			local station = map_data.stations[stop.unit_number]
-			---@type Depot
-			local depot = map_data.depots[stop.unit_number]
-			if depot or station then
-				--NOTE: repeated combinators are ignored
-			else
+	elseif stop then
+		local id = stop.unit_number--[[@as uint]]
+		local station = map_data.stations[id]
+		local depot = map_data.depots[id]
+		local refueler = map_data.refuelers[id]
+		if op == MODE_DEPOT then
+			if refueler then
+				on_refueler_broken(map_data, id, refueler)
+			end
+			if not station and not depot then
 				on_depot_built(map_data, stop, comb)
 			end
-		end
-	elseif op == OPERATION_SECONDARY_IO then
-		if stop then
-			local station = map_data.stations[stop.unit_number]
+		elseif op == MODE_REFUELER then
+			if not station and not depot and not refueler then
+				on_refueler_built(map_data, stop, comb)
+			end
+		elseif op == MODE_SECONDARY_IO then
 			if station and not station.entity_comb2 then
 				station.entity_comb2 = comb
 			end
-		end
-	elseif op == OPERATION_PRIMARY_IO then
-		if stop then
-			local station = map_data.stations[stop.unit_number]
-			if station then
-				--NOTE: repeated combinators are ignored
-			else
-				local depot = map_data.depots[stop.unit_number]
-				if depot then
-					on_depot_broken(map_data, depot)
-				end
-				--no station or depot
-				--add station
-
-				local comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
-
+		elseif op == MODE_PRIMARY_IO then
+			if refueler then
+				on_refueler_broken(map_data, id, refueler)
+			end
+			if depot then
+				on_depot_broken(map_data, id, depot)
+			end
+			if not station then
+				local comb2 = search_for_station_combinator(map_data, stop, MODE_SECONDARY_IO, comb)
 				on_station_built(map_data, stop, comb, comb2)
 			end
 		end
@@ -376,20 +302,43 @@ function on_combinator_network_updated(map_data, comb, network_name)
 	local stop = map_data.to_stop[comb.unit_number]
 
 	if stop and stop.valid then
-		local station = map_data.stations[stop.unit_number]
+		local id = stop.unit_number
+		local station = map_data.stations[id]
 		if station then
 			if station.entity_comb1 == comb then
 				station.network_name = network_name
 			end
 		else
-			local depot_id = stop.unit_number
-			local depot = map_data.depots[depot_id]
-			if depot and depot.entity_comb == comb then
-				local train_id = depot.available_train_id
-				if train_id then
-					local train = map_data.trains[train_id]
-					remove_available_train(map_data, train_id, train)
-					add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
+			local depot = map_data.depots[id]
+			if depot then
+				if depot.entity_comb == comb then
+					local train_id = depot.available_train_id
+					if train_id then
+						local train = map_data.trains[train_id]
+						remove_available_train(map_data, train_id, train)
+						add_available_train_to_depot(map_data, mod_settings, train_id, train, id, depot)
+						interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
+					end
+				end
+			else
+				local refueler = map_data.refuelers[id]
+				if refueler and refueler.entity_comb == comb then
+					if refueler.network_name then
+						local network = map_data.to_refuelers[refueler.network_name]
+						network[id] = nil
+						if next(network) == nil then
+							map_data.to_refuelers[refueler.network_name] = nil
+						end
+					end
+					refueler.network_name = network_name
+					if network_name then
+						local network = map_data.to_refuelers[network_name]
+						if network == nil then
+							network = {}
+							map_data.to_refuelers[network_name] = network
+						end
+						network[id] = true
+					end
 				end
 			end
 		end
@@ -405,33 +354,27 @@ function on_combinator_broken(map_data, comb)
 	local stop = map_data.to_stop[comb_id]
 
 	if stop and stop.valid then
-		local station = map_data.stations[stop.unit_number]
+		local id = stop.unit_number--[[@as uint]]
+		local station = map_data.stations[id]
 		if station then
 			if station.entity_comb1 == comb then
-				local comb1 = search_for_station_combinator(map_data, stop, OPERATION_PRIMARY_IO, comb)
-				if comb1 then
-					station.entity_comb1 = comb1
-					set_station_from_comb_state(station)
-					update_station_if_auto(map_data, station)
-				else
-					on_station_broken(map_data, stop.unit_number, station)
-					local depot_comb = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
-					if depot_comb then
-						on_depot_built(map_data, stop, depot_comb)
-					end
-				end
+				on_station_broken(map_data, id, station)
+				on_stop_built(map_data, stop, comb)
 			elseif station.entity_comb2 == comb then
-				station.entity_comb2 = search_for_station_combinator(map_data, stop, OPERATION_SECONDARY_IO, comb)
+				station.entity_comb2 = search_for_station_combinator(map_data, stop, MODE_SECONDARY_IO, comb)
 			end
 		else
-			local depot = map_data.depots[stop.unit_number]
-			if depot and depot.entity_comb == comb then
-				--NOTE: this will disrupt deliveries in progress that where dispatched from this station in a minor way
-				local depot_comb = search_for_station_combinator(map_data, stop, OPERATION_DEPOT, comb)
-				if depot_comb then
-					depot.entity_comb = depot_comb
-				else
-					on_depot_broken(map_data, depot)
+			local depot = map_data.depots[id]
+			if depot then
+				if depot.entity_comb == comb then
+					on_depot_broken(map_data, id, depot)
+					on_stop_built(map_data, stop, comb)
+				end
+			else
+				local refueler = map_data.refuelers[id]
+				if refueler and refueler.entity_comb == comb then
+					on_refueler_broken(map_data, id, depot)
+					on_stop_built(map_data, stop, comb)
 				end
 			end
 		end
@@ -449,17 +392,16 @@ end
 ---@param map_data MapData
 ---@param comb LuaEntity
 function combinator_update(map_data, comb)
-	---@type uint
-	local unit_number = comb.unit_number
+	local unit_number = comb.unit_number--[[@as uint]]
 	local control = get_comb_control(comb)
 	local params = control.parameters
 	local old_params = map_data.to_comb_params[unit_number]
 	local has_changed = false
 
 	if params.operation ~= old_params.operation then
-		if (old_params.operation == OPERATION_PRIMARY_IO) and (params.operation == OPERATION_PRIMARY_IO_ACTIVE or params.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST) then
-			--make sure only OPERATION_PRIMARY_IO gets stored on map_data.to_comb_params
-			params.operation = OPERATION_PRIMARY_IO
+		if (old_params.operation == MODE_PRIMARY_IO) and (params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST) then
+			--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
+			params.operation = MODE_PRIMARY_IO
 		else
 			--NOTE: This is rather dangerous, we may need to actually implement operation changing
 			on_combinator_broken(map_data, comb)
@@ -473,21 +415,29 @@ function combinator_update(map_data, comb)
 	local new_network = new_signal and new_signal.name or nil
 	local old_network = old_signal and old_signal.name or nil
 	if new_network ~= old_network then
+		has_changed = true
 		on_combinator_network_updated(map_data, comb, new_network)
 	end
 	if params.second_constant ~= old_params.second_constant then
-		local stop = global.to_stop[comb.unit_number]
+		has_changed = true
+		local stop = map_data.to_stop[comb.unit_number]
 		if stop then
-			local station = global.stations[stop.unit_number]
+			local id = stop.unit_number
+			local station = map_data.stations[id]
 			if station then
-				local bits = params.second_constant
-				local is_pr_state = floor(bits/2)%3
-				station.is_p = is_pr_state == 0 or is_pr_state == 1
-				station.is_r = is_pr_state == 0 or is_pr_state == 2
-				local allows_all_trains = bits%2 == 1
-				if station.allows_all_trains ~= allows_all_trains then
-					station.allows_all_trains = allows_all_trains
-					update_station_if_auto(map_data, station)
+				local pre = station.allows_all_trains
+				set_station_from_comb_state(station)
+				if station.allows_all_trains ~= pre then
+					update_stop_if_auto(map_data, station, true)
+				end
+			else
+				local refueler = map_data.refuelers[id]
+				if refueler then
+					local pre = refueler.allows_all_trains
+					set_refueler_from_comb(mod_settings, refueler)
+					if refueler.allows_all_trains ~= pre then
+						update_stop_if_auto(map_data, refueler, false)
+					end
 				end
 			end
 		end
@@ -500,7 +450,8 @@ end
 
 ---@param map_data MapData
 ---@param stop LuaEntity
-local function on_stop_built(map_data, stop)
+---@param comb_forbidden LuaEntity?
+function on_stop_built(map_data, stop, comb_forbidden)
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
 
@@ -511,18 +462,21 @@ local function on_stop_built(map_data, stop)
 	local comb2 = nil
 	local comb1 = nil
 	local depot_comb = nil
+	local refueler_comb = nil
 	local entities = stop.surface.find_entities(search_area)
 	for _, entity in pairs(entities) do
-		if entity.valid and entity.name == COMBINATOR_NAME and map_data.to_stop[entity.unit_number] == nil then
+		if entity.valid and entity ~= comb_forbidden and entity.name == COMBINATOR_NAME and map_data.to_stop[entity.unit_number] == nil then
 			map_data.to_stop[entity.unit_number] = stop
 			local param = get_comb_params(entity)
 			local op = param.operation
-			if op == OPERATION_PRIMARY_IO then
+			if op == MODE_PRIMARY_IO then
 				comb1 = entity
-			elseif op == OPERATION_SECONDARY_IO then
+			elseif op == MODE_SECONDARY_IO then
 				comb2 = entity
-			elseif op == OPERATION_DEPOT then
+			elseif op == MODE_DEPOT then
 				depot_comb = entity
+			elseif op == MODE_REFUELER then
+				refueler_comb = entity
 			end
 		end
 	end
@@ -530,6 +484,8 @@ local function on_stop_built(map_data, stop)
 		on_station_built(map_data, stop, comb1, comb2)
 	elseif depot_comb then
 		on_depot_built(map_data, stop, depot_comb)
+	elseif refueler_comb then
+		on_refueler_built(map_data, stop, refueler_comb)
 	end
 end
 ---@param map_data MapData
@@ -549,20 +505,26 @@ local function on_stop_broken(map_data, stop)
 		end
 	end
 
-	local station = map_data.stations[stop.unit_number]
+	local id = stop.unit_number--[[@as uint]]
+	local station = map_data.stations[id]
 	if station then
-		on_station_broken(map_data, stop.unit_number, station)
+		on_station_broken(map_data, id, station)
 	else
-		local depot = map_data.depots[stop.unit_number]
+		local depot = map_data.depots[id]
 		if depot then
-			on_depot_broken(map_data, depot)
+			on_depot_broken(map_data, id, depot)
+		else
+			local refueler = map_data.refuelers[id]
+			if refueler then
+				on_refueler_broken(map_data, id, refueler)
+			end
 		end
 	end
 end
 ---@param map_data MapData
 ---@param stop LuaEntity
 ---@param old_name string
-local function on_station_rename(map_data, stop, old_name)
+local function on_stop_rename(map_data, stop, old_name)
 	--search for trains coming to the renamed station
 	local station_id = stop.unit_number--[[@as uint]]
 	local station = map_data.stations[station_id]
@@ -571,8 +533,8 @@ local function on_station_rename(map_data, stop, old_name)
 			local is_p = train.p_station_id == station_id
 			local is_r = train.r_station_id == station_id
 			if is_p or is_r then
-				local is_p_in_progress = train.status == STATUS_D_TO_P or train.status == STATUS_P
-				local is_r_in_progress = is_p_in_progress or train.status == STATUS_P_TO_R or train.status == STATUS_R
+				local is_p_in_progress = train.status == STATUS_TO_P or train.status == STATUS_P
+				local is_r_in_progress = is_p_in_progress or train.status == STATUS_TO_R or train.status == STATUS_R
 				if is_r and is_r_in_progress then
 					local r_station = map_data.stations[train.r_station_id]
 					if not train.se_is_being_teleported then
@@ -614,209 +576,6 @@ local function find_and_add_all_stations_from_nothing(map_data)
 	end
 end
 
----@param map_data MapData
----@param depot_id uint
----@param train_entity LuaTrain
-local function on_train_arrives_depot(map_data, depot_id, train_entity)
-	local contents = train_entity.get_contents()
-	local fluid_contents = train_entity.get_fluid_contents()
-	local is_train_empty = next(contents) == nil and next(fluid_contents) == nil
-	local train_id = train_entity.id
-	local train = map_data.trains[train_id]
-	if train then
-		if train.manifest then
-			if train.status == STATUS_R_TO_D then
-				--succeeded delivery
-				train.p_station_id = 0
-				train.r_station_id = 0
-				train.manifest = nil
-			elseif mod_settings.react_to_train_early_to_depot then
-				on_failed_delivery(map_data, train_id, train)
-				send_unexpected_train_alert(train.entity)
-			else
-				return
-			end
-		end
-		if is_train_empty then
-			remove_available_train(map_data, train_id, train)
-			add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, map_data.depots[depot_id])
-			set_depot_schedule(train_entity, train.depot_name)
-			interface_raise_train_parked_at_depot(train_id, depot_id)
-		else
-			--train still has cargo
-			if mod_settings.react_to_nonempty_train_in_depot then
-				lock_train(train_entity)
-				remove_train(map_data, train_id, train)
-				send_nonempty_train_in_depot_alert(train_entity)
-			end
-			interface_raise_train_nonempty_in_depot(depot_id, train_entity, train_id)
-		end
-	elseif is_train_empty then
-		--NOTE: only place where new Train
-		train = {
-			entity = train_entity,
-			--layout_id = set_train_layout,
-			--item_slot_capacity = set_train_layout,
-			--fluid_capacity = set_train_layout,
-			--status = add_available_train_to_depot,
-			p_station_id = 0,
-			r_station_id = 0,
-			manifest = nil,
-			last_manifest_tick = map_data.total_ticks,
-			has_filtered_wagon = nil,
-			--is_available = add_available_train_to_depot,
-			--parked_at_depot_id = add_available_train_to_depot,
-			--depot_name = add_available_train_to_depot,
-			--network_name = add_available_train_to_depot,
-			--network_flag = add_available_train_to_depot,
-			--priority = add_available_train_to_depot,
-		}
-		set_train_layout(map_data, train)
-		map_data.trains[train_id] = train
-		add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, map_data.depots[depot_id])
-
-		set_depot_schedule(train_entity, train.depot_name)
-		interface_raise_train_created(train_id, depot_id)
-	else
-		if mod_settings.react_to_nonempty_train_in_depot then
-			lock_train(train_entity)
-			send_nonempty_train_in_depot_alert(train_entity)
-		end
-		interface_raise_train_nonempty_in_depot(depot_id, train_entity)
-	end
-end
----@param map_data MapData
----@param stop LuaEntity
----@param train_id uint
----@param train Train
-local function on_train_arrives_buffer(map_data, stop, train_id, train)
-	if train.manifest then
-		---@type uint
-		local station_id = stop.unit_number
-		if train.status == STATUS_D_TO_P then
-			if train.p_station_id == station_id then
-				train.status = STATUS_P
-				local station = map_data.stations[station_id]
-				set_comb1(map_data, station, train.manifest, 1)
-				set_p_wagon_combs(map_data, station, train)
-			end
-		elseif train.status == STATUS_P_TO_R then
-			if train.r_station_id == station_id then
-				train.status = STATUS_R
-				local station = map_data.stations[station_id]
-				set_comb1(map_data, station, train.manifest, -1)
-				set_r_wagon_combs(map_data, station, train)
-			end
-		elseif train.status == STATUS_P and train.p_station_id == station_id then
-			--this player intervention that is considered valid
-		elseif (train.status == STATUS_R or train.status == STATUS_R_TO_D) and train.r_station_id == station_id then
-			--this player intervention that is considered valid
-		elseif mod_settings.react_to_train_at_incorrect_station then
-			on_failed_delivery(map_data, train_id, train)
-			remove_train(map_data, train_id, train)
-			lock_train(train.entity)
-			send_lost_train_alert(train.entity, train.depot_name)
-		end
-	elseif mod_settings.react_to_train_at_incorrect_station then
-		--train is lost somehow, probably from player intervention
-		remove_train(map_data, train_id, train)
-		send_lost_train_alert(train.entity, train.depot_name)
-	end
-end
----@param map_data MapData
----@param mod_settings CybersynModSettings
----@param train_id uint
----@param train Train
-local function on_train_leaves_station(map_data, mod_settings, train_id, train)
-	if train.manifest then
-		if train.status == STATUS_P then
-			train.status = STATUS_P_TO_R
-			local station = map_data.stations[train.p_station_id]
-			remove_manifest(map_data, station, train.manifest, 1)
-			set_comb1(map_data, station, nil)
-			unset_wagon_combs(map_data, station)
-			if train.has_filtered_wagon then
-				train.has_filtered_wagon = nil
-				for carriage_i, carriage in ipairs(train.entity.cargo_wagons) do
-					local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
-					if inv and inv.is_filtered() then
-						---@type uint
-						for i = 1, #inv do
-							inv.set_filter(i, nil)
-						end
-					end
-				end
-			end
-			interface_raise_train_completed_provide(train_id)
-		elseif train.status == STATUS_R then
-			train.status = STATUS_R_TO_D
-			local station = map_data.stations[train.r_station_id]
-			remove_manifest(map_data, station, train.manifest, -1)
-			set_comb1(map_data, station, nil)
-			unset_wagon_combs(map_data, station)
-			--add to available trains for depot bypass
-			local fuel_fill = 0
-			local total_slots = 0
-			for k, v in pairs(train.entity.locomotives) do
-				if v[1] then
-					local inv = v[1].get_fuel_inventory()
-					if inv then
-						local inv_size = #inv
-						total_slots = total_slots + inv_size
-						for i = 1, inv_size do
-							local item = inv[i--[[@as uint]]]
-							local count = item.count
-							if count > 0 then
-								fuel_fill = fuel_fill + count/get_stack_size(map_data, item.name)
-							end
-						end
-					end
-				end
-			end
-			if total_slots == 0 then
-				--if total_slots == 0 it's probably a modded electric train
-				if mod_settings.depot_bypass_threshold < 1 then
-					add_available_train(map_data, train_id, train)
-				end
-			elseif fuel_fill/total_slots > mod_settings.depot_bypass_threshold then
-				add_available_train(map_data, train_id, train)
-			end
-			interface_raise_train_completed_request(train_id)
-		end
-	elseif train.status == STATUS_D then
-		--The train is leaving the depot without a manifest, the player likely intervened
-		local depot = map_data.depots[train.parked_at_depot_id--[[@as uint]]]
-		remove_train(map_data, train_id, train)
-		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
-	end
-end
-
-
----@param map_data MapData
----@param train_id uint
----@param train Train
-local function on_train_broken(map_data, train_id, train)
-	--NOTE: train.entity is only absent if the train is climbing a space elevator as of 0.5.0
-	if not train.se_is_being_teleported then
-		if train.manifest then
-			on_failed_delivery(map_data, train_id, train)
-		end
-		remove_train(map_data, train_id, train)
-	end
-end
----@param map_data MapData
----@param pre_train_id uint
-local function on_train_modified(map_data, pre_train_id)
-	local train = map_data.trains[pre_train_id]
-	--NOTE: train.entity is only absent if the train is climbing a space elevator as of 0.5.0
-	if train and not train.se_is_being_teleported then
-		if train.manifest then
-			on_failed_delivery(map_data, pre_train_id, train)
-		end
-		remove_train(map_data, pre_train_id, train)
-	end
-end
-
 
 local function on_built(event)
 	local entity = event.entity or event.created_entity
@@ -827,11 +586,11 @@ local function on_built(event)
 	elseif entity.name == COMBINATOR_NAME then
 		on_combinator_built(global, entity)
 	elseif entity.type == "inserter" then
-		update_station_from_inserter(global, entity)
+		update_stop_from_inserter(global, entity)
 	elseif entity.type == "pump" then
-		update_station_from_pump(global, entity)
+		update_stop_from_pump(global, entity)
 	elseif entity.type == "straight-rail" then
-		update_station_from_rail(global, entity)
+		update_stop_from_rail(global, entity)
 	end
 end
 local function on_broken(event)
@@ -843,11 +602,11 @@ local function on_broken(event)
 	elseif entity.name == COMBINATOR_NAME then
 		on_combinator_broken(global, entity)
 	elseif entity.type == "inserter" then
-		update_station_from_inserter(global, entity, entity)
+		update_stop_from_inserter(global, entity, entity)
 	elseif entity.type == "pump" then
-		update_station_from_pump(global, entity, entity)
+		update_stop_from_pump(global, entity, entity)
 	elseif entity.type == "straight-rail" then
-		update_station_from_rail(global, entity, nil)
+		update_stop_from_rail(global, entity, nil)
 	elseif entity.train then
 		local train_id = entity.train.id
 		local train = global.trains[train_id]
@@ -861,47 +620,7 @@ local function on_rotate(event)
 	if not entity or not entity.valid then return end
 
 	if entity.type == "inserter" then
-		update_station_from_inserter(global, entity)
-	end
-end
-local function on_rename(event)
-	if event.entity.name == "train-stop" then
-		on_station_rename(global, event.entity, event.old_name)
-	end
-end
-
-local function on_train_built(event)
-	local train_e = event.train
-	if event.old_train_id_1 then
-		on_train_modified(global, event.old_train_id_1)
-	end
-	if event.old_train_id_2 then
-		on_train_modified(global, event.old_train_id_2)
-	end
-end
-local function on_train_changed(event)
-	local train_e = event.train--[[@as LuaTrain]]
-	if not train_e.valid then return end
-	local train_id = train_e.id
-	local train = global.trains[train_id]
-	if train_e.state == defines.train_state.wait_station then
-		local stop = train_e.station
-		if stop and stop.valid and stop.name == "train-stop" then
-			if global.stations[stop.unit_number] then
-				if train then
-					on_train_arrives_buffer(global, stop, train_id, train)
-				end
-			else
-				local depot_id = stop.unit_number--[[@as uint]]
-				if global.depots[depot_id] then
-					on_train_arrives_depot(global, depot_id, train_e)
-				end
-			end
-		end
-	elseif event.old_state == defines.train_state.wait_station then
-		if train then
-			on_train_leaves_station(global, mod_settings, train_id, train)
-		end
+		update_stop_from_inserter(global, entity)
 	end
 end
 
@@ -927,13 +646,20 @@ local function on_paste(event)
 	end
 end
 
+local function on_rename(event)
+	if event.entity.name == "train-stop" then
+		on_stop_rename(global, event.entity, event.old_name)
+	end
+end
+
 
 local function on_settings_changed(event)
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.depot_bypass_threshold = settings.global["cybersyn-depot-bypass-threshold"].value--[[@as double]]
+	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
+	mod_settings.depot_bypass_enabled = settings.global["cybersyn-depot-bypass-enabled"].value--[[@as boolean]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	if event.setting == "cybersyn-ticks-per-second" then
@@ -946,6 +672,7 @@ local function on_settings_changed(event)
 			script.on_nth_tick(nil)
 		end
 	end
+	interface_raise_on_mod_settings_changed(event)
 end
 
 local function setup_se_compat()
@@ -1012,29 +739,45 @@ local function setup_se_compat()
 			train.se_awaiting_rename = nil
 		end
 
-		if not (train.status == STATUS_D_TO_P or train.status == STATUS_P_TO_R) then return end
+		if not (train.status == STATUS_TO_P or train.status == STATUS_TO_R) then return end
 
 		local schedule = train_entity.schedule
 		if schedule then
-			local p_station = map_data.stations[train.p_station_id]
-			local p_name = p_station.entity_stop.backer_name
-			local p_surface_i = p_station.entity_stop.surface.index
-			local r_station = map_data.stations[train.r_station_id]
-			local r_name = r_station.entity_stop.backer_name
-			local r_surface_i = r_station.entity_stop.surface.index
-			local records = schedule.records
-			local i = schedule.current
-			while i <= #records do
-				if records[i].station == p_name and p_surface_i ~= old_surface_index then
-					table_insert(records, i, create_direct_to_station_order(p_station.entity_stop))
-					i = i + 1
-				elseif records[i].station == r_name and r_surface_i ~= old_surface_index then
-					table_insert(records, i, create_direct_to_station_order(r_station.entity_stop))
+			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
+				local p_station = map_data.stations[train.p_station_id]
+				local p_name = p_station.entity_stop.backer_name
+				local p_surface_i = p_station.entity_stop.surface.index
+				local r_station = map_data.stations[train.r_station_id]
+				local r_name = r_station.entity_stop.backer_name
+				local r_surface_i = r_station.entity_stop.surface.index
+				local records = schedule.records
+				local i = schedule.current
+				while i <= #records do
+					if records[i].station == p_name and p_surface_i ~= old_surface_index then
+						table_insert(records, i, create_direct_to_station_order(p_station.entity_stop))
+						i = i + 1
+					elseif records[i].station == r_name and r_surface_i ~= old_surface_index then
+						table_insert(records, i, create_direct_to_station_order(r_station.entity_stop))
+						i = i + 1
+					end
 					i = i + 1
 				end
-				i = i + 1
+				train_entity.schedule = schedule
+			elseif train.status == STATUS_TO_F then
+				local refueler = map_data.refuelers[train.refueler_id]
+				local f_name = refueler.entity_stop.backer_name
+				local f_surface_i = refueler.entity_stop.surface.index
+				local records = schedule.records
+				local i = schedule.current
+				while i <= #records do
+					if records[i].station == f_name and f_surface_i ~= old_surface_index then
+						table_insert(records, i, create_direct_to_station_order(refueler.entity_stop))
+						i = i + 1
+					end
+					i = i + 1
+				end
+				train_entity.schedule = schedule
 			end
-			train_entity.schedule = schedule
 		end
 		interface_raise_train_teleported(new_id, old_id)
 	end)
@@ -1061,9 +804,10 @@ local function main()
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.depot_bypass_threshold = settings.global["cybersyn-depot-bypass-threshold"].value--[[@as double]]
+	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
+	mod_settings.depot_bypass_enabled = settings.global["cybersyn-depot-bypass-enabled"].value--[[@as boolean]]
 
 	mod_settings.missing_train_alert_enabled = true
 	mod_settings.stuck_train_alert_enabled = true

@@ -212,6 +212,7 @@ combinator_entity.divide_symbol_sprites = create_combinator_display(30, 0, { 0, 
 combinator_entity.modulo_symbol_sprites = create_combinator_display(45, 0, { 0, -0.140625, }, { 0, -0.328125, })
 combinator_entity.power_symbol_sprites = create_combinator_display(0, 11, { 0, -0.140625, }, { 0, -0.328125, })
 combinator_entity.left_shift_symbol_sprites = create_combinator_display(15, 11, { 0, -0.140625, }, { 0, -0.328125, })
+combinator_entity.right_shift_symbol_sprites = create_combinator_display(30, 11, { 0, -0.140625, }, { 0, -0.328125, })
 combinator_entity.multiply_symbol_sprites = combinator_entity.divide_symbol_sprites
 
 

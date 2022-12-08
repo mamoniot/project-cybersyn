@@ -1,7 +1,10 @@
 --By Mami
 local get_distance = require("__flib__.misc").get_distance
-local abs = math.abs
 local floor = math.floor
+local table_insert = table.insert
+local DEFINES_WORKING = defines.entity_status.working
+local DEFINES_LOW_POWER = defines.entity_status.low_power
+local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 
 
 ---@param map_data MapData
@@ -130,7 +133,10 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 	local t_surface_i = t_surface.index
 	local p_surface_i = p_surface.index
 	local r_surface_i = r_surface.index
-	if t_surface_i == p_surface_i and p_surface_i == r_surface_i then
+	local is_p_on_t = t_surface_i == p_surface_i
+	local is_r_on_t = t_surface_i == r_surface_i
+	local is_d_on_t = t_surface_i == d_surface_i
+	if is_p_on_t and is_r_on_t and is_d_on_t then
 		train.schedule = {current = start_at_depot and 1 or 2, records = {
 			create_inactivity_order(depot_name),
 			create_direct_to_station_order(p_stop),
@@ -144,37 +150,43 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 		else
 			return true
 		end
-	elseif IS_SE_PRESENT and (t_surface_i == p_surface_i or p_surface_i == r_surface_i or r_surface_i == t_surface_i) then
-		local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})
-		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = (t_surface_i == p_surface_i) and r_surface_i or p_surface_i})
-		local is_train_in_orbit = other_zone.orbit_index == t_zone.index
-		if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
-			local elevator_name = se_get_space_elevator_name(t_surface)
-			if elevator_name then
-				local records = {create_inactivity_order(depot_name)}
-				if t_surface_i == p_surface_i then
-					records[#records + 1] = create_direct_to_station_order(p_stop)
-				else
-					records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
-					is_train_in_orbit = not is_train_in_orbit
-				end
-				records[#records + 1] = create_loading_order(p_stop, manifest)
-				if p_surface_i ~= r_surface_i then
-					records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
-					is_train_in_orbit = not is_train_in_orbit
-				end
-				records[#records + 1] = create_unloading_order(r_stop)
-				if r_surface_i ~= d_surface_i then
-					records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
-					is_train_in_orbit = not is_train_in_orbit
-				end
+	elseif IS_SE_PRESENT then
+		local other_surface_i = (not is_p_on_t and p_surface_i) or (not is_r_on_t and r_surface_i) or d_surface_i
+		if (is_p_on_t or p_surface_i == other_surface_i) and (is_r_on_t or r_surface_i == other_surface_i) and (is_d_on_t or d_surface_i == other_surface_i) then
+			local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})
+			local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = other_surface_i})
+			local is_train_in_orbit = other_zone.orbit_index == t_zone.index
+			if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
+				local elevator_name = se_get_space_elevator_name(t_surface)
+				if elevator_name then
+					local records = {create_inactivity_order(depot_name)}
+					if t_surface_i == p_surface_i then
+						records[#records + 1] = create_direct_to_station_order(p_stop)
+					else
+						records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
+						is_train_in_orbit = not is_train_in_orbit
+					end
+					records[#records + 1] = create_loading_order(p_stop, manifest)
 
-				train.schedule = {current = start_at_depot and 1 or 2, records = records}
-				if old_schedule and not train.has_path then
-					train.schedule = old_schedule
-					return false
-				else
-					return true
+					if p_surface_i ~= r_surface_i then
+						records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
+						is_train_in_orbit = not is_train_in_orbit
+					elseif t_surface_i == r_surface_i then
+						records[#records + 1] = create_direct_to_station_order(r_stop)
+					end
+					records[#records + 1] = create_unloading_order(r_stop)
+					if r_surface_i ~= d_surface_i then
+						records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
+						is_train_in_orbit = not is_train_in_orbit
+					end
+
+					train.schedule = {current = start_at_depot and 1 or 2, records = records}
+					if old_schedule and not train.has_path then
+						train.schedule = old_schedule
+						return false
+					else
+						return true
+					end
 				end
 			end
 		end
@@ -188,6 +200,60 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 	lock_train(train)
 	send_lost_train_alert(train, depot_name)
 	return true
+end
+
+---@param train LuaTrain
+---@param stop LuaEntity
+---@param depot_name string
+function add_refueler_schedule(train, stop, depot_name)
+	local schedule = train.schedule or {current = 1, records = {}}
+	local i = schedule.current
+	if i == 1 then
+		i = #schedule.records + 1--[[@as uint]]
+		schedule.current = i
+	end
+
+	local t_surface = train.front_stock.surface
+	local f_surface = stop.surface
+	local t_surface_i = t_surface.index
+	local f_surface_i = f_surface.index
+	if t_surface_i == f_surface_i then
+		table_insert(schedule.records, i, create_direct_to_station_order(stop))
+		i = i + 1
+		table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
+
+		train.schedule = schedule
+		return
+	elseif IS_SE_PRESENT then
+		local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})
+		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = f_surface_i})
+		local is_train_in_orbit = other_zone.orbit_index == t_zone.index
+		if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
+			local elevator_name = se_get_space_elevator_name(t_surface)
+			local cur_order = schedule.records[i]
+			local is_elevator_in_orders_already = cur_order and cur_order.station == elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)
+			if not is_elevator_in_orders_already then
+				table_insert(schedule.records, i, se_create_elevator_order(elevator_name, is_train_in_orbit))
+			end
+			i = i + 1
+			is_train_in_orbit = not is_train_in_orbit
+			table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
+			i = i + 1
+			if not is_elevator_in_orders_already then
+				table_insert(schedule.records, i, se_create_elevator_order(elevator_name, is_train_in_orbit))
+				i = i + 1
+				is_train_in_orbit = not is_train_in_orbit
+			end
+
+			train.schedule = schedule
+			return
+		end
+	end
+	--create an order that probably cannot be fulfilled and alert the player
+	table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
+	lock_train(train)
+	send_lost_train_alert(train, depot_name)
+	train.schedule = schedule
 end
 
 
@@ -223,14 +289,16 @@ function get_comb_gui_settings(comb)
 		switch_state = "right"
 	end
 
-	if op == OPERATION_PRIMARY_IO or op == OPERATION_PRIMARY_IO_ACTIVE or op == OPERATION_PRIMARY_IO_FAILED_REQUEST then
+	if op == MODE_PRIMARY_IO or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
 		selected_index = 1
-	elseif op == OPERATION_SECONDARY_IO then
+	elseif op == MODE_DEPOT then
 		selected_index = 2
-	elseif op == OPERATION_DEPOT then
+	elseif op == MODE_REFUELER then
 		selected_index = 3
-	elseif op == OPERATION_WAGON_MANIFEST then
+	elseif op == MODE_SECONDARY_IO then
 		selected_index = 4
+	elseif op == MODE_WAGON_MANIFEST then
+		selected_index = 5
 	end
 	return selected_index, params.first_signal, not allows_all_trains, switch_state
 end
@@ -253,45 +321,49 @@ function set_station_from_comb_state(station)
 	station.is_p = is_pr_state == 0 or is_pr_state == 1
 	station.is_r = is_pr_state == 0 or is_pr_state == 2
 end
----@param map_data MapData
----@param unit_number uint
----@param params ArithmeticCombinatorParameters
-local function has_comb_params_changed(map_data, unit_number, params)
-	local old_params = map_data.to_comb_params[unit_number]
+---@param mod_settings CybersynModSettings
+---@param refueler Refueler
+function set_refueler_from_comb(mod_settings, refueler)
+	--NOTE: this does nothing to update currently active deliveries
+	local params = get_comb_params(refueler.entity_comb)
+	local bits = params.second_constant or 0
+	local signal = params.first_signal
+	refueler.network_name = signal and signal.name or nil
+	refueler.allows_all_trains = bits%2 == 1
 
-	if params.operation ~= old_params.operation then
-		if (old_params.operation == OPERATION_PRIMARY_IO) and (params.operation == OPERATION_PRIMARY_IO_ACTIVE or params.operation == OPERATION_PRIMARY_IO_FAILED_REQUEST) then
-		else
-			return true
+	local signals = refueler.entity_comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+	refueler.priority = 0
+	refueler.network_flag = mod_settings.network_flag
+	if not signals then return end
+	for k, v in pairs(signals) do
+		local item_name = v.signal.name
+		local item_count = v.count
+		if item_name then
+			if item_name == SIGNAL_PRIORITY then
+				refueler.priority = item_count
+			end
+			if item_name == refueler.network_name then
+				refueler.network_flag = item_count
+			end
 		end
 	end
-	local new_signal = params.first_signal
-	local old_signal = old_params.first_signal
-	local new_network = new_signal and new_signal.name or nil
-	local old_network = old_signal and old_signal.name or nil
-	if new_network ~= old_network then
-		return true
-	end
-	if params.second_constant ~= old_params.second_constant then
-		return true
-	end
-	return false
 end
+
 ---@param map_data MapData
 ---@param station Station
 function update_display(map_data, station)
 	local comb = station.entity_comb1
 	if comb.valid then
-		local unit_number = comb.unit_number--[[@as uint]]
 		local control = get_comb_control(comb)
 		local params = control.parameters
-		if not has_comb_params_changed(map_data, unit_number, params) then
+		--NOTE: the following check can cause a bug where the display desyncs if the player changes the operation of the combinator and then changes it back before the mod can notice, however removing it causes a bug where the user's change is overwritten and ignored. Everything's bad we need an event to catch copy-paste by blueprint.
+		if params.operation == MODE_PRIMARY_IO or params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
 			if station.display_state >= 2 then
-				params.operation = OPERATION_PRIMARY_IO_ACTIVE
+				params.operation = MODE_PRIMARY_IO_ACTIVE
 			elseif station.display_state == 1 then
-				params.operation = OPERATION_PRIMARY_IO_FAILED_REQUEST
+				params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
 			else
-				params.operation = OPERATION_PRIMARY_IO
+				params.operation = MODE_PRIMARY_IO
 			end
 			control.parameters = params
 		end
@@ -344,18 +416,26 @@ function set_combinator_output(map_data, comb, signals)
 	end
 end
 
-local DEFINES_WORKING = defines.entity_status.working
-local DEFINES_LOW_POWER = defines.entity_status.low_power
-local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 ---@param station Station
 function get_signals(station)
 	--NOTE: the combinator must be valid, but checking for valid every time is too slow
-	local comb = station.entity_comb1
-	local status = comb.status
-	if status == DEFINES_WORKING or status == DEFINES_LOW_POWER then
-		return comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+	local comb1 = station.entity_comb1
+	local status1 = comb1.status
+	---@type Signal[]?
+	local comb1_signals = nil
+	---@type Signal[]?
+	local comb2_signals = nil
+	if status1 == DEFINES_WORKING or status1 == DEFINES_LOW_POWER then
+		comb1_signals = comb1.get_merged_signals(DEFINES_COMBINATOR_INPUT)
 	end
-	return nil
+	local comb2 = station.entity_comb2
+	if comb2 then
+		local status2 = comb2.status
+		if status2 == DEFINES_WORKING or status2 == DEFINES_LOW_POWER then
+			comb2_signals = comb2.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+		end
+	end
+	return comb1_signals, comb2_signals
 end
 
 ---@param map_data MapData
@@ -372,22 +452,6 @@ function set_comb2(map_data, station)
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end
 end
-
-
----@param map_data MapData
----@param station Station
----@param signal SignalID
-function get_threshold(map_data, station, signal)
-	local comb2 = station.entity_comb2
-	if comb2 then
-		local count = comb2.get_merged_signal(signal, defines.circuit_connector_id.combinator_input)
-		if count ~= 0 then
-			return abs(count)
-		end
-	end
-	return station.r_threshold
-end
-
 
 ------------------------------------------------------------------------------
 --[[alerts]]--

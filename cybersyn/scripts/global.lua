@@ -10,14 +10,16 @@
 ---@field public active_station_ids uint[]
 ---@field public warmup_station_ids uint[]
 ---@field public depots {[uint]: Depot}
+---@field public refuelers {[uint]: Refueler}
 ---@field public trains {[uint]: Train}
----@field public available_trains {[string]: {[uint]: true?}} --{[network_name]: {[train_id]: depot_id}}
+---@field public available_trains {[string]: {[uint]: true?}} --{[network_name]: {[train_id]: true}}
+---@field public to_refuelers {[string]: {[uint]: true?}} --{[network_name]: {[refeuler_id]: true}}
 ---@field public layouts {[uint]: (0|1|2)[]}
 ---@field public layout_train_count {[uint]: int}
 ---@field public tick_state uint
 ---@field public tick_data {}
 ---@field public economy Economy
----@field public se_tele_old_id {[any]: uint}
+---@field public se_tele_old_id {[string]: uint}
 
 ---@class Station
 ---@field public entity_stop LuaEntity
@@ -29,6 +31,7 @@
 ---@field public deliveries_total int
 ---@field public last_delivery_tick int
 ---@field public priority int --transient
+---@field public item_priority int? --transient
 ---@field public r_threshold int >= 0 --transient
 ---@field public locked_slots int >= 0 --transient
 ---@field public network_name string?
@@ -38,7 +41,8 @@
 ---@field public accepted_layouts {[uint]: true?}
 ---@field public layout_pattern (0|1|2|3)[]?
 ---@field public tick_signals {[uint]: Signal}? --transient
----@field public p_count_or_r_threshold_per_item {[string]: int} --transient
+---@field public item_p_counts {[string]: int} --transient
+---@field public item_thresholds {[string]: int}? --transient
 ---@field public display_state 0|1|2|3 --low bit is if this station's request has failed, high bit is if a train is heading to this station
 
 ---@class Depot
@@ -46,15 +50,27 @@
 ---@field public entity_comb LuaEntity
 ---@field public available_train_id uint?--train_id
 
+---@class Refueler
+---@field public entity_stop LuaEntity
+---@field public entity_comb LuaEntity
+---@field public trains_total int
+---@field public accepted_layouts {[uint]: true?}
+---@field public layout_pattern (0|1|2|3)[]?
+---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
+---@field public allows_all_trains boolean
+---@field public priority int
+---@field public network_name string?
+---@field public network_flag int
+
 ---@class Train
 ---@field public entity LuaTrain --should only be invalid if se_is_being_teleported is true
 ---@field public layout_id uint
 ---@field public item_slot_capacity int
 ---@field public fluid_capacity int
----@field public status int
----@field public p_station_id uint
----@field public r_station_id uint
----@field public manifest Manifest
+---@field public status uint
+---@field public p_station_id uint?
+---@field public r_station_id uint?
+---@field public manifest Manifest?
 ---@field public last_manifest_tick int
 ---@field public has_filtered_wagon true?
 ---@field public is_available true?
@@ -63,6 +79,7 @@
 ---@field public network_name string? --can only be nil when the train is parked at a depot
 ---@field public network_flag int
 ---@field public priority int
+---@field public refueler_id uint?
 ---@field public se_depot_surface_i uint --se only
 ---@field public se_is_being_teleported true? --se only
 ---@field public se_awaiting_removal any? --se only
@@ -72,7 +89,7 @@
 ---@class ManifestEntry
 ---@field public type string
 ---@field public name string
----@field public count uint
+---@field public count int
 
 ---@class Economy
 ---could contain invalid stations or stations with modified settings from when they were first appended
@@ -80,7 +97,8 @@
 ---@field public all_p_stations {[string]: uint[]} --{["network_name:item_name"]: station_id}
 ---@field public all_names (string|SignalID)[]
 
---NOTE: any setting labeled as an interface setting can only be changed through the remote-interface, these settings are not save and have to be set at initialization
+--NOTE: any setting labeled as an "interface setting" can only be changed through the remote-interface, these settings are not save and have to be set at initialization
+--As a modder using the remote-interface, you may override any of these settings, including user settings. They will have to be overriden at initialization and whenever a user tries to change one.
 ---@class CybersynModSettings
 ---@field public tps double
 ---@field public update_rate int
@@ -88,7 +106,8 @@
 ---@field public network_flag int
 ---@field public warmup_time double
 ---@field public stuck_train_time double
----@field public depot_bypass_threshold double
+---@field public fuel_threshold double
+---@field public depot_bypass_enabled boolean
 ---@field public missing_train_alert_enabled boolean --interface setting
 ---@field public stuck_train_alert_enabled boolean --interface setting
 ---@field public react_to_nonempty_train_in_depot boolean --interface setting

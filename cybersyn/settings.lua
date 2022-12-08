@@ -47,7 +47,7 @@ data:extend({
 	},
 	{
 		type = "double-setting",
-		name = "cybersyn-depot-bypass-threshold",
+		name = "cybersyn-fuel-threshold",
 		order = "ae",
 		setting_type = "runtime-global",
 		default_value = .5,
@@ -55,9 +55,16 @@ data:extend({
 		maximum_value = 1,
 	},
 	{
+		type = "bool-setting",
+		name = "cybersyn-depot-bypass-enabled",
+		order = "af",
+		setting_type = "runtime-global",
+		default_value = true,
+	},
+	{
 		type = "double-setting",
 		name = "cybersyn-warmup-time",
-		order = "af",
+		order = "ag",
 		setting_type = "runtime-global",
 		default_value = 20,
 		minimum_value = 0,
@@ -66,7 +73,7 @@ data:extend({
 	{
 		type = "double-setting",
 		name = "cybersyn-stuck-train-time",
-		order = "ag",
+		order = "ah",
 		setting_type = "runtime-global",
 		default_value = 600,
 		minimum_value = 0,
