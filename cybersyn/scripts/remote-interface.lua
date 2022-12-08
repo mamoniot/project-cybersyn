@@ -27,191 +27,7 @@ local on_train_teleport_started = nil
 local on_train_teleported = nil
 local on_tick_init = nil
 
----@param entity LuaEntity
----@param old_parameters ArithmeticCombinatorParameters
-function interface_raise_combinator_changed(entity, old_parameters)
-	if on_combinator_changed then
-		raise_event(on_combinator_changed, {
-			entity = entity,
-			old_parameters = old_parameters,
-		})
-	end
-end
-
----@param station_id uint
-function interface_raise_station_created(station_id)
-	if on_station_created then
-		raise_event(on_station_created, {
-			station_id = station_id,
-		})
-	end
-end
----@param old_station_id uint
----@param old_station Station
-function interface_raise_station_removed(old_station_id, old_station)
-	if on_station_removed then
-		raise_event(on_station_removed, {
-			old_station_id = old_station_id, --this id is now invalid
-			old_station = old_station, --this is the data that used to be stored at the old id
-		})
-	end
-end
-
----@param depot_id uint
-function interface_raise_depot_created(depot_id)
-	if on_depot_created then
-		raise_event(on_depot_created, {
-			depot_id = depot_id,
-		})
-	end
-end
----@param old_depot_id uint
----@param old_depot Depot
-function interface_raise_depot_removed(old_depot_id, old_depot)
-	if on_depot_removed then
-		raise_event(on_depot_removed, {
-			old_depot_id = old_depot_id, --this id is now invalid
-			old_depot = old_depot, --this is the data that used to be stored at the old id
-		})
-	end
-end
-
----@param refueler_id uint
-function interface_raise_refueler_created(refueler_id)
-	if on_refueler_created then
-		raise_event(on_refueler_created, {
-			refueler_id = refueler_id,
-		})
-	end
-end
----@param old_refueler_id uint
----@param old_refueler Refueler
-function interface_raise_refueler_removed(old_refueler_id, old_refueler)
-	if on_refueler_removed then
-		raise_event(on_refueler_removed, {
-			old_refueler_id = old_refueler_id, --this id is now invalid
-			old_refueler = old_refueler, --this is the data that used to be stored at the old id
-		})
-	end
-end
-
----@param train_id uint
----@param depot_id uint
-function interface_raise_train_created(train_id, depot_id)
-	if on_train_created then
-		raise_event(on_train_created, {
-			train_id = train_id,
-			depot_id = depot_id,
-		})
-	end
-end
----@param old_train_id uint
----@param old_train Train
-function interface_raise_train_removed(old_train_id, old_train)
-	if on_train_removed then
-		raise_event(on_train_removed, {
-			old_train_id = old_train_id, --this id is now invalid
-			old_train = old_train, --this is the data that used to be stored at the old id
-		})
-	end
-end
----@param train_id uint
-function interface_raise_train_available(train_id)
-	if on_train_available then
-		raise_event(on_train_available, {
-			train_id = train_id,
-		})
-	end
-end
----@param depot_id uint
----@param train_entity LuaTrain
----@param train_id uint?
-function interface_raise_train_nonempty_in_depot(depot_id, train_entity, train_id)
-	if on_train_nonempty_in_depot then
-		raise_event(on_train_nonempty_in_depot, {
-			train_entity = train_entity,
-			train_id = train_id,
-			depot_id = depot_id,
-		})
-	end
-end
-
----@param train_id uint
-function interface_raise_train_dispatch_failed(train_id)
-	--this event is rare, it can only occur when a train is bypassing the depot and can't find a path to the provide station, that train is marked as unavailable but not dispatched
-	if on_train_dispatch_failed then
-		raise_event(on_train_dispatch_failed, {
-			train_id = train_id,
-		})
-	end
-end
----@param train_id uint
----@param was_p_in_progress boolean
----@param p_station_id uint
----@param was_r_in_progress boolean
----@param r_station_id uint
----@param manifest Manifest
-function interface_raise_train_failed_delivery(train_id, was_p_in_progress, p_station_id, was_r_in_progress, r_station_id, manifest)
-	if on_train_failed_delivery then
-		raise_event(on_train_failed_delivery, {
-			train_id = train_id,
-			was_p_in_progress = was_p_in_progress,
-			p_station_id = p_station_id,
-			was_r_in_progress = was_r_in_progress,
-			r_station_id = r_station_id,
-			manifest = manifest,
-		})
-	end
-end
----@param train_id uint
----@param old_status uint
----@param new_status uint
-function interface_raise_train_status_changed(train_id, old_status, new_status)
-	if on_train_status_changed then
-		raise_event(on_train_status_changed, {
-			train_id = train_id,
-			old_status = old_status,
-			new_status = new_status,
-		})
-	end
-end
----@param train_id uint
-function interface_raise_train_stuck(train_id)
-	if on_train_stuck then
-		raise_event(on_train_stuck, {
-			train_id = train_id,
-		})
-	end
-end
----@param old_train_id uint
-function interface_raise_train_teleport_started(old_train_id)
-	if on_train_teleport_started then
-		raise_event(on_train_teleport_started, {
-			old_train_id = old_train_id,--this id is currently valid but will become invalid just before on_train_teleported is raised
-		})
-	end
-end
----@param new_train_id uint
----@param old_train_id uint
-function interface_raise_train_teleported(new_train_id, old_train_id)
-	if on_train_teleported then
-		raise_event(on_train_teleported, {
-			new_train_id = new_train_id,--this id stores the train
-			old_train_id = old_train_id,--this id is now invalid
-		})
-	end
-end
-
-function interface_raise_tick_init()
-	if on_tick_init then
-		raise_event(on_tick_init, {
-		})
-	end
-end
-
-
 local interface = {}
-
 ------------------------------------------------------------------
 --[[get event id functions]]
 ------------------------------------------------------------------
@@ -534,3 +350,190 @@ interface.send_stuck_train_alert = send_stuck_train_alert
 
 
 remote.add_interface("cybersyn", interface)
+
+
+------------------------------------------------------------------
+--[[internal event calls]]
+------------------------------------------------------------------
+
+---@param entity LuaEntity
+---@param old_parameters ArithmeticCombinatorParameters
+function interface_raise_combinator_changed(entity, old_parameters)
+	if on_combinator_changed then
+		raise_event(on_combinator_changed, {
+			entity = entity,
+			old_parameters = old_parameters,
+		})
+	end
+end
+
+---@param station_id uint
+function interface_raise_station_created(station_id)
+	if on_station_created then
+		raise_event(on_station_created, {
+			station_id = station_id,
+		})
+	end
+end
+---@param old_station_id uint
+---@param old_station Station
+function interface_raise_station_removed(old_station_id, old_station)
+	if on_station_removed then
+		raise_event(on_station_removed, {
+			old_station_id = old_station_id, --this id is now invalid
+			old_station = old_station, --this is the data that used to be stored at the old id
+		})
+	end
+end
+
+---@param depot_id uint
+function interface_raise_depot_created(depot_id)
+	if on_depot_created then
+		raise_event(on_depot_created, {
+			depot_id = depot_id,
+		})
+	end
+end
+---@param old_depot_id uint
+---@param old_depot Depot
+function interface_raise_depot_removed(old_depot_id, old_depot)
+	if on_depot_removed then
+		raise_event(on_depot_removed, {
+			old_depot_id = old_depot_id, --this id is now invalid
+			old_depot = old_depot, --this is the data that used to be stored at the old id
+		})
+	end
+end
+
+---@param refueler_id uint
+function interface_raise_refueler_created(refueler_id)
+	if on_refueler_created then
+		raise_event(on_refueler_created, {
+			refueler_id = refueler_id,
+		})
+	end
+end
+---@param old_refueler_id uint
+---@param old_refueler Refueler
+function interface_raise_refueler_removed(old_refueler_id, old_refueler)
+	if on_refueler_removed then
+		raise_event(on_refueler_removed, {
+			old_refueler_id = old_refueler_id, --this id is now invalid
+			old_refueler = old_refueler, --this is the data that used to be stored at the old id
+		})
+	end
+end
+
+---@param train_id uint
+---@param depot_id uint
+function interface_raise_train_created(train_id, depot_id)
+	if on_train_created then
+		raise_event(on_train_created, {
+			train_id = train_id,
+			depot_id = depot_id,
+		})
+	end
+end
+---@param old_train_id uint
+---@param old_train Train
+function interface_raise_train_removed(old_train_id, old_train)
+	if on_train_removed then
+		raise_event(on_train_removed, {
+			old_train_id = old_train_id, --this id is now invalid
+			old_train = old_train, --this is the data that used to be stored at the old id
+		})
+	end
+end
+---@param train_id uint
+function interface_raise_train_available(train_id)
+	if on_train_available then
+		raise_event(on_train_available, {
+			train_id = train_id,
+		})
+	end
+end
+---@param depot_id uint
+---@param train_entity LuaTrain
+---@param train_id uint?
+function interface_raise_train_nonempty_in_depot(depot_id, train_entity, train_id)
+	if on_train_nonempty_in_depot then
+		raise_event(on_train_nonempty_in_depot, {
+			train_entity = train_entity,
+			train_id = train_id,
+			depot_id = depot_id,
+		})
+	end
+end
+
+---@param train_id uint
+function interface_raise_train_dispatch_failed(train_id)
+	--this event is rare, it can only occur when a train is bypassing the depot and can't find a path to the provide station, that train is marked as unavailable but not dispatched
+	if on_train_dispatch_failed then
+		raise_event(on_train_dispatch_failed, {
+			train_id = train_id,
+		})
+	end
+end
+---@param train_id uint
+---@param was_p_in_progress boolean
+---@param p_station_id uint
+---@param was_r_in_progress boolean
+---@param r_station_id uint
+---@param manifest Manifest
+function interface_raise_train_failed_delivery(train_id, was_p_in_progress, p_station_id, was_r_in_progress, r_station_id, manifest)
+	if on_train_failed_delivery then
+		raise_event(on_train_failed_delivery, {
+			train_id = train_id,
+			was_p_in_progress = was_p_in_progress,
+			p_station_id = p_station_id,
+			was_r_in_progress = was_r_in_progress,
+			r_station_id = r_station_id,
+			manifest = manifest,
+		})
+	end
+end
+---@param train_id uint
+---@param old_status uint
+---@param new_status uint
+function interface_raise_train_status_changed(train_id, old_status, new_status)
+	if on_train_status_changed then
+		raise_event(on_train_status_changed, {
+			train_id = train_id,
+			old_status = old_status,
+			new_status = new_status,
+		})
+	end
+end
+---@param train_id uint
+function interface_raise_train_stuck(train_id)
+	if on_train_stuck then
+		raise_event(on_train_stuck, {
+			train_id = train_id,
+		})
+	end
+end
+---@param old_train_id uint
+function interface_raise_train_teleport_started(old_train_id)
+	if on_train_teleport_started then
+		raise_event(on_train_teleport_started, {
+			old_train_id = old_train_id,--this id is currently valid but will become invalid just before on_train_teleported is raised
+		})
+	end
+end
+---@param new_train_id uint
+---@param old_train_id uint
+function interface_raise_train_teleported(new_train_id, old_train_id)
+	if on_train_teleported then
+		raise_event(on_train_teleported, {
+			new_train_id = new_train_id,--this id stores the train
+			old_train_id = old_train_id,--this id is now invalid
+		})
+	end
+end
+
+function interface_raise_tick_init()
+	if on_tick_init then
+		raise_event(on_tick_init, {
+		})
+	end
+end
