@@ -89,8 +89,8 @@ function gui_opened(comb, player)
 	window.preview.entity = comb
 	window.titlebar.drag_target = window.main_window
 	window.main_window.force_auto_center()
-	local uses_network = selected_index == 1 or selected_index == 3 or selected_index == 4
-	local uses_allow_list = selected_index == 1 or selected_index == 4
+	local uses_network = selected_index == 1 or selected_index == 2 or selected_index == 3
+	local uses_allow_list = selected_index == 1 or selected_index == 3
 	window.network.visible = uses_network
 	window.network_label.visible = uses_network
 	window.radio_button.visible = uses_allow_list
