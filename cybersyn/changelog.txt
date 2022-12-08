@@ -2,7 +2,7 @@
 Version: 1.1.1
 Date: 2022-12-8
   Changes:
-    - Fixed a crash when building a fuel loader
+    - Fixed a crash when removing a fuel loader
     - Fixed a gui bug
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.0
