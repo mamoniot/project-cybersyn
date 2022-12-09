@@ -142,6 +142,8 @@ function init_global()
 	global.layouts = {}
 	global.layout_train_count = {}
 	global.layout_top_id = 1
+	global.refuelers = {}
+	global.to_refuelers = {}
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if IS_SE_PRESENT then
