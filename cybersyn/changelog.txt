@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.4
+Date: 2022-12-9
+  Changes:
+    - Made the recipe and research requirements for cybernetic combinators cheaper so that access to them in various modpacks is more in line with my intentions
+---------------------------------------------------------------------------------------------------
 Version: 1.1.3
 Date: 2022-12-8
   Changes:
