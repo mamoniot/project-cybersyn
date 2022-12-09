@@ -333,7 +333,7 @@ function on_combinator_network_updated(map_data, comb, network_name)
 					refueler.network_name = network_name
 					if network_name then
 						local network = map_data.to_refuelers[network_name]
-						if network == nil then
+						if not network then
 							network = {}
 							map_data.to_refuelers[network_name] = network
 						end
