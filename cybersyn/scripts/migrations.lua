@@ -95,6 +95,14 @@ local migrations_table = {
 			end
 		end
 	end,
+	["1.1.2"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		map_data.tick_data = {}
+		map_data.refuelers = map_data.refuelers or {}
+		map_data.to_refuelers = map_data.to_refuelers or {}
+	end,
 }
 --STATUS_R_TO_D = 5
 
