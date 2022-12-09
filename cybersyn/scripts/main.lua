@@ -90,7 +90,7 @@ local function on_refueler_broken(map_data, refueler_id, refueler)
 			map_data.to_refuelers[refueler.network_name] = nil
 		end
 	end
-	map_data.stations[refueler_id] = nil
+	map_data.refuelers[refueler_id] = nil
 	interface_raise_refueler_removed(refueler_id, refueler)
 end
 

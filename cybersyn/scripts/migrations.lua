@@ -103,6 +103,17 @@ local migrations_table = {
 		map_data.refuelers = map_data.refuelers or {}
 		map_data.to_refuelers = map_data.to_refuelers or {}
 	end,
+	["1.1.3"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		map_data.tick_data = {}
+		for k, v in pairs(map_data.refuelers) do
+			if not v.entity_comb.valid or not v.entity_stop.valid then
+				map_data.refuelers[k] = nil
+			end
+		end
+	end,
 }
 --STATUS_R_TO_D = 5
 
