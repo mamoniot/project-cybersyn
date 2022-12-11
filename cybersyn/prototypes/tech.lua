@@ -8,9 +8,10 @@ combinator_recipe.enabled = false
 if (mods["nullius"]) then
 	-- Enable recipe and place it just after regular station
 	combinator_recipe.order = "nullius-eca"
-	-- Use the same costs (minus the train stop) and metadata as for LTN
-	combinator_recipe.category = "medium-crafting"
+	-- In Nullius, most combinators are tiny crafts
+	combinator_recipe.category = "tiny-crafting"
 	combinator_recipe.always_show_made_in = true
+	-- Use the same costs (minus the train stop) as for LTN
 	combinator_recipe.energy_required = 3
 	combinator_recipe.ingredients = {
 		{"arithmetic-combinator", 2},
@@ -59,5 +60,5 @@ if (mods["nullius"]) then
 		time = 25
 	}
 	cybersyn_tech.prerequisites = { "nullius-checkpoint-optimization", "nullius-traffic-control" }
-	cybersyn_tech.ignore_cybersyn_tech_cost_multiplier = true
+	cybersyn_tech.ignore_tech_tech_cost_multiplier = true
 end
