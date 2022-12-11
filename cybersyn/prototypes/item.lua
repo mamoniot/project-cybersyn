@@ -5,3 +5,7 @@ combinator_item.icon_size = 64
 combinator_item.icon_mipmaps = 4
 combinator_item.order = data.raw["item"]["decider-combinator"].order.."-b"
 combinator_item.place_result = COMBINATOR_NAME
+if (mods["nullius"]) then
+	-- Enable item in Nullius and place next to the regular train stop
+	combinator_item.order = "nullius-eca"
+end
