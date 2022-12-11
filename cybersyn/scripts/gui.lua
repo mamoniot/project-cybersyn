@@ -29,6 +29,8 @@ STATUS_NAMES_DEFAULT = "entity-status.disabled"
 ---@param comb LuaEntity
 ---@param player LuaPlayer
 function gui_opened(comb, player)
+	combinator_update(global, comb)
+
 	local rootgui = player.gui.screen
 	local selected_index, signal, check, switch_state = get_comb_gui_settings(comb)
 

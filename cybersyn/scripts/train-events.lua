@@ -374,9 +374,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		interface_raise_train_status_changed(train_id, STATUS_F, train.status)
 	elseif train.status == STATUS_D then
 		--The train is leaving the depot without a manifest, the player likely intervened
-		local depot = map_data.depots[train.parked_at_depot_id--[[@as uint]]]
 		remove_train(map_data, train_id, train)
-		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
 	end
 end
 

@@ -398,17 +398,32 @@ function combinator_update(map_data, comb)
 	local old_params = map_data.to_comb_params[unit_number]
 	local has_changed = false
 
-	if params.operation ~= old_params.operation then
-		if (old_params.operation == MODE_PRIMARY_IO) and (params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST) then
+	local stop = map_data.to_stop[comb.unit_number]
+	if stop then
+		id = stop.unit_number
+		station = map_data.stations[id]
+		if station then
 			--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
-			params.operation = MODE_PRIMARY_IO
-		else
-			--NOTE: This is rather dangerous, we may need to actually implement operation changing
-			on_combinator_broken(map_data, comb)
-			on_combinator_built(map_data, comb)
-			interface_raise_combinator_changed(comb, old_params)
-			return
+			if station.display_state >= 2 then
+				params.operation = MODE_PRIMARY_IO_ACTIVE
+			elseif station.display_state == 1 then
+				params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
+			else
+				params.operation = MODE_PRIMARY_IO
+			end
+			control.parameters = params
 		end
+	end
+
+	if params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
+		params.operation = MODE_PRIMARY_IO
+	end
+	if params.operation ~= old_params.operation then
+		--NOTE: This is rather dangerous, we may need to actually implement operation changing
+		on_combinator_broken(map_data, comb)
+		on_combinator_built(map_data, comb)
+		interface_raise_combinator_changed(comb, old_params)
+		return
 	end
 	local new_signal = params.first_signal
 	local old_signal = old_params.first_signal
@@ -420,24 +435,19 @@ function combinator_update(map_data, comb)
 	end
 	if params.second_constant ~= old_params.second_constant then
 		has_changed = true
-		local stop = map_data.to_stop[comb.unit_number]
-		if stop then
-			local id = stop.unit_number
-			local station = map_data.stations[id]
-			if station then
-				local pre = station.allows_all_trains
-				set_station_from_comb_state(station)
-				if station.allows_all_trains ~= pre then
-					update_stop_if_auto(map_data, station, true)
-				end
-			else
-				local refueler = map_data.refuelers[id]
-				if refueler then
-					local pre = refueler.allows_all_trains
-					set_refueler_from_comb(mod_settings, refueler)
-					if refueler.allows_all_trains ~= pre then
-						update_stop_if_auto(map_data, refueler, false)
-					end
+		if station then
+			local pre = station.allows_all_trains
+			set_station_from_comb_state(station)
+			if station.allows_all_trains ~= pre then
+				update_stop_if_auto(map_data, station, true)
+			end
+		else
+			local refueler = map_data.refuelers[id]
+			if refueler then
+				local pre = refueler.allows_all_trains
+				set_refueler_from_comb(mod_settings, refueler)
+				if refueler.allows_all_trains ~= pre then
+					update_stop_if_auto(map_data, refueler, false)
 				end
 			end
 		end
