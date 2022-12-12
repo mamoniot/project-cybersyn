@@ -42,7 +42,7 @@
                 "flib": true,
                 "cybersyn": true,
             },
-            "disableExtraMods": true
+            //"disableExtraMods": true
         },
         {
             "type": "factoriomod",
