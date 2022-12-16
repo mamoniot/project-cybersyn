@@ -533,7 +533,7 @@ local function tick_poll_comb(map_data)
 	tick_data.last_comb = comb_id
 
 	if comb and comb.valid then
-		combinator_update(map_data, comb)
+		combinator_update(map_data, comb, true)
 	end
 end
 ---@param map_data MapData

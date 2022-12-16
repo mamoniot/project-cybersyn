@@ -348,10 +348,14 @@ interface.add_refueler_schedule = add_refueler_schedule
 ------------------------------------------------------------------
 
 interface.send_missing_train_alert = send_missing_train_alert
-interface.send_lost_train_alert = send_lost_train_alert
 interface.send_unexpected_train_alert = send_unexpected_train_alert
 interface.send_nonempty_train_in_depot_alert = send_nonempty_train_in_depot_alert
 interface.send_stuck_train_alert = send_stuck_train_alert
+interface.send_cannot_path_between_surfaces_alert = send_cannot_path_between_surfaces_alert
+interface.send_depot_of_train_broken_alert = send_depot_of_train_broken_alert
+interface.send_refueler_of_train_broken_alert = send_refueler_of_train_broken_alert
+interface.send_station_of_train_broken_alert = send_station_of_train_broken_alert
+interface.send_train_at_incorrect_station_alert = send_train_at_incorrect_station_alert
 
 
 remote.add_interface("cybersyn", interface)

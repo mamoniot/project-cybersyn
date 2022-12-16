@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.5
+Date: 2022-12-16
+  Changes:
+    - Replaced lost train alert with more detailed alerts
+    - Added Nullius compat
+    - Added Pyanodon's compat
+---------------------------------------------------------------------------------------------------
 Version: 1.1.4
 Date: 2022-12-9
   Changes:

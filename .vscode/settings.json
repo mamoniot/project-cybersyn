@@ -3,7 +3,7 @@
     "factorio.versions": [
         {
             "name": "Steam",
-            "factorioPath": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Factorio\\bin\\x64\\factorio.exe",
+            "factorioPath": "~/.steam/steam/steamapps/common/Factorio/bin/x64/factorio",
             "active": true
         }
     ],
@@ -19,8 +19,11 @@
     ],
     "Lua.runtime.version": "Lua 5.2",
     "Lua.workspace.library": [
-        "c:\\Program Files (x86)\\Steam\\steamapps\\common\\Factorio\\data",
-        "c:\\Program Files (x86)\\Steam\\steamapps\\common\\Factorio\\data\\core\\lualib",
-        ".vscode/factorio"
+        "~/.steam/steam/steamapps/common/Factorio/data",
+        "~/.steam/steam/steamapps/common/Factorio/data/core/lualib",
+        "./.vscode/factorio"
+    ],
+    "Lua.workspace.userThirdParty": [
+        "/home/mami/.config/Code/User/workspaceStorage/9536dbf0665a54126a4b0958ecd5829f/justarandomgeek.factoriomod-debug/sumneko-3rd"
     ]
 }

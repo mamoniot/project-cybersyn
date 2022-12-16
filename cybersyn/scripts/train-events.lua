@@ -4,7 +4,7 @@ local INF = math.huge
 
 ---@param map_data MapData
 ---@param station Station
----@param manifest Manifest
+---@param manifest Manifest?
 ---@param sign int?
 local function set_comb1(map_data, station, manifest, sign)
 	local comb = station.entity_comb1
@@ -238,12 +238,12 @@ local function on_train_arrives_station(map_data, station_id, train_id, train)
 			on_failed_delivery(map_data, train_id, train)
 			remove_train(map_data, train_id, train)
 			lock_train(train.entity)
-			send_lost_train_alert(train.entity, train.depot_name)
+			send_train_at_incorrect_station_alert(train.entity, train.depot_name)
 		end
 	elseif mod_settings.react_to_train_at_incorrect_station then
 		--train is lost somehow, probably from player intervention
 		remove_train(map_data, train_id, train)
-		send_lost_train_alert(train.entity, train.depot_name)
+		send_train_at_incorrect_station_alert(train.entity, train.depot_name)
 	end
 end
 

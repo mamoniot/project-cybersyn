@@ -27,7 +27,7 @@ local function on_depot_broken(map_data, depot_id, depot)
 	if train_id then
 		local train = map_data.trains[train_id]
 		lock_train(train.entity)
-		send_lost_train_alert(train.entity, depot.entity_stop.backer_name)
+		send_depot_of_train_broken_alert(train.entity, depot.entity_stop.backer_name)
 		remove_train(map_data, train_id, train)
 	end
 	map_data.depots[depot_id] = nil
@@ -76,7 +76,7 @@ local function on_refueler_broken(map_data, refueler_id, refueler)
 				if not train.se_is_being_teleported then
 					remove_train(map_data, train_id, train)
 					lock_train(train.entity)
-					send_lost_train_alert(train.entity, train.depot_name)
+					send_refueler_of_train_broken_alert(train.entity, train.depot_name)
 				else
 					train.se_awaiting_removal = train_id
 				end
@@ -151,7 +151,7 @@ local function on_station_broken(map_data, station_id, station)
 					if not train.se_is_being_teleported then
 						remove_train(map_data, train_id, train)
 						lock_train(train.entity)
-						send_lost_train_alert(train.entity, train.depot_name)
+						send_station_of_train_broken_alert(train.entity, train.depot_name)
 					else
 						train.se_awaiting_removal = train_id
 					end
@@ -391,7 +391,8 @@ end
 
 ---@param map_data MapData
 ---@param comb LuaEntity
-function combinator_update(map_data, comb)
+---@param reset_display boolean?
+function combinator_update(map_data, comb, reset_display)
 	local unit_number = comb.unit_number--[[@as uint]]
 	local control = get_comb_control(comb)
 	local params = control.parameters
@@ -399,7 +400,7 @@ function combinator_update(map_data, comb)
 	local has_changed = false
 
 	local stop = map_data.to_stop[comb.unit_number]
-	if stop then
+	if reset_display and stop then
 		id = stop.unit_number
 		station = map_data.stations[id]
 		if station then
@@ -414,7 +415,6 @@ function combinator_update(map_data, comb)
 			control.parameters = params
 		end
 	end
-
 	if params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
 		params.operation = MODE_PRIMARY_IO
 	end
@@ -652,7 +652,7 @@ local function on_paste(event)
 	if not entity or not entity.valid then return end
 
 	if entity.name == COMBINATOR_NAME then
-		combinator_update(global, entity)
+		combinator_update(global, entity, true)
 	end
 end
 
@@ -689,8 +689,8 @@ local function setup_se_compat()
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if not IS_SE_PRESENT then return end
 
-	local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event")
-	local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event")
+	local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event")--[[@as string]]
+	local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event")--[[@as string]]
 
 	---@param event {}
 	script.on_event(se_on_train_teleport_started_event, function(event)
@@ -742,7 +742,7 @@ local function setup_se_compat()
 		if train.se_awaiting_removal then
 			remove_train(map_data, train.se_awaiting_removal, train)
 			lock_train(train.entity)
-			send_lost_train_alert(train.entity, train.depot_name)
+			send_station_of_train_broken_alert(train.entity, train.depot_name)
 			return
 		elseif train.se_awaiting_rename then
 			rename_manifest_schedule(train.entity, train.se_awaiting_rename[1], train.se_awaiting_rename[2])
