@@ -63,7 +63,7 @@ If you like my work, consider supporting me on [ko-fi](https://ko-fi.com/lesbian
 
 ## Mod Details
 
-This mod adds a single new entity to the game, the cybernetic combinator. This combinator can be in one of 4 different possible control modes. While each mode has a purpose, the only modes you have to use are primary station control and depot control.
+This mod adds a single new entity to the game, the cybernetic combinator. This combinator can be in one of 5 different possible control modes. While each mode has a purpose, the only modes you have to use are primary station control and depot control.
 
 ### Station mode
 
