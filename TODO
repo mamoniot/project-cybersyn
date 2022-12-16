@@ -2,10 +2,9 @@ bugs:
 	request threshold is being bypassed somehow (hasn't been seen in a long time)
 
 major:
-	do hardcore testing
 	models & art
-	add a refueling option on depots
 	move to an event based algorithm
+	debug output
 
 minor:
 	railloader compat

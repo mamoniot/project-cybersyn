@@ -137,7 +137,7 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 	local is_r_on_t = t_surface_i == r_surface_i
 	local is_d_on_t = t_surface_i == d_surface_i
 	if is_p_on_t and is_r_on_t and is_d_on_t then
-		train.schedule = {current = start_at_depot and 1 or 2, records = {
+		train.schedule = {current = start_at_depot and 1 or 2--[[@as uint]], records = {
 			create_inactivity_order(depot_name),
 			create_direct_to_station_order(p_stop),
 			create_loading_order(p_stop, manifest),
@@ -153,8 +153,8 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 	elseif IS_SE_PRESENT then
 		local other_surface_i = (not is_p_on_t and p_surface_i) or (not is_r_on_t and r_surface_i) or d_surface_i
 		if (is_p_on_t or p_surface_i == other_surface_i) and (is_r_on_t or r_surface_i == other_surface_i) and (is_d_on_t or d_surface_i == other_surface_i) then
-			local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})
-			local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = other_surface_i})
+			local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})--[[@as {}]]
+			local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = other_surface_i})--[[@as {}]]
 			local is_train_in_orbit = other_zone.orbit_index == t_zone.index
 			if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
 				local elevator_name = se_get_space_elevator_name(t_surface)
@@ -180,7 +180,7 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 						is_train_in_orbit = not is_train_in_orbit
 					end
 
-					train.schedule = {current = start_at_depot and 1 or 2, records = records}
+					train.schedule = {current = start_at_depot and 1 or 2--[[@as uint]], records = records}
 					if old_schedule and not train.has_path then
 						train.schedule = old_schedule
 						return false
@@ -198,7 +198,7 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 		create_unloading_order(r_stop),
 	}}
 	lock_train(train)
-	send_lost_train_alert(train, depot_name)
+	send_cannot_path_between_surfaces_alert(train, depot_name)
 	return true
 end
 
@@ -225,8 +225,8 @@ function add_refueler_schedule(train, stop, depot_name)
 		train.schedule = schedule
 		return
 	elseif IS_SE_PRESENT then
-		local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})
-		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = f_surface_i})
+		local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})--[[@as {}]]
+		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = f_surface_i})--[[@as {}]]
 		local is_train_in_orbit = other_zone.orbit_index == t_zone.index
 		if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
 			local elevator_name = se_get_space_elevator_name(t_surface)
@@ -252,7 +252,7 @@ function add_refueler_schedule(train, stop, depot_name)
 	--create an order that probably cannot be fulfilled and alert the player
 	table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
 	lock_train(train)
-	send_lost_train_alert(train, depot_name)
+	send_cannot_path_between_surfaces_alert(train, depot_name)
 	train.schedule = schedule
 end
 
@@ -457,6 +457,22 @@ end
 --[[alerts]]--
 ------------------------------------------------------------------------------
 
+---@param train LuaTrain
+---@param icon {}
+---@param message {}
+local function send_alert_with_sound(train, icon, message)
+	local loco = train.front_stock or train.back_stock
+	if loco then
+		for _, player in pairs(loco.force.players) do
+			player.add_custom_alert(
+			loco,
+			icon,
+			message,
+			true)
+			player.play_sound({path = ALERT_SOUND})
+		end
+	end
+end
 
 local send_missing_train_alert_for_stop_icon = {name = MISSING_TRAIN_NAME, type = "fluid"}
 ---@param r_stop LuaEntity
@@ -474,19 +490,36 @@ end
 local send_lost_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
 ---@param train LuaTrain
 ---@param depot_name string
-function send_lost_train_alert(train, depot_name)
-	local loco = train.front_stock or train.back_stock
-	if loco then
-		for _, player in pairs(loco.force.players) do
-			player.add_custom_alert(
-			loco,
-			send_lost_train_alert_icon,
-			{"cybersyn-messages.lost-train", depot_name},
-			true)
-			player.play_sound({path = ALERT_SOUND})
-		end
-	end
+function send_cannot_path_between_surfaces_alert(train, depot_name)
+	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.cannot-path-between-surfaces", depot_name})
 end
+---@param train LuaTrain
+---@param depot_name string
+function send_depot_of_train_broken_alert(train, depot_name)
+	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.depot-broken", depot_name})
+end
+---@param train LuaTrain
+---@param depot_name string
+function send_refueler_of_train_broken_alert(train, depot_name)
+	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.refueler-broken", depot_name})
+end
+---@param train LuaTrain
+---@param depot_name string
+function send_station_of_train_broken_alert(train, depot_name)
+	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.station-broken", depot_name})
+end
+---@param train LuaTrain
+---@param depot_name string
+function send_train_at_incorrect_station_alert(train, depot_name)
+	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.train-at-incorrect", depot_name})
+end
+
+local send_nonempty_train_in_depot_alert_icon = {name = NONEMPTY_TRAIN_NAME, type = "fluid"}
+---@param train LuaTrain
+function send_nonempty_train_in_depot_alert(train)
+	send_alert_with_sound(train, send_nonempty_train_in_depot_alert_icon, {"cybersyn-messages.nonempty-train"})
+end
+
 ---@param train LuaTrain
 function send_unexpected_train_alert(train)
 	local loco = train.front_stock or train.back_stock
@@ -500,25 +533,6 @@ function send_unexpected_train_alert(train)
 		end
 	end
 end
-
-
-local send_nonempty_train_in_depot_alert_icon = {name = NONEMPTY_TRAIN_NAME, type = "fluid"}
----@param train LuaTrain
-function send_nonempty_train_in_depot_alert(train)
-	local loco = train.front_stock or train.back_stock
-	if loco then
-		for _, player in pairs(loco.force.players) do
-			player.add_custom_alert(
-			loco,
-			send_nonempty_train_in_depot_alert_icon,
-			{"cybersyn-messages.nonempty-train"},
-			true)
-			player.play_sound({path = ALERT_SOUND})
-		end
-	end
-end
-
-
 local send_stuck_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
 ---@param train LuaTrain
 ---@param depot_name string
