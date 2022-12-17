@@ -2,7 +2,7 @@
 Version: 1.1.6
 Date: 2022-12-16
   Changes:
-    - None
+    - Fixed a crash relating to per-item request thresholds
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.5
 Date: 2022-12-16
