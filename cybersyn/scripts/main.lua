@@ -405,25 +405,26 @@ function combinator_update(map_data, comb, reset_display)
 	if params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST or params.operation == MODE_PRIMARY_IO then
 		--the follow is only present to fix combinators that have been copy-pasted by blueprint with the wrong operation
 		local stop = map_data.to_stop[comb.unit_number--[[@as uint]]]
+		local should_reset = reset_display
 		if stop then
 			id = stop.unit_number--[[@as uint]]
 			station = map_data.stations[id]
-			if reset_display then
-				if station and station.entity_comb1 == comb then
-					--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
-					if station.display_state >= 2 then
-						params.operation = MODE_PRIMARY_IO_ACTIVE
-					elseif station.display_state == 1 then
-						params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
-					else
-						params.operation = MODE_PRIMARY_IO
-					end
-					control.parameters = params
+			if should_reset and station and station.entity_comb1 == comb then
+				--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
+				if station.display_state >= 2 then
+					params.operation = MODE_PRIMARY_IO_ACTIVE
+				elseif station.display_state == 1 then
+					params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
 				else
 					params.operation = MODE_PRIMARY_IO
-					control.parameters = params
 				end
+				control.parameters = params
+				should_reset = false
 			end
+		end
+		if should_reset then
+			params.operation = MODE_PRIMARY_IO
+			control.parameters = params
 		end
 		params.operation = MODE_PRIMARY_IO
 	end
