@@ -19,7 +19,7 @@ end
 function get_stop_dist(entity0, entity1)
 	local surface0 = entity0.surface.index
 	local surface1 = entity1.surface.index
-	return (surface0 == surface1 and get_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE)
+	return (surface0 == surface1 and get_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE)--[[@as number]]
 end
 
 

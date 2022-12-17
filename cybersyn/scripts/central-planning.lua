@@ -340,7 +340,7 @@ local function tick_dispatch(map_data, mod_settings)
 				if effective_count >= r_threshold then
 					local item_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name] or nil
 					local prior = p_station.priority
-					if item_threshold then
+					if item_threshold and p_station.item_priority then
 						prior = p_station.item_priority--[[@as int]]
 					end
 					local slot_threshold = item_type == "fluid" and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
