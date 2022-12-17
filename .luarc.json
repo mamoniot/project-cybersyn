@@ -14,6 +14,7 @@
         "__Profiler",
         "create_inactivity_order"
     ],
+    "Lua.workspace.checkThirdParty": false,
     "runtime": {
         "plugin": "C:\\Users\\mmoni\\files\\data\\projects\\factorio\\cybersyn\\.vscode\\lua\\plugin.lua",
         "pluginArgs": [
