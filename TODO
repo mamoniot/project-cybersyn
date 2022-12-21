@@ -4,15 +4,13 @@ bugs:
 	find se bug https://mods.factorio.com/mod/cybersyn/discussion/639d1ea26f00ecfa7b048da0
 
 major:
-	models & art
-	move to an event based algorithm
 	debug output
 	more detailed missing train alerts
 	implement provide station priority locking
-	add in game guide
 	add request threshold provide override
-
-
+	add in game guide
+	move to an event based algorithm
+	models & art
 
 minor:
 	railloader compat
