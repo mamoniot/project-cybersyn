@@ -62,19 +62,19 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 		r_station.deliveries_total = r_station.deliveries_total + 1
 		p_station.deliveries_total = p_station.deliveries_total + 1
 
-		local r_is_every = r_station.network_name == NETWORK_EVERY
-		local p_is_every = p_station.network_name == NETWORK_EVERY
+		local r_is_each = r_station.network_name == NETWORK_EACH
+		local p_is_each = p_station.network_name == NETWORK_EACH
 		for item_i, item in ipairs(manifest) do
 			assert(item.count > 0, "main.lua error, transfer amount was not positive")
 
 			r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
 			p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
 
-			if item_i > 1 or r_is_every or p_is_every then
+			if item_i > 1 or r_is_each or p_is_each then
 				local f, a
-				if r_is_every then
+				if r_is_each then
 					f, a = pairs(r_station.network_flag--[[@as {[string]: int}]])
-					if p_is_every then
+					if p_is_each then
 						for network_name, _ in f, a do
 							local item_network_name = network_name..":"..item.name
 							economy.all_r_stations[item_network_name] = nil
@@ -82,7 +82,7 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 						end
 						f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
 					end
-				elseif p_is_every then
+				elseif p_is_each then
 					f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
 				else
 					f, a = once, r_station.network_name
@@ -299,7 +299,7 @@ local function tick_dispatch(map_data, mod_settings)
 		local r_station = stations[r_station_id]
 		---@type string
 		local network_name
-		if r_station.network_name == NETWORK_EVERY then
+		if r_station.network_name == NETWORK_EACH then
 			_, _, network_name = string.find(item_network_name, "(^.*):")
 		else
 			network_name = r_station.network_name
@@ -337,8 +337,8 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			p_flag = p_station.network_name == NETWORK_EVERY and (p_station.network_flag[item_name] or 0) or p_station.network_flag
-			r_flag = r_station.network_name == NETWORK_EVERY and (r_station.network_flag[item_name] or 0) or r_station.network_flag
+			p_flag = p_station.network_name == NETWORK_EACH and (p_station.network_flag[item_name] or 0) or p_station.network_flag
+			r_flag = r_station.network_name == NETWORK_EACH and (r_station.network_flag[item_name] or 0) or r_station.network_flag
 			netand = band(p_flag, r_flag)
 			if netand == 0 then
 				goto p_continue
@@ -510,7 +510,7 @@ local function tick_poll_station(map_data, mod_settings)
 	station.priority = 0
 	station.item_priority = nil
 	station.locked_slots = 0
-	if station.network_name == NETWORK_EVERY then
+	if station.network_name == NETWORK_EACH then
 		station.network_flag = {}
 	else
 		station.network_flag = mod_settings.network_flag
@@ -519,6 +519,7 @@ local function tick_poll_station(map_data, mod_settings)
 	station.tick_signals = comb1_signals
 	station.item_p_counts = {}
 
+	local is_requesting_nothing = true
 	if comb1_signals then
 		if comb2_signals then
 			station.item_thresholds = {}
@@ -552,7 +553,7 @@ local function tick_poll_station(map_data, mod_settings)
 						station.r_threshold = abs(item_count)
 					elseif item_name == LOCKED_SLOTS then
 						station.locked_slots = max(item_count, 0)
-					elseif station.network_name == NETWORK_EVERY then
+					elseif station.network_name == NETWORK_EACH then
 						station.network_flag[item_name] = item_count
 					end
 					comb1_signals[k] = nil
@@ -565,7 +566,6 @@ local function tick_poll_station(map_data, mod_settings)
 				comb1_signals[k] = nil
 			end
 		end
-		local is_requesting_nothing = true
 		for k, v in pairs(comb1_signals) do
 			---@type string
 			local item_name = v.signal.name
@@ -583,7 +583,7 @@ local function tick_poll_station(map_data, mod_settings)
 					is_not_requesting = false
 					is_requesting_nothing = false
 					local f, a
-					if station.network_name == NETWORK_EVERY then
+					if station.network_name == NETWORK_EACH then
 						f, a = pairs(station.network_flag--[[@as {[string]: int}]])
 					else
 						f, a = once, station.network_name
@@ -604,7 +604,7 @@ local function tick_poll_station(map_data, mod_settings)
 			if is_not_requesting then
 				if station.is_p and effective_item_count > 0 and item_count > 0 then
 					local f, a
-					if station.network_name == NETWORK_EVERY then
+					if station.network_name == NETWORK_EACH then
 						f, a = pairs(station.network_flag--[[@as {[string]: int}]])
 					else
 						f, a = once, station.network_name
@@ -624,21 +624,21 @@ local function tick_poll_station(map_data, mod_settings)
 				end
 			end
 		end
-		if station.display_state > 1 then
-			if is_requesting_nothing and band(station.display_state, 2) == 1 then
-				station.display_state = station.display_state - 2
+	end
+	if station.display_state > 1 then
+		if is_requesting_nothing and band(station.display_state, 2) > 0 then
+			station.display_state = station.display_state - 2
+			update_display(map_data, station)
+		end
+		if band(station.display_state, 8) > 0 then
+			if band(station.display_state, 4) > 0 then
+				station.display_state = station.display_state - 4
+			else
+				station.display_state = station.display_state - 8
 				update_display(map_data, station)
 			end
-			if band(station.display_state, 8) == 1 then
-				if band(station.display_state, 4) == 1 then
-					station.display_state = station.display_state - 4
-				else
-					station.display_state = station.display_state - 8
-					update_display(map_data, station)
-				end
-			elseif band(station.display_state, 4) == 1 then
-				station.display_state = station.display_state + 4
-			end
+		elseif band(station.display_state, 4) > 0 then
+			station.display_state = station.display_state + 4
 		end
 	end
 	return false
@@ -664,7 +664,7 @@ local function tick_poll_comb(map_data, mod_settings)
 	--NOTE: the following has undefined behavior if last_comb is deleted
 	local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
 	tick_data.last_comb = comb_id
-	local refueler_id, _ = next(map_data.everything_refuelers, tick_data.last_refueler)
+	local refueler_id, _ = next(map_data.each_refuelers, tick_data.last_refueler)
 	tick_data.last_refueler = refueler_id
 
 	if comb and comb.valid then

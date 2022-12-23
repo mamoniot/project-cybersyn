@@ -319,11 +319,11 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	refueler.allows_all_trains = bit_extract(bits, 2) > 0
 	refueler.priority = 0
 
-	if refueler.network_name == NETWORK_EVERY then
-		map_data.everything_refuelers[id] = true
+	if refueler.network_name == NETWORK_EACH then
+		map_data.each_refuelers[id] = true
 		refueler.network_flag = {}
 	else
-		map_data.everything_refuelers[id] = nil
+		map_data.each_refuelers[id] = nil
 		refueler.network_flag = mod_settings.network_flag
 	end
 
@@ -337,7 +337,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 				if item_type == "virtual" then
 					if item_name == SIGNAL_PRIORITY then
 						refueler.priority = item_count
-					elseif refueler.network_name == NETWORK_EVERY then
+					elseif refueler.network_name == NETWORK_EACH then
 						refueler.network_flag[item_name] = item_count
 					end
 				end
@@ -349,7 +349,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	end
 
 	local f, a
-	if old_network == NETWORK_EVERY then
+	if old_network == NETWORK_EACH then
 		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
 	elseif old_network ~= refueler.network_name then
 		f, a = once, old_network
@@ -366,7 +366,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 		end
 	end
 
-	if refueler.network_name == NETWORK_EVERY then
+	if refueler.network_name == NETWORK_EACH then
 		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
 	elseif old_network ~= refueler.network_name then
 		f, a = once, refueler.network_name

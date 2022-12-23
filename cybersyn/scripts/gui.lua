@@ -96,7 +96,7 @@ function gui_opened(comb, player)
 					{type="line", style_mods={top_padding=10}},
 					{type="label", name="network_label", ref={"network_label"}, style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
 					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="center"}, children={
-						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6}, actions={
+						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, actions={
 							on_elem_changed={"choose-elem-button", comb.unit_number}
 						}},
 						{type="flow", name="right", direction="vertical", style_mods={horizontal_align="left"}, children={
@@ -195,8 +195,8 @@ function register_gui_actions()
 				local signal = element.elem_value
 				if signal and (signal.name == "signal-everything" or signal.name == "signal-anything" or signal.name == "signal-each") then
 					if param.operation == MODE_PRIMARY_IO or param.operation == MODE_PRIMARY_IO_ACTIVE or param.operation == MODE_PRIMARY_IO_FAILED_REQUEST or param.operation == MODE_REFUELER then
-						signal.name = NETWORK_EVERY
-						element.elem_value.name = NETWORK_EVERY
+						signal.name = NETWORK_EACH
+						element.elem_value.name = NETWORK_EACH
 					else
 						signal = nil
 						element.elem_value = nil

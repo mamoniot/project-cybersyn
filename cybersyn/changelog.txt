@@ -4,7 +4,7 @@ Date: 2022-12-22
   Changes:
     - Forced provide stations to wait until they can service the highest priority request station
     - Provide stations now override request thresholds with the per-item thresholds set by their station info combinator
-    - Allowed station and fuel combinators to be set to network id "everything", for each virtual signal they recieve as input, the stop is added to that network and its signal strength is used as the network mask
+    - Allowed station and fuel combinators to be set to network id "each", for each virtual signal they recieve as input, the stop is added to that network and its signal strength is used as the network mask
     - Added the ability to specify per-station whether request thresholds represent total items or total stacks
     - Prioritized a train's distance from the provide station over the train's cargo capacity
     - Added more detailed missing train alerts

@@ -76,7 +76,7 @@ local function on_refueler_broken(map_data, refueler_id, refueler)
 		end
 	end
 	local f, a
-	if refueler.network_name == NETWORK_EVERY then
+	if refueler.network_name == NETWORK_EACH then
 		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
 	else
 		f, a = once, refueler.network_name
@@ -90,7 +90,7 @@ local function on_refueler_broken(map_data, refueler_id, refueler)
 			end
 		end
 	end
-	map_data.everything_refuelers[refueler_id] = nil
+	map_data.each_refuelers[refueler_id] = nil
 	map_data.refuelers[refueler_id] = nil
 	interface_raise_refueler_removed(refueler_id, refueler)
 end
