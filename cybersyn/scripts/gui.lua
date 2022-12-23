@@ -42,9 +42,9 @@ local function set_visibility(main_window, selected_index)
 	vflow.network_label.visible = uses_network
 	bottom_flow.network.visible = uses_network
 	right_flow.allow_list.visible = uses_allow_list
-	right_flow.allow_list_label.visible = uses_allow_list
+	--right_flow.allow_list_label.visible = uses_allow_list
 	right_flow.is_stack.visible = is_station
-	right_flow.is_stack_label.visible = is_station
+	--right_flow.is_stack_label.visible = is_station
 end
 
 ---@param comb LuaEntity
@@ -100,14 +100,18 @@ function gui_opened(comb, player)
 							on_elem_changed={"choose-elem-button", comb.unit_number}
 						}},
 						{type="flow", name="right", direction="vertical", style_mods={horizontal_align="left"}, children={
-							{type="checkbox", name="allow_list", ref={"allow_list"}, state=allow_list, tooltip={"cybersyn-gui.allow-list-tooltip"}, actions={
-								on_checked_state_changed={"allow_list", comb.unit_number}
+							{type="flow", name="allow_list", direction="horizontal", style_mods={vertical_align="center"}, children={
+								{type="checkbox", name="allow_list", ref={"allow_list"}, state=allow_list, tooltip={"cybersyn-gui.allow-list-tooltip"}, actions={
+									on_checked_state_changed={"allow_list", comb.unit_number}
+								}},
+								{type="label", name="allow_list_label", style_mods={left_padding=3}, ref={"allow_list_label"}, caption={"cybersyn-gui.allow-list-description"}},
 							}},
-							{type="label", name="allow_list_label", style_mods={left_padding=3}, ref={"allow_list_label"}, caption={"cybersyn-gui.allow-list-description"}},
-							{type="checkbox", name="is_stack", ref={"is_stack"}, state=is_stack, tooltip={"cybersyn-gui.is-stack-tooltip"}, actions={
-								on_checked_state_changed={"is_stack", comb.unit_number}
+							{type="flow", name="is_stack", direction="horizontal", style_mods={vertical_align="center"}, children={
+								{type="checkbox", name="is_stack", ref={"is_stack"}, state=is_stack, tooltip={"cybersyn-gui.is-stack-tooltip"}, actions={
+									on_checked_state_changed={"is_stack", comb.unit_number}
+								}},
+								{type="label", name="is_stack_label", style_mods={left_padding=3}, ref={"is_stack_label"}, caption={"cybersyn-gui.is-stack-description"}},
 							}},
-							{type="label", name="is_stack_label", style_mods={left_padding=3}, ref={"is_stack_label"}, caption={"cybersyn-gui.is-stack-description"}},
 						}}
 					}}
 				}}
