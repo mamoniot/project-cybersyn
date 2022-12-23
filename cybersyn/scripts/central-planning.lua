@@ -304,15 +304,17 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
+			local p_flag, r_flag, netand, slot_threshold, best_p_train_id, best_t_prior, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_dist
+
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
 			if not p_station or p_station.deliveries_total >= p_station.entity_stop.trains_limit then
 				goto p_continue
 			end
 
-			local p_flag = p_station.network_name == NETWORK_EVERY and (p_station.network_flag[item_name] or 0) or p_station.network_flag
-			local r_flag = r_station.network_name == NETWORK_EVERY and (r_station.network_flag[item_name] or 0) or r_station.network_flag
-			local netand = band(p_flag, r_flag)
+			p_flag = p_station.network_name == NETWORK_EVERY and (p_station.network_flag[item_name] or 0) or p_station.network_flag
+			r_flag = r_station.network_name == NETWORK_EVERY and (r_station.network_flag[item_name] or 0) or r_station.network_flag
+			netand = band(p_flag, r_flag)
 			if netand == 0 then
 				goto p_continue
 			end
@@ -323,7 +325,6 @@ local function tick_dispatch(map_data, mod_settings)
 			----------------------------------------------------------------
 			-- check for valid train
 			----------------------------------------------------------------
-			local slot_threshold
 			if r_station.is_stack and item_type == "item" then
 				slot_threshold = r_threshold
 				r_threshold = r_threshold*get_stack_size(map_data, item_name)
@@ -332,9 +333,9 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 
 			---@type uint?
-			local best_p_train_id = nil
-			local best_t_prior = -INF
-			local best_t_to_p_dist = INF
+			best_p_train_id = nil
+			best_t_prior = -INF
+			best_t_to_p_dist = INF
 			if trains then
 				for train_id, _ in pairs(trains) do
 					local train = map_data.trains[train_id]
@@ -395,8 +396,8 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			local effective_count = p_station.item_p_counts[item_name]
-			local override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
+			effective_count = p_station.item_p_counts[item_name]
+			override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
 			if override_threshold and p_station.is_stack and item_type == "item" then
 				override_threshold = override_threshold*get_stack_size(map_data, item_name)
 			end
@@ -407,7 +408,7 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue_remove
 			end
 
-			local p_prior = p_station.priority
+			p_prior = p_station.priority
 			if override_threshold and p_station.item_priority then
 				p_prior = p_station.item_priority--[[@as int]]
 			end
@@ -415,7 +416,7 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			local best_p_dist = best_t_to_p_dist + get_stop_dist(p_station.entity_stop, r_station.entity_stop)
+			best_p_dist = best_t_to_p_dist + get_stop_dist(p_station.entity_stop, r_station.entity_stop)
 			if p_prior == best_p_prior and best_p_dist > best_dist then
 				goto p_continue
 			end
