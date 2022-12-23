@@ -14,7 +14,24 @@
         "__Profiler",
         "create_inactivity_order"
     ],
-    "Lua.workspace.checkThirdParty": false,
+    "Lua.runtime.builtin": {
+        "coroutine": "disable",
+        "debug": "disable",
+        "io": "disable",
+        "math": "disable",
+        "os": "disable",
+        "package": "disable"
+    },
+    "Lua.runtime.plugin": "/home/mami/.config/Code/User/workspaceStorage/9536dbf0665a54126a4b0958ecd5829f/justarandomgeek.factoriomod-debug/sumneko-3rd/factorio/plugin.lua",
+    "Lua.runtime.special": {
+        "__object_name": "type"
+    },
+    "Lua.workspace.library": [
+        "~/.steam/steam/steamapps/common/Factorio/data",
+        "~/.steam/steam/steamapps/common/Factorio/data/core/lualib",
+        "./.vscode/factorio",
+        "/home/mami/.config/Code/User/workspaceStorage/9536dbf0665a54126a4b0958ecd5829f/justarandomgeek.factoriomod-debug/sumneko-3rd/factorio/library"
+    ],
     "runtime": {
         "plugin": "C:\\Users\\mmoni\\files\\data\\projects\\factorio\\cybersyn\\.vscode\\lua\\plugin.lua",
         "pluginArgs": [

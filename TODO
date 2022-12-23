@@ -1,14 +1,20 @@
 bugs:
-	request threshold is being bypassed somehow (hasn't been seen in a long time)
+	fix crash in sumbitted massively modded world
+	check for bugs in new player's submitted world
+	find se bug https://mods.factorio.com/mod/cybersyn/discussion/639d1ea26f00ecfa7b048da0
 
 major:
-	models & art
-	move to an event based algorithm
 	debug output
 	more detailed missing train alerts
+	implement provide station priority locking
+	add request threshold provide override
+	add in game guide
+	move to an event based algorithm
+	models & art
 
 minor:
 	railloader compat
+	request stack threshold
 	close gui when the combinator is destroyed
 	do not play close sound when a different gui is opened
 	gui can desync if settings are changed outside of it while it is open
