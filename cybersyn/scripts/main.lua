@@ -363,12 +363,12 @@ function combinator_update(map_data, comb, reset_display)
 			station = map_data.stations[id]
 			if should_reset and station and station.entity_comb1 == comb then
 				--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
-				if station.display_state >= 2 then
-					params.operation = MODE_PRIMARY_IO_ACTIVE
-				elseif station.display_state == 1 then
-					params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
-				else
+				if station.display_state == 0 then
 					params.operation = MODE_PRIMARY_IO
+				elseif station.display_state%2 == 1 then
+					params.operation = MODE_PRIMARY_IO_ACTIVE
+				else
+					params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
 				end
 				control.parameters = params
 				should_reset = false

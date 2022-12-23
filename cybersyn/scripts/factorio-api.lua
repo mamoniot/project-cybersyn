@@ -392,12 +392,12 @@ function update_display(map_data, station)
 		local params = control.parameters
 		--NOTE: the following check can cause a bug where the display desyncs if the player changes the operation of the combinator and then changes it back before the mod can notice, however removing it causes a bug where the user's change is overwritten and ignored. Everything's bad we need an event to catch copy-paste by blueprint.
 		if params.operation == MODE_PRIMARY_IO or params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
-			if station.display_state >= 4 then
-				params.operation = MODE_PRIMARY_IO_ACTIVE
-			elseif station.display_state >= 1 then
-				params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
-			else
+			if station.display_state == 0 then
 				params.operation = MODE_PRIMARY_IO
+			elseif station.display_state%2 == 1 then
+				params.operation = MODE_PRIMARY_IO_ACTIVE
+			else
+				params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
 			end
 			control.parameters = params
 		end
