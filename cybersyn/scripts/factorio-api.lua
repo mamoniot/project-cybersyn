@@ -93,6 +93,26 @@ end
 function lock_train(train)
 	train.manual_mode = true
 end
+---@param train LuaTrain
+function lock_train_to_depot(train)
+	local schedule = train.schedule
+	if schedule then
+		local record = schedule.records[schedule.current]
+		if record then
+			local wait = record.wait_conditions
+			if wait and wait[1] then
+				wait[1].ticks = LOCK_TRAIN_TIME
+			else
+				record.wait_conditions = {{type = "inactivity", compare_type = "and", ticks = LOCK_TRAIN_TIME}}
+			end
+			train.schedule = schedule
+		else
+			train.manual_mode = true
+		end
+	else
+		train.manual_mode = true
+	end
+end
 
 ---@param train LuaTrain
 ---@param stop LuaEntity
@@ -114,6 +134,7 @@ end
 function se_create_elevator_order(elevator_name, is_train_in_orbit)
 	return {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
 end
+---@param map_data MapData
 ---@param train LuaTrain
 ---@param depot_name string
 ---@param d_surface_i int
@@ -121,7 +142,7 @@ end
 ---@param r_stop LuaEntity
 ---@param manifest Manifest
 ---@param start_at_depot boolean?
-function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, manifest, start_at_depot)
+function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop, r_stop, manifest, start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 	local old_schedule
 	if not start_at_depot then
@@ -137,13 +158,16 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 	local is_r_on_t = t_surface_i == r_surface_i
 	local is_d_on_t = t_surface_i == d_surface_i
 	if is_p_on_t and is_r_on_t and is_d_on_t then
-		train.schedule = {current = start_at_depot and 1 or 2--[[@as uint]], records = {
-			create_inactivity_order(depot_name),
-			create_direct_to_station_order(p_stop),
-			create_loading_order(p_stop, manifest),
-			create_direct_to_station_order(r_stop),
-			create_unloading_order(r_stop),
-		}}
+		train.schedule = {
+			current = start_at_depot and 1 or 2--[[@as uint]],
+			records = {
+				create_inactivity_order(depot_name),
+				create_direct_to_station_order(p_stop),
+				create_loading_order(p_stop, manifest),
+				create_direct_to_station_order(r_stop),
+				create_unloading_order(r_stop),
+			}
+		}
 		if old_schedule and not train.has_path then
 			train.schedule = old_schedule
 			return false
@@ -198,14 +222,14 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 		create_unloading_order(r_stop),
 	}}
 	lock_train(train)
-	send_alert_cannot_path_between_surfaces(train, depot_name)
+	send_alert_cannot_path_between_surfaces(map_data, train)
 	return true
 end
 
+---@param map_data MapData
 ---@param train LuaTrain
 ---@param stop LuaEntity
----@param depot_name string
-function add_refueler_schedule(train, stop, depot_name)
+function add_refueler_schedule(map_data, train, stop)
 	local schedule = train.schedule or {current = 1, records = {}}
 	local i = schedule.current
 	if i == 1 then
@@ -252,8 +276,8 @@ function add_refueler_schedule(train, stop, depot_name)
 	--create an order that probably cannot be fulfilled and alert the player
 	table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
 	lock_train(train)
-	send_alert_cannot_path_between_surfaces(train, depot_name)
 	train.schedule = schedule
+	send_alert_cannot_path_between_surfaces(map_data, train)
 end
 
 
@@ -459,15 +483,15 @@ end
 
 ---@param train LuaTrain
 ---@param icon {}
----@param message {}
-local function send_alert_with_sound(train, icon, message)
+---@param message string
+local function send_alert_for_train(train, icon, message)
 	local loco = train.front_stock or train.back_stock
 	if loco then
 		for _, player in pairs(loco.force.players) do
 			player.add_custom_alert(
 			loco,
 			icon,
-			message,
+			{message},
 			true)
 			player.play_sound({path = ALERT_SOUND})
 		end
@@ -484,6 +508,16 @@ function send_alert_about_missing_train(r_stop, p_stop, message)
 		send_alert_about_missing_train_icon,
 		{message, r_stop.backer_name, p_stop.backer_name},
 		true)
+	end
+end
+
+---@param train LuaTrain
+function send_alert_sounds(train)
+	local loco = train.front_stock or train.back_stock
+	if loco then
+		for _, player in pairs(loco.force.players) do
+			player.play_sound({path = ALERT_SOUND})
+		end
 	end
 end
 
@@ -509,64 +543,85 @@ function send_alert_no_train_matches_p_layout(r_stop, p_stop)
 	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-matches-p-layout")
 end
 
-local send_lost_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
+
+local send_stuck_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
+---@param map_data MapData
 ---@param train LuaTrain
----@param depot_name string
-function send_alert_cannot_path_between_surfaces(train, depot_name)
-	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.cannot-path-between-surfaces", depot_name})
-end
----@param train LuaTrain
----@param depot_name string
-function send_alert_depot_of_train_broken(train, depot_name)
-	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.depot-broken", depot_name})
-end
----@param train LuaTrain
----@param depot_name string
-function send_alert_refueler_of_train_broken(train, depot_name)
-	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.refueler-broken", depot_name})
-end
----@param train LuaTrain
----@param depot_name string
-function send_alert_station_of_train_broken(train, depot_name)
-	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.station-broken", depot_name})
-end
----@param train LuaTrain
----@param depot_name string
-function send_alert_train_at_incorrect_station(train, depot_name)
-	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.train-at-incorrect", depot_name})
+function send_alert_stuck_train(map_data, train)
+	send_alert_for_train(train, send_stuck_train_alert_icon, "cybersyn-messages.stuck-train")
+	map_data.active_alerts = map_data.active_alerts or {}
+	map_data.active_alerts[train] = 1
 end
 
 local send_nonempty_train_in_depot_alert_icon = {name = NONEMPTY_TRAIN_NAME, type = "fluid"}
+---@param map_data MapData
 ---@param train LuaTrain
-function send_alert_nonempty_train_in_depot(train)
-	send_alert_with_sound(train, send_nonempty_train_in_depot_alert_icon, {"cybersyn-messages.nonempty-train"})
+function send_alert_nonempty_train_in_depot(map_data, train)
+	send_alert_for_train(train, send_nonempty_train_in_depot_alert_icon, "cybersyn-messages.nonempty-train")
+	map_data.active_alerts = map_data.active_alerts or {}
+	map_data.active_alerts[train] = 2
+end
+
+local send_lost_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
+---@param map_data MapData
+---@param train LuaTrain
+function send_alert_depot_of_train_broken(map_data, train)
+	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.depot-broken")
+	map_data.active_alerts = map_data.active_alerts or {}
+	map_data.active_alerts[train] = 3
+end
+---@param map_data MapData
+---@param train LuaTrain
+function send_alert_station_of_train_broken(map_data, train)
+	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.station-broken")
+	map_data.active_alerts = map_data.active_alerts or {}
+	map_data.active_alerts[train] = 4
+end
+---@param map_data MapData
+---@param train LuaTrain
+function send_alert_refueler_of_train_broken(map_data, train)
+	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.refueler-broken")
+	map_data.active_alerts = map_data.active_alerts or {}
+	map_data.active_alerts[train] = 5
+end
+---@param map_data MapData
+---@param train LuaTrain
+function send_alert_train_at_incorrect_station(map_data, train)
+	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.train-at-incorrect")
+	map_data.active_alerts = map_data.active_alerts or {}
+	map_data.active_alerts[train] = 6
+end
+---@param map_data MapData
+---@param train LuaTrain
+function send_alert_cannot_path_between_surfaces(map_data, train)
+	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.cannot-path-between-surfaces")
+	map_data.active_alerts = map_data.active_alerts or {}
+	map_data.active_alerts[train] = 7
 end
 
 ---@param train LuaTrain
 function send_alert_unexpected_train(train)
-	local loco = train.front_stock or train.back_stock
-	if loco then
-		for _, player in pairs(loco.force.players) do
-			player.add_custom_alert(
-			loco,
-			send_lost_train_alert_icon,
-			{"cybersyn-messages.unexpected-train"},
-			true)
-		end
-	end
+	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.unexpected-train")
 end
-local send_stuck_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
----@param train LuaTrain
----@param depot_name string
-function send_alert_stuck_train(train, depot_name)
-	local loco = train.front_stock or train.back_stock
-	if loco then
-		for _, player in pairs(loco.force.players) do
-			player.add_custom_alert(
-			loco,
-			send_stuck_train_alert_icon,
-			{"cybersyn-messages.stuck-train", depot_name},
-			true)
+
+
+---@param map_data MapData
+function process_active_alerts(map_data)
+	for train, id in pairs(map_data.active_alerts) do
+		if id == 1 then
+			send_alert_for_train(train, send_stuck_train_alert_icon, "cybersyn-messages.stuck-train")
+		elseif id == 2 then
+			send_alert_for_train(train, send_nonempty_train_in_depot_alert_icon, "cybersyn-messages.nonempty-train")
+		elseif id == 3 then
+			send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.depot-broken")
+		elseif id == 4 then
+			send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.station-broken")
+		elseif id == 5 then
+			send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.refueler-broken")
+		elseif id == 6 then
+			send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.train-at-incorrect")
+		elseif id == 7 then
+			send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.cannot-path-between-surfaces")
 		end
 	end
 end

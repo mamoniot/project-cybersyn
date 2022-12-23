@@ -24,6 +24,7 @@ MODE_REFUELER = ">>"
 
 NETWORK_SIGNAL_DEFAULT = {name="signal-A", type="virtual"}
 INACTIVITY_TIME = 100
+LOCK_TRAIN_TIME = 60*60*60*24*7
 
 DELTA = 1/2048
 

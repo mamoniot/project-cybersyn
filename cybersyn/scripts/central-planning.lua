@@ -49,7 +49,7 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 		train.parked_at_depot_id = nil
 	end
 	--NOTE: we assume that the train is not being teleported at this time
-	if set_manifest_schedule(train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, r_station.entity_stop, manifest, depot_id ~= nil) then
+	if set_manifest_schedule(map_data, train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, r_station.entity_stop, manifest, depot_id ~= nil) then
 		local old_status = train.status
 		train.status = STATUS_TO_P
 		train.p_station_id = p_station_id
@@ -567,7 +567,7 @@ local function tick_poll_train(map_data, mod_settings)
 
 	if train and train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
 		if mod_settings.stuck_train_alert_enabled then
-			send_alert_stuck_train(train.entity, train.depot_name)
+			send_alert_stuck_train(map_data, train.entity)
 		end
 		interface_raise_train_stuck(train_id)
 	end
@@ -587,6 +587,13 @@ end
 ---@param mod_settings CybersynModSettings
 function tick(map_data, mod_settings)
 	map_data.total_ticks = map_data.total_ticks + 1
+
+	if map_data.active_alerts then
+		if map_data.total_ticks%(10*mod_settings.tps) < 1 then
+			process_active_alerts(map_data)
+		end
+	end
+
 	if map_data.tick_state == STATE_INIT then
 		map_data.economy.all_p_stations = {}
 		map_data.economy.all_r_stations = {}

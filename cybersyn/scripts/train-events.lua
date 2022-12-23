@@ -167,9 +167,9 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		else
 			--train still has cargo
 			if mod_settings.react_to_nonempty_train_in_depot then
-				lock_train(train_entity)
+				lock_train_to_depot(train_entity)
 				remove_train(map_data, train_id, train)
-				send_alert_nonempty_train_in_depot(train_entity)
+				send_alert_nonempty_train_in_depot(map_data, train_entity)
 			end
 			interface_raise_train_nonempty_in_depot(depot_id, train_entity, train_id)
 		end
@@ -201,8 +201,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		interface_raise_train_created(train_id, depot_id)
 	else
 		if mod_settings.react_to_nonempty_train_in_depot then
-			lock_train(train_entity)
-			send_alert_nonempty_train_in_depot(train_entity)
+			send_alert_nonempty_train_in_depot(map_data, train_entity)
 		end
 		interface_raise_train_nonempty_in_depot(depot_id, train_entity)
 	end
@@ -238,12 +237,12 @@ local function on_train_arrives_station(map_data, station_id, train_id, train)
 			on_failed_delivery(map_data, train_id, train)
 			remove_train(map_data, train_id, train)
 			lock_train(train.entity)
-			send_alert_train_at_incorrect_station(train.entity, train.depot_name)
+			send_alert_train_at_incorrect_station(map_data, train.entity)
 		end
 	elseif mod_settings.react_to_train_at_incorrect_station then
 		--train is lost somehow, probably from player intervention
 		remove_train(map_data, train_id, train)
-		send_alert_train_at_incorrect_station(train.entity, train.depot_name)
+		send_alert_train_at_incorrect_station(map_data, train.entity)
 	end
 end
 
@@ -350,7 +349,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 					train.refueler_id = best_refueler_id
 					local refueler = map_data.refuelers[best_refueler_id]
 					refueler.trains_total = refueler.trains_total + 1
-					add_refueler_schedule(train.entity, refueler.entity_stop, train.depot_name)
+					add_refueler_schedule(map_data, train.entity, refueler.entity_stop)
 					interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_F)
 					return
 				end
@@ -417,6 +416,14 @@ end
 function on_train_changed(event)
 	local train_e = event.train--[[@as LuaTrain]]
 	if not train_e.valid then return end
+
+	if global.active_alerts and global.active_alerts[train_e] then
+		global.active_alerts[train_e] = nil
+		if next(global.active_alerts) == nil then
+			global.active_alerts = nil
+		end
+	end
+
 	local train_id = train_e.id
 	if train_e.state == defines.train_state.wait_station then
 		local stop = train_e.station

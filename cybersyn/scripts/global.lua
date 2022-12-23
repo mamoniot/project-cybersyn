@@ -19,6 +19,7 @@
 ---@field public tick_state uint
 ---@field public tick_data {}
 ---@field public economy Economy
+---@field public active_alerts {[LuaTrain]: int}?
 ---@field public se_tele_old_id {[string]: uint}
 
 ---@class Station
