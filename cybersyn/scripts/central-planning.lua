@@ -116,9 +116,15 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 		local r_effective_item_count = r_item_count + (r_station.deliveries[item_name] or 0)
 		if r_effective_item_count < 0 and r_item_count < 0 then
 			local r_threshold = r_station.item_thresholds and r_station.item_thresholds[item_name] or r_station.r_threshold
+			if r_station.is_stack and item_type == "item" then
+				r_threshold = r_threshold*get_stack_size(map_data, item_name)
+			end
 			local p_effective_item_count = p_station.item_p_counts[item_name]
 			--could be an item that is not present at the station
 			local override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
+			if override_threshold and p_station.is_stack and item_type == "item" then
+				override_threshold = override_threshold*get_stack_size(map_data, item_name)
+			end
 			if p_effective_item_count and p_effective_item_count >= (override_threshold or r_threshold) then
 				local item = {name = item_name, type = item_type, count = min(-r_effective_item_count, p_effective_item_count)}
 				if item_name == primary_item_name then
@@ -317,7 +323,13 @@ local function tick_dispatch(map_data, mod_settings)
 			----------------------------------------------------------------
 			-- check for valid train
 			----------------------------------------------------------------
-			local slot_threshold = is_fluid and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
+			local slot_threshold
+			if r_station.is_stack and item_type == "item" then
+				slot_threshold = r_threshold
+				r_threshold = r_threshold*get_stack_size(map_data, item_name)
+			else
+				slot_threshold = is_fluid and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
+			end
 
 			---@type uint?
 			local best_p_train_id = nil
@@ -385,6 +397,9 @@ local function tick_dispatch(map_data, mod_settings)
 
 			local effective_count = p_station.item_p_counts[item_name]
 			local override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
+			if override_threshold and p_station.is_stack and item_type == "item" then
+				override_threshold = override_threshold*get_stack_size(map_data, item_name)
+			end
 			if effective_count < (override_threshold or r_threshold) then
 				--this p station should have serviced the current r station, lock it so it can't serve any others
 				--this will lock stations even when the r station manages to find a p station, this not a problem because all stations will be unlocked before it could be an issue
@@ -531,12 +546,16 @@ local function tick_poll_station(map_data, mod_settings)
 		for k, v in pairs(comb1_signals) do
 			---@type string
 			local item_name = v.signal.name
+			local item_type = v.signal.type
 			local item_count = v.count
 			local effective_item_count = item_count + (station.deliveries[item_name] or 0)
 
 			local is_not_requesting = true
 			if station.is_r then
 				local r_threshold = station.item_thresholds and station.item_thresholds[item_name] or station.r_threshold
+				if station.is_stack and item_type == "item" then
+					r_threshold = r_threshold*get_stack_size(map_data, item_name)
+				end
 				if -effective_item_count >= r_threshold and -item_count >= r_threshold then
 					is_not_requesting = false
 					is_requesting_nothing = false
@@ -645,7 +664,6 @@ function tick(map_data, mod_settings)
 		interface_raise_tick_init()
 		tick_poll_train(map_data, mod_settings)
 		tick_poll_comb(map_data)
-		return
 	elseif map_data.tick_state == STATE_POLL_STATIONS then
 		for i = 1, mod_settings.update_rate do
 			if tick_poll_station(map_data, mod_settings) then break end

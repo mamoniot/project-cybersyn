@@ -296,54 +296,11 @@ function get_comb_params(comb)
 	return comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
 end
 ---@param comb LuaEntity
-function get_comb_gui_settings(comb)
-	local params = get_comb_params(comb)
-	local op = params.operation
-
-	local selected_index = 0
-	local switch_state = "none"
-	local bits = params.second_constant or 0
-	local allows_all_trains = bits%2 == 1
-	local is_pr_state = floor(bits/2)%3
-	if is_pr_state == 0 then
-		switch_state = "none"
-	elseif is_pr_state == 1 then
-		switch_state = "left"
-	elseif is_pr_state == 2 then
-		switch_state = "right"
-	end
-
-	if op == MODE_PRIMARY_IO or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
-		selected_index = 1
-	elseif op == MODE_DEPOT then
-		selected_index = 2
-	elseif op == MODE_REFUELER then
-		selected_index = 3
-	elseif op == MODE_SECONDARY_IO then
-		selected_index = 4
-	elseif op == MODE_WAGON_MANIFEST then
-		selected_index = 5
-	end
-	return selected_index, params.first_signal, not allows_all_trains, switch_state
-end
----@param comb LuaEntity
 function get_comb_network_name(comb)
 	local params = get_comb_params(comb)
 	local signal = params.first_signal
 
 	return signal and signal.name or nil
-end
----@param station Station
-function set_station_from_comb_state(station)
-	--NOTE: this does nothing to update currently active deliveries
-	local params = get_comb_params(station.entity_comb1)
-	local bits = params.second_constant or 0
-	local is_pr_state = floor(bits/2)%3
-	local signal = params.first_signal
-	station.network_name = signal and signal.name or nil
-	station.allows_all_trains = bits%2 == 1
-	station.is_p = is_pr_state == 0 or is_pr_state == 1
-	station.is_r = is_pr_state == 0 or is_pr_state == 2
 end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
@@ -372,7 +329,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	end
 
 	refueler.network_name = signal and signal.name or nil
-	refueler.allows_all_trains = bits%2 == 1
+	refueler.allows_all_trains = (bits%2 == 1) or nil
 
 	local signals = refueler.entity_comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
 	refueler.priority = 0
@@ -435,14 +392,56 @@ function update_display(map_data, station)
 		end
 	end
 end
+
+
+---@param station Station
+function set_station_from_comb_state(station)
+	--NOTE: this does nothing to update currently active deliveries
+	local params = get_comb_params(station.entity_comb1)
+	local signal = params.first_signal
+
+	local bits = params.second_constant or 0
+	local is_pr_state = bit32.extract(bits, 0, 2)
+	local allows_all_trains = bit32.extract(bits, 2) > 0
+	local is_stack = bit32.extract(bits, 3) > 0
+
+	station.network_name = signal and signal.name or nil
+	station.allows_all_trains = allows_all_trains
+	station.is_stack = is_stack
+	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
+	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
+end
 ---@param comb LuaEntity
----@param allows_all_trains boolean
-function set_comb_allows_all_trains(comb, allows_all_trains)
-	local control = get_comb_control(comb)
-	local param = control.parameters
-	local bits = param.second_constant or 0
-	param.second_constant = (bits - bits%2) + (allows_all_trains and 1 or 0)
-	control.parameters = param
+function get_comb_gui_settings(comb)
+	local params = get_comb_params(comb)
+	local op = params.operation
+
+	local selected_index = 0
+	local switch_state = "none"
+	local bits = params.second_constant or 0
+	local is_pr_state = bit32.extract(bits, 0, 2)
+	local allows_all_trains = bit32.extract(bits, 2) > 0
+	local is_stack = bit32.extract(bits, 3) > 0
+	if is_pr_state == 0 then
+		switch_state = "none"
+	elseif is_pr_state == 1 then
+		switch_state = "left"
+	elseif is_pr_state == 2 then
+		switch_state = "right"
+	end
+
+	if op == MODE_PRIMARY_IO or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
+		selected_index = 1
+	elseif op == MODE_DEPOT then
+		selected_index = 2
+	elseif op == MODE_REFUELER then
+		selected_index = 3
+	elseif op == MODE_SECONDARY_IO then
+		selected_index = 4
+	elseif op == MODE_WAGON_MANIFEST then
+		selected_index = 5
+	end
+	return selected_index, params.first_signal, switch_state, not allows_all_trains, is_stack
 end
 ---@param comb LuaEntity
 ---@param is_pr_state 0|1|2
@@ -450,7 +449,28 @@ function set_comb_is_pr_state(comb, is_pr_state)
 	local control = get_comb_control(comb)
 	local param = control.parameters
 	local bits = param.second_constant or 0
-	param.second_constant = (bits%2) + (2*is_pr_state)
+
+	param.second_constant = bit32.replace(bits, is_pr_state, 0, 2)
+	control.parameters = param
+end
+---@param comb LuaEntity
+---@param allows_all_trains boolean
+function set_comb_allows_all_trains(comb, allows_all_trains)
+	local control = get_comb_control(comb)
+	local param = control.parameters
+	local bits = param.second_constant or 0
+
+	param.second_constant = bit32.replace(bits, allows_all_trains and 1 or 0, 2)
+	control.parameters = param
+end
+---@param comb LuaEntity
+---@param is_stack boolean
+function set_comb_is_stack(comb, is_stack)
+	local control = get_comb_control(comb)
+	local param = control.parameters
+	local bits = param.second_constant or 0
+
+	param.second_constant = bit32.replace(bits, is_stack and 1 or 0, 3)
 	control.parameters = param
 end
 ---@param comb LuaEntity

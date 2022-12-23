@@ -10,6 +10,7 @@ Date: 2022-12-22
     - Nonempty trains in depot are no longer put in manual mode, instead they are forced to park at the depot
     - Made several alerts persistent
     - Allowed station and fuel combinators to be set to network id "everything", for each virtual signal they recieve as input, the stop is added to that network and its signal strength is used as the network mask
+    - Added the ability to specify per-station whether request thresholds represent total items or total stacks
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.7
 Date: 2022-12-17

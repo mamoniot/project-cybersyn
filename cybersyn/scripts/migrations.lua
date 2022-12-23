@@ -114,6 +114,24 @@ local migrations_table = {
 			end
 		end
 	end,
+	["1.1.8"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.tick_state = STATE_INIT
+		map_data.tick_data = {}
+		for k, comb in pairs(map_data.to_comb) do
+			local control = get_comb_control(comb)
+			local params = control.parameters
+			local bits = params.second_constant or 0
+			local allows_all_trains = bits%2
+			local is_pr_state = math.floor(bits/2)%3
+
+			local new_bits = bit32.bor(is_pr_state, allows_all_trains*4)
+			params.second_constant = new_bits
+
+			control.parameters = params
+		end
+	end,
 }
 --STATUS_R_TO_D = 5
 
