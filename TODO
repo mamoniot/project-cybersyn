@@ -11,6 +11,8 @@ major:
 	add in game guide
 	move to an event based algorithm
 	models & art
+	Leave the train in automatic mode for at least a tick so that I can implement a memory cell to make an alert
+	Make the alert persistent instead of going away after 10 seconds
 
 minor:
 	railloader compat

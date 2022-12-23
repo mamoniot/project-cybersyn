@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.8
+Date: 2022-12-22
+  Changes:
+    - Fixed depot priority
+    - A train's distance from the provide station is now prioritized over train cargo capacity
+---------------------------------------------------------------------------------------------------
 Version: 1.1.7
 Date: 2022-12-17
   Changes:
