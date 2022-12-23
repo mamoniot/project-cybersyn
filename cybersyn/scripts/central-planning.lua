@@ -9,6 +9,7 @@ local band = bit32.band
 local table_remove = table.remove
 local random = math.random
 
+
 ---@param map_data MapData
 ---@param station Station
 ---@param manifest Manifest
@@ -188,6 +189,7 @@ local function tick_dispatch(map_data, mod_settings)
 	local p_stations
 	local item_name
 	local item_type
+	local item_network_name
 	while true do
 		local size = #all_names
 		if size == 0 then
@@ -198,7 +200,7 @@ local function tick_dispatch(map_data, mod_settings)
 		--randomizing the ordering should only matter if we run out of available trains
 		local name_i = size <= 2 and 2 or 2*random(size/2)
 
-		local item_network_name = all_names[name_i - 1]--[[@as string]]
+		item_network_name = all_names[name_i - 1]--[[@as string]]
 		local signal = all_names[name_i]--[[@as SignalID]]
 
 		--swap remove
@@ -274,7 +276,13 @@ local function tick_dispatch(map_data, mod_settings)
 		local r_station_id = r_stations[r_station_i]
 		local r_station = stations[r_station_id]
 		---@type string
-		local network_name = r_station.network_name
+		local network_name
+		if r_station.network_name == NETWORK_ANY then
+			--TODO: here
+			_, _, network_name = string.find(item_network_name, "(^.*):")
+		else
+			network_name = r_station.network_name
+		end
 		local trains = map_data.available_trains[network_name]
 		local is_fluid = item_type == "fluid"
 		--no train exists with layout accepted by both provide and request stations
@@ -296,7 +304,9 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			local netand = band(p_station.network_flag, r_station.network_flag)
+			local p_flag = p_station.network_name == NETWORK_ANY and (p_station.network_flag[item_name] or 0) or p_station.network_flag
+			local r_flag = r_station.network_name == NETWORK_ANY and (r_station.network_flag[item_name] or 0) or r_station.network_flag
+			local netand = band(p_flag, r_flag)
 			if netand == 0 then
 				goto p_continue
 			end
@@ -462,7 +472,11 @@ local function tick_poll_station(map_data, mod_settings)
 	station.priority = 0
 	station.item_priority = nil
 	station.locked_slots = 0
-	station.network_flag = mod_settings.network_flag
+	if station.network_name == NETWORK_ANY then
+		station.network_flag = {}
+	else
+		station.network_flag = mod_settings.network_flag
+	end
 	local comb1_signals, comb2_signals = get_signals(station)
 	station.tick_signals = comb1_signals
 	station.item_p_counts = {}
@@ -500,6 +514,8 @@ local function tick_poll_station(map_data, mod_settings)
 						station.r_threshold = abs(item_count)
 					elseif item_name == LOCKED_SLOTS then
 						station.locked_slots = max(item_count, 0)
+					elseif station.network_name == NETWORK_ANY then
+						station.network_flag[item_name] = item_count
 					end
 					comb1_signals[k] = nil
 				end
@@ -524,27 +540,43 @@ local function tick_poll_station(map_data, mod_settings)
 				if -effective_item_count >= r_threshold and -item_count >= r_threshold then
 					is_not_requesting = false
 					is_requesting_nothing = false
-					local item_network_name = station.network_name..":"..item_name
-					local stations = all_r_stations[item_network_name]
-					if stations == nil then
-						stations = {}
-						all_r_stations[item_network_name] = stations
-						all_names[#all_names + 1] = item_network_name
-						all_names[#all_names + 1] = v.signal
+					local f, a
+					if station.network_name == NETWORK_ANY then
+						f, a = pairs(station.network_flag--[[@as {[string]: int}]])
+					else
+						f, a = once, station.network_name
 					end
-					stations[#stations + 1] = station_id
+					for network_name, _ in f, a do
+						local item_network_name = network_name..":"..item_name
+						local stations = all_r_stations[item_network_name]
+						if stations == nil then
+							stations = {}
+							all_r_stations[item_network_name] = stations
+							all_names[#all_names + 1] = item_network_name
+							all_names[#all_names + 1] = v.signal
+						end
+						stations[#stations + 1] = station_id
+					end
 				end
 			end
 			if is_not_requesting then
 				if station.is_p and effective_item_count > 0 and item_count > 0 then
-					local item_network_name = station.network_name..":"..item_name
-					local stations = all_p_stations[item_network_name]
-					if stations == nil then
-						stations = {}
-						all_p_stations[item_network_name] = stations
+					local f, a
+					if station.network_name == NETWORK_ANY then
+						f, a = pairs(station.network_flag--[[@as {[string]: int}]])
+					else
+						f, a = once, station.network_name
 					end
-					stations[#stations + 1] = station_id
-					station.item_p_counts[item_name] = effective_item_count
+					for network_name, _ in f, a do
+						local item_network_name = network_name..":"..item_name
+						local stations = all_p_stations[item_network_name]
+						if stations == nil then
+							stations = {}
+							all_p_stations[item_network_name] = stations
+						end
+						stations[#stations + 1] = station_id
+						station.item_p_counts[item_name] = effective_item_count
+					end
 				else
 					comb1_signals[k] = nil
 				end
@@ -589,7 +621,7 @@ function tick(map_data, mod_settings)
 	map_data.total_ticks = map_data.total_ticks + 1
 
 	if map_data.active_alerts then
-		if map_data.total_ticks%(10*mod_settings.tps) < 1 then
+		if map_data.total_ticks%(9*mod_settings.tps) < 1 then
 			process_active_alerts(map_data)
 		end
 	end
@@ -613,9 +645,8 @@ function tick(map_data, mod_settings)
 		interface_raise_tick_init()
 		tick_poll_train(map_data, mod_settings)
 		tick_poll_comb(map_data)
-	end
-
-	if map_data.tick_state == STATE_POLL_STATIONS then
+		return
+	elseif map_data.tick_state == STATE_POLL_STATIONS then
 		for i = 1, mod_settings.update_rate do
 			if tick_poll_station(map_data, mod_settings) then break end
 		end

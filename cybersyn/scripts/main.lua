@@ -27,7 +27,7 @@ local function on_depot_broken(map_data, depot_id, depot)
 	if train_id then
 		local train = map_data.trains[train_id]
 		lock_train(train.entity)
-		send_alert_depot_of_train_broken(train.entity, depot.entity_stop.backer_name)
+		send_alert_depot_of_train_broken(map_data, train.entity)
 		remove_train(map_data, train_id, train)
 	end
 	map_data.depots[depot_id] = nil
@@ -50,18 +50,10 @@ local function on_refueler_built(map_data, stop, comb)
 		--network_name = set_refueler_from_comb,
 		--network_flag = set_refueler_from_comb,
 	}
-	set_refueler_from_comb(mod_settings, refueler)
 	local id = stop.unit_number--[[@as uint]]
 	map_data.refuelers[id] = refueler
+	set_refueler_from_comb(map_data, mod_settings, id)
 	update_stop_if_auto(map_data, refueler, false)
-	if refueler.network_name then
-		local network = map_data.to_refuelers[refueler.network_name]
-		if not network then
-			network = {}
-			map_data.to_refuelers[refueler.network_name] = network
-		end
-		network[id] = true
-	end
 	interface_raise_refueler_created(id)
 end
 ---@param map_data MapData
@@ -76,18 +68,26 @@ local function on_refueler_broken(map_data, refueler_id, refueler)
 				if not train.se_is_being_teleported then
 					remove_train(map_data, train_id, train)
 					lock_train(train.entity)
-					send_alert_refueler_of_train_broken(train.entity, train.depot_name)
+					send_alert_refueler_of_train_broken(map_data, train.entity)
 				else
 					train.se_awaiting_removal = train_id
 				end
 			end
 		end
 	end
-	if refueler.network_name then
-		local network = map_data.to_refuelers[refueler.network_name]
-		network[refueler_id] = nil
-		if next(network) == nil then
-			map_data.to_refuelers[refueler.network_name] = nil
+	local f, a
+	if refueler.network_name == NETWORK_ANY then
+		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
+	else
+		f, a = once, refueler.network_name
+	end
+	for network_name, _ in f, a do
+		local network = map_data.to_refuelers[network_name]
+		if network then
+			network[refueler_id] = nil
+			if next(network) == nil then
+				map_data.to_refuelers[network_name] = nil
+			end
 		end
 	end
 	map_data.refuelers[refueler_id] = nil
@@ -151,7 +151,7 @@ local function on_station_broken(map_data, station_id, station)
 					if not train.se_is_being_teleported then
 						remove_train(map_data, train_id, train)
 						lock_train(train.entity)
-						send_alert_station_of_train_broken(train.entity, train.depot_name)
+						send_alert_station_of_train_broken(map_data, train.entity)
 					else
 						train.se_awaiting_removal = train_id
 					end
@@ -297,55 +297,6 @@ local function on_combinator_built(map_data, comb)
 end
 ---@param map_data MapData
 ---@param comb LuaEntity
----@param network_name string?
-function on_combinator_network_updated(map_data, comb, network_name)
-	local stop = map_data.to_stop[comb.unit_number]
-
-	if stop and stop.valid then
-		local id = stop.unit_number
-		local station = map_data.stations[id]
-		if station then
-			if station.entity_comb1 == comb then
-				station.network_name = network_name
-			end
-		else
-			local depot = map_data.depots[id]
-			if depot then
-				if depot.entity_comb == comb then
-					local train_id = depot.available_train_id
-					if train_id then
-						local train = map_data.trains[train_id]
-						remove_available_train(map_data, train_id, train)
-						add_available_train_to_depot(map_data, mod_settings, train_id, train, id, depot)
-						interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
-					end
-				end
-			else
-				local refueler = map_data.refuelers[id]
-				if refueler and refueler.entity_comb == comb then
-					if refueler.network_name then
-						local network = map_data.to_refuelers[refueler.network_name]
-						network[id] = nil
-						if next(network) == nil then
-							map_data.to_refuelers[refueler.network_name] = nil
-						end
-					end
-					refueler.network_name = network_name
-					if network_name then
-						local network = map_data.to_refuelers[network_name]
-						if not network then
-							network = {}
-							map_data.to_refuelers[network_name] = network
-						end
-						network[id] = true
-					end
-				end
-			end
-		end
-	end
-end
----@param map_data MapData
----@param comb LuaEntity
 function on_combinator_broken(map_data, comb)
 	--NOTE: we do not check for wagon manifest combinators and update their stations, it is assumed they will be lazy deleted later
 	---@type uint
@@ -441,7 +392,35 @@ function combinator_update(map_data, comb, reset_display)
 	local old_network = old_signal and old_signal.name or nil
 	if new_network ~= old_network then
 		has_changed = true
-		on_combinator_network_updated(map_data, comb, new_network)
+
+		local stop = map_data.to_stop[comb.unit_number]
+		if stop and stop.valid then
+			id = stop.unit_number
+			station = map_data.stations[id]
+			if station then
+				if station.entity_comb1 == comb then
+					station.network_name = new_network
+				end
+			else
+				local depot = map_data.depots[id]
+				if depot then
+					if depot.entity_comb == comb then
+						local train_id = depot.available_train_id
+						if train_id then
+							local train = map_data.trains[train_id]
+							remove_available_train(map_data, train_id, train)
+							add_available_train_to_depot(map_data, mod_settings, train_id, train, id, depot)
+							interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
+						end
+					end
+				else
+					local refueler = map_data.refuelers[id]
+					if refueler and refueler.entity_comb == comb then
+						set_refueler_from_comb(map_data, mod_settings, id)
+					end
+				end
+			end
+		end
 	end
 	if params.second_constant ~= old_params.second_constant then
 		has_changed = true
@@ -455,7 +434,7 @@ function combinator_update(map_data, comb, reset_display)
 			local refueler = map_data.refuelers[id]
 			if refueler then
 				local pre = refueler.allows_all_trains
-				set_refueler_from_comb(mod_settings, refueler)
+				set_refueler_from_comb(map_data, mod_settings, id)
 				if refueler.allows_all_trains ~= pre then
 					update_stop_if_auto(map_data, refueler, false)
 				end
@@ -752,7 +731,7 @@ local function setup_se_compat()
 		if train.se_awaiting_removal then
 			remove_train(map_data, train.se_awaiting_removal, train)
 			lock_train(train.entity)
-			send_alert_station_of_train_broken(train.entity, train.depot_name)
+			send_alert_station_of_train_broken(map_data, train.entity)
 			return
 		elseif train.se_awaiting_rename then
 			rename_manifest_schedule(train.entity, train.se_awaiting_rename[1], train.se_awaiting_rename[2])

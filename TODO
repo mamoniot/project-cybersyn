@@ -9,7 +9,6 @@ major:
 	move to an event based algorithm
 	models & art
 	add stack threshold setting
-	allow "any" signal for network unions
 
 minor:
 	railloader compat

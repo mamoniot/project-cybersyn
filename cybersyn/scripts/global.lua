@@ -36,7 +36,7 @@
 ---@field public r_threshold int >= 0 --transient
 ---@field public locked_slots int >= 0 --transient
 ---@field public network_name string?
----@field public network_flag int --transient
+---@field public network_flag int|{[string]: int} --transient
 ---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
 ---@field public deliveries {[string]: int}
 ---@field public accepted_layouts {[uint]: true?}
@@ -150,4 +150,10 @@ function init_global()
 	if IS_SE_PRESENT then
 		global.se_tele_old_id = {}
 	end
+end
+
+---@param v string
+---@param h string?
+function once(v, h)
+	return not h and v or nil--[[@as string|nil]]
 end

@@ -345,31 +345,73 @@ function set_station_from_comb_state(station)
 	station.is_p = is_pr_state == 0 or is_pr_state == 1
 	station.is_r = is_pr_state == 0 or is_pr_state == 2
 end
+---@param map_data MapData
 ---@param mod_settings CybersynModSettings
----@param refueler Refueler
-function set_refueler_from_comb(mod_settings, refueler)
+---@param id uint
+function set_refueler_from_comb(map_data, mod_settings, id)
 	--NOTE: this does nothing to update currently active deliveries
+	local refueler = map_data.refuelers[id]
 	local params = get_comb_params(refueler.entity_comb)
 	local bits = params.second_constant or 0
 	local signal = params.first_signal
+
+	local f, a
+	if refueler.network_name == NETWORK_ANY then
+		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
+	else
+		f, a = once, refueler.network_name
+	end
+	for network_name, _ in f, a do
+		local network = map_data.to_refuelers[network_name]
+		if network then
+			network[id] = nil
+			if next(network) == nil then
+				map_data.to_refuelers[network_name] = nil
+			end
+		end
+	end
+
 	refueler.network_name = signal and signal.name or nil
 	refueler.allows_all_trains = bits%2 == 1
 
 	local signals = refueler.entity_comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
 	refueler.priority = 0
-	refueler.network_flag = mod_settings.network_flag
+	if refueler.network_name == NETWORK_ANY then
+		refueler.network_flag = {}
+	else
+		refueler.network_flag = mod_settings.network_flag
+	end
 	if not signals then return end
 	for k, v in pairs(signals) do
 		local item_name = v.signal.name
+		local item_type = v.signal.type
 		local item_count = v.count
 		if item_name then
-			if item_name == SIGNAL_PRIORITY then
-				refueler.priority = item_count
+			if item_type == "virtual" then
+				if item_name == SIGNAL_PRIORITY then
+					refueler.priority = item_count
+				elseif refueler.network_name == NETWORK_ANY then
+					refueler.network_flag[item_name] = item_count
+				end
 			end
 			if item_name == refueler.network_name then
 				refueler.network_flag = item_count
 			end
 		end
+	end
+
+	if refueler.network_name == NETWORK_ANY then
+		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
+	else
+		f, a = once, refueler.network_name
+	end
+	for network_name, _ in f, a do
+		local network = map_data.to_refuelers[network_name]
+		if not network then
+			network = {}
+			map_data.to_refuelers[network_name] = network
+		end
+		network[id] = true
 	end
 end
 

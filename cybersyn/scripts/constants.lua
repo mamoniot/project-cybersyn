@@ -23,6 +23,7 @@ MODE_WAGON_MANIFEST = "-"
 MODE_REFUELER = ">>"
 
 NETWORK_SIGNAL_DEFAULT = {name="signal-A", type="virtual"}
+NETWORK_ANY = "signal-everything"
 INACTIVITY_TIME = 100
 LOCK_TRAIN_TIME = 60*60*60*24*7
 
