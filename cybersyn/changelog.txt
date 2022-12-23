@@ -3,7 +3,10 @@ Version: 1.1.8
 Date: 2022-12-22
   Changes:
     - Fixed depot priority
-    - A train's distance from the provide station is now prioritized over train cargo capacity
+    - Prioritized a train's distance from the provide station over train cargo capacity
+    - Forced provide stations to wait until they can service the highest priority request station
+    - Added more detailed missing train alerts
+    - Provide stations now override request thresholds with the per-item thresholds set by their station info combinator
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.7
 Date: 2022-12-17
@@ -38,7 +41,7 @@ Date: 2022-12-8
 Version: 1.1.0
 Date: 2022-12-8
   Changes:
-    - Added the ability to use the priority signal as input to optional station control so one can override priority on items with optional station control thresholds
+    - Added the ability to use the priority signal as input to station info combinators so one can override priority on items with station info combinators thresholds
     - Added refueler stations
     - Slightly more permissive allow-list logic
     - Made non-backwards compatible improvements and bugfixes to the modding interface
@@ -50,20 +53,8 @@ Date: 2022-12-3
   Changes:
     - Fixed a bug with SE compat preventing players from joining multiplayer games
 ---------------------------------------------------------------------------------------------------
-Version: 1.0.8
-Date: 2022-12-2
-  Changes:
-    - Fixed a bug with combinator displays not updating correctly
-    - Improved combinator display performance
-    - Added a modding interface
----------------------------------------------------------------------------------------------------
-Version: 1.0.7
-Date: 2022-12-1
-  Changes:
-    - Fixed a crash relating to depot bypass through space elevators
----------------------------------------------------------------------------------------------------
-Version: 1.0.6
-Date: 2022-11-30
+Version: 1.0.8optional station
+optional station
   Changes:
     - Added depot bypass
     - Increased inactivity time so burner inserters are fast enough to trigger it

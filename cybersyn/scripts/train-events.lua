@@ -155,7 +155,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			if train.manifest then
 				on_failed_delivery(map_data, train_id, train)
 			end
-			send_unexpected_train_alert(train.entity)
+			send_alert_unexpected_train(train.entity)
 		else
 			return
 		end
@@ -169,7 +169,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			if mod_settings.react_to_nonempty_train_in_depot then
 				lock_train(train_entity)
 				remove_train(map_data, train_id, train)
-				send_nonempty_train_in_depot_alert(train_entity)
+				send_alert_nonempty_train_in_depot(train_entity)
 			end
 			interface_raise_train_nonempty_in_depot(depot_id, train_entity, train_id)
 		end
@@ -202,7 +202,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 	else
 		if mod_settings.react_to_nonempty_train_in_depot then
 			lock_train(train_entity)
-			send_nonempty_train_in_depot_alert(train_entity)
+			send_alert_nonempty_train_in_depot(train_entity)
 		end
 		interface_raise_train_nonempty_in_depot(depot_id, train_entity)
 	end
@@ -238,12 +238,12 @@ local function on_train_arrives_station(map_data, station_id, train_id, train)
 			on_failed_delivery(map_data, train_id, train)
 			remove_train(map_data, train_id, train)
 			lock_train(train.entity)
-			send_train_at_incorrect_station_alert(train.entity, train.depot_name)
+			send_alert_train_at_incorrect_station(train.entity, train.depot_name)
 		end
 	elseif mod_settings.react_to_train_at_incorrect_station then
 		--train is lost somehow, probably from player intervention
 		remove_train(map_data, train_id, train)
-		send_train_at_incorrect_station_alert(train.entity, train.depot_name)
+		send_alert_train_at_incorrect_station(train.entity, train.depot_name)
 	end
 end
 

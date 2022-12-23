@@ -198,7 +198,7 @@ function set_manifest_schedule(train, depot_name, d_surface_i, p_stop, r_stop, m
 		create_unloading_order(r_stop),
 	}}
 	lock_train(train)
-	send_cannot_path_between_surfaces_alert(train, depot_name)
+	send_alert_cannot_path_between_surfaces(train, depot_name)
 	return true
 end
 
@@ -252,7 +252,7 @@ function add_refueler_schedule(train, stop, depot_name)
 	--create an order that probably cannot be fulfilled and alert the player
 	table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
 	lock_train(train)
-	send_cannot_path_between_surfaces_alert(train, depot_name)
+	send_alert_cannot_path_between_surfaces(train, depot_name)
 	train.schedule = schedule
 end
 
@@ -473,55 +473,77 @@ local function send_alert_with_sound(train, icon, message)
 		end
 	end
 end
-
-local send_missing_train_alert_for_stop_icon = {name = MISSING_TRAIN_NAME, type = "fluid"}
+local send_alert_about_missing_train_icon = {name = MISSING_TRAIN_NAME, type = "fluid"}
 ---@param r_stop LuaEntity
 ---@param p_stop LuaEntity
-function send_missing_train_alert(r_stop, p_stop)
+---@param message string
+function send_alert_about_missing_train(r_stop, p_stop, message)
 	for _, player in pairs(r_stop.force.players) do
 		player.add_custom_alert(
 		r_stop,
-		send_missing_train_alert_for_stop_icon,
-		{"cybersyn-messages.missing-trains", r_stop.backer_name, p_stop.backer_name},
+		send_alert_about_missing_train_icon,
+		{message, r_stop.backer_name, p_stop.backer_name},
 		true)
 	end
+end
+
+
+---@param r_stop LuaEntity
+---@param p_stop LuaEntity
+function send_alert_missing_train(r_stop, p_stop)
+	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.missing-train")
+end
+---@param r_stop LuaEntity
+---@param p_stop LuaEntity
+function send_alert_no_train_has_capacity(r_stop, p_stop)
+	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-has-capacity")
+end
+---@param r_stop LuaEntity
+---@param p_stop LuaEntity
+function send_alert_no_train_matches_r_layout(r_stop, p_stop)
+	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-matches-r-layout")
+end
+---@param r_stop LuaEntity
+---@param p_stop LuaEntity
+function send_alert_no_train_matches_p_layout(r_stop, p_stop)
+	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-matches-p-layout")
 end
 
 local send_lost_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
 ---@param train LuaTrain
 ---@param depot_name string
-function send_cannot_path_between_surfaces_alert(train, depot_name)
+function send_alert_cannot_path_between_surfaces(train, depot_name)
 	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.cannot-path-between-surfaces", depot_name})
 end
 ---@param train LuaTrain
 ---@param depot_name string
-function send_depot_of_train_broken_alert(train, depot_name)
+function send_alert_depot_of_train_broken(train, depot_name)
 	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.depot-broken", depot_name})
 end
 ---@param train LuaTrain
 ---@param depot_name string
-function send_refueler_of_train_broken_alert(train, depot_name)
+function send_alert_refueler_of_train_broken(train, depot_name)
 	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.refueler-broken", depot_name})
 end
 ---@param train LuaTrain
 ---@param depot_name string
-function send_station_of_train_broken_alert(train, depot_name)
+function send_alert_station_of_train_broken(train, depot_name)
 	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.station-broken", depot_name})
 end
 ---@param train LuaTrain
 ---@param depot_name string
-function send_train_at_incorrect_station_alert(train, depot_name)
+function send_alert_train_at_incorrect_station(train, depot_name)
 	send_alert_with_sound(train, send_lost_train_alert_icon, {"cybersyn-messages.train-at-incorrect", depot_name})
 end
 
 local send_nonempty_train_in_depot_alert_icon = {name = NONEMPTY_TRAIN_NAME, type = "fluid"}
 ---@param train LuaTrain
-function send_nonempty_train_in_depot_alert(train)
+function send_alert_nonempty_train_in_depot(train)
 	send_alert_with_sound(train, send_nonempty_train_in_depot_alert_icon, {"cybersyn-messages.nonempty-train"})
 end
 
 ---@param train LuaTrain
-function send_unexpected_train_alert(train)
+function send_alert_unexpected_train(train)
 	local loco = train.front_stock or train.back_stock
 	if loco then
 		for _, player in pairs(loco.force.players) do
@@ -536,7 +558,7 @@ end
 local send_stuck_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
 ---@param train LuaTrain
 ---@param depot_name string
-function send_stuck_train_alert(train, depot_name)
+function send_alert_stuck_train(train, depot_name)
 	local loco = train.front_stock or train.back_stock
 	if loco then
 		for _, player in pairs(loco.force.players) do

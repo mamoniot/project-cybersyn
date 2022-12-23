@@ -27,7 +27,7 @@ local function on_depot_broken(map_data, depot_id, depot)
 	if train_id then
 		local train = map_data.trains[train_id]
 		lock_train(train.entity)
-		send_depot_of_train_broken_alert(train.entity, depot.entity_stop.backer_name)
+		send_alert_depot_of_train_broken(train.entity, depot.entity_stop.backer_name)
 		remove_train(map_data, train_id, train)
 	end
 	map_data.depots[depot_id] = nil
@@ -76,7 +76,7 @@ local function on_refueler_broken(map_data, refueler_id, refueler)
 				if not train.se_is_being_teleported then
 					remove_train(map_data, train_id, train)
 					lock_train(train.entity)
-					send_refueler_of_train_broken_alert(train.entity, train.depot_name)
+					send_alert_refueler_of_train_broken(train.entity, train.depot_name)
 				else
 					train.se_awaiting_removal = train_id
 				end
@@ -151,7 +151,7 @@ local function on_station_broken(map_data, station_id, station)
 					if not train.se_is_being_teleported then
 						remove_train(map_data, train_id, train)
 						lock_train(train.entity)
-						send_station_of_train_broken_alert(train.entity, train.depot_name)
+						send_alert_station_of_train_broken(train.entity, train.depot_name)
 					else
 						train.se_awaiting_removal = train_id
 					end
@@ -752,7 +752,7 @@ local function setup_se_compat()
 		if train.se_awaiting_removal then
 			remove_train(map_data, train.se_awaiting_removal, train)
 			lock_train(train.entity)
-			send_station_of_train_broken_alert(train.entity, train.depot_name)
+			send_alert_station_of_train_broken(train.entity, train.depot_name)
 			return
 		elseif train.se_awaiting_rename then
 			rename_manifest_schedule(train.entity, train.se_awaiting_rename[1], train.se_awaiting_rename[2])
