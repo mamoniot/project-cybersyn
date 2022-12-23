@@ -114,7 +114,7 @@ local migrations_table = {
 			end
 		end
 	end,
-	["1.1.8"] = function()
+	["1.2.0"] = function()
 		---@type MapData
 		local map_data = global
 		map_data.tick_state = STATE_INIT

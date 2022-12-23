@@ -332,7 +332,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 					local refueler = map_data.refuelers[id]
 					set_refueler_from_comb(map_data, mod_settings, id)
 
-					local refueler_network_flag = refueler.network_name == NETWORK_EACH and refueler.network_flag[train.network_name] or refueler.network_flag
+					local refueler_network_flag = refueler.network_name == NETWORK_EACH and (refueler.network_flag[train.network_name] or 0) or refueler.network_flag
 					if btest(train.network_flag, refueler_network_flag) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
 						local accepted = false
 						local dist = nil
@@ -419,15 +419,15 @@ end
 function on_train_changed(event)
 	local train_e = event.train--[[@as LuaTrain]]
 	if not train_e.valid then return end
+	local train_id = train_e.id
 
-	if global.active_alerts and global.active_alerts[train_e] then
-		global.active_alerts[train_e] = nil
+	if global.active_alerts and global.active_alerts[train_id] then
+		global.active_alerts[train_id] = nil
 		if next(global.active_alerts) == nil then
 			global.active_alerts = nil
 		end
 	end
 
-	local train_id = train_e.id
 	if train_e.state == defines.train_state.wait_station then
 		local stop = train_e.station
 		if stop and stop.valid and stop.name == "train-stop" then

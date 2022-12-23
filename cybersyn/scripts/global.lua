@@ -20,7 +20,7 @@
 ---@field public tick_data {}
 ---@field public economy Economy
 ---@field public each_refuelers {[uint]: true}
----@field public active_alerts {[LuaTrain]: int}?
+---@field public active_alerts {[uint]: {[1]: LuaTrain, [2]: int}}?
 ---@field public se_tele_old_id {[string]: uint}
 
 ---@class Station

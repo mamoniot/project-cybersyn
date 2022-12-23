@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.1.8
-Date: 2022-12-22
+Version: 1.2.0
+Date: 2022-12-23
   Changes:
     - Forced provide stations to wait until they can service the highest priority request station
     - Provide stations now override request thresholds with the per-item thresholds set by their station info combinator

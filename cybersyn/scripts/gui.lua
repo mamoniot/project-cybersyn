@@ -65,7 +65,7 @@ function gui_opened(comb, player)
 					on_click = {"close", comb.unit_number}
 				}}
 			}},
-			{type="frame", name="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12, bottom_padding=10}, children={
+			{type="frame", name="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12, bottom_padding=9}, children={
 				{type="flow", name="vflow", direction="vertical", style_mods={horizontal_align="left"}, children={
 					--status
 					{type="flow", style="status_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
@@ -196,11 +196,10 @@ function register_gui_actions()
 				if signal and (signal.name == "signal-everything" or signal.name == "signal-anything" or signal.name == "signal-each") then
 					if param.operation == MODE_PRIMARY_IO or param.operation == MODE_PRIMARY_IO_ACTIVE or param.operation == MODE_PRIMARY_IO_FAILED_REQUEST or param.operation == MODE_REFUELER then
 						signal.name = NETWORK_EACH
-						element.elem_value.name = NETWORK_EACH
 					else
 						signal = nil
-						element.elem_value = nil
 					end
+					element.elem_value = signal
 				end
 				set_comb_network_name(comb, signal)
 

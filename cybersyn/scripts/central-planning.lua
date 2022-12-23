@@ -300,7 +300,7 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type string
 		local network_name
 		if r_station.network_name == NETWORK_EACH then
-			_, _, network_name = string.find(item_network_name, "(^.*):")
+			_, _, network_name = string.find(item_network_name, "^(.*):")
 		else
 			network_name = r_station.network_name
 		end
@@ -337,8 +337,8 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			p_flag = p_station.network_name == NETWORK_EACH and (p_station.network_flag[item_name] or 0) or p_station.network_flag
-			r_flag = r_station.network_name == NETWORK_EACH and (r_station.network_flag[item_name] or 0) or r_station.network_flag
+			p_flag = p_station.network_name == NETWORK_EACH and (p_station.network_flag[network_name] or 0) or p_station.network_flag
+			r_flag = r_station.network_name == NETWORK_EACH and (r_station.network_flag[network_name] or 0) or r_station.network_flag
 			netand = band(p_flag, r_flag)
 			if netand == 0 then
 				goto p_continue
@@ -680,7 +680,7 @@ function tick(map_data, mod_settings)
 	map_data.total_ticks = map_data.total_ticks + 1
 
 	if map_data.active_alerts then
-		if map_data.total_ticks%(9*mod_settings.tps) < 1 then
+		if map_data.total_ticks%(10*mod_settings.tps) < 1 then
 			process_active_alerts(map_data)
 		end
 	end
