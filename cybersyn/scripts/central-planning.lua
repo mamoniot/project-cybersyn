@@ -40,8 +40,6 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
 	local train = map_data.trains[train_id]
-	---@type string
-	local network_name = r_station.network_name
 
 	remove_available_train(map_data, train_id, train)
 	local depot_id = train.parked_at_depot_id
@@ -64,17 +62,38 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 		r_station.deliveries_total = r_station.deliveries_total + 1
 		p_station.deliveries_total = p_station.deliveries_total + 1
 
+		local r_is_every = r_station.network_name == NETWORK_EVERY
+		local p_is_every = p_station.network_name == NETWORK_EVERY
 		for item_i, item in ipairs(manifest) do
 			assert(item.count > 0, "main.lua error, transfer amount was not positive")
 
 			r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
 			p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
 
-			if item_i > 1 then
+			if item_i > 1 or r_is_every or p_is_every then
+				local f, a
+				if r_is_every then
+					f, a = pairs(r_station.network_flag--[[@as {[string]: int}]])
+					if p_is_every then
+						for network_name, _ in f, a do
+							local item_network_name = network_name..":"..item.name
+							economy.all_r_stations[item_network_name] = nil
+							economy.all_p_stations[item_network_name] = nil
+						end
+						f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
+					end
+				elseif p_is_every then
+					f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
+				else
+					f, a = once, r_station.network_name
+				end
 				--prevent deliveries from being processed for these items until their stations are re-polled
-				local item_network_name = network_name..":"..item.name
-				economy.all_r_stations[item_network_name] = nil
-				economy.all_p_stations[item_network_name] = nil
+				--if we don't wait until they are repolled a duplicate delivery might be generated for stations that share inventories
+				for network_name, _ in f, a do
+					local item_network_name = network_name..":"..item.name
+					economy.all_r_stations[item_network_name] = nil
+					economy.all_p_stations[item_network_name] = nil
+				end
 			end
 		end
 
@@ -82,11 +101,11 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 		set_comb2(map_data, r_station)
 
 		if band(p_station.display_state, 4) == 0 then
-			p_station.display_state = p_station.display_state + 4
+			p_station.display_state = 4
 			update_display(map_data, p_station)
 		end
 		if band(r_station.display_state, 4) == 0  then
-			r_station.display_state = r_station.display_state + 4
+			r_station.display_state = 4
 			update_display(map_data, r_station)
 		end
 		interface_raise_train_status_changed(train_id, old_status, STATUS_TO_P)
@@ -295,6 +314,16 @@ local function tick_dispatch(map_data, mod_settings)
 		local correctness = 0
 		local closest_to_correct_p_station = nil
 
+		local slot_threshold
+		if is_fluid then
+			slot_threshold = r_threshold
+		elseif r_station.is_stack then
+			slot_threshold = r_threshold
+			r_threshold = r_threshold*get_stack_size(map_data, item_name)
+		else
+			slot_threshold = ceil(r_threshold/get_stack_size(map_data, item_name))
+		end
+
 		---@type uint?
 		local p_station_i = nil
 		local best_train_id = nil
@@ -304,7 +333,7 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
-			local p_flag, r_flag, netand, slot_threshold, best_p_train_id, best_t_prior, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_dist
+			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_dist
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
@@ -325,13 +354,6 @@ local function tick_dispatch(map_data, mod_settings)
 			----------------------------------------------------------------
 			-- check for valid train
 			----------------------------------------------------------------
-			if r_station.is_stack and item_type == "item" then
-				slot_threshold = r_threshold
-				r_threshold = r_threshold*get_stack_size(map_data, item_name)
-			else
-				slot_threshold = is_fluid and r_threshold or ceil(r_threshold/get_stack_size(map_data, item_name))
-			end
-
 			---@type uint?
 			best_p_train_id = nil
 			best_t_prior = -INF
