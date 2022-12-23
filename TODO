@@ -5,6 +5,7 @@ major:
 	models & art
 	move to an event based algorithm
 	debug output
+	more detailed missing train alerts
 
 minor:
 	railloader compat
