@@ -95,11 +95,11 @@ function gui_opened(comb, player)
 					---choose-elem-button
 					{type="line", style_mods={top_padding=10}},
 					{type="label", name="network_label", ref={"network_label"}, style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
-					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="center"}, children={
+					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="center", top_margin=0, top_padding=0}, children={
 						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6}, actions={
 							on_elem_changed={"choose-elem-button", comb.unit_number}
 						}},
-						{type="flow", name="right", direction="vertical", style_mods={horizontal_align="left"}, children={
+						{type="flow", name="right", direction="vertical", style_mods={horizontal_align="left", top_margin=0, top_padding=0}, children={
 							{type="flow", name="allow_list", direction="horizontal", style_mods={vertical_align="center"}, children={
 								{type="checkbox", name="allow_list", ref={"allow_list"}, state=allow_list, tooltip={"cybersyn-gui.allow-list-tooltip"}, actions={
 									on_checked_state_changed={"allow_list", comb.unit_number}

@@ -134,6 +134,9 @@ local migrations_table = {
 
 			control.parameters = params
 		end
+		for id, station in pairs(map_data.stations) do
+			station.display_state = (station.display_state >= 2 and 4) + station.display_state%2
+		end
 	end,
 }
 --STATUS_R_TO_D = 5

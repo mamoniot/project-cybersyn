@@ -3,7 +3,7 @@ Version: 1.1.8
 Date: 2022-12-22
   Changes:
     - Fixed depot priority
-    - Prioritized a train's distance from the provide station over train cargo capacity
+    - Prioritized a train's distance from the provide station over the train's cargo capacity
     - Forced provide stations to wait until they can service the highest priority request station
     - Added more detailed missing train alerts
     - Provide stations now override request thresholds with the per-item thresholds set by their station info combinator

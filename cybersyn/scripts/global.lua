@@ -46,7 +46,7 @@
 ---@field public tick_signals {[uint]: Signal}? --transient
 ---@field public item_p_counts {[string]: int} --transient
 ---@field public item_thresholds {[string]: int}? --transient
----@field public display_state 0|1|2|3 --low bit is if this station's request has failed, high bit is if a train is heading to this station
+---@field public display_state int
 
 ---@class Depot
 ---@field public entity_stop LuaEntity

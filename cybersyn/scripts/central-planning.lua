@@ -24,8 +24,8 @@ function remove_manifest(map_data, station, manifest, sign)
 	end
 	set_comb2(map_data, station)
 	station.deliveries_total = station.deliveries_total - 1
-	if station.deliveries_total == 0 and station.display_state >= 2 then
-		station.display_state = station.display_state - 2
+	if station.deliveries_total == 0 and band(station.display_state, 4) > 0 then
+		station.display_state = station.display_state - 4
 		update_display(map_data, station)
 	end
 end
@@ -81,12 +81,12 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 		set_comb2(map_data, p_station)
 		set_comb2(map_data, r_station)
 
-		if p_station.display_state < 2 then
-			p_station.display_state = 2
+		if band(p_station.display_state, 4) == 0 then
+			p_station.display_state = p_station.display_state + 4
 			update_display(map_data, p_station)
 		end
-		if r_station.display_state < 2 then
-			r_station.display_state = 2
+		if band(r_station.display_state, 4) == 0  then
+			r_station.display_state = r_station.display_state + 4
 			update_display(map_data, r_station)
 		end
 		interface_raise_train_status_changed(train_id, old_status, STATUS_TO_P)
@@ -225,7 +225,7 @@ local function tick_dispatch(map_data, mod_settings)
 			else
 				for i, id in ipairs(r_stations) do
 					local station = stations[id]
-					if station and station.display_state%2 == 0 then
+					if station and band(station.display_state, 1) == 0 then
 						station.display_state = station.display_state + 1
 						update_display(map_data, station)
 					end
@@ -271,7 +271,7 @@ local function tick_dispatch(map_data, mod_settings)
 		if not r_station_i then
 			for _, id in ipairs(r_stations) do
 				local station = stations[id]
-				if station and station.display_state%2 == 0 then
+				if station and band(station.display_state, 1) == 0 then
 					station.display_state = station.display_state + 1
 					update_display(map_data, station)
 				end
@@ -405,7 +405,16 @@ local function tick_dispatch(map_data, mod_settings)
 				--this p station should have serviced the current r station, lock it so it can't serve any others
 				--this will lock stations even when the r station manages to find a p station, this not a problem because all stations will be unlocked before it could be an issue
 				table_remove(p_stations, j)
+				if band(p_station.display_state, 2) == 0 then
+					p_station.display_state = p_station.display_state + 2
+					update_display(map_data, p_station)
+				end
 				goto p_continue_remove
+			else
+				if band(p_station.display_state, 2) == 1 then
+					p_station.display_state = p_station.display_state - 2
+					update_display(map_data, p_station)
+				end
 			end
 
 			p_prior = p_station.priority
@@ -445,7 +454,7 @@ local function tick_dispatch(map_data, mod_settings)
 			elseif correctness == 4 then
 				send_alert_no_train_matches_p_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
 			end
-			if r_station.display_state%2 == 0 then
+			if band(r_station.display_state, 1) == 0 then
 				r_station.display_state = r_station.display_state + 1
 				update_display(map_data, r_station)
 			end
@@ -602,7 +611,7 @@ local function tick_poll_station(map_data, mod_settings)
 				end
 			end
 		end
-		if is_requesting_nothing and station.display_state%2 == 1 then
+		if is_requesting_nothing and band(station.display_state, 1) == 1 then
 			station.display_state = station.display_state - 1
 			update_display(map_data, station)
 		end

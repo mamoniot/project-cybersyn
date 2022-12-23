@@ -313,22 +313,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	local params = get_comb_params(refueler.entity_comb)
 	local bits = params.second_constant or 0
 	local signal = params.first_signal
-
-	local f, a
-	if refueler.network_name == NETWORK_EVERY then
-		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
-	else
-		f, a = once, refueler.network_name
-	end
-	for network_name, _ in f, a do
-		local network = map_data.to_refuelers[network_name]
-		if network then
-			network[id] = nil
-			if next(network) == nil then
-				map_data.to_refuelers[network_name] = nil
-			end
-		end
-	end
+	local old_network = refueler.network_name
 
 	refueler.network_name = signal and signal.name or nil
 	refueler.allows_all_trains = bit_extract(bits, 2) > 0
@@ -343,29 +328,50 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	end
 
 	local signals = refueler.entity_comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
-	if not signals then return end
-	for k, v in pairs(signals) do
-		local item_name = v.signal.name
-		local item_type = v.signal.type
-		local item_count = v.count
-		if item_name then
-			if item_type == "virtual" then
-				if item_name == SIGNAL_PRIORITY then
-					refueler.priority = item_count
-				elseif refueler.network_name == NETWORK_EVERY then
-					refueler.network_flag[item_name] = item_count
+	if signals then
+		for k, v in pairs(signals) do
+			local item_name = v.signal.name
+			local item_type = v.signal.type
+			local item_count = v.count
+			if item_name then
+				if item_type == "virtual" then
+					if item_name == SIGNAL_PRIORITY then
+						refueler.priority = item_count
+					elseif refueler.network_name == NETWORK_EVERY then
+						refueler.network_flag[item_name] = item_count
+					end
+				end
+				if item_name == refueler.network_name then
+					refueler.network_flag = item_count
 				end
 			end
-			if item_name == refueler.network_name then
-				refueler.network_flag = item_count
+		end
+	end
+
+	local f, a
+	if old_network == NETWORK_EVERY then
+		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
+	elseif old_network ~= refueler.network_name then
+		f, a = once, old_network
+	else
+		f, a = once, nil
+	end
+	for network_name, _ in f, a do
+		local network = map_data.to_refuelers[network_name]
+		if network then
+			network[id] = nil
+			if next(network) == nil then
+				map_data.to_refuelers[network_name] = nil
 			end
 		end
 	end
 
 	if refueler.network_name == NETWORK_EVERY then
 		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
-	else
+	elseif old_network ~= refueler.network_name then
 		f, a = once, refueler.network_name
+	else
+		f, a = once, nil
 	end
 	for network_name, _ in f, a do
 		local network = map_data.to_refuelers[network_name]
@@ -386,9 +392,9 @@ function update_display(map_data, station)
 		local params = control.parameters
 		--NOTE: the following check can cause a bug where the display desyncs if the player changes the operation of the combinator and then changes it back before the mod can notice, however removing it causes a bug where the user's change is overwritten and ignored. Everything's bad we need an event to catch copy-paste by blueprint.
 		if params.operation == MODE_PRIMARY_IO or params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
-			if station.display_state >= 2 then
+			if station.display_state >= 4 then
 				params.operation = MODE_PRIMARY_IO_ACTIVE
-			elseif station.display_state == 1 then
+			elseif station.display_state >= 1 then
 				params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
 			else
 				params.operation = MODE_PRIMARY_IO

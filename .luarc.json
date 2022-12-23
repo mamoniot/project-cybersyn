@@ -26,6 +26,7 @@
     "Lua.runtime.special": {
         "__object_name": "type"
     },
+    "Lua.workspace.checkThirdParty": false,
     "Lua.workspace.library": [
         "~/.steam/steam/steamapps/common/Factorio/data",
         "~/.steam/steam/steamapps/common/Factorio/data/core/lualib",
