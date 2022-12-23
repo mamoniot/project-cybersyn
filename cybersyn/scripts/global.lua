@@ -19,6 +19,7 @@
 ---@field public tick_state uint
 ---@field public tick_data {}
 ---@field public economy Economy
+---@field public everything_refuelers {[uint]: true}
 ---@field public active_alerts {[LuaTrain]: int}?
 ---@field public se_tele_old_id {[string]: uint}
 
@@ -146,6 +147,7 @@ function init_global()
 	global.layout_top_id = 1
 	global.refuelers = {}
 	global.to_refuelers = {}
+	global.everything_refuelers = {}
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if IS_SE_PRESENT then

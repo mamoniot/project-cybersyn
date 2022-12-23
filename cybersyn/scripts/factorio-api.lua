@@ -1,7 +1,9 @@
 --By Mami
 local get_distance = require("__flib__.misc").get_distance
-local floor = math.floor
 local table_insert = table.insert
+local bit_extract = bit32.extract
+local bit_replace = bit32.replace
+
 local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
 local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
@@ -313,7 +315,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	local signal = params.first_signal
 
 	local f, a
-	if refueler.network_name == NETWORK_ANY then
+	if refueler.network_name == NETWORK_EVERY then
 		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
 	else
 		f, a = once, refueler.network_name
@@ -329,15 +331,18 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	end
 
 	refueler.network_name = signal and signal.name or nil
-	refueler.allows_all_trains = (bits%2 == 1) or nil
-
-	local signals = refueler.entity_comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+	refueler.allows_all_trains = bit_extract(bits, 2) > 0
 	refueler.priority = 0
-	if refueler.network_name == NETWORK_ANY then
+
+	if refueler.network_name == NETWORK_EVERY then
+		map_data.everything_refuelers[id] = true
 		refueler.network_flag = {}
 	else
+		map_data.everything_refuelers[id] = nil
 		refueler.network_flag = mod_settings.network_flag
 	end
+
+	local signals = refueler.entity_comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
 	if not signals then return end
 	for k, v in pairs(signals) do
 		local item_name = v.signal.name
@@ -347,7 +352,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 			if item_type == "virtual" then
 				if item_name == SIGNAL_PRIORITY then
 					refueler.priority = item_count
-				elseif refueler.network_name == NETWORK_ANY then
+				elseif refueler.network_name == NETWORK_EVERY then
 					refueler.network_flag[item_name] = item_count
 				end
 			end
@@ -357,7 +362,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 		end
 	end
 
-	if refueler.network_name == NETWORK_ANY then
+	if refueler.network_name == NETWORK_EVERY then
 		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
 	else
 		f, a = once, refueler.network_name
@@ -401,9 +406,9 @@ function set_station_from_comb_state(station)
 	local signal = params.first_signal
 
 	local bits = params.second_constant or 0
-	local is_pr_state = bit32.extract(bits, 0, 2)
-	local allows_all_trains = bit32.extract(bits, 2) > 0
-	local is_stack = bit32.extract(bits, 3) > 0
+	local is_pr_state = bit_extract(bits, 0, 2)
+	local allows_all_trains = bit_extract(bits, 2) > 0
+	local is_stack = bit_extract(bits, 3) > 0
 
 	station.network_name = signal and signal.name or nil
 	station.allows_all_trains = allows_all_trains
@@ -419,9 +424,9 @@ function get_comb_gui_settings(comb)
 	local selected_index = 0
 	local switch_state = "none"
 	local bits = params.second_constant or 0
-	local is_pr_state = bit32.extract(bits, 0, 2)
-	local allows_all_trains = bit32.extract(bits, 2) > 0
-	local is_stack = bit32.extract(bits, 3) > 0
+	local is_pr_state = bit_extract(bits, 0, 2)
+	local allows_all_trains = bit_extract(bits, 2) > 0
+	local is_stack = bit_extract(bits, 3) > 0
 	if is_pr_state == 0 then
 		switch_state = "none"
 	elseif is_pr_state == 1 then
@@ -450,7 +455,7 @@ function set_comb_is_pr_state(comb, is_pr_state)
 	local param = control.parameters
 	local bits = param.second_constant or 0
 
-	param.second_constant = bit32.replace(bits, is_pr_state, 0, 2)
+	param.second_constant = bit_replace(bits, is_pr_state, 0, 2)
 	control.parameters = param
 end
 ---@param comb LuaEntity
@@ -460,7 +465,7 @@ function set_comb_allows_all_trains(comb, allows_all_trains)
 	local param = control.parameters
 	local bits = param.second_constant or 0
 
-	param.second_constant = bit32.replace(bits, allows_all_trains and 1 or 0, 2)
+	param.second_constant = bit_replace(bits, allows_all_trains and 1 or 0, 2)
 	control.parameters = param
 end
 ---@param comb LuaEntity
@@ -470,7 +475,7 @@ function set_comb_is_stack(comb, is_stack)
 	local param = control.parameters
 	local bits = param.second_constant or 0
 
-	param.second_constant = bit32.replace(bits, is_stack and 1 or 0, 3)
+	param.second_constant = bit_replace(bits, is_stack and 1 or 0, 3)
 	control.parameters = param
 end
 ---@param comb LuaEntity

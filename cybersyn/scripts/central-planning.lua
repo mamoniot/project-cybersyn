@@ -283,7 +283,7 @@ local function tick_dispatch(map_data, mod_settings)
 		local r_station = stations[r_station_id]
 		---@type string
 		local network_name
-		if r_station.network_name == NETWORK_ANY then
+		if r_station.network_name == NETWORK_EVERY then
 			--TODO: here
 			_, _, network_name = string.find(item_network_name, "(^.*):")
 		else
@@ -310,8 +310,8 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			local p_flag = p_station.network_name == NETWORK_ANY and (p_station.network_flag[item_name] or 0) or p_station.network_flag
-			local r_flag = r_station.network_name == NETWORK_ANY and (r_station.network_flag[item_name] or 0) or r_station.network_flag
+			local p_flag = p_station.network_name == NETWORK_EVERY and (p_station.network_flag[item_name] or 0) or p_station.network_flag
+			local r_flag = r_station.network_name == NETWORK_EVERY and (r_station.network_flag[item_name] or 0) or r_station.network_flag
 			local netand = band(p_flag, r_flag)
 			if netand == 0 then
 				goto p_continue
@@ -487,7 +487,7 @@ local function tick_poll_station(map_data, mod_settings)
 	station.priority = 0
 	station.item_priority = nil
 	station.locked_slots = 0
-	if station.network_name == NETWORK_ANY then
+	if station.network_name == NETWORK_EVERY then
 		station.network_flag = {}
 	else
 		station.network_flag = mod_settings.network_flag
@@ -529,7 +529,7 @@ local function tick_poll_station(map_data, mod_settings)
 						station.r_threshold = abs(item_count)
 					elseif item_name == LOCKED_SLOTS then
 						station.locked_slots = max(item_count, 0)
-					elseif station.network_name == NETWORK_ANY then
+					elseif station.network_name == NETWORK_EVERY then
 						station.network_flag[item_name] = item_count
 					end
 					comb1_signals[k] = nil
@@ -560,7 +560,7 @@ local function tick_poll_station(map_data, mod_settings)
 					is_not_requesting = false
 					is_requesting_nothing = false
 					local f, a
-					if station.network_name == NETWORK_ANY then
+					if station.network_name == NETWORK_EVERY then
 						f, a = pairs(station.network_flag--[[@as {[string]: int}]])
 					else
 						f, a = once, station.network_name
@@ -581,7 +581,7 @@ local function tick_poll_station(map_data, mod_settings)
 			if is_not_requesting then
 				if station.is_p and effective_item_count > 0 and item_count > 0 then
 					local f, a
-					if station.network_name == NETWORK_ANY then
+					if station.network_name == NETWORK_EVERY then
 						f, a = pairs(station.network_flag--[[@as {[string]: int}]])
 					else
 						f, a = once, station.network_name
@@ -624,14 +624,19 @@ local function tick_poll_train(map_data, mod_settings)
 	end
 end
 ---@param map_data MapData
-local function tick_poll_comb(map_data)
+local function tick_poll_comb(map_data, mod_settings)
 	local tick_data = map_data.tick_data
 	--NOTE: the following has undefined behavior if last_comb is deleted
 	local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
 	tick_data.last_comb = comb_id
+	local refueler_id, _ = next(map_data.everything_refuelers, tick_data.last_refueler)
+	tick_data.last_refueler = refueler_id
 
 	if comb and comb.valid then
 		combinator_update(map_data, comb, true)
+	end
+	if refueler_id then
+		set_refueler_from_comb(map_data, mod_settings, refueler_id)
 	end
 end
 ---@param map_data MapData

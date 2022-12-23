@@ -12,7 +12,6 @@ major:
 
 minor:
 	railloader compat
-	refuelers set to everything should check for new signals
 	close gui when the combinator is destroyed
 	do not play close sound when a different gui is opened
 	gui can desync if settings are changed outside of it while it is open

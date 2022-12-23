@@ -119,6 +119,9 @@ local migrations_table = {
 		local map_data = global
 		map_data.tick_state = STATE_INIT
 		map_data.tick_data = {}
+
+		map_data.everything_refuelers = {}
+
 		for k, comb in pairs(map_data.to_comb) do
 			local control = get_comb_control(comb)
 			local params = control.parameters
