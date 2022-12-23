@@ -32,16 +32,6 @@ end
 ---@param map_data MapData
 ---@param r_station_id uint
 ---@param p_station_id uint
----@param item_type string
----@param min_slots_to_move int
-local function get_valid_train(map_data, r_station_id, p_station_id, item_type, min_slots_to_move)
-	--NOTE: this code is the critical section for amortized run-time optimization
-end
-
-
----@param map_data MapData
----@param r_station_id uint
----@param p_station_id uint
 ---@param train_id uint
 ---@param manifest Manifest
 function create_delivery(map_data, r_station_id, p_station_id, train_id, manifest)
