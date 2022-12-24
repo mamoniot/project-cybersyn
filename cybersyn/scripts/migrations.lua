@@ -13,7 +13,7 @@ local migrations_table = {
 		local map_data = global
 		map_data.tick_state = STATE_INIT
 		map_data.tick_data = {}
-		for k, v in pairs(map_data.trains_available) do
+		for k, v in pairs(map_data.available_trains) do
 			for id, _ in pairs(v) do
 				local train = map_data.trains[id]
 				train.is_available = true
