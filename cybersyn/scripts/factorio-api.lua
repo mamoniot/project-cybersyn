@@ -451,7 +451,7 @@ function get_comb_gui_settings(comb)
 		selected_index = 3
 	elseif op == MODE_SECONDARY_IO then
 		selected_index = 4
-	elseif op == MODE_WAGON_MANIFEST then
+	elseif op == MODE_WAGON then
 		selected_index = 5
 	end
 	return selected_index, params.first_signal, switch_state, not allows_all_trains, is_stack

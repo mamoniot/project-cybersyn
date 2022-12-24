@@ -185,7 +185,7 @@ function register_gui_actions()
 				elseif element.selected_index == 4 then
 					set_comb_operation(comb, MODE_SECONDARY_IO)
 				elseif element.selected_index == 5 then
-					set_comb_operation(comb, MODE_WAGON_MANIFEST)
+					set_comb_operation(comb, MODE_WAGON)
 				else
 					return
 				end

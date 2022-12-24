@@ -3,7 +3,7 @@ Version: 1.2.0
 Date: 2022-12-23
   Changes:
     - Forced provide stations to wait until they can service the highest priority request station
-    - Provide stations now override request thresholds with the per-item thresholds set by their station info combinator
+    - Provide stations now override request thresholds with the per-item thresholds set by their station control combinator
     - Allowed station and fuel combinators to be set to network id "each", for each virtual signal they recieve as input, the stop is added to that network and its signal strength is used as the network mask
     - Added the ability to specify per-station whether request thresholds represent total items or total stacks
     - Prioritized a train's distance from the provide station over the train's cargo capacity
@@ -49,7 +49,7 @@ Date: 2022-12-8
 Version: 1.1.0
 Date: 2022-12-8
   Changes:
-    - Added the ability to use the priority signal as input to station info combinators so one can override priority on items with station info combinators thresholds
+    - Added the ability to use the priority signal as input to station control combinators so one can override priority on items with station control combinators thresholds
     - Added refueler stations
     - Slightly more permissive allow-list logic
     - Made non-backwards compatible improvements and bugfixes to the modding interface

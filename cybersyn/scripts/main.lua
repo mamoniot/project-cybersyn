@@ -247,7 +247,7 @@ local function on_combinator_built(map_data, comb)
 		params.operation = op
 		params.first_signal = NETWORK_SIGNAL_DEFAULT
 		control.parameters = params
-	elseif op ~= MODE_PRIMARY_IO and op ~= MODE_SECONDARY_IO and op ~= MODE_DEPOT and op ~= MODE_REFUELER and op ~= MODE_WAGON_MANIFEST then
+	elseif op ~= MODE_PRIMARY_IO and op ~= MODE_SECONDARY_IO and op ~= MODE_DEPOT and op ~= MODE_REFUELER and op ~= MODE_WAGON then
 		op = MODE_PRIMARY_IO
 		params.operation = op
 		control.parameters = params
@@ -258,7 +258,7 @@ local function on_combinator_built(map_data, comb)
 	map_data.to_output[comb.unit_number] = out
 	map_data.to_stop[comb.unit_number] = stop
 
-	if op == MODE_WAGON_MANIFEST then
+	if op == MODE_WAGON then
 		if rail then
 			update_stop_from_rail(map_data, rail, nil, true)
 		end
