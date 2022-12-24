@@ -622,7 +622,7 @@ local send_stuck_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
 function send_alert_stuck_train(map_data, train)
 	send_alert_for_train(train, send_stuck_train_alert_icon, "cybersyn-messages.stuck-train")
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 1}
+	map_data.active_alerts[train.id] = {train, 1, map_data.total_ticks}
 end
 
 local send_nonempty_train_in_depot_alert_icon = {name = NONEMPTY_TRAIN_NAME, type = "fluid"}
@@ -632,7 +632,7 @@ function send_alert_nonempty_train_in_depot(map_data, train)
 	send_alert_for_train(train, send_nonempty_train_in_depot_alert_icon, "cybersyn-messages.nonempty-train")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 2}
+	map_data.active_alerts[train.id] = {train, 2, map_data.total_ticks}
 end
 
 local send_lost_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
@@ -642,7 +642,7 @@ function send_alert_depot_of_train_broken(map_data, train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.depot-broken")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 3}
+	map_data.active_alerts[train.id] = {train, 3, map_data.total_ticks}
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -650,7 +650,7 @@ function send_alert_station_of_train_broken(map_data, train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.station-broken")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 4}
+	map_data.active_alerts[train.id] = {train, 4, map_data.total_ticks}
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -658,7 +658,7 @@ function send_alert_refueler_of_train_broken(map_data, train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.refueler-broken")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 5}
+	map_data.active_alerts[train.id] = {train, 5, map_data.total_ticks}
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -666,7 +666,7 @@ function send_alert_train_at_incorrect_station(map_data, train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.train-at-incorrect")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 6}
+	map_data.active_alerts[train.id] = {train, 6, map_data.total_ticks}
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -674,7 +674,7 @@ function send_alert_cannot_path_between_surfaces(map_data, train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.cannot-path-between-surfaces")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 7}
+	map_data.active_alerts[train.id] = {train, 7, map_data.total_ticks}
 end
 
 ---@param train LuaTrain

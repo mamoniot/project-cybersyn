@@ -421,10 +421,17 @@ function on_train_changed(event)
 	if not train_e.valid then return end
 	local train_id = train_e.id
 
-	if global.active_alerts and global.active_alerts[train_id] then
-		global.active_alerts[train_id] = nil
-		if next(global.active_alerts) == nil then
-			global.active_alerts = nil
+	if global.active_alerts then
+		--remove the alert if the train is interacted with at all
+		local data = global.active_alerts[train_id]
+		if data then
+			--we need to wait for the train to come to a stop from being locked
+			if data[3] + 10*mod_settings.tps < global.total_ticks then
+				global.active_alerts[train_id] = nil
+				if next(global.active_alerts) == nil then
+					global.active_alerts = nil
+				end
+			end
 		end
 	end
 
