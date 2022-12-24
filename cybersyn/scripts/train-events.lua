@@ -1,6 +1,7 @@
 --By Mami
 local min = math.min
 local INF = math.huge
+local btest = bit32.btest
 
 ---@param map_data MapData
 ---@param station Station
@@ -155,7 +156,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			if train.manifest then
 				on_failed_delivery(map_data, train_id, train)
 			end
-			send_unexpected_train_alert(train.entity)
+			send_alert_unexpected_train(train.entity)
 		else
 			return
 		end
@@ -167,9 +168,9 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		else
 			--train still has cargo
 			if mod_settings.react_to_nonempty_train_in_depot then
-				lock_train(train_entity)
+				lock_train_to_depot(train_entity)
 				remove_train(map_data, train_id, train)
-				send_nonempty_train_in_depot_alert(train_entity)
+				send_alert_nonempty_train_in_depot(map_data, train_entity)
 			end
 			interface_raise_train_nonempty_in_depot(depot_id, train_entity, train_id)
 		end
@@ -201,8 +202,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		interface_raise_train_created(train_id, depot_id)
 	else
 		if mod_settings.react_to_nonempty_train_in_depot then
-			lock_train(train_entity)
-			send_nonempty_train_in_depot_alert(train_entity)
+			send_alert_nonempty_train_in_depot(map_data, train_entity)
 		end
 		interface_raise_train_nonempty_in_depot(depot_id, train_entity)
 	end
@@ -238,12 +238,12 @@ local function on_train_arrives_station(map_data, station_id, train_id, train)
 			on_failed_delivery(map_data, train_id, train)
 			remove_train(map_data, train_id, train)
 			lock_train(train.entity)
-			send_train_at_incorrect_station_alert(train.entity, train.depot_name)
+			send_alert_train_at_incorrect_station(map_data, train.entity)
 		end
 	elseif mod_settings.react_to_train_at_incorrect_station then
 		--train is lost somehow, probably from player intervention
 		remove_train(map_data, train_id, train)
-		send_train_at_incorrect_station_alert(train.entity, train.depot_name)
+		send_alert_train_at_incorrect_station(map_data, train.entity)
 	end
 end
 
@@ -330,8 +330,10 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 				local best_prior = -INF
 				for id, _ in pairs(refuelers) do
 					local refueler = map_data.refuelers[id]
-					set_refueler_from_comb(mod_settings, refueler)
-					if bit32.btest(train.network_flag, refueler.network_flag) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
+					set_refueler_from_comb(map_data, mod_settings, id)
+
+					local refueler_network_flag = refueler.network_name == NETWORK_EACH and (refueler.network_flag[train.network_name] or 0) or refueler.network_flag
+					if btest(train.network_flag, refueler_network_flag) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
 						local accepted = false
 						local dist = nil
 						if refueler.priority == best_prior then
@@ -350,7 +352,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 					train.refueler_id = best_refueler_id
 					local refueler = map_data.refuelers[best_refueler_id]
 					refueler.trains_total = refueler.trains_total + 1
-					add_refueler_schedule(train.entity, refueler.entity_stop, train.depot_name)
+					add_refueler_schedule(map_data, train.entity, refueler.entity_stop)
 					interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_F)
 					return
 				end
@@ -418,6 +420,21 @@ function on_train_changed(event)
 	local train_e = event.train--[[@as LuaTrain]]
 	if not train_e.valid then return end
 	local train_id = train_e.id
+
+	if global.active_alerts then
+		--remove the alert if the train is interacted with at all
+		local data = global.active_alerts[train_id]
+		if data then
+			--we need to wait for the train to come to a stop from being locked
+			if data[3] + 10*mod_settings.tps < global.total_ticks then
+				global.active_alerts[train_id] = nil
+				if next(global.active_alerts) == nil then
+					global.active_alerts = nil
+				end
+			end
+		end
+	end
+
 	if train_e.state == defines.train_state.wait_station then
 		local stop = train_e.station
 		if stop and stop.valid and stop.name == "train-stop" then

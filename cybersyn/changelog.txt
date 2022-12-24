@@ -1,4 +1,21 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.0
+Date: 2022-12-23
+  Changes:
+    - Forced provide stations to wait until they can service the highest priority request station
+    - Provide stations now override request thresholds with the per-item thresholds set by their station control combinator
+    - Allowed station and fuel combinators to be set to network id "each", for each virtual signal they recieve as input, the stop is added to that network and its signal strength is used as the network mask
+    - Added the ability to specify per-station whether request thresholds represent total items or total stacks
+    - Prioritized a train's distance from the provide station over the train's cargo capacity
+    - Added more detailed missing train alerts
+    - Nonempty trains in depot are no longer put in manual mode, instead they are forced to park at the depot
+    - Made several alerts persistent
+    - Fixed bug with depot priority not working
+    - Fixed a memory leak relating to train layouts
+    - Fixed a rare crash when building stations
+    - Fixed a bug where automatic allow-list sometimes could not be turned off
+    - Slightly improved compat with SE thanks to a bugfix in 0.6.94
+---------------------------------------------------------------------------------------------------
 Version: 1.1.7
 Date: 2022-12-17
   Changes:
@@ -32,7 +49,7 @@ Date: 2022-12-8
 Version: 1.1.0
 Date: 2022-12-8
   Changes:
-    - Added the ability to use the priority signal as input to optional station control so one can override priority on items with optional station control thresholds
+    - Added the ability to use the priority signal as input to station control combinators so one can override priority on items with station control combinators thresholds
     - Added refueler stations
     - Slightly more permissive allow-list logic
     - Made non-backwards compatible improvements and bugfixes to the modding interface
@@ -45,19 +62,6 @@ Date: 2022-12-3
     - Fixed a bug with SE compat preventing players from joining multiplayer games
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.8
-Date: 2022-12-2
-  Changes:
-    - Fixed a bug with combinator displays not updating correctly
-    - Improved combinator display performance
-    - Added a modding interface
----------------------------------------------------------------------------------------------------
-Version: 1.0.7
-Date: 2022-12-1
-  Changes:
-    - Fixed a crash relating to depot bypass through space elevators
----------------------------------------------------------------------------------------------------
-Version: 1.0.6
-Date: 2022-11-30
   Changes:
     - Added depot bypass
     - Increased inactivity time so burner inserters are fast enough to trigger it

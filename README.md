@@ -8,7 +8,7 @@ Behold one of the most feature-rich and performant train logistics network mods 
 
 Within Project Cybersyn, you can think of requester stations as requester chests, provider stations as passive provider chests, depots as roboports and trains as the logistics bots. There is a direct correspondence between the Cybersyn train network and Factorio's robot logistics network.
 
-A bare minimum Cybersyn train network consists of 2 components: depots and stations. Both are created by placing a cybernetic combinator adjacent to a train stop. Select the "Control Mode" of the combinator to "Station" to create a station, and to "Depot" to create a depot. Create a basic train and order it to park at the depot you just created, it is now controlled by the Cybersyn network. Depots and stations can have any train stop name, names do not impact their function. The circuit network input of a station's cybernetic combinator determines what items that station will request or provide to the Cybersyn network. A positive item signal is interpreted as that station providing that item to the network; A negative item signal is interpreted as that station requesting that item from the network.
+A bare minimum Cybersyn train network consists of 2 components: depots and stations. Both are created by placing a cybernetic combinator adjacent to a train stop. Select the "Mode" of the combinator to "Station" to create a station, and to "Depot" to create a depot. Create a basic train and order it to park at the depot you just created, it is now controlled by the Cybersyn network. Depots and stations can have any train stop name, names do not impact their function. The circuit network input of a station's cybernetic combinator determines what items that station will request or provide to the Cybersyn network. A positive item signal is interpreted as that station providing that item to the network; A negative item signal is interpreted as that station requesting that item from the network.
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/basic-provider.png)
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/basic-requester.png)
@@ -63,7 +63,7 @@ If you like my work, consider supporting me on [ko-fi](https://ko-fi.com/lesbian
 
 ## Mod Details
 
-This mod adds a single new entity to the game, the cybernetic combinator. This combinator can be in one of 5 different possible control modes. While each mode has a purpose, the only modes you have to use are primary station control and depot control.
+This mod adds a single new entity to the game, the cybernetic combinator. This combinator can be in one of 5 different possible modes. While each mode has a purpose, the only modes you are required to use are station mode and depot mode.
 
 ### Station mode
 
@@ -79,7 +79,7 @@ Stations can be set to provide only or request only. By default stations can bot
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/big-depot.png)
 
-When placed adjacent to a vanilla train stop, a Cybersyn depot is created. Any train which parks at this depot will automatically be added to the train network. Whenever a train order is generated, if this train has the cargo capacity to fulfill it, and is allow-listed by both stations, then it will automatically be dispatched to fulfill the order. When the order is completed, the train will return to any train stop with the same name as the depot it first parked in. This almost always means it returns to a Cybersyn depot where it will again await to fulfill a new order. To save on UPS the input of a depot control combinator is only read when a train parks at the depot; this is only relevant for networks which make extensive use of network masks on depots.
+When placed adjacent to a vanilla train stop, a Cybersyn depot is created. Any train which parks at this depot will automatically be added to the train network. Whenever a train order is generated, if this train has the cargo capacity to fulfill it, and is allow-listed by both stations, then it will automatically be dispatched to fulfill the order. When the order is completed, the train will return to any train stop with the same name as the depot it first parked in. This almost always means it returns to a Cybersyn depot where it will again await to fulfill a new order. To save on UPS the input of a depot combinator is only read when a train parks at the depot; this is only relevant for networks which make extensive use of network masks on depots.
 
 ### Fuel loader mode
 
@@ -87,13 +87,17 @@ When placed adjacent to a vanilla train stop, a Cybersyn fuel loader is created.
 
 Fuel loaders can automatically build allow-lists. When this option is enabled, trains will be prevented from parking at this station if one of their cargo wagons would be filled with fuel.
 
-### Station info mode
+### Station control mode
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/science.png)
 
-When placed adjacent to the train stop of an already existing Cybersyn station, this combinator will provide a second set of inputs and outputs that can be used to more precisely control this station. The combinator input allows for request thresholds to be set per-item. Any non-zero item signal given on the input circuit network will override the station's request thresholds for just that item. The output of the combinator gives the sum total of all item loading or unloading orders in progress for the station. The very tick a train is dispatched for a new order to the station, that order is added to the output of this combinator, and it is removed as soon as the train leaves the station. The primary use case for this is to prevent duplicate orders from being generated for stations that provide the same pool of items. Only one train can be dispatched per-tick per-item specifically to accommodate this.
+When placed adjacent to the train stop of an already existing Cybersyn station, this combinator will provide a second set of inputs and outputs that can be used to more precisely control this station. The combinator input allows for request thresholds to be set per-item. Any non-zero item signal given on the input circuit network will override the station's request thresholds for just that item. When this is used on a provider station, if the station has more items than the input threshold, it will force the creation of a delivery for that item to the next available requester station. This effectively overrides the requester station's request threshold. This is useful for purging unwanted items from provider stations.
 
-### Wagon info mode
+If a station control combinator receives a "priority" signal as input, it will apply that priority to each item signal it is receiving as input. This allows you to specify up to 2 different priorities per-item on a single station.
+
+The output of the combinator gives the sum total of all item loading or unloading orders in progress for the station. The very tick a train is dispatched for a new order to the station, that order is added to the output of this combinator, and it is removed as soon as the train leaves the station. The primary use case for this is to prevent duplicate orders from being generated for stations that provide the same pool of items. Only one train can be dispatched per-tick per-item specifically to accommodate this.
+
+### Wagon control mode
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/filtered-slots.png)
 
@@ -103,25 +107,29 @@ When placed adjacent to the tracks of an already existing Cybersyn station, this
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/gui-network.png)
 
-Stations and depots can be set to belong to a particular network by setting that network on the control combinator. By default all combinators belong to the "signal-A" network. By setting a different signal Id, the combinator will belong to that different network. Networks identified with different signal Ids do not share any trains or items; Orders will never be generated to transfer items between separate networks.
+Stations, depots and fuel loaders can be set to belong to a particular network by setting that network on their combinator. By default all combinators belong to the "signal-A" network. By setting a different signal Id, the combinator will belong to that different network. Networks identified with different signal Ids do not share any trains or items; Orders will never be generated to transfer items between separate networks.
 
 In addition, if the combinator receives as input a signal of the same Id as its network signal Id, then the value of this signal will be interpreted as a bitmask to give 32 "sub-networks" to choose from. Each station can belong to any set of sub-networks based on its mask. A delivery will only be made between two stations if any two bits match between the two masks, i.e. if `mask1 & mask2 > 0`. When a network Id is an item, that item will be ignored by stations, its signal will only ever be interpreted as the network mask.
+
+Stations and fuel loader combinators allow their network to be set to the "each" virtual signal. When in this mode, each virtual signal given to them as input is interpretted as a network mask for that network Id. The station or fuel loader is thus made a part of that network with the specified network mask. This allows you to union together as many different networks as you would like.
 
 ### Request threshold
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/virtual-signals.png)
 
-If a primary station control combinator receives a request threshold signal as input, a request order for the station will only be generated if the station is requesting a number of items exceeding the request threshold. In addition, there must be a station in the network which is providing at least as many items as the request threshold, and there must be a train in the network that has cargo capacity exceeding the request threshold. Through this logic all generated orders must be for a number of items greater than or equal to the request threshold. By setting high thresholds, the traffic on your network can be greatly reduced, at the cost of needing to maintain larger item buffers at each station. There is no "provide threshold" in this mod because by design there is almost no need for one. If desired a provide threshold can be simulated with a single decider combinator. The request threshold signal sets the request threshold "per-station" whereas the optional station control combinator can set or override the threshold per-item as well.
+If a station combinator receives a request threshold signal as input, a request order for the station will only be generated if the station is requesting a number of items exceeding the request threshold. In addition, there must be a station in the network which is providing at least as many items as the request threshold, and there must be a train in the network that has cargo capacity exceeding the request threshold. Through this logic all generated orders must be for a number of items greater than or equal to the request threshold. By setting high thresholds, the traffic on your network can be greatly reduced, at the cost of needing to maintain larger item buffers at each station. There is no "provide threshold" in this mod because by design there is almost no need for one. If desired a provide threshold can be simulated with a single decider combinator. The request threshold signal sets the request threshold "per-station" whereas the station control combinator can set or override the threshold per-item as well.
+
+On station combinators there is a setting called "Stack thresholds". When set, any request threshold for this station will be multiplied by the stack size of any item it is being compared to. This applies to station control thresholds as well. Thus the request threshold can be specified based on total stack count rather than total item count. Fluids are unaffected by the "Stack thresholds" setting, they are always specified by total fluid count.
 
 ### Locked slots per cargo wagon
 
-After an order has been generated, enough items will be subtracted from that order to ensure at least X number of slots in each cargo wagon can be left empty, where X is the "Locked slots per cargo wagon" signal being received by the station control combinator. It is necessary for multi-item stations to function.
+After an order has been generated, enough items will be subtracted from that order to ensure at least X number of slots in each cargo wagon can be left empty, where X is the "Locked slots per cargo wagon" signal being received by the station combinator. It is necessary for multi-item stations to function.
 
 ### Priority
 
-Orders will be generated first for stations, depots and fuel loaders which are receiving a higher priority signal than the others. If stations have the same priority, the least recently used requester station will be prioritized, and the provider station closest to the requester station will be prioritized. So in times of item shortage (front-pressure), round robin distribution will be used, and in times of item surplus (back-pressure), minimum travel distance distribution will be used.
+Orders will be generated first for stations, depots and fuel loaders which are receiving a higher priority signal than the others. If stations have the same priority, the least recently used requester station will be prioritized, and the provider station closest to the requester station will be prioritized. So in times of item shortage (front-pressure), round robin distribution will be used, and in times of item surplus (back-pressure), minimum travel distance distribution will be used. Provider stations will be prevented from providing items to lower priority requester stations until the highest priority requester station is satisfied.
 
-If a combinator set to station info mode receives a priority signal, for each item signal input to the combinator, items of that type will have its priority overridden in addition to its request threshold. This effectively allows you to choose one of two possible priorities for each item that a station processes.
+If a combinator set to station control mode receives a priority signal, for each item signal input to the combinator, items of that type will have its priority overridden in addition to its request threshold. This effectively allows you to choose one of two possible priorities for each item that a station processes.
 
 ### Train limits
 

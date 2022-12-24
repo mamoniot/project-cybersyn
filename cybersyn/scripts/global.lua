@@ -19,15 +19,17 @@
 ---@field public tick_state uint
 ---@field public tick_data {}
 ---@field public economy Economy
----@field public se_tele_old_id {[string]: uint}
+---@field public each_refuelers {[uint]: true}
+---@field public active_alerts {[uint]: {[1]: LuaTrain, [2]: int}}?
 
 ---@class Station
 ---@field public entity_stop LuaEntity
 ---@field public entity_comb1 LuaEntity
 ---@field public entity_comb2 LuaEntity?
----@field public is_p boolean
----@field public is_r boolean
----@field public allows_all_trains boolean
+---@field public is_p true?
+---@field public is_r true?
+---@field public is_stack true?
+---@field public allows_all_trains true?
 ---@field public deliveries_total int
 ---@field public last_delivery_tick int
 ---@field public priority int --transient
@@ -35,7 +37,7 @@
 ---@field public r_threshold int >= 0 --transient
 ---@field public locked_slots int >= 0 --transient
 ---@field public network_name string?
----@field public network_flag int --transient
+---@field public network_flag int|{[string]: int} --transient
 ---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
 ---@field public deliveries {[string]: int}
 ---@field public accepted_layouts {[uint]: true?}
@@ -43,7 +45,7 @@
 ---@field public tick_signals {[uint]: Signal}? --transient
 ---@field public item_p_counts {[string]: int} --transient
 ---@field public item_thresholds {[string]: int}? --transient
----@field public display_state 0|1|2|3 --low bit is if this station's request has failed, high bit is if a train is heading to this station
+---@field public display_state int
 
 ---@class Depot
 ---@field public entity_stop LuaEntity
@@ -57,10 +59,10 @@
 ---@field public accepted_layouts {[uint]: true?}
 ---@field public layout_pattern (0|1|2|3)[]?
 ---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
----@field public allows_all_trains boolean
+---@field public allows_all_trains true?
 ---@field public priority int
 ---@field public network_name string?
----@field public network_flag int
+---@field public network_flag int|{[string]: int}
 
 ---@class Train
 ---@field public entity LuaTrain --should only be invalid if se_is_being_teleported is true
@@ -144,9 +146,13 @@ function init_global()
 	global.layout_top_id = 1
 	global.refuelers = {}
 	global.to_refuelers = {}
+	global.each_refuelers = {}
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
-	if IS_SE_PRESENT then
-		global.se_tele_old_id = {}
-	end
+end
+
+---@param v string
+---@param h string?
+function once(v, h)
+	return not h and v or nil--[[@as string|nil]]
 end

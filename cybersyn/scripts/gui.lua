@@ -26,13 +26,34 @@ STATUS_NAMES[defines.entity_status.disabled_by_script] = "entity-status.disabled
 STATUS_NAMES[defines.entity_status.marked_for_deconstruction] = "entity-status.marked-for-deconstruction"
 STATUS_NAMES_DEFAULT = "entity-status.disabled"
 
+---@param main_window LuaGuiElement
+---@param selected_index int
+local function set_visibility(main_window, selected_index)
+	local uses_network = selected_index == 1 or selected_index == 2 or selected_index == 3
+	local uses_allow_list = selected_index == 1 or selected_index == 3
+	local is_station = selected_index == 1
+
+	local vflow = main_window.frame.vflow--[[@as LuaGuiElement]]
+	local top_flow = vflow.top--[[@as LuaGuiElement]]
+	local bottom_flow = vflow.bottom--[[@as LuaGuiElement]]
+	local right_flow = bottom_flow.right--[[@as LuaGuiElement]]
+
+	top_flow.is_pr_switch.visible = is_station
+	vflow.network_label.visible = uses_network
+	bottom_flow.network.visible = uses_network
+	right_flow.allow_list.visible = uses_allow_list
+	--right_flow.allow_list_label.visible = uses_allow_list
+	right_flow.is_stack.visible = is_station
+	--right_flow.is_stack_label.visible = is_station
+end
+
 ---@param comb LuaEntity
 ---@param player LuaPlayer
 function gui_opened(comb, player)
 	combinator_update(global, comb, true)
 
 	local rootgui = player.gui.screen
-	local selected_index, signal, check, switch_state = get_comb_gui_settings(comb)
+	local selected_index, signal, switch_state, allow_list, is_stack = get_comb_gui_settings(comb)
 
 	local window = flib_gui.build(rootgui, {
 		{type="frame", direction="vertical", ref={"main_window"}, name=COMBINATOR_NAME, children={
@@ -44,8 +65,8 @@ function gui_opened(comb, player)
 					on_click = {"close", comb.unit_number}
 				}}
 			}},
-			{type="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12}, children={
-				{type="flow", direction="vertical", style_mods={horizontal_align="left"}, children={
+			{type="frame", name="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12, bottom_padding=9}, children={
+				{type="flow", name="vflow", direction="vertical", style_mods={horizontal_align="left"}, children={
 					--status
 					{type="flow", style="status_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
 						{type="sprite", sprite=STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", ref={"status_icon"}, style_mods={stretch_image_to_widget_size=true}},
@@ -67,21 +88,31 @@ function gui_opened(comb, player)
 							{"cybersyn-gui.comb2"},
 							{"cybersyn-gui.wagon-manifest"},
 						}},
-						{type="switch", name="switch", ref={"switch"}, allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, actions={
-							on_switch_state_changed={"switch", comb.unit_number}
+						{type="switch", name="is_pr_switch", ref={"is_pr_switch"}, allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, actions={
+							on_switch_state_changed={"is_pr_switch", comb.unit_number}
 						}}
 					}},
 					---choose-elem-button
 					{type="line", style_mods={top_padding=10}},
 					{type="label", name="network_label", ref={"network_label"}, style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
 					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="center"}, children={
-						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6}, actions={
+						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, actions={
 							on_elem_changed={"choose-elem-button", comb.unit_number}
 						}},
-						{type="checkbox", name="radio_button", ref={"radio_button"}, state=check, tooltip={"cybersyn-gui.auto-tooltip"}, actions={
-							on_checked_state_changed={"radio_button", comb.unit_number}
-						}},
-						{type="label", name="radio_label", style_mods={left_padding=3}, ref={"radio_label"}, caption={"cybersyn-gui.auto-description"}},
+						{type="flow", name="right", direction="vertical", style_mods={horizontal_align="left"}, children={
+							{type="flow", name="allow_list", direction="horizontal", style_mods={vertical_align="center"}, children={
+								{type="checkbox", name="allow_list", ref={"allow_list"}, state=allow_list, tooltip={"cybersyn-gui.allow-list-tooltip"}, actions={
+									on_checked_state_changed={"allow_list", comb.unit_number}
+								}},
+								{type="label", name="allow_list_label", style_mods={left_padding=3}, ref={"allow_list_label"}, caption={"cybersyn-gui.allow-list-description"}},
+							}},
+							{type="flow", name="is_stack", direction="horizontal", style_mods={vertical_align="center"}, children={
+								{type="checkbox", name="is_stack", ref={"is_stack"}, state=is_stack, tooltip={"cybersyn-gui.is-stack-tooltip"}, actions={
+									on_checked_state_changed={"is_stack", comb.unit_number}
+								}},
+								{type="label", name="is_stack_label", style_mods={left_padding=3}, ref={"is_stack_label"}, caption={"cybersyn-gui.is-stack-description"}},
+							}},
+						}}
 					}}
 				}}
 			}}
@@ -91,14 +122,8 @@ function gui_opened(comb, player)
 	window.preview.entity = comb
 	window.titlebar.drag_target = window.main_window
 	window.main_window.force_auto_center()
-	local uses_network = selected_index == 1 or selected_index == 2 or selected_index == 3
-	local uses_allow_list = selected_index == 1 or selected_index == 3
-	window.network.visible = uses_network
-	window.network_label.visible = uses_network
-	window.radio_button.visible = uses_allow_list
-	window.radio_label.visible = uses_allow_list
-	window.switch.visible = selected_index == 1
 
+	set_visibility(window.main_window, selected_index)
 	player.opened = window.main_window
 end
 
@@ -142,45 +167,25 @@ function register_gui_actions()
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
-				local top_flow = element.parent
-				local all_flow = top_flow.parent
-				local bottom_flow = all_flow.bottom
-				local param
+				set_visibility(rootgui[COMBINATOR_NAME], element.selected_index)
+
 				if element.selected_index == 1 then
 					set_comb_operation(comb, MODE_PRIMARY_IO)
-					top_flow["switch"].visible = true
-					all_flow["network_label"].visible = true
-					bottom_flow["network"].visible = true
-					bottom_flow["radio_button"].visible = true
-					bottom_flow["radio_label"].visible = true
 				elseif element.selected_index == 2 then
 					set_comb_operation(comb, MODE_DEPOT)
-					top_flow["switch"].visible = false
-					all_flow["network_label"].visible = true
-					bottom_flow["network"].visible = true
-					bottom_flow["radio_button"].visible = false
-					bottom_flow["radio_label"].visible = false
+					--prevent the use of the each signal with depots
+					local network = element.parent.parent.bottom.network
+					local signal = network.elem_value
+					if signal.name == NETWORK_EACH then
+						network.elem_value = nil
+						set_comb_network_name(comb, nil)
+					end
 				elseif element.selected_index == 3 then
 					set_comb_operation(comb, MODE_REFUELER)
-					top_flow["switch"].visible = false
-					all_flow["network_label"].visible = true
-					bottom_flow["network"].visible = true
-					bottom_flow["radio_button"].visible = true
-					bottom_flow["radio_label"].visible = true
 				elseif element.selected_index == 4 then
 					set_comb_operation(comb, MODE_SECONDARY_IO)
-					top_flow["switch"].visible = false
-					all_flow["network_label"].visible = false
-					bottom_flow["network"].visible = false
-					bottom_flow["radio_button"].visible = false
-					bottom_flow["radio_label"].visible = false
 				elseif element.selected_index == 5 then
-					set_comb_operation(comb, MODE_WAGON_MANIFEST)
-					top_flow["switch"].visible = false
-					all_flow["network_label"].visible = false
-					bottom_flow["network"].visible = false
-					bottom_flow["radio_button"].visible = false
-					bottom_flow["radio_label"].visible = false
+					set_comb_operation(comb, MODE_WAGON)
 				else
 					return
 				end
@@ -192,15 +197,21 @@ function register_gui_actions()
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
+				local param = get_comb_params(comb)
+
 				local signal = element.elem_value
 				if signal and (signal.name == "signal-everything" or signal.name == "signal-anything" or signal.name == "signal-each") then
-					signal = nil
-					element.elem_value = nil
+					if param.operation == MODE_PRIMARY_IO or param.operation == MODE_PRIMARY_IO_ACTIVE or param.operation == MODE_PRIMARY_IO_FAILED_REQUEST or param.operation == MODE_REFUELER then
+						signal.name = NETWORK_EACH
+					else
+						signal = nil
+					end
+					element.elem_value = signal
 				end
 				set_comb_network_name(comb, signal)
 
 				combinator_update(global, comb)
-			elseif msg[1] == "radio_button" then
+			elseif msg[1] == "allow_list" then
 				local element = event.element
 				if not element then return end
 				local comb = global.to_comb[msg[2]]
@@ -210,7 +221,17 @@ function register_gui_actions()
 				set_comb_allows_all_trains(comb, allows_all_trains)
 
 				combinator_update(global, comb)
-			elseif msg[1] == "switch" then
+			elseif msg[1] == "is_stack" then
+				local element = event.element
+				if not element then return end
+				local comb = global.to_comb[msg[2]]
+				if not comb or not comb.valid then return end
+
+				local is_stack = element.state
+				set_comb_is_stack(comb, is_stack)
+
+				combinator_update(global, comb)
+			elseif msg[1] == "is_pr_switch" then
 				local element = event.element
 				if not element then return end
 				local comb = global.to_comb[msg[2]]

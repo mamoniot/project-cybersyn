@@ -1,6 +1,6 @@
 {
     "name": "cybersyn",
-    "version": "1.1.7",
+    "version": "1.2.0",
     "title": "Project Cybersyn",
     "author": "Mami",
     "factorio_version": "1.1",
@@ -8,7 +8,7 @@
     "dependencies": [
         "base",
         "flib >= 0.6.0",
-        "? space-exploration >= 0.6.90",
+        "? space-exploration >= 0.6.94",
         "? miniloader",
         "? nullius",
         "? pypostprocessing"
