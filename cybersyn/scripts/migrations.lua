@@ -2,17 +2,9 @@ local flib_migration = require("__flib__.migration")
 
 
 local migrations_table = {
-	["1.0.3"] = function()
-		---@type MapData
-		local map_data = global
-		map_data.tick_state = STATE_INIT
-		map_data.tick_data = {}
-	end,
 	["1.0.6"] = function()
 		---@type MapData
 		local map_data = global
-		map_data.tick_state = STATE_INIT
-		map_data.tick_data = {}
 		for k, v in pairs(map_data.available_trains) do
 			for id, _ in pairs(v) do
 				local train = map_data.trains[id]
@@ -29,8 +21,6 @@ local migrations_table = {
 	["1.0.7"] = function()
 		---@type MapData
 		local map_data = global
-		map_data.tick_state = STATE_INIT
-		map_data.tick_data = {}
 		map_data.available_trains = {}
 		for id, v in pairs(map_data.trains) do
 			v.parked_at_depot_id = v.depot_id
@@ -53,8 +43,6 @@ local migrations_table = {
 	["1.0.8"] = function()
 		---@type MapData
 		local map_data = global
-		map_data.tick_state = STATE_INIT
-		map_data.tick_data = {}
 		for id, station in pairs(map_data.stations) do
 			local params = get_comb_params(station.entity_comb1)
 			if params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
@@ -71,8 +59,6 @@ local migrations_table = {
 	["1.1.0"] = function()
 		---@type MapData
 		local map_data = global
-		map_data.tick_state = STATE_INIT
-		map_data.tick_data = {}
 		map_data.refuelers = {}
 		map_data.to_refuelers = {}
 		for id, station in pairs(map_data.stations) do
@@ -98,16 +84,12 @@ local migrations_table = {
 	["1.1.2"] = function()
 		---@type MapData
 		local map_data = global
-		map_data.tick_state = STATE_INIT
-		map_data.tick_data = {}
 		map_data.refuelers = map_data.refuelers or {}
 		map_data.to_refuelers = map_data.to_refuelers or {}
 	end,
 	["1.1.3"] = function()
 		---@type MapData
 		local map_data = global
-		map_data.tick_state = STATE_INIT
-		map_data.tick_data = {}
 		for k, v in pairs(map_data.refuelers) do
 			if not v.entity_comb.valid or not v.entity_stop.valid then
 				map_data.refuelers[k] = nil
@@ -117,8 +99,6 @@ local migrations_table = {
 	["1.2.0"] = function()
 		---@type MapData
 		local map_data = global
-		map_data.tick_state = STATE_INIT
-		map_data.tick_data = {}
 
 		map_data.each_refuelers = {}
 		map_data.se_tele_old_id = nil
@@ -137,6 +117,9 @@ local migrations_table = {
 		end
 		for id, station in pairs(map_data.stations) do
 			station.display_state = (station.display_state >= 2 and 1 or 0) + (station.display_state%2)*2
+
+			set_station_from_comb_state(station)
+			update_stop_if_auto(map_data, station, true)
 		end
 
 		map_data.layout_train_count = {}
@@ -157,6 +140,8 @@ local migrations_table = {
 
 ---@param data ConfigurationChangedData
 function on_config_changed(data)
+	global.tick_state = STATE_INIT
+	global.tick_data = {}
 	flib_migration.on_config_changed(data, migrations_table)
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil

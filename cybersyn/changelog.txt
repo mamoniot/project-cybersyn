@@ -13,6 +13,7 @@ Date: 2022-12-23
     - Fixed bug with depot priority not working
     - Fixed a memory leak relating to train layouts
     - Fixed a rare crash when building stations
+    - Fixed a bug where automatic allow-list sometimes could not be turned off
     - Slightly improved compat with SE thanks to a bugfix in 0.6.94
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.7
