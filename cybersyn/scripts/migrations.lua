@@ -135,7 +135,20 @@ local migrations_table = {
 			control.parameters = params
 		end
 		for id, station in pairs(map_data.stations) do
-			station.display_state = (station.display_state >= 2 and 1) + (station.display_state%2)*2
+			station.display_state = (station.display_state >= 2 and 1 or 0) + (station.display_state%2)*2
+		end
+
+		map_data.layout_train_count = {}
+		for id, train in pairs(map_data.trains) do
+			map_data.layout_train_count[train.layout_id] = (map_data.layout_train_count[train.layout_id] or 0) + 1
+		end
+		for layout_id, _ in pairs(map_data.layouts) do
+			if not map_data.layout_train_count[layout_id] then
+				map_data.layouts[layout_id] = nil
+				for id, station in pairs(map_data.stations) do
+					station.accepted_layouts[layout_id] = nil
+				end
+			end
 		end
 	end,
 }

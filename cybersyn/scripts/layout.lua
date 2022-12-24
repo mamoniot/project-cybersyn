@@ -87,6 +87,19 @@ function remove_train(map_data, train_id, train)
 		depot.available_train_id = nil
 	end
 	remove_available_train(map_data, train_id, train)
+
+	local layout_id = train.layout_id
+	local count = global.layout_train_count[layout_id]
+	if count <= 1 then
+		global.layout_train_count[layout_id] = nil
+		global.layouts[layout_id] = nil
+		for _, station in pairs(global.stations) do
+			station.accepted_layouts[layout_id] = nil
+		end
+	else
+		global.layout_train_count[layout_id] = count - 1
+	end
+
 	map_data.trains[train_id] = nil
 	interface_raise_train_removed(train_id, train)
 end

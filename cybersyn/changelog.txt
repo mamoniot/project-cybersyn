@@ -11,6 +11,7 @@ Date: 2022-12-23
     - Nonempty trains in depot are no longer put in manual mode, instead they are forced to park at the depot
     - Made several alerts persistent
     - Fixed bug with depot priority not working
+    - Fixed a memory leak relating to train layouts
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.7
 Date: 2022-12-17
