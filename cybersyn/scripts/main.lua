@@ -695,7 +695,6 @@ local function setup_se_compat()
 		if not train then return end
 		--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; our events have either been set up to account for this or should be impossible to trigger until teleportation is finished
 		train.se_is_being_teleported = true
-		map_data.se_tele_old_id[train_unique_identifier] = old_id
 		interface_raise_train_teleport_started(old_id)
 	end)
 	---@param event {}
@@ -711,8 +710,7 @@ local function setup_se_compat()
 
 		--NOTE: event.old_train_id_1 from this event is useless, it's for one of the many transient trains SE spawns while teleporting the old train, only se_on_train_teleport_started_event returns the correct old train id
 		--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
-		local old_id = map_data.se_tele_old_id[train_unique_identifier]
-		map_data.se_tele_old_id[train_unique_identifier] = nil
+		local old_id = event.old_train_id_1
 		local train = map_data.trains[old_id]
 		if not train then return end
 

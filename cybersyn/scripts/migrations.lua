@@ -121,6 +121,7 @@ local migrations_table = {
 		map_data.tick_data = {}
 
 		map_data.each_refuelers = {}
+		map_data.se_tele_old_id = nil
 
 		for k, comb in pairs(map_data.to_comb) do
 			local control = get_comb_control(comb)

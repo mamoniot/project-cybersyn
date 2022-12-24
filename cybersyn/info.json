@@ -8,7 +8,7 @@
     "dependencies": [
         "base",
         "flib >= 0.6.0",
-        "? space-exploration >= 0.6.90",
+        "? space-exploration >= 0.6.94",
         "? miniloader",
         "? nullius",
         "? pypostprocessing"

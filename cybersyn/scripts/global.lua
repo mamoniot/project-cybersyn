@@ -21,7 +21,6 @@
 ---@field public economy Economy
 ---@field public each_refuelers {[uint]: true}
 ---@field public active_alerts {[uint]: {[1]: LuaTrain, [2]: int}}?
----@field public se_tele_old_id {[string]: uint}
 
 ---@class Station
 ---@field public entity_stop LuaEntity
@@ -150,9 +149,6 @@ function init_global()
 	global.each_refuelers = {}
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
-	if IS_SE_PRESENT then
-		global.se_tele_old_id = {}
-	end
 end
 
 ---@param v string
