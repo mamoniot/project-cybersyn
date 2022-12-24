@@ -181,37 +181,39 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 		if (is_p_on_t or p_surface_i == other_surface_i) and (is_r_on_t or r_surface_i == other_surface_i) and (is_d_on_t or d_surface_i == other_surface_i) then
 			local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})--[[@as {}]]
 			local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = other_surface_i})--[[@as {}]]
-			local is_train_in_orbit = other_zone.orbit_index == t_zone.index
-			if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
-				local elevator_name = se_get_space_elevator_name(t_surface)
-				if elevator_name then
-					local records = {create_inactivity_order(depot_name)}
-					if t_surface_i == p_surface_i then
-						records[#records + 1] = create_direct_to_station_order(p_stop)
-					else
-						records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
-						is_train_in_orbit = not is_train_in_orbit
-					end
-					records[#records + 1] = create_loading_order(p_stop, manifest)
+			if t_zone and other_zone then
+				local is_train_in_orbit = other_zone.orbit_index == t_zone.index
+				if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
+					local elevator_name = se_get_space_elevator_name(t_surface)
+					if elevator_name then
+						local records = {create_inactivity_order(depot_name)}
+						if t_surface_i == p_surface_i then
+							records[#records + 1] = create_direct_to_station_order(p_stop)
+						else
+							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
+							is_train_in_orbit = not is_train_in_orbit
+						end
+						records[#records + 1] = create_loading_order(p_stop, manifest)
 
-					if p_surface_i ~= r_surface_i then
-						records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
-						is_train_in_orbit = not is_train_in_orbit
-					elseif t_surface_i == r_surface_i then
-						records[#records + 1] = create_direct_to_station_order(r_stop)
-					end
-					records[#records + 1] = create_unloading_order(r_stop)
-					if r_surface_i ~= d_surface_i then
-						records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
-						is_train_in_orbit = not is_train_in_orbit
-					end
+						if p_surface_i ~= r_surface_i then
+							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
+							is_train_in_orbit = not is_train_in_orbit
+						elseif t_surface_i == r_surface_i then
+							records[#records + 1] = create_direct_to_station_order(r_stop)
+						end
+						records[#records + 1] = create_unloading_order(r_stop)
+						if r_surface_i ~= d_surface_i then
+							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
+							is_train_in_orbit = not is_train_in_orbit
+						end
 
-					train.schedule = {current = start_at_depot and 1 or 2--[[@as uint]], records = records}
-					if old_schedule and not train.has_path then
-						train.schedule = old_schedule
-						return false
-					else
-						return true
+						train.schedule = {current = start_at_depot and 1 or 2--[[@as uint]], records = records}
+						if old_schedule and not train.has_path then
+							train.schedule = old_schedule
+							return false
+						else
+							return true
+						end
 					end
 				end
 			end
