@@ -12,6 +12,7 @@ major:
 minor:
 	handle if signals are removed from the game during migration
 	railloader compat
+	deadlocks signals compat
 	close gui when the combinator is destroyed
 	do not play close sound when a different gui is opened
 	gui can desync if settings are changed outside of it while it is open
