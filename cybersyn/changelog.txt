@@ -13,6 +13,7 @@ Date: 2022-12-23
     - Added the ability to specify per-station whether request thresholds represent total items or total stacks
     - Added more detailed missing train alerts
   Changes:
+    - The internal blueprint storage for cybernetic combinators was changed for the sake of future-proofing it for adding more combinator settings to the mod, this unfortunately breaks some existing blueprints
     - Prioritized a train's distance from the provide station over the train's cargo capacity
     - Nonempty trains in depot are no longer put in manual mode, instead they are forced to park at the depot
     - Made several alerts persistent
