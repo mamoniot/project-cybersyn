@@ -93,8 +93,11 @@ function remove_train(map_data, train_id, train)
 	if count <= 1 then
 		global.layout_train_count[layout_id] = nil
 		global.layouts[layout_id] = nil
-		for _, station in pairs(global.stations) do
-			station.accepted_layouts[layout_id] = nil
+		for _, stop in pairs(global.stations) do
+			stop.accepted_layouts[layout_id] = nil
+		end
+		for _, stop in pairs(global.refuelers) do
+			stop.accepted_layouts[layout_id] = nil
 		end
 	else
 		global.layout_train_count[layout_id] = count - 1
@@ -147,9 +150,14 @@ function set_train_layout(map_data, train)
 
 		map_data.layouts[layout_id] = layout
 		map_data.layout_train_count[layout_id] = 1
-		for _, station in pairs(map_data.stations) do
-			if station.layout_pattern then
-				station.accepted_layouts[layout_id] = is_layout_accepted(station.layout_pattern, layout) or nil
+		for _, stop in pairs(map_data.stations) do
+			if stop.layout_pattern then
+				stop.accepted_layouts[layout_id] = is_layout_accepted(stop.layout_pattern, layout) or nil
+			end
+		end
+		for _, stop in pairs(map_data.refuelers) do
+			if stop.layout_pattern then
+				stop.accepted_layouts[layout_id] = is_refuel_layout_accepted(stop.layout_pattern, layout) or nil
 			end
 		end
 	else

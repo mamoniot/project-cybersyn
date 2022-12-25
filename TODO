@@ -6,6 +6,8 @@ major:
 	add in game guide
 	move to an event based algorithm
 	models & art
+	train always returns to same depot setting
+	make train inactivity condition a setting
 
 minor:
 	handle if signals are removed from the game during migration
@@ -14,3 +16,4 @@ minor:
 	do not play close sound when a different gui is opened
 	gui can desync if settings are changed outside of it while it is open
 	give the combinators a sensible reaction to low or no power
+	picker dollies compat?

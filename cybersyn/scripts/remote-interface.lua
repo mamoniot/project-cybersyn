@@ -198,8 +198,11 @@ function interface.update_train_layout(train_id)
 	if count <= 1 then
 		global.layout_train_count[old_layout_id] = nil
 		global.layouts[old_layout_id] = nil
-		for station_id, station in pairs(global.stations) do
-			station.accepted_layouts[old_layout_id] = nil
+		for _, stop in pairs(global.stations) do
+			stop.accepted_layouts[old_layout_id] = nil
+		end
+		for _, stop in pairs(global.refuelers) do
+			stop.accepted_layouts[old_layout_id] = nil
 		end
 	else
 		global.layout_train_count[old_layout_id] = count - 1
