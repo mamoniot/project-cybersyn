@@ -1,15 +1,23 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.1
+Date: 2022-12-24
+  Bugfixes:
+    - Fixed an bug where sometimes refuelers would reject trains they should accept
+---------------------------------------------------------------------------------------------------
 Version: 1.2.0
 Date: 2022-12-23
-  Changes:
+  Features:
     - Forced provide stations to wait until they can service the highest priority request station
     - Provide stations now override request thresholds with the per-item thresholds set by their station control combinator
     - Allowed station and fuel combinators to be set to network id "each", for each virtual signal they recieve as input, the stop is added to that network and its signal strength is used as the network mask
     - Added the ability to specify per-station whether request thresholds represent total items or total stacks
-    - Prioritized a train's distance from the provide station over the train's cargo capacity
     - Added more detailed missing train alerts
+  Changes:
+    - The internal blueprint storage for cybernetic combinators was changed for the sake of future-proofing it for adding more combinator settings to the mod, this unfortunately breaks some existing blueprints
+    - Prioritized a train's distance from the provide station over the train's cargo capacity
     - Nonempty trains in depot are no longer put in manual mode, instead they are forced to park at the depot
     - Made several alerts persistent
+  Bugfixes:
     - Fixed bug with depot priority not working
     - Fixed a memory leak relating to train layouts
     - Fixed a rare crash when building stations
@@ -18,12 +26,12 @@ Date: 2022-12-23
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.7
 Date: 2022-12-17
-  Changes:
+  Bugfixes:
     - Fixed false positives in copy-paste by blueprint detection logic
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.6
 Date: 2022-12-16
-  Changes:
+  Bugfixes:
     - Fixed a crash relating to per-item request thresholds
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.5
@@ -40,7 +48,7 @@ Date: 2022-12-9
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.3
 Date: 2022-12-8
-  Changes:
+  Bugfixes:
     - Fixed a crash when removing a fuel loader
     - Fixed a gui bug
     - Fixed a crash on newly generated worlds
@@ -48,12 +56,14 @@ Date: 2022-12-8
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.0
 Date: 2022-12-8
-  Changes:
-    - Added the ability to use the priority signal as input to station control combinators so one can override priority on items with station control combinators thresholds
+  Features:
     - Added refueler stations
+    - Added the ability to use the priority signal as input to station control combinators so one can override priority on items with station control combinators thresholds
+  Changes:
     - Slightly more permissive allow-list logic
     - Made non-backwards compatible improvements and bugfixes to the modding interface
     - Updated localization
+  Bugfixes:
     - Fixed a crash relating to wagon control combinators on request stations
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.9
