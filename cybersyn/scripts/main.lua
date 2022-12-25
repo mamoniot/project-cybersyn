@@ -591,14 +591,6 @@ local function on_built(event)
 		update_stop_from_pump(global, entity)
 	elseif entity.type == "straight-rail" then
 		update_stop_from_rail(global, entity)
-	elseif entity.type == "arithmetic-combinator" then
-		local control = get_comb_control(entity)
-		local params = control.parameters
-		params.first_constant = 12345
-		params.second_constant = 67890
-		params.first_signal = NETWORK_SIGNAL_DEFAULT
-		params.second_signal = {name = NETWORK_EACH, type = "virtual"}
-		control.parameters = params
 	end
 end
 local function on_broken(event)
@@ -796,7 +788,6 @@ local filter_built = {
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
-	{filter = "type", type = "arithmetic-combinator"},
 }
 local filter_broken = {
 	{filter = "name", name = "train-stop"},
