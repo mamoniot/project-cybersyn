@@ -15,6 +15,7 @@ Date: 2022-12-26
   Bugfixes:
     - Fixed a crash caused by changing a station combinator to the "each" network during a bad tick
     - Multiple rare bugs and crashes relating to wagon control combinators are fixed
+    - Fixed bug with refueler direct orders not being applied after moving through a space elevator
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.1
 Date: 2022-12-24
