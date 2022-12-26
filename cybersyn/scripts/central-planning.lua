@@ -329,7 +329,7 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
-			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_dist
+			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_dist
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
@@ -353,6 +353,7 @@ local function tick_dispatch(map_data, mod_settings)
 			---@type uint?
 			best_p_train_id = nil
 			best_t_prior = -INF
+			best_capacity = 0
 			best_t_to_p_dist = INF
 			if trains then
 				for train_id, _ in pairs(trains) do
@@ -397,14 +398,19 @@ local function tick_dispatch(map_data, mod_settings)
 					if train.priority < best_t_prior then
 						goto train_continue
 					end
+
+					if train.priority == best_t_prior and capacity < best_capacity then
+						goto train_continue
+					end
+
 					--check if path is shortest so we prioritize locality
 					local t_to_p_dist = get_stop_dist(train.entity.front_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority
-
-					if train.priority == best_t_prior and t_to_p_dist > best_t_to_p_dist then
+					if capacity == best_capacity and t_to_p_dist > best_t_to_p_dist then
 						goto train_continue
 					end
 
 					best_p_train_id = train_id
+					best_capacity = capacity
 					best_t_prior = train.priority
 					best_t_to_p_dist = t_to_p_dist
 					::train_continue::

@@ -63,14 +63,14 @@ function create_loading_order(stop, manifest, enable_inactive)
 			cond_type = "item_count"
 		end
 
-		condition[1] = {
+		condition[#condition + 1] = {
 			type = cond_type,
 			compare_type = "and",
 			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
 		}
 	end
 	if enable_inactive then
-		condition[2] = create_loading_order_condition
+		condition[#condition + 1] = create_loading_order_condition
 	end
 	return {station = stop.backer_name, wait_conditions = condition}
 end

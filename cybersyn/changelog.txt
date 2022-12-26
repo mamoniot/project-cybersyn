@@ -10,6 +10,7 @@ Date: 2022-12-26
     - Overhauled the wagon control combinator algorithm to spread items out between cargo wagons
     - Nonempty trains held in the depot now check if they have been emptied and reset when they have
     - Nonempty trains that park at a depot now always get held
+    - Cargo capacity is now prioritized over distance when choosing trains
     - Improved English localization
   Bugfixes:
     - Fixed a crash caused by changing a station combinator to the "each" network during a bad tick
