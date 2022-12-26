@@ -155,10 +155,12 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 
 	--locked slots is only taken into account after the train is already approved for dispatch
 	local locked_slots = p_station.locked_slots
-	local total_slots_left = train.item_slot_capacity
+	local total_item_slots
 	if locked_slots > 0 then
-		local total_cw = #train.entity.cargo_wagons
-		total_slots_left = min(total_slots_left, max(total_slots_left - total_cw*locked_slots, total_cw))
+		local total_cargo_wagons = #train.entity.cargo_wagons
+		total_item_slots = max(train.item_slot_capacity - total_cargo_wagons*locked_slots, 1)
+	else
+		total_item_slots = train.item_slot_capacity
 	end
 	local total_liquid_left = train.fluid_capacity
 
@@ -174,13 +176,13 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 				total_liquid_left = 0--no liquid merging
 				keep_item = true
 			end
-		elseif total_slots_left > 0 then
+		elseif total_item_slots > 0 then
 			local stack_size = get_stack_size(map_data, item.name)
 			local slots = ceil(item.count/stack_size)
-			if slots > total_slots_left then
-				item.count = total_slots_left*stack_size
+			if slots > total_item_slots then
+				item.count = total_item_slots*stack_size
 			end
-			total_slots_left = total_slots_left - slots
+			total_item_slots = total_item_slots - slots
 			keep_item = true
 		end
 		if keep_item then

@@ -3,6 +3,8 @@ local area = require("__flib__.area")
 local abs = math.abs
 local floor = math.floor
 local ceil = math.ceil
+local min = math.min
+local max = math.max
 
 
 local function table_compare(t0, t1)
@@ -191,8 +193,29 @@ function set_p_wagon_combs(map_data, station, train)
 	if not station.wagon_combs or not next(station.wagon_combs) then return end
 	local carriages = train.entity.carriages
 	local manifest = train.manifest--[[@as Manifest]]
+	if not manifest[1] then return end
 
 	local is_reversed = get_train_direction(station.entity_stop, train.entity)
+
+	local locked_slots = station.locked_slots
+	local percent_slots_to_use_per_wagon = 1.0
+	if train.item_slot_capacity > 0 then
+		local total_item_slots
+		if locked_slots > 0 then
+			local total_cargo_wagons = #train.entity.cargo_wagons
+			total_item_slots = max(train.item_slot_capacity - total_cargo_wagons*locked_slots, 1)
+		else
+			total_item_slots = train.item_slot_capacity
+		end
+
+		local to_be_used_item_slots = 0
+		for i, item in ipairs(train.manifest) do
+			if item.type == "item" then
+				to_be_used_item_slots = to_be_used_item_slots + ceil(item.count/get_stack_size(map_data, item.name))
+			end
+		end
+		percent_slots_to_use_per_wagon = min(to_be_used_item_slots/total_item_slots, 1.0)
+	end
 
 	local item_i = 1
 	local item = manifest[item_i]
@@ -215,39 +238,29 @@ function set_p_wagon_combs(map_data, station, train)
 			end
 		end
 		if carriage.type == "cargo-wagon" and item_i <= #manifest then
-			local signals = {}
-
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
 			if inv then
+				local signals = {}
+
 				local inv_filter_i = 1
-				local item_slots_capacity = #inv - station.locked_slots
+				local item_slots_capacity = max(ceil((#inv - locked_slots)*percent_slots_to_use_per_wagon), 1)
 				while item_slots_capacity > 0 do
-					local do_inc = false
+					local do_inc
 					if item.type == "item" then
 						local stack_size = get_stack_size(map_data, item.name)
-						local item_slots = ceil(item_count/stack_size)
 						local i = #signals + 1
-						local slots_to_filter
-						if item_slots > item_slots_capacity then
-							if comb then
-								signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item_slots_capacity*stack_size}
-							end
-							item_slots_capacity = 0
-							item_count = item_count - item_slots_capacity*stack_size
-							slots_to_filter = item_slots_capacity
-						else
-							if comb then
-								signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = item_count}
-							end
-							item_slots_capacity = item_slots_capacity - item_slots
-							do_inc = true
-							slots_to_filter = item_slots
-						end
-						for j = 1, slots_to_filter do
+						local count_to_fill = min(item_slots_capacity*stack_size, item_count)
+						local slots_to_fill = ceil(count_to_fill/stack_size)
+
+						signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = count_to_fill}
+						item_count = item_count - count_to_fill
+						item_slots_capacity = item_slots_capacity - slots_to_fill
+						for j = 1, slots_to_fill do
 							inv.set_filter(inv_filter_i, item.name)
 							inv_filter_i = inv_filter_i + 1
 						end
 						train.has_filtered_wagon = true
+						do_inc = item_count == 0
 					else
 						do_inc = true
 					end
@@ -271,27 +284,18 @@ function set_p_wagon_combs(map_data, station, train)
 			local signals = {}
 
 			while fluid_capacity > 0 do
-				local do_inc = false
+				local do_inc
 				if fluid.type == "fluid" then
-					if fluid_count > fluid_capacity then
-						if comb then
-							signals[1] = {index = 1, signal = {type = fluid.type, name = fluid.name}, count = fluid_capacity}
-						end
-						fluid_capacity = 0
-						fluid_count = fluid_count - fluid_capacity
-					else
-						if comb then
-							signals[1] = {index = 1, signal = {type = fluid.type, name = fluid.name}, count = item_count}
-						end
-						fluid_capacity = fluid_capacity - fluid_count
-						fluid_i = fluid_i + 1
-						if fluid_i <= #manifest then
-							fluid = manifest[fluid_i]
-							fluid_count = fluid.count
-						end
-					end
-					break
+					local count_to_fill = min(fluid_count, fluid_capacity)
+
+					signals[1] = {index = 1, signal = {type = fluid.type, name = fluid.name}, count = count_to_fill}
+					fluid_count = fluid_count - count_to_fill
+					fluid_capacity = 0
+					do_inc = fluid_count == 0
 				else
+					do_inc = true
+				end
+				if do_inc then
 					fluid_i = fluid_i + 1
 					if fluid_i <= #manifest then
 						fluid = manifest[fluid_i]
