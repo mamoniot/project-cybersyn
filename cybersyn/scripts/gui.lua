@@ -107,11 +107,25 @@ function gui_opened(comb, player)
 					---choose-elem-button
 					{type="line", style_mods={top_padding=10}},
 					{type="label", name="network_label", style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
-					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="center"}, children={
+					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="top"}, children={
 						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, actions={
 							on_elem_changed={"choose-elem-button", comb.unit_number}
 						}},
-						{type="flow", name="first", direction="vertical", style_mods={horizontal_align="left", right_padding=6}, children={
+						{type="flow", name="depot", direction="vertical", style_mods={horizontal_align="left"}, children={
+							{type="flow", name="use_any_depot", direction="horizontal", style_mods={vertical_align="center"}, children={
+								{type="checkbox", name="use_same_depot", state=setting_flip(bits, SETTING_USE_ANY_DEPOT), tooltip={"cybersyn-gui.use-same-depot-tooltip"}, actions={
+									on_checked_state_changed={"setting-flip", comb.unit_number, SETTING_USE_ANY_DEPOT}
+								}},
+								{type="label", name="use_same_depot_label", style_mods={left_padding=3}, caption={"cybersyn-gui.use-same-depot-description"}},
+							}},
+							{type="flow", name="depot_bypass", direction="horizontal", style_mods={vertical_align="center"}, children={
+								{type="checkbox", name="depot_bypass", state=setting_flip(bits, SETTING_DISABLE_DEPOT_BYPASS), tooltip={"cybersyn-gui.depot-bypass-tooltip"}, actions={
+									on_checked_state_changed={"setting-flip", comb.unit_number, SETTING_DISABLE_DEPOT_BYPASS}
+								}},
+								{type="label", name="depot_bypass_label", style_mods={left_padding=3}, caption={"cybersyn-gui.depot-bypass-description"}},
+							}},
+						}},
+						{type="flow", name="first", direction="vertical", style_mods={horizontal_align="left", right_margin=8}, children={
 							{type="flow", name="allow_list", direction="horizontal", style_mods={vertical_align="center"}, children={
 								{type="checkbox", name="allow_list", state=setting_flip(bits, SETTING_DISABLE_ALLOW_LIST), tooltip={"cybersyn-gui.allow-list-tooltip"}, actions={
 									on_checked_state_changed={"setting-flip", comb.unit_number, SETTING_DISABLE_ALLOW_LIST}
@@ -126,24 +140,10 @@ function gui_opened(comb, player)
 							}},
 						}},
 						{type="flow", name="enable_inactive", direction="horizontal", style_mods={vertical_align="center"}, children={
-							{type="checkbox", name="enable_inactive", state=setting_flip(bits, SETTING_DISABLE_INACTIVE), tooltip={"cybersyn-gui.enable-inactive-tooltip"}, actions={
-								on_checked_state_changed={"setting-flip", comb.unit_number, SETTING_DISABLE_INACTIVE}
+							{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), tooltip={"cybersyn-gui.enable-inactive-tooltip"}, actions={
+								on_checked_state_changed={"setting", comb.unit_number, SETTING_ENABLE_INACTIVE}
 							}},
 							{type="label", name="enable_inactive_label", style_mods={left_padding=3}, caption={"cybersyn-gui.enable-inactive-description"}},
-						}},
-						{type="flow", name="depot", direction="vertical", style_mods={horizontal_align="left", right_padding=6}, children={
-							{type="flow", name="use_any_depot", direction="horizontal", style_mods={vertical_align="center"}, children={
-								{type="checkbox", name="use_same_depot", state=setting_flip(bits, SETTING_USE_ANY_DEPOT), tooltip={"cybersyn-gui.use-same-depot-tooltip"}, actions={
-									on_checked_state_changed={"setting-flip", comb.unit_number, SETTING_USE_ANY_DEPOT}
-								}},
-								{type="label", name="use_same_depot_label", style_mods={left_padding=3}, caption={"cybersyn-gui.use-same-depot-description"}},
-							}},
-							{type="flow", name="depot_bypass", direction="horizontal", style_mods={vertical_align="center"}, children={
-								{type="checkbox", name="depot_bypass", state=setting_flip(bits, SETTING_DISABLE_DEPOT_BYPASS), tooltip={"cybersyn-gui.depot-bypass-tooltip"}, actions={
-									on_checked_state_changed={"setting-flip", comb.unit_number, SETTING_DISABLE_DEPOT_BYPASS}
-								}},
-								{type="label", name="depot_bypass_label", style_mods={left_padding=3}, caption={"cybersyn-gui.depot-bypass-description"}},
-							}},
 						}},
 					}}
 				}}

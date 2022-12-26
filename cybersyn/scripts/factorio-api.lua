@@ -52,8 +52,8 @@ end
 local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
 ---@param stop LuaEntity
 ---@param manifest Manifest
----@param disable_inactivity boolean
-function create_loading_order(stop, manifest, disable_inactivity)
+---@param enable_inactive boolean
+function create_loading_order(stop, manifest, enable_inactive)
 	local condition = {}
 	for _, item in ipairs(manifest) do
 		local cond_type
@@ -69,7 +69,7 @@ function create_loading_order(stop, manifest, disable_inactivity)
 			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
 		}
 	end
-	if not disable_inactivity then
+	if enable_inactive then
 		condition[2] = create_loading_order_condition
 	end
 	return {station = stop.backer_name, wait_conditions = condition}
@@ -149,11 +149,11 @@ end
 ---@param depot_stop LuaEntity
 ---@param same_depot boolean
 ---@param p_stop LuaEntity
----@param p_disable_inactivity boolean
+---@param p_enable_inactive boolean
 ---@param r_stop LuaEntity
 ---@param manifest Manifest
 ---@param start_at_depot boolean?
-function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, p_disable_inactivity, r_stop, manifest, start_at_depot)
+function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, p_enable_inactive, r_stop, manifest, start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 	local old_schedule
 	if not start_at_depot then
@@ -173,7 +173,7 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 		local records = {
 			create_inactivity_order(depot_stop.backer_name),
 			create_direct_to_station_order(p_stop),
-			create_loading_order(p_stop, manifest, p_disable_inactivity),
+			create_loading_order(p_stop, manifest, p_enable_inactive),
 			create_direct_to_station_order(r_stop),
 			create_unloading_order(r_stop),
 		}
@@ -207,7 +207,7 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
 							is_train_in_orbit = not is_train_in_orbit
 						end
-						records[#records + 1] = create_loading_order(p_stop, manifest, p_disable_inactivity)
+						records[#records + 1] = create_loading_order(p_stop, manifest, p_enable_inactive)
 
 						if p_surface_i ~= r_surface_i then
 							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
@@ -236,7 +236,7 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 	--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
 	train.schedule = {current = 1, records = {
 		create_inactivity_order(depot_stop.backer_name),
-		create_loading_order(p_stop, manifest, p_disable_inactivity),
+		create_loading_order(p_stop, manifest, p_enable_inactive),
 		create_unloading_order(r_stop),
 	}}
 	lock_train(train)
@@ -331,12 +331,12 @@ function set_station_from_comb(station)
 	local is_pr_state = bit_extract(bits, 0, 2)
 	local allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
 	local is_stack = bit_extract(bits, SETTING_IS_STACK) > 0
-	local disable_inactive = bit_extract(bits, SETTING_DISABLE_INACTIVE) > 0
+	local enable_inactive = bit_extract(bits, SETTING_ENABLE_INACTIVE) > 0
 
 	station.network_name = signal and signal.name or nil
 	station.allows_all_trains = allows_all_trains
 	station.is_stack = is_stack
-	station.disable_inactive = disable_inactive
+	station.enable_inactive = enable_inactive
 	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
 	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
 end
