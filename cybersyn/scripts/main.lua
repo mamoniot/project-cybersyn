@@ -761,8 +761,6 @@ local function setup_se_compat()
 			train.se_awaiting_rename = nil
 		end
 
-		if not (train.status == STATUS_TO_P or train.status == STATUS_TO_R) then return end
-
 		local schedule = train_entity.schedule
 		if schedule then
 			if train.status == STATUS_TO_P then
@@ -777,11 +775,9 @@ local function setup_se_compat()
 				local stop = map_data.refuelers[train.refueler_id].entity_stop
 				se_add_direct_to_station_order(schedule, stop, old_surface_index)
 			end
-			if train.status == STATUS_TO_P or train.status == STATUS_TO_R or STATUS_TO_D then
-				if not train.use_any_depot then
-					local depot = map_data.depots[train.depot_id]
-					se_add_direct_to_station_order(schedule, depot.entity_stop, old_surface_index)
-				end
+			if not train.use_any_depot then
+				local depot = map_data.depots[train.depot_id]
+				se_add_direct_to_station_order(schedule, depot.entity_stop, old_surface_index)
 			end
 			train_entity.schedule = schedule
 		end

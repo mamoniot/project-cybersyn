@@ -153,8 +153,9 @@ local migrations_table = {
 			local params = control.parameters
 			local bits = params.second_constant or 0
 
-			params.second_constant = bit32.replace(bits, 1, SETTING_ENABLE_INACTIVE)
-			params.second_constant = bit32.replace(bits, 1, SETTING_USE_ANY_DEPOT)
+			bits = bit32.replace(bits, 1, SETTING_ENABLE_INACTIVE)--[[@as int]]
+			bits = bit32.replace(bits, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
+			params.second_constant = bits
 
 			control.parameters = params
 		end
