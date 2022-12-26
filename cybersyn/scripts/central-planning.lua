@@ -48,7 +48,7 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 		train.parked_at_depot_id = nil
 	end
 	--NOTE: we assume that the train is not being teleported at this time
-	if set_manifest_schedule(map_data, train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, r_station.entity_stop, manifest, depot_id ~= nil) then
+	if set_manifest_schedule(map_data, train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, p_station.disable_inactive, r_station.entity_stop, manifest, depot_id ~= nil) then
 		local old_status = train.status
 		train.status = STATUS_TO_P
 		train.p_station_id = p_station_id

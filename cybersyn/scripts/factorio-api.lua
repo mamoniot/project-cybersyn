@@ -47,7 +47,8 @@ end
 local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
 ---@param stop LuaEntity
 ---@param manifest Manifest
-function create_loading_order(stop, manifest)
+---@param disable_inactivity boolean
+function create_loading_order(stop, manifest, disable_inactivity)
 	local condition = {}
 	for _, item in ipairs(manifest) do
 		local cond_type
@@ -57,13 +58,15 @@ function create_loading_order(stop, manifest)
 			cond_type = "item_count"
 		end
 
-		condition[#condition + 1] = {
+		condition[1] = {
 			type = cond_type,
 			compare_type = "and",
 			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
 		}
 	end
-	condition[#condition + 1] = create_loading_order_condition
+	if not disable_inactivity then
+		condition[2] = create_loading_order_condition
+	end
 	return {station = stop.backer_name, wait_conditions = condition}
 end
 
@@ -141,10 +144,11 @@ end
 ---@param depot_name string
 ---@param d_surface_i int
 ---@param p_stop LuaEntity
+---@param p_disable_inactivity boolean
 ---@param r_stop LuaEntity
 ---@param manifest Manifest
 ---@param start_at_depot boolean?
-function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop, r_stop, manifest, start_at_depot)
+function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop, p_disable_inactivity, r_stop, manifest, start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 	local old_schedule
 	if not start_at_depot then
@@ -165,7 +169,7 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 			records = {
 				create_inactivity_order(depot_name),
 				create_direct_to_station_order(p_stop),
-				create_loading_order(p_stop, manifest),
+				create_loading_order(p_stop, manifest, p_disable_inactivity),
 				create_direct_to_station_order(r_stop),
 				create_unloading_order(r_stop),
 			}
@@ -193,7 +197,7 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
 							is_train_in_orbit = not is_train_in_orbit
 						end
-						records[#records + 1] = create_loading_order(p_stop, manifest)
+						records[#records + 1] = create_loading_order(p_stop, manifest, p_disable_inactivity)
 
 						if p_surface_i ~= r_surface_i then
 							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
@@ -222,7 +226,7 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 	--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
 	train.schedule = {current = 1, records = {
 		create_inactivity_order(depot_name),
-		create_loading_order(p_stop, manifest),
+		create_loading_order(p_stop, manifest, p_disable_inactivity),
 		create_unloading_order(r_stop),
 	}}
 	lock_train(train)
@@ -417,10 +421,12 @@ function set_station_from_comb_state(station)
 	local is_pr_state = bit_extract(bits, 0, 2)
 	local allows_all_trains = bit_extract(bits, 2) > 0
 	local is_stack = bit_extract(bits, 3) > 0
+	local disable_inactive = bit_extract(bits, 4) > 0
 
 	station.network_name = signal and signal.name or nil
 	station.allows_all_trains = allows_all_trains
 	station.is_stack = is_stack
+	station.disable_inactive = disable_inactive
 	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
 	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
 end
@@ -435,6 +441,7 @@ function get_comb_gui_settings(comb)
 	local is_pr_state = bit_extract(bits, 0, 2)
 	local allows_all_trains = bit_extract(bits, 2) > 0
 	local is_stack = bit_extract(bits, 3) > 0
+	local disable_inactive = bit_extract(bits, 4) > 0
 	if is_pr_state == 0 then
 		switch_state = "none"
 	elseif is_pr_state == 1 then
@@ -454,7 +461,7 @@ function get_comb_gui_settings(comb)
 	elseif op == MODE_WAGON then
 		selected_index = 5
 	end
-	return selected_index, params.first_signal, switch_state, not allows_all_trains, is_stack
+	return selected_index, params.first_signal, switch_state, not allows_all_trains, is_stack, not disable_inactive
 end
 ---@param comb LuaEntity
 ---@param is_pr_state 0|1|2
@@ -484,6 +491,16 @@ function set_comb_is_stack(comb, is_stack)
 	local bits = param.second_constant or 0
 
 	param.second_constant = bit_replace(bits, is_stack and 1 or 0, 3)
+	control.parameters = param
+end
+---@param comb LuaEntity
+---@param disable_inactive boolean
+function set_comb_disable_inactive(comb, disable_inactive)
+	local control = get_comb_control(comb)
+	local param = control.parameters
+	local bits = param.second_constant or 0
+
+	param.second_constant = bit_replace(bits, disable_inactive and 1 or 0, 4)
 	control.parameters = param
 end
 ---@param comb LuaEntity

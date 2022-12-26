@@ -53,7 +53,7 @@ function gui_opened(comb, player)
 	combinator_update(global, comb, true)
 
 	local rootgui = player.gui.screen
-	local selected_index, signal, switch_state, allow_list, is_stack = get_comb_gui_settings(comb)
+	local selected_index, signal, switch_state, allow_list, is_stack, enable_inactive = get_comb_gui_settings(comb)
 
 	local window = flib_gui.build(rootgui, {
 		{type="frame", direction="vertical", ref={"main_window"}, name=COMBINATOR_NAME, children={
@@ -69,8 +69,8 @@ function gui_opened(comb, player)
 				{type="flow", name="vflow", direction="vertical", style_mods={horizontal_align="left"}, children={
 					--status
 					{type="flow", style="status_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
-						{type="sprite", sprite=STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", ref={"status_icon"}, style_mods={stretch_image_to_widget_size=true}},
-						{type="label", caption={STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT}, ref={"status_label"}}
+						{type="sprite", sprite=STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", style_mods={stretch_image_to_widget_size=true}},
+						{type="label", caption={STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT}}
 					}},
 					--preview
 					{type="frame", style="deep_frame_in_shallow_frame", style_mods={minimal_width=0, horizontally_stretchable=true, padding=0}, children={
@@ -94,25 +94,31 @@ function gui_opened(comb, player)
 					}},
 					---choose-elem-button
 					{type="line", style_mods={top_padding=10}},
-					{type="label", name="network_label", ref={"network_label"}, style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
+					{type="label", name="network_label", style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
 					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="center"}, children={
-						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", ref={"network"}, elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, actions={
+						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, actions={
 							on_elem_changed={"choose-elem-button", comb.unit_number}
 						}},
 						{type="flow", name="right", direction="vertical", style_mods={horizontal_align="left"}, children={
 							{type="flow", name="allow_list", direction="horizontal", style_mods={vertical_align="center"}, children={
-								{type="checkbox", name="allow_list", ref={"allow_list"}, state=allow_list, tooltip={"cybersyn-gui.allow-list-tooltip"}, actions={
+								{type="checkbox", name="allow_list", state=allow_list, tooltip={"cybersyn-gui.allow-list-tooltip"}, actions={
 									on_checked_state_changed={"allow_list", comb.unit_number}
 								}},
-								{type="label", name="allow_list_label", style_mods={left_padding=3}, ref={"allow_list_label"}, caption={"cybersyn-gui.allow-list-description"}},
+								{type="label", name="allow_list_label", style_mods={left_padding=3}, caption={"cybersyn-gui.allow-list-description"}},
 							}},
 							{type="flow", name="is_stack", direction="horizontal", style_mods={vertical_align="center"}, children={
-								{type="checkbox", name="is_stack", ref={"is_stack"}, state=is_stack, tooltip={"cybersyn-gui.is-stack-tooltip"}, actions={
+								{type="checkbox", name="is_stack", state=is_stack, tooltip={"cybersyn-gui.is-stack-tooltip"}, actions={
 									on_checked_state_changed={"is_stack", comb.unit_number}
 								}},
-								{type="label", name="is_stack_label", style_mods={left_padding=3}, ref={"is_stack_label"}, caption={"cybersyn-gui.is-stack-description"}},
+								{type="label", name="is_stack_label", style_mods={left_padding=3}, caption={"cybersyn-gui.is-stack-description"}},
 							}},
-						}}
+						}},
+						{type="flow", name="enable_inactive", direction="horizontal", style_mods={vertical_align="center"}, children={
+							{type="checkbox", name="enable_inactive", state=enable_inactive, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, actions={
+								on_checked_state_changed={"enable_inactive", comb.unit_number}
+							}},
+							{type="label", name="enable_inactive_label", style_mods={left_padding=3}, caption={"cybersyn-gui.enable-inactive-description"}},
+						}},
 					}}
 				}}
 			}}
@@ -229,6 +235,16 @@ function register_gui_actions()
 
 				local is_stack = element.state
 				set_comb_is_stack(comb, is_stack)
+
+				combinator_update(global, comb)
+			elseif msg[1] == "enable_inactive" then
+				local element = event.element
+				if not element then return end
+				local comb = global.to_comb[msg[2]]
+				if not comb or not comb.valid then return end
+
+				local disable_inactive = not element.state
+				set_comb_disable_inactive(comb, disable_inactive)
 
 				combinator_update(global, comb)
 			elseif msg[1] == "is_pr_switch" then

@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.2
 Date: 2022-12-25
+  Features:
+    - Added combinator setting to disabled inactivity condition
   Changes:
     - Overhauled the wagon control combinator algorithm to spread items out between cargo wagons
   Bugfixes:
