@@ -7,35 +7,6 @@ local min = math.min
 local max = math.max
 
 
-local function table_compare(t0, t1)
-	if #t0 ~= #t1 then
-		return false
-	end
-	for i = 0, #t0 do
-		if t0[i] ~= t1[i] then
-			return false
-		end
-	end
-	return true
-end
-
----@param a any[]
----@param i uint
-local function iterr(a, i)
-	i = i + 1
-	if i <= #a then
-		local r = a[#a - i + 1]
-		return i, r
-	else
-		return nil, nil
-	end
-end
-
----@param a any[]
-local function irpairs(a)
-	return iterr, a, 0
-end
-
 ---@param layout_pattern (0|1|2|3)[]
 ---@param layout (0|1|2)[]
 function is_refuel_layout_accepted(layout_pattern, layout)

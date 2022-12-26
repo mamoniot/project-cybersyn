@@ -357,16 +357,28 @@ function set_train_from_comb(mod_settings, train, comb)
 	train.disable_bypass = disable_bypass
 	train.use_any_depot = use_any_depot
 
-	train.network_flag = mod_settings.network_flag
+	local is_each = train.network_name == NETWORK_EACH
+	if is_each then
+		train.network_flag = {}
+	else
+		train.network_flag = mod_settings.network_flag
+	end
 	train.priority = 0
 	local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
 	if signals then
 		for k, v in pairs(signals) do
 			local item_name = v.signal.name
+			local item_type = v.signal.type
 			local item_count = v.count
 			if item_name then
-				if item_name == SIGNAL_PRIORITY then
-					train.priority = item_count
+				if item_type == "virtual" then
+					if item_name == SIGNAL_PRIORITY then
+						train.priority = item_count
+					elseif is_each then
+						if item_name ~= REQUEST_THRESHOLD and item_name ~= LOCKED_SLOTS then
+							train.network_flag[item_name] = item_count
+						end
+					end
 				end
 				if item_name == network_name then
 					train.network_flag = item_count
@@ -390,7 +402,8 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	refueler.allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
 	refueler.priority = 0
 
-	if refueler.network_name == NETWORK_EACH then
+	local is_each = refueler.network_name == NETWORK_EACH
+	if is_each then
 		map_data.each_refuelers[id] = true
 		refueler.network_flag = {}
 	else
@@ -408,8 +421,10 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 				if item_type == "virtual" then
 					if item_name == SIGNAL_PRIORITY then
 						refueler.priority = item_count
-					elseif refueler.network_name == NETWORK_EACH then
-						refueler.network_flag[item_name] = item_count
+					elseif is_each then
+						if item_name ~= REQUEST_THRESHOLD and item_name ~= LOCKED_SLOTS then
+							refueler.network_flag[item_name] = item_count
+						end
 					end
 				end
 				if item_name == refueler.network_name then

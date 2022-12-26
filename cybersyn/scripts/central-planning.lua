@@ -337,8 +337,8 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			p_flag = p_station.network_name == NETWORK_EACH and (p_station.network_flag[network_name] or 0) or p_station.network_flag
-			r_flag = r_station.network_name == NETWORK_EACH and (r_station.network_flag[network_name] or 0) or r_station.network_flag
+			p_flag = get_network_flag(p_station, network_name)
+			r_flag = get_network_flag(r_station, network_name)
 			netand = band(p_flag, r_flag)
 			if netand == 0 then
 				goto p_continue
@@ -510,7 +510,8 @@ local function tick_poll_station(map_data, mod_settings)
 	station.priority = 0
 	station.item_priority = nil
 	station.locked_slots = 0
-	if station.network_name == NETWORK_EACH then
+	local is_each = station.network_name == NETWORK_EACH
+	if is_each then
 		station.network_flag = {}
 	else
 		station.network_flag = mod_settings.network_flag
@@ -548,12 +549,12 @@ local function tick_poll_station(map_data, mod_settings)
 				if item_type == "virtual" then
 					if item_name == SIGNAL_PRIORITY then
 						station.priority = item_count
-					elseif item_name == REQUEST_THRESHOLD and item_count ~= 0 then
+					elseif item_name == REQUEST_THRESHOLD then
 						--NOTE: thresholds must be >0 or they can cause a crash
 						station.r_threshold = abs(item_count)
 					elseif item_name == LOCKED_SLOTS then
 						station.locked_slots = max(item_count, 0)
-					elseif station.network_name == NETWORK_EACH then
+					elseif is_each then
 						station.network_flag[item_name] = item_count
 					end
 					comb1_signals[k] = nil

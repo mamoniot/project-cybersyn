@@ -313,38 +313,47 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 				return
 			end
 		else
-			local refuelers = map_data.to_refuelers[train.network_name]
-			if refuelers then
-				local best_refueler_id = nil
-				local best_dist = INF
-				local best_prior = -INF
-				for id, _ in pairs(refuelers) do
-					local refueler = map_data.refuelers[id]
-					set_refueler_from_comb(map_data, mod_settings, id)
+			local f, a
+			if train.network_name == NETWORK_EACH then
+				f, a = next, train.network_flag
+			else
+				f, a = once, train.network_name
+			end
+			for network_name in f, a do
+				local refuelers = map_data.to_refuelers[network_name]
+				if refuelers then
+					local best_refueler_id = nil
+					local best_dist = INF
+					local best_prior = -INF
+					for id, _ in pairs(refuelers) do
+						local refueler = map_data.refuelers[id]
+						set_refueler_from_comb(map_data, mod_settings, id)
 
-					local refueler_network_flag = refueler.network_name == NETWORK_EACH and (refueler.network_flag[train.network_name] or 0) or refueler.network_flag
-					if btest(train.network_flag, refueler_network_flag) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
-						local accepted = false
-						local dist = nil
-						if refueler.priority == best_prior then
-							dist = get_stop_dist(train.entity.front_stock, refueler.entity_stop)
-							accepted = dist < best_dist
-						end
-						if accepted or refueler.priority > best_prior then
-							best_refueler_id = id
-							best_dist = dist or get_stop_dist(train.entity.front_stock, refueler.entity_stop)
-							best_prior = refueler.priority
+						local refueler_network_flag = get_network_flag(refueler, network_name)
+						local train_network_flag = get_network_flag(train, network_name)
+						if btest(train_network_flag, refueler_network_flag) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
+							local accepted = false
+							local dist = nil
+							if refueler.priority == best_prior then
+								dist = get_stop_dist(train.entity.front_stock, refueler.entity_stop)
+								accepted = dist < best_dist
+							end
+							if accepted or refueler.priority > best_prior then
+								best_refueler_id = id
+								best_dist = dist or get_stop_dist(train.entity.front_stock, refueler.entity_stop)
+								best_prior = refueler.priority
+							end
 						end
 					end
-				end
-				if best_refueler_id then
-					train.status = STATUS_TO_F
-					train.refueler_id = best_refueler_id
-					local refueler = map_data.refuelers[best_refueler_id]
-					refueler.trains_total = refueler.trains_total + 1
-					add_refueler_schedule(map_data, train.entity, refueler.entity_stop)
-					interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_F)
-					return
+					if best_refueler_id then
+						train.status = STATUS_TO_F
+						train.refueler_id = best_refueler_id
+						local refueler = map_data.refuelers[best_refueler_id]
+						refueler.trains_total = refueler.trains_total + 1
+						add_refueler_schedule(map_data, train.entity, refueler.entity_stop)
+						interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_F)
+						return
+					end
 				end
 			end
 		end

@@ -1,10 +1,11 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.2
-Date: 2022-12-25
+Date: 2022-12-26
   Features:
     - Added a station combinator setting to remove the inactivity condition in a train's orders
     - Added a depot combinator setting to enable depot bypass
     - Added a depot combinator setting to force trains to park at the same depot
+    - Added network "each" for depots
   Changes:
     - Overhauled the wagon control combinator algorithm to spread items out between cargo wagons
     - Nonempty trains held in the depot now check if they have been emptied and reset when they have

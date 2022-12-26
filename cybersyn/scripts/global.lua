@@ -153,25 +153,3 @@ function init_global()
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 end
-
----@param v string
----@param h string?
-function once(v, h)
-	return not h and v or nil--[[@as string|nil]]
-end
----@param t any[]
----@return any
-function rnext_consume(t)
-	local len = #t
-	if len > 1 then
-		local i = math.random(1, len)
-		local v = t[i]
-		t[i] = t[len]
-		t[len] = nil
-		return v
-	else
-		local v = t[1]
-		t[1] = nil
-		return v
-	end
-end
