@@ -80,7 +80,11 @@ end
 ---@param train Train
 function add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
 	local comb = depot.entity_comb
-	local network_name = get_comb_network_name(comb)
+	set_train_from_comb(train, comb)
+	depot.available_train_id = train_id
+	train.depot_id = depot_id
+	train.status = STATUS_D
+	local network_name = train.network_name
 	if network_name then
 		local network = map_data.available_trains[network_name]
 		if not network then
@@ -89,31 +93,6 @@ function add_available_train_to_depot(map_data, mod_settings, train_id, train, d
 		end
 		network[train_id] = true
 		train.is_available = true
-	end
-	depot.available_train_id = train_id
-	train.status = STATUS_D
-	train.parked_at_depot_id = depot_id
-	train.depot_name = depot.entity_stop.backer_name
-	train.se_depot_surface_i = depot.entity_stop.surface.index
-	train.network_name = network_name
-	train.network_flag = mod_settings.network_flag
-	train.priority = 0
-	if network_name then
-		local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
-		if signals then
-			for k, v in pairs(signals) do
-				local item_name = v.signal.name
-				local item_count = v.count
-				if item_name then
-					if item_name == SIGNAL_PRIORITY then
-						train.priority = item_count
-					end
-					if item_name == network_name then
-						train.network_flag = item_count
-					end
-				end
-			end
-		end
 		interface_raise_train_available(train_id)
 	end
 end
@@ -121,7 +100,6 @@ end
 ---@param train_id uint
 ---@param train Train
 function remove_available_train(map_data, train_id, train)
-	---@type uint
 	if train.is_available and train.network_name then
 		local network = map_data.available_trains[train.network_name--[[@as string]]]
 		if network then
@@ -131,6 +109,13 @@ function remove_available_train(map_data, train_id, train)
 			end
 		end
 		train.is_available = nil
+	end
+	local depot = map_data.depots[train.depot_id]
+	if depot.available_train_id == train_id then
+		depot.available_train_id = nil
+		return true
+	else
+		return false
 	end
 end
 
@@ -149,8 +134,8 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 	local train = map_data.trains[train_id]
 	if train then
 		if train.status == STATUS_TO_D then
-		elseif train.status == STATUS_TO_D_BYPASS or train.status == STATUS_D then
 			--shouldn't be possible to get train.status == STATUS_D
+		elseif train.status == STATUS_TO_D_BYPASS or train.status == STATUS_D then
 			remove_available_train(map_data, train_id, train)
 		elseif mod_settings.react_to_train_early_to_depot then
 			if train.manifest then
@@ -162,8 +147,9 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		end
 		if is_train_empty then
 			local old_status = train.status
-			add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, map_data.depots[depot_id])
-			set_depot_schedule(train_entity, train.depot_name)
+			local depot = map_data.depots[depot_id]
+			add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
+			set_depot_schedule(train_entity, depot.entity_stop.backer_name)
 			interface_raise_train_status_changed(train_id, old_status, STATUS_D)
 		else
 			--train still has cargo
@@ -188,17 +174,17 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			last_manifest_tick = map_data.total_ticks,
 			has_filtered_wagon = nil,
 			--is_available = add_available_train_to_depot,
-			--parked_at_depot_id = add_available_train_to_depot,
 			--depot_name = add_available_train_to_depot,
 			--network_name = add_available_train_to_depot,
 			--network_flag = add_available_train_to_depot,
 			--priority = add_available_train_to_depot,
-		}
+		}--[[@as Train]]
 		set_train_layout(map_data, train)
 		map_data.trains[train_id] = train
-		add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, map_data.depots[depot_id])
+		local depot = map_data.depots[depot_id]
+		add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
 
-		set_depot_schedule(train_entity, train.depot_name)
+		set_depot_schedule(train_entity, depot.entity_stop.backer_name)
 		interface_raise_train_created(train_id, depot_id)
 	else
 		if mod_settings.react_to_nonempty_train_in_depot then
@@ -316,7 +302,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		end
 		if fuel_fill > mod_settings.fuel_threshold then
 			--if fuel_fill == INF, it's probably a modded electric train
-			if mod_settings.depot_bypass_enabled then
+			if not train.disable_bypass then
 				train.status = STATUS_TO_D_BYPASS
 				add_available_train(map_data, train_id, train)
 				interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_D_BYPASS)
@@ -367,7 +353,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		refueler.trains_total = refueler.trains_total - 1
 		unset_wagon_combs(map_data, refueler)
 		set_combinator_output(map_data, refueler.entity_comb, nil)
-		if mod_settings.depot_bypass_enabled then
+		if not train.disable_bypass then
 			train.status = STATUS_TO_D_BYPASS
 			add_available_train(map_data, train_id, train)
 		else

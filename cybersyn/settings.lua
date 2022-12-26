@@ -18,15 +18,6 @@ data:extend({
 		minimum_value = 1,
 		maximum_value = 2147483647,
 	},
-	--{
-	--	type = "int-setting",
-	--	name = "cybersyn-wait-time",
-	--	order = "ab",
-	--	setting_type = "runtime-global",
-	--	default_value = 2000,
-	--	minimum_value = 1,
-	--	maximum_value = 2147483647,
-	--},
 	{
 		type = "double-setting",
 		name = "cybersyn-request-threshold",
@@ -53,13 +44,6 @@ data:extend({
 		default_value = .5,
 		minimum_value = 0,
 		maximum_value = 1,
-	},
-	{
-		type = "bool-setting",
-		name = "cybersyn-depot-bypass-enabled",
-		order = "af",
-		setting_type = "runtime-global",
-		default_value = true,
 	},
 	{
 		type = "double-setting",

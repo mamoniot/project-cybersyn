@@ -141,14 +141,14 @@ function se_create_elevator_order(elevator_name, is_train_in_orbit)
 end
 ---@param map_data MapData
 ---@param train LuaTrain
----@param depot_name string
----@param d_surface_i int
+---@param depot_stop LuaEntity
+---@param same_depot boolean
 ---@param p_stop LuaEntity
 ---@param p_disable_inactivity boolean
 ---@param r_stop LuaEntity
 ---@param manifest Manifest
 ---@param start_at_depot boolean?
-function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop, p_disable_inactivity, r_stop, manifest, start_at_depot)
+function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, p_disable_inactivity, r_stop, manifest, start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 	local old_schedule
 	if not start_at_depot then
@@ -157,6 +157,7 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 	local t_surface = train.front_stock.surface
 	local p_surface = p_stop.surface
 	local r_surface = r_stop.surface
+	local d_surface_i = depot_stop.surface.index
 	local t_surface_i = t_surface.index
 	local p_surface_i = p_surface.index
 	local r_surface_i = r_surface.index
@@ -164,15 +165,19 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 	local is_r_on_t = t_surface_i == r_surface_i
 	local is_d_on_t = t_surface_i == d_surface_i
 	if is_p_on_t and is_r_on_t and is_d_on_t then
+		local records = {
+			create_inactivity_order(depot_stop.backer_name),
+			create_direct_to_station_order(p_stop),
+			create_loading_order(p_stop, manifest, p_disable_inactivity),
+			create_direct_to_station_order(r_stop),
+			create_unloading_order(r_stop),
+		}
+		if same_depot then
+			records[6] = create_direct_to_station_order(depot_stop)
+		end
 		train.schedule = {
 			current = start_at_depot and 1 or 2--[[@as uint]],
-			records = {
-				create_inactivity_order(depot_name),
-				create_direct_to_station_order(p_stop),
-				create_loading_order(p_stop, manifest, p_disable_inactivity),
-				create_direct_to_station_order(r_stop),
-				create_unloading_order(r_stop),
-			}
+			records = records
 		}
 		if old_schedule and not train.has_path then
 			train.schedule = old_schedule
@@ -190,7 +195,7 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 				if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
 					local elevator_name = se_get_space_elevator_name(t_surface)
 					if elevator_name then
-						local records = {create_inactivity_order(depot_name)}
+						local records = {create_inactivity_order(depot_stop.backer_name)}
 						if t_surface_i == p_surface_i then
 							records[#records + 1] = create_direct_to_station_order(p_stop)
 						else
@@ -225,7 +230,7 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 	end
 	--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
 	train.schedule = {current = 1, records = {
-		create_inactivity_order(depot_name),
+		create_inactivity_order(depot_stop.backer_name),
 		create_loading_order(p_stop, manifest, p_disable_inactivity),
 		create_unloading_order(r_stop),
 	}}
@@ -310,6 +315,60 @@ function get_comb_network_name(comb)
 
 	return signal and signal.name or nil
 end
+
+---@param station Station
+function set_station_from_comb_state(station)
+	--NOTE: this does nothing to update currently active deliveries
+	local params = get_comb_params(station.entity_comb1)
+	local signal = params.first_signal
+
+	local bits = params.second_constant or 0
+	local is_pr_state = bit_extract(bits, 0, 2)
+	local allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
+	local is_stack = bit_extract(bits, SETTING_IS_STACK) > 0
+	local disable_inactive = bit_extract(bits, SETTING_DISABLE_INACTIVE) > 0
+
+	station.network_name = signal and signal.name or nil
+	station.allows_all_trains = allows_all_trains
+	station.is_stack = is_stack
+	station.disable_inactive = disable_inactive
+	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
+	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
+end
+---@param train Train
+---@param comb LuaEntity
+function set_train_from_comb(train, comb)
+	--NOTE: this does nothing to update currently active deliveries
+	local params = get_comb_params(comb)
+	local signal = params.first_signal
+	local network_name = signal and signal.name or nil
+
+	local bits = params.second_constant or 0
+	local disable_bypass = bit_extract(bits, SETTING_DISABLE_DEPOT_BYPASS) > 0
+	local use_any_depot = bit_extract(bits, SETTING_USE_ANY_DEPOT) > 0
+
+	train.network_name = network_name
+	train.disable_bypass = disable_bypass
+	train.use_any_depot = use_any_depot
+
+	train.network_flag = mod_settings.network_flag
+	train.priority = 0
+	local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
+	if signals then
+		for k, v in pairs(signals) do
+			local item_name = v.signal.name
+			local item_count = v.count
+			if item_name then
+				if item_name == SIGNAL_PRIORITY then
+					train.priority = item_count
+				end
+				if item_name == network_name then
+					train.network_flag = item_count
+				end
+			end
+		end
+	end
+end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 ---@param id uint
@@ -322,7 +381,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	local old_network = refueler.network_name
 
 	refueler.network_name = signal and signal.name or nil
-	refueler.allows_all_trains = bit_extract(bits, 2) > 0
+	refueler.allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
 	refueler.priority = 0
 
 	if refueler.network_name == NETWORK_EACH then
@@ -410,26 +469,6 @@ function update_display(map_data, station)
 	end
 end
 
-
----@param station Station
-function set_station_from_comb_state(station)
-	--NOTE: this does nothing to update currently active deliveries
-	local params = get_comb_params(station.entity_comb1)
-	local signal = params.first_signal
-
-	local bits = params.second_constant or 0
-	local is_pr_state = bit_extract(bits, 0, 2)
-	local allows_all_trains = bit_extract(bits, 2) > 0
-	local is_stack = bit_extract(bits, 3) > 0
-	local disable_inactive = bit_extract(bits, 4) > 0
-
-	station.network_name = signal and signal.name or nil
-	station.allows_all_trains = allows_all_trains
-	station.is_stack = is_stack
-	station.disable_inactive = disable_inactive
-	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
-	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
-end
 ---@param comb LuaEntity
 function get_comb_gui_settings(comb)
 	local params = get_comb_params(comb)
@@ -439,9 +478,6 @@ function get_comb_gui_settings(comb)
 	local switch_state = "none"
 	local bits = params.second_constant or 0
 	local is_pr_state = bit_extract(bits, 0, 2)
-	local allows_all_trains = bit_extract(bits, 2) > 0
-	local is_stack = bit_extract(bits, 3) > 0
-	local disable_inactive = bit_extract(bits, 4) > 0
 	if is_pr_state == 0 then
 		switch_state = "none"
 	elseif is_pr_state == 1 then
@@ -461,7 +497,7 @@ function get_comb_gui_settings(comb)
 	elseif op == MODE_WAGON then
 		selected_index = 5
 	end
-	return selected_index, params.first_signal, switch_state, not allows_all_trains, is_stack, not disable_inactive
+	return selected_index, params.first_signal, switch_state, bits
 end
 ---@param comb LuaEntity
 ---@param is_pr_state 0|1|2
@@ -474,33 +510,14 @@ function set_comb_is_pr_state(comb, is_pr_state)
 	control.parameters = param
 end
 ---@param comb LuaEntity
----@param allows_all_trains boolean
-function set_comb_allows_all_trains(comb, allows_all_trains)
+---@param n int
+---@param bit boolean
+function set_comb_setting(comb, n, bit)
 	local control = get_comb_control(comb)
 	local param = control.parameters
 	local bits = param.second_constant or 0
 
-	param.second_constant = bit_replace(bits, allows_all_trains and 1 or 0, 2)
-	control.parameters = param
-end
----@param comb LuaEntity
----@param is_stack boolean
-function set_comb_is_stack(comb, is_stack)
-	local control = get_comb_control(comb)
-	local param = control.parameters
-	local bits = param.second_constant or 0
-
-	param.second_constant = bit_replace(bits, is_stack and 1 or 0, 3)
-	control.parameters = param
-end
----@param comb LuaEntity
----@param disable_inactive boolean
-function set_comb_disable_inactive(comb, disable_inactive)
-	local control = get_comb_control(comb)
-	local param = control.parameters
-	local bits = param.second_constant or 0
-
-	param.second_constant = bit_replace(bits, disable_inactive and 1 or 0, 4)
+	param.second_constant = bit_replace(bits, bit and 1 or 0, n)
 	control.parameters = param
 end
 ---@param comb LuaEntity

@@ -26,25 +26,37 @@ STATUS_NAMES[defines.entity_status.disabled_by_script] = "entity-status.disabled
 STATUS_NAMES[defines.entity_status.marked_for_deconstruction] = "entity-status.marked-for-deconstruction"
 STATUS_NAMES_DEFAULT = "entity-status.disabled"
 
+
+local bit_extract = bit32.extract
+local function setting(bits, n)
+	return bit_extract(bits, n) > 0
+end
+local function setting_flip(bits, n)
+	return bit_extract(bits, n) == 0
+end
+
+
 ---@param main_window LuaGuiElement
 ---@param selected_index int
 local function set_visibility(main_window, selected_index)
-	local uses_network = selected_index == 1 or selected_index == 2 or selected_index == 3
-	local uses_allow_list = selected_index == 1 or selected_index == 3
 	local is_station = selected_index == 1
+	local is_depot = selected_index == 2
+	local uses_network = is_station or is_depot or selected_index == 3
+	local uses_allow_list = is_station or selected_index == 3
 
 	local vflow = main_window.frame.vflow--[[@as LuaGuiElement]]
 	local top_flow = vflow.top--[[@as LuaGuiElement]]
 	local bottom_flow = vflow.bottom--[[@as LuaGuiElement]]
-	local right_flow = bottom_flow.right--[[@as LuaGuiElement]]
+	local first_settings = bottom_flow.first--[[@as LuaGuiElement]]
+	local depot_settings = bottom_flow.depot--[[@as LuaGuiElement]]
 
 	top_flow.is_pr_switch.visible = is_station
 	vflow.network_label.visible = uses_network
 	bottom_flow.network.visible = uses_network
-	right_flow.allow_list.visible = uses_allow_list
-	--right_flow.allow_list_label.visible = uses_allow_list
-	right_flow.is_stack.visible = is_station
-	--right_flow.is_stack_label.visible = is_station
+	first_settings.allow_list.visible = uses_allow_list
+	first_settings.is_stack.visible = is_station
+	bottom_flow.enable_inactive.visible = is_station
+	depot_settings.visible = is_depot
 end
 
 ---@param comb LuaEntity
@@ -53,7 +65,7 @@ function gui_opened(comb, player)
 	combinator_update(global, comb, true)
 
 	local rootgui = player.gui.screen
-	local selected_index, signal, switch_state, allow_list, is_stack, enable_inactive = get_comb_gui_settings(comb)
+	local selected_index, signal, switch_state, bits = get_comb_gui_settings(comb)
 
 	local window = flib_gui.build(rootgui, {
 		{type="frame", direction="vertical", ref={"main_window"}, name=COMBINATOR_NAME, children={
@@ -99,25 +111,39 @@ function gui_opened(comb, player)
 						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, actions={
 							on_elem_changed={"choose-elem-button", comb.unit_number}
 						}},
-						{type="flow", name="right", direction="vertical", style_mods={horizontal_align="left"}, children={
+						{type="flow", name="first", direction="vertical", style_mods={horizontal_align="left", right_padding=6}, children={
 							{type="flow", name="allow_list", direction="horizontal", style_mods={vertical_align="center"}, children={
-								{type="checkbox", name="allow_list", state=allow_list, tooltip={"cybersyn-gui.allow-list-tooltip"}, actions={
-									on_checked_state_changed={"allow_list", comb.unit_number}
+								{type="checkbox", name="allow_list", state=setting_flip(bits, SETTING_DISABLE_ALLOW_LIST), tooltip={"cybersyn-gui.allow-list-tooltip"}, actions={
+									on_checked_state_changed={"setting-flip", comb.unit_number, SETTING_DISABLE_ALLOW_LIST}
 								}},
 								{type="label", name="allow_list_label", style_mods={left_padding=3}, caption={"cybersyn-gui.allow-list-description"}},
 							}},
 							{type="flow", name="is_stack", direction="horizontal", style_mods={vertical_align="center"}, children={
-								{type="checkbox", name="is_stack", state=is_stack, tooltip={"cybersyn-gui.is-stack-tooltip"}, actions={
-									on_checked_state_changed={"is_stack", comb.unit_number}
+								{type="checkbox", name="is_stack", state=setting(bits, SETTING_IS_STACK), tooltip={"cybersyn-gui.is-stack-tooltip"}, actions={
+									on_checked_state_changed={"setting", comb.unit_number, SETTING_IS_STACK}
 								}},
 								{type="label", name="is_stack_label", style_mods={left_padding=3}, caption={"cybersyn-gui.is-stack-description"}},
 							}},
 						}},
 						{type="flow", name="enable_inactive", direction="horizontal", style_mods={vertical_align="center"}, children={
-							{type="checkbox", name="enable_inactive", state=enable_inactive, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, actions={
-								on_checked_state_changed={"enable_inactive", comb.unit_number}
+							{type="checkbox", name="enable_inactive", state=setting_flip(bits, SETTING_DISABLE_INACTIVE), tooltip={"cybersyn-gui.enable-inactive-tooltip"}, actions={
+								on_checked_state_changed={"setting-flip", comb.unit_number, SETTING_DISABLE_INACTIVE}
 							}},
 							{type="label", name="enable_inactive_label", style_mods={left_padding=3}, caption={"cybersyn-gui.enable-inactive-description"}},
+						}},
+						{type="flow", name="depot", direction="vertical", style_mods={horizontal_align="left", right_padding=6}, children={
+							{type="flow", name="use_any_depot", direction="horizontal", style_mods={vertical_align="center"}, children={
+								{type="checkbox", name="use_same_depot", state=setting_flip(bits, SETTING_USE_ANY_DEPOT), tooltip={"cybersyn-gui.use-same-depot-tooltip"}, actions={
+									on_checked_state_changed={"setting-flip", comb.unit_number, SETTING_USE_ANY_DEPOT}
+								}},
+								{type="label", name="use_same_depot_label", style_mods={left_padding=3}, caption={"cybersyn-gui.use-same-depot-description"}},
+							}},
+							{type="flow", name="depot_bypass", direction="horizontal", style_mods={vertical_align="center"}, children={
+								{type="checkbox", name="depot_bypass", state=setting_flip(bits, SETTING_DISABLE_DEPOT_BYPASS), tooltip={"cybersyn-gui.depot-bypass-tooltip"}, actions={
+									on_checked_state_changed={"setting-flip", comb.unit_number, SETTING_DISABLE_DEPOT_BYPASS}
+								}},
+								{type="label", name="depot_bypass_label", style_mods={left_padding=3}, caption={"cybersyn-gui.depot-bypass-description"}},
+							}},
 						}},
 					}}
 				}}
@@ -217,34 +243,22 @@ function register_gui_actions()
 				set_comb_network_name(comb, signal)
 
 				combinator_update(global, comb)
-			elseif msg[1] == "allow_list" then
+			elseif msg[1] == "setting" then
 				local element = event.element
 				if not element then return end
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
-				local allows_all_trains = not element.state
-				set_comb_allows_all_trains(comb, allows_all_trains)
+				set_comb_setting(comb, msg[3], element.state)
 
 				combinator_update(global, comb)
-			elseif msg[1] == "is_stack" then
+			elseif msg[1] == "setting-flip" then
 				local element = event.element
 				if not element then return end
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
-				local is_stack = element.state
-				set_comb_is_stack(comb, is_stack)
-
-				combinator_update(global, comb)
-			elseif msg[1] == "enable_inactive" then
-				local element = event.element
-				if not element then return end
-				local comb = global.to_comb[msg[2]]
-				if not comb or not comb.valid then return end
-
-				local disable_inactive = not element.state
-				set_comb_disable_inactive(comb, disable_inactive)
+				set_comb_setting(comb, msg[3], not element.state)
 
 				combinator_update(global, comb)
 			elseif msg[1] == "is_pr_switch" then

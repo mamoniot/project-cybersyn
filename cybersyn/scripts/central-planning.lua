@@ -40,15 +40,13 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
 	local train = map_data.trains[train_id]
+	local depot = map_data.depots[train.depot_id]
 
-	remove_available_train(map_data, train_id, train)
-	local depot_id = train.parked_at_depot_id
-	if depot_id then
-		map_data.depots[depot_id].available_train_id = nil
-		train.parked_at_depot_id = nil
-	end
+	local is_at_depot = remove_available_train(map_data, train_id, train)
+
 	--NOTE: we assume that the train is not being teleported at this time
-	if set_manifest_schedule(map_data, train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, p_station.disable_inactive, r_station.entity_stop, manifest, depot_id ~= nil) then
+	--NOTE: set_manifest_schedule is allowed to cancel the delivery at the last second if applying the schedule to the train makes it lost
+	if set_manifest_schedule(map_data, train.entity, depot.entity_stop, not train.use_any_depot, p_station.entity_stop, p_station.disable_inactive, r_station.entity_stop, manifest, is_at_depot) then
 		local old_status = train.status
 		train.status = STATUS_TO_P
 		train.p_station_id = p_station_id

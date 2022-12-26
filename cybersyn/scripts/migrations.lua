@@ -135,6 +135,12 @@ local migrations_table = {
 			end
 		end
 	end,
+	["1.2.2"] = function()
+		---@type MapData
+		local map_data = global
+
+
+	end
 }
 --STATUS_R_TO_D = 5
 

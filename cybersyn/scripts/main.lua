@@ -553,13 +553,6 @@ local function on_stop_rename(map_data, stop, old_name)
 				end
 			end
 		end
-	else
-		local depot = map_data.depots[station_id]
-		if depot and depot.available_train_id then
-			local train = map_data.trains[depot.available_train_id--[[@as uint]]]
-			train.depot_name = stop.backer_name
-			--train.se_depot_surface_i = stop.surface.index
-		end
 	end
 end
 
@@ -659,7 +652,6 @@ local function on_settings_changed(event)
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
 	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
-	mod_settings.depot_bypass_enabled = settings.global["cybersyn-depot-bypass-enabled"].value--[[@as boolean]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	if event.setting == "cybersyn-ticks-per-second" then
@@ -675,6 +667,22 @@ local function on_settings_changed(event)
 	interface_raise_on_mod_settings_changed(event)
 end
 
+---@param schedule TrainSchedule
+---@param stop LuaEntity
+---@param old_surface_index uint
+local function se_add_direct_to_station_order(schedule, stop, old_surface_index)
+	local surface_i = stop.surface.index
+	if surface_i ~= old_surface_index then
+		local name = stop.backer_name
+		local records = schedule.records
+		for i = schedule.current, #records do
+			if records[i].station == name then
+				table_insert(records, i, create_direct_to_station_order(stop))
+				break
+			end
+		end
+	end
+end
 local function setup_se_compat()
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if not IS_SE_PRESENT then return end
@@ -687,9 +695,6 @@ local function setup_se_compat()
 		---@type MapData
 		local map_data = global
 		local old_id = event.old_train_id_1
-		--NOTE: this is not guaranteed to be unique, it should be fine since the window of time for another train to mistakenly steal this train's event data is miniscule
-		--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
-		local train_unique_identifier = event.train.front_stock.backer_name
 
 		local train = map_data.trains[old_id]
 		if not train then return end
@@ -706,10 +711,7 @@ local function setup_se_compat()
 		---@type uint
 		local new_id = train_entity.id
 		local old_surface_index = event.old_surface_index
-		local train_unique_identifier = event.train.front_stock.backer_name
 
-		--NOTE: event.old_train_id_1 from this event is useless, it's for one of the many transient trains SE spawns while teleporting the old train, only se_on_train_teleport_started_event returns the correct old train id
-		--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
 		local old_id = event.old_train_id_1
 		local train = map_data.trains[old_id]
 		if not train then return end
@@ -741,41 +743,25 @@ local function setup_se_compat()
 
 		local schedule = train_entity.schedule
 		if schedule then
-			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
-				local p_station = map_data.stations[train.p_station_id]
-				local p_name = p_station.entity_stop.backer_name
-				local p_surface_i = p_station.entity_stop.surface.index
-				local r_station = map_data.stations[train.r_station_id]
-				local r_name = r_station.entity_stop.backer_name
-				local r_surface_i = r_station.entity_stop.surface.index
-				local records = schedule.records
-				local i = schedule.current
-				while i <= #records do
-					if records[i].station == p_name and p_surface_i ~= old_surface_index then
-						table_insert(records, i, create_direct_to_station_order(p_station.entity_stop))
-						i = i + 1
-					elseif records[i].station == r_name and r_surface_i ~= old_surface_index then
-						table_insert(records, i, create_direct_to_station_order(r_station.entity_stop))
-						i = i + 1
-					end
-					i = i + 1
-				end
-				train_entity.schedule = schedule
-			elseif train.status == STATUS_TO_F then
-				local refueler = map_data.refuelers[train.refueler_id]
-				local f_name = refueler.entity_stop.backer_name
-				local f_surface_i = refueler.entity_stop.surface.index
-				local records = schedule.records
-				local i = schedule.current
-				while i <= #records do
-					if records[i].station == f_name and f_surface_i ~= old_surface_index then
-						table_insert(records, i, create_direct_to_station_order(refueler.entity_stop))
-						i = i + 1
-					end
-					i = i + 1
-				end
-				train_entity.schedule = schedule
+			if train.status == STATUS_TO_P then
+				local stop = map_data.stations[train.p_station_id].entity_stop
+				se_add_direct_to_station_order(schedule, stop, old_surface_index)
 			end
+			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
+				local stop = map_data.stations[train.r_station_id].entity_stop
+				se_add_direct_to_station_order(schedule, stop, old_surface_index)
+			end
+			if train.status == STATUS_TO_F then
+				local stop = map_data.refuelers[train.refueler_id].entity_stop
+				se_add_direct_to_station_order(schedule, stop, old_surface_index)
+			end
+			if train.status == STATUS_TO_P or train.status == STATUS_TO_R or STATUS_TO_D then
+				if not train.use_any_depot then
+					local depot = map_data.depots[train.depot_id]
+					se_add_direct_to_station_order(schedule, depot.entity_stop, old_surface_index)
+				end
+			end
+			train_entity.schedule = schedule
 		end
 		interface_raise_train_teleported(new_id, old_id)
 	end)
@@ -805,7 +791,6 @@ local function main()
 	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
-	mod_settings.depot_bypass_enabled = settings.global["cybersyn-depot-bypass-enabled"].value--[[@as boolean]]
 
 	mod_settings.missing_train_alert_enabled = true
 	mod_settings.stuck_train_alert_enabled = true
