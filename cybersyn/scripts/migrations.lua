@@ -118,7 +118,23 @@ local migrations_table = {
 		for id, station in pairs(map_data.stations) do
 			station.display_state = (station.display_state >= 2 and 1 or 0) + (station.display_state%2)*2
 
-			set_station_from_comb_state(station)
+			local params = get_comb_params(station.entity_comb1)
+			local signal = params.first_signal
+
+			local bits = params.second_constant or 0
+			local is_pr_state = bit32.extract(bits, 0, 2)
+			local allows_all_trains = bit32.extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
+			local is_stack = bit32.extract(bits, SETTING_IS_STACK) > 0
+			local disable_inactive = bit32.extract(bits, SETTING_DISABLE_INACTIVE) > 0
+
+			station.network_name = signal and signal.name or nil
+			station.allows_all_trains = allows_all_trains
+			station.is_stack = is_stack
+			station.disable_inactive = disable_inactive
+			station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
+			station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
+
+			--NOTE: this would be utterly painful to inline, please keep track if update_stop_if_auto changes in a breaking way after version 1.2.0
 			update_stop_if_auto(map_data, station, true)
 		end
 

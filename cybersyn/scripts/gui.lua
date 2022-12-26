@@ -229,15 +229,9 @@ function register_gui_actions()
 				local comb = global.to_comb[msg[2]]
 				if not comb or not comb.valid then return end
 
-				local param = get_comb_params(comb)
-
 				local signal = element.elem_value
 				if signal and (signal.name == "signal-everything" or signal.name == "signal-anything" or signal.name == "signal-each") then
-					if param.operation == MODE_PRIMARY_IO or param.operation == MODE_PRIMARY_IO_ACTIVE or param.operation == MODE_PRIMARY_IO_FAILED_REQUEST or param.operation == MODE_REFUELER then
-						signal.name = NETWORK_EACH
-					else
-						signal = nil
-					end
+					signal.name = NETWORK_EACH
 					element.elem_value = signal
 				end
 				set_comb_network_name(comb, signal)

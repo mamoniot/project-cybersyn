@@ -60,14 +60,21 @@ end
 ---@param train_id uint
 ---@param train Train
 function add_available_train(map_data, train_id, train)
-	local network_name = train.network_name
-	if network_name then
-		local network = map_data.available_trains[network_name]
-		if not network then
-			network = {}
-			map_data.available_trains[network_name] = network
+	if train.network_name then
+		local f, a
+		if train.network_name == NETWORK_EACH then
+			f, a = next, train.network_flag
+		else
+			f, a = once, train.network_name
 		end
-		network[train_id] = true
+		for network_name in f, a do
+			local network = map_data.available_trains[network_name]
+			if not network then
+				network = {}
+				map_data.available_trains[network_name] = network
+			end
+			network[train_id] = true
+		end
 		train.is_available = true
 		interface_raise_train_available(train_id)
 	end
@@ -79,37 +86,35 @@ end
 ---@param train_id uint
 ---@param train Train
 function add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
-	remove_available_train(map_data, train_id, train)
 	local comb = depot.entity_comb
 	set_train_from_comb(mod_settings, train, comb)
 	depot.available_train_id = train_id
 	train.depot_id = depot_id
 	train.status = STATUS_D
-	local network_name = train.network_name
-	if network_name then
-		local network = map_data.available_trains[network_name]
-		if not network then
-			network = {}
-			map_data.available_trains[network_name] = network
-		end
-		network[train_id] = true
-		train.is_available = true
-		interface_raise_train_available(train_id)
-	end
+
+	add_available_train(map_data, train_id, train)
 end
 ---@param map_data MapData
 ---@param train_id uint
 ---@param train Train
 function remove_available_train(map_data, train_id, train)
-	if train.is_available and train.network_name then
-		local network = map_data.available_trains[train.network_name--[[@as string]]]
-		if network then
-			network[train_id] = nil
-			if next(network) == nil then
-				map_data.available_trains[train.network_name] = nil
+	if train.is_available then
+		train.is_available = nil
+		local f, a
+		if train.network_name == NETWORK_EACH then
+			f, a = next, train.network_flag
+		else
+			f, a = once, train.network_name
+		end
+		for network_name in f, a do
+			local network = map_data.available_trains[network_name]
+			if network then
+				network[train_id] = nil
+				if next(network) == nil then
+					map_data.available_trains[network_name] = nil
+				end
 			end
 		end
-		train.is_available = nil
 		local depot = map_data.depots[train.depot_id]
 		if depot.available_train_id == train_id then
 			depot.available_train_id = nil

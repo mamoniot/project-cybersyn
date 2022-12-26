@@ -10,12 +10,13 @@ Date: 2022-12-25
     - Nonempty trains held in the depot now check if they have been emptied and reset when they have
     - Nonempty trains that park at a depot now always get held
   Bugfixes:
+    - Fixed a crash caused by changing a station combinator to the "each" network during a bad tick
     - Multiple rare bugs and crashes relating to wagon control combinators are fixed
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.1
 Date: 2022-12-24
   Bugfixes:
-    - Fixed an bug where sometimes refuelers would reject trains they should accept
+    - Fixed a bug where sometimes refuelers would reject trains they should accept
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.0
 Date: 2022-12-23

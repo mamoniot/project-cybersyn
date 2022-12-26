@@ -420,6 +420,7 @@ function combinator_update(map_data, comb, reset_display)
 						local train_id = depot.available_train_id
 						if train_id then
 							local train = map_data.trains[train_id]
+							remove_available_train(map_data, train_id, train)
 							add_available_train_to_depot(map_data, mod_settings, train_id, train, id, depot)
 							interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
 						end
@@ -727,10 +728,21 @@ local function setup_se_compat()
 		if not train then return end
 
 		if train.is_available then
-			local network = map_data.available_trains[train.network_name--[[@as string]]]
-			if network then
-				network[new_id] = true
-				network[old_id] = nil
+			local f, a
+			if train.network_name == NETWORK_EACH then
+				f, a = next, train.network_flag
+			else
+				f, a = once, train.network_name
+			end
+			for network_name in f, a do
+				local network = map_data.available_trains[network_name]
+				if network then
+					network[new_id] = true
+					network[old_id] = nil
+					if next(network) == nil then
+						map_data.available_trains[network_name] = nil
+					end
+				end
 			end
 		end
 
