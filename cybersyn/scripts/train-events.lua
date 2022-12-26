@@ -79,8 +79,9 @@ end
 ---@param train_id uint
 ---@param train Train
 function add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
+	remove_available_train(map_data, train_id, train)
 	local comb = depot.entity_comb
-	set_train_from_comb(train, comb)
+	set_train_from_comb(mod_settings, train, comb)
 	depot.available_train_id = train_id
 	train.depot_id = depot_id
 	train.status = STATUS_D
@@ -109,17 +110,14 @@ function remove_available_train(map_data, train_id, train)
 			end
 		end
 		train.is_available = nil
+		local depot = map_data.depots[train.depot_id]
+		if depot.available_train_id == train_id then
+			depot.available_train_id = nil
+			return true
+		end
 	end
-	local depot = map_data.depots[train.depot_id]
-	if depot.available_train_id == train_id then
-		depot.available_train_id = nil
-		return true
-	else
-		return false
-	end
+	return false
 end
-
-
 
 
 
@@ -127,9 +125,7 @@ end
 ---@param depot_id uint
 ---@param train_entity LuaTrain
 local function on_train_arrives_depot(map_data, depot_id, train_entity)
-	local contents = train_entity.get_contents()
-	local fluid_contents = train_entity.get_fluid_contents()
-	local is_train_empty = next(contents) == nil and next(fluid_contents) == nil
+	local is_train_empty = next(train_entity.get_contents()) == nil and next(train_entity.get_fluid_contents()) == nil
 	local train_id = train_entity.id
 	local train = map_data.trains[train_id]
 	if train then
@@ -174,7 +170,9 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			last_manifest_tick = map_data.total_ticks,
 			has_filtered_wagon = nil,
 			--is_available = add_available_train_to_depot,
-			--depot_name = add_available_train_to_depot,
+			--depot_id = add_available_train_to_depot,
+			--use_any_depot = add_available_train_to_depot,
+			--disable_bypass = add_available_train_to_depot,
 			--network_name = add_available_train_to_depot,
 			--network_flag = add_available_train_to_depot,
 			--priority = add_available_train_to_depot,
@@ -188,6 +186,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		interface_raise_train_created(train_id, depot_id)
 	else
 		if mod_settings.react_to_nonempty_train_in_depot then
+			lock_train_to_depot(train_entity)
 			send_alert_nonempty_train_in_depot(map_data, train_entity)
 		end
 		interface_raise_train_nonempty_in_depot(depot_id, train_entity)

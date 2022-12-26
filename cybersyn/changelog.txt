@@ -7,6 +7,8 @@ Date: 2022-12-25
     - Added a depot combinator setting to force trains to park at the same depot
   Changes:
     - Overhauled the wagon control combinator algorithm to spread items out between cargo wagons
+    - Nonempty trains held in the depot now check if they have been emptied and reset when they have
+    - Nonempty trains that park at a depot now always get held
   Bugfixes:
     - Multiple rare bugs and crashes relating to wagon control combinators are fixed
 ---------------------------------------------------------------------------------------------------

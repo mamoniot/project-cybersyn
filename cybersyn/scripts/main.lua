@@ -1,5 +1,4 @@
 --By Mami
-local floor = math.floor
 local ceil = math.ceil
 local table_insert = table.insert
 
@@ -23,12 +22,24 @@ end
 ---@param depot_id uint
 ---@param depot Depot
 local function on_depot_broken(map_data, depot_id, depot)
-	local train_id = depot.available_train_id
-	if train_id then
-		local train = map_data.trains[train_id]
-		lock_train(train.entity)
-		send_alert_depot_of_train_broken(map_data, train.entity)
-		remove_train(map_data, train_id, train)
+	for train_id, train in pairs(map_data.trains) do
+		if train.depot_id == depot_id then
+			if train.use_any_depot then
+				local e = get_any_train_entity(train.entity)
+				local stops = e.force.get_train_stops({name = depot.entity_stop.backer_name, surface = e.surface})
+				for stop in rnext_consume, stops do
+					local new_depot_id = stop.unit_number
+					if map_data.depots[new_depot_id] then
+						train.depot_id = new_depot_id--[[@as uint]]
+						goto continue
+					end
+				end
+			end
+			lock_train(train.entity)
+			send_alert_depot_of_train_broken(map_data, train.entity)
+			remove_train(map_data, train_id, train)
+		end
+		::continue::
 	end
 	map_data.depots[depot_id] = nil
 	interface_raise_depot_removed(depot_id, depot)
@@ -409,7 +420,6 @@ function combinator_update(map_data, comb, reset_display)
 						local train_id = depot.available_train_id
 						if train_id then
 							local train = map_data.trains[train_id]
-							remove_available_train(map_data, train_id, train)
 							add_available_train_to_depot(map_data, mod_settings, train_id, train, id, depot)
 							interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
 						end

@@ -39,6 +39,11 @@ function se_get_space_elevator_name(surface)
 end
 
 
+---@param train LuaTrain
+function get_any_train_entity(train)
+	return train.front_stock or train.back_stock or train.carriages[1]
+end
+
 ------------------------------------------------------------------------------
 --[[train schedules]]--
 ------------------------------------------------------------------------------
@@ -335,9 +340,10 @@ function set_station_from_comb_state(station)
 	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
 	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
 end
+---@param mod_settings CybersynModSettings
 ---@param train Train
 ---@param comb LuaEntity
-function set_train_from_comb(train, comb)
+function set_train_from_comb(mod_settings, train, comb)
 	--NOTE: this does nothing to update currently active deliveries
 	local params = get_comb_params(comb)
 	local signal = params.first_signal
@@ -728,7 +734,14 @@ function process_active_alerts(map_data)
 			if id == 1 then
 				send_alert_for_train(train, send_stuck_train_alert_icon, "cybersyn-messages.stuck-train")
 			elseif id == 2 then
-				send_alert_for_train(train, send_nonempty_train_in_depot_alert_icon, "cybersyn-messages.nonempty-train")
+				--this is an alert that we have to actively check if we can clear
+				local is_train_empty = next(train.get_contents()) == nil and next(train.get_fluid_contents()) == nil
+				if is_train_empty then
+					train.manual_mode = true
+					train.manual_mode = false
+				else
+					send_alert_for_train(train, send_nonempty_train_in_depot_alert_icon, "cybersyn-messages.nonempty-train")
+				end
 			elseif id == 3 then
 				send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.depot-broken")
 			elseif id == 4 then

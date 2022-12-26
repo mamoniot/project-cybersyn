@@ -116,7 +116,7 @@
 ---@field public react_to_train_at_incorrect_station boolean --interface setting
 ---@field public react_to_train_early_to_depot boolean --interface setting
 
-if this is uncommented it means there are migrations to write
+--if this is uncommented it means there are migrations to write
 
 ---@alias cybersyn.global MapData
 ---@type CybersynModSettings
@@ -157,4 +157,20 @@ end
 ---@param h string?
 function once(v, h)
 	return not h and v or nil--[[@as string|nil]]
+end
+---@param t any[]
+---@return any
+function rnext_consume(t)
+	local len = #t
+	if len > 1 then
+		local i = math.random(1, len)
+		local v = t[i]
+		t[i] = t[len]
+		t[len] = nil
+		return v
+	else
+		local v = t[1]
+		t[1] = nil
+		return v
+	end
 end
