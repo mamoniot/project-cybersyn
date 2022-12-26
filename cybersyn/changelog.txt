@@ -2,6 +2,9 @@
 Version: 1.2.2
 Date: 2022-12-25
   Changes:
+    - Overhauled the wagon control combinator algorithm to spread items out between cargo wagons
+  Bugfixes:
+    - Multiple rare bugs and crashes relating to wagon control combinators are fixed
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.1
 Date: 2022-12-24
