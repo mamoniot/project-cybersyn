@@ -322,7 +322,7 @@ function get_comb_network_name(comb)
 end
 
 ---@param station Station
-function set_station_from_comb_state(station)
+function set_station_from_comb(station)
 	--NOTE: this does nothing to update currently active deliveries
 	local params = get_comb_params(station.entity_comb1)
 	local signal = params.first_signal

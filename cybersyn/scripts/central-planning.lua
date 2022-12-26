@@ -645,8 +645,38 @@ local function tick_poll_station(map_data, mod_settings)
 end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
-local function tick_poll_train(map_data, mod_settings)
+function tick_init(map_data, mod_settings)
 	local tick_data = map_data.tick_data
+
+	map_data.economy.all_p_stations = {}
+	map_data.economy.all_r_stations = {}
+	map_data.economy.all_names = {}
+
+	for i, id in pairs(map_data.warmup_station_ids) do
+		local station = map_data.stations[id]
+		if station then
+			if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
+				map_data.active_station_ids[#map_data.active_station_ids + 1] = id
+				map_data.warmup_station_ids[i] = nil
+			end
+		else
+			map_data.warmup_station_ids[i] = nil
+		end
+	end
+	if map_data.queue_station_update then
+		for id, _ in pairs(map_data.queue_station_update) do
+			local station = map_data.stations[id]
+			if station then
+				local pre = station.allows_all_trains
+				set_station_from_comb(station)
+				if station.allows_all_trains ~= pre then
+					update_stop_if_auto(map_data, station, true)
+				end
+			end
+		end
+		map_data.queue_station_update = nil
+	end
+
 	--NOTE: the following has undefined behavior if last_train is deleted, this should be ok since the following doesn't care how inconsistent our access pattern is
 	local train_id, train = next(map_data.trains, tick_data.last_train)
 	tick_data.last_train = train_id
@@ -657,10 +687,7 @@ local function tick_poll_train(map_data, mod_settings)
 		end
 		interface_raise_train_stuck(train_id)
 	end
-end
----@param map_data MapData
-local function tick_poll_comb(map_data, mod_settings)
-	local tick_data = map_data.tick_data
+
 	--NOTE: the following has undefined behavior if last_comb is deleted
 	local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
 	tick_data.last_comb = comb_id
@@ -673,6 +700,9 @@ local function tick_poll_comb(map_data, mod_settings)
 	if refueler_id then
 		set_refueler_from_comb(map_data, mod_settings, refueler_id)
 	end
+
+	map_data.tick_state = STATE_POLL_STATIONS
+	interface_raise_tick_init()
 end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
@@ -686,24 +716,7 @@ function tick(map_data, mod_settings)
 	end
 
 	if map_data.tick_state == STATE_INIT then
-		map_data.economy.all_p_stations = {}
-		map_data.economy.all_r_stations = {}
-		map_data.economy.all_names = {}
-		for i, id in pairs(map_data.warmup_station_ids) do
-			local station = map_data.stations[id]
-			if station then
-				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
-					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
-					map_data.warmup_station_ids[i] = nil
-				end
-			else
-				map_data.warmup_station_ids[i] = nil
-			end
-		end
-		map_data.tick_state = STATE_POLL_STATIONS
-		interface_raise_tick_init()
-		tick_poll_train(map_data, mod_settings)
-		tick_poll_comb(map_data)
+		tick_init(map_data, mod_settings)
 	elseif map_data.tick_state == STATE_POLL_STATIONS then
 		for i = 1, mod_settings.update_rate do
 			if tick_poll_station(map_data, mod_settings) then break end

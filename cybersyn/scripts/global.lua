@@ -9,6 +9,7 @@
 ---@field public stations {[uint]: Station}
 ---@field public active_station_ids uint[]
 ---@field public warmup_station_ids uint[]
+---@field public queue_station_update {[uint]: true?}?
 ---@field public depots {[uint]: Depot}
 ---@field public refuelers {[uint]: Refueler}
 ---@field public trains {[uint]: Train}

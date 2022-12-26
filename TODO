@@ -8,6 +8,7 @@ major:
 	models & art
 
 minor:
+	support "each" for depots
 	handle if signals are removed from the game during migration
 	update wagon control combinators immediately upon placement
 	railloader compat

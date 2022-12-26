@@ -116,16 +116,16 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		entity_stop = stop,
 		entity_comb1 = comb1,
 		entity_comb2 = comb2,
-		--is_p = set_station_from_comb_state,
-		--is_r = set_station_from_comb_state,
-		--allows_all_trains = set_station_from_comb_state,
+		--is_p = set_station_from_comb,
+		--is_r = set_station_from_comb,
+		--allows_all_trains = set_station_from_comb,
 		deliveries_total = 0,
 		last_delivery_tick = map_data.total_ticks,
 		priority = 0,
 		item_priotity = nil,
 		r_threshold = 0,
 		locked_slots = 0,
-		--network_name = set_station_from_comb_state,
+		--network_name = set_station_from_comb,
 		network_flag = 0,
 		wagon_combs = nil,
 		deliveries = {},
@@ -136,7 +136,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		item_thresholds = nil,
 		display_state = 0,
 	}
-	set_station_from_comb_state(station)
+	set_station_from_comb(station)
 	local id = stop.unit_number--[[@as uint]]
 	map_data.stations[id] = station
 	map_data.warmup_station_ids[#map_data.warmup_station_ids + 1] = id
@@ -436,11 +436,11 @@ function combinator_update(map_data, comb, reset_display)
 	if params.second_constant ~= old_params.second_constant then
 		has_changed = true
 		if station then
-			local pre = station.allows_all_trains
-			set_station_from_comb_state(station)
-			if station.allows_all_trains ~= pre then
-				update_stop_if_auto(map_data, station, true)
+			--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
+			if not map_data.queue_station_update then
+				map_data.queue_station_update = {}
 			end
+			map_data.queue_station_update[id] = true
 		else
 			local refueler = map_data.refuelers[id]
 			if refueler then
