@@ -95,6 +95,29 @@ local function on_refueler_broken(map_data, refueler_id, refueler)
 	interface_raise_refueler_removed(refueler_id, refueler)
 end
 
+
+function attach_live_contents_reader(station) 
+	local entity_comb = station.entity_comb1
+	local entity_stop = station.entity_stop
+	local input = entity_comb.surface.create_entity {
+        name = "arithmetic-combinator",
+        position = entity_stop.position,
+        force = entity_stop.force
+    }
+
+	input.get_or_create_control_behavior().parameters = { first_signal = {type = "virtual", name = "signal-each"}, second_constant=-1, operation="*", output_signal={type = "virtual", name = "signal-each"}}
+	
+
+	entity_stop.connect_neighbour({ target_entity = input, wire = defines.wire_type.green, target_circuit_id = defines.circuit_connector_id.combinator_input })
+	-- entity_stop.connect_neighbour({ target_entity = input, wire = defines.wire_type.red, target_circuit_id = defines.circuit_connector_id.combinator_input })
+	input.connect_neighbour({ target_entity = entity_comb, wire = defines.wire_type.green,source_circuit_id=defines.circuit_connector_id.combinator_output, target_circuit_id = defines.circuit_connector_id.combinator_output })
+	input.connect_neighbour({ target_entity = entity_comb, wire = defines.wire_type.red, source_circuit_id=defines.circuit_connector_id.combinator_output, target_circuit_id = defines.circuit_connector_id.combinator_output })
+
+
+	local control = entity_stop.get_control_behavior();
+	control.read_from_train = true;
+end
+
 ---@param map_data MapData
 ---@param stop LuaEntity
 ---@param comb1 LuaEntity
@@ -125,6 +148,9 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		item_thresholds = nil,
 		display_state = 0,
 	}
+	if mod_settings.depot_live_update then
+		attach_live_contents_reader(station)
+	end
 	set_station_from_comb_state(station)
 	local id = stop.unit_number--[[@as uint]]
 	map_data.stations[id] = station
@@ -133,6 +159,9 @@ local function on_station_built(map_data, stop, comb1, comb2)
 	update_stop_if_auto(map_data, station, true)
 	interface_raise_station_created(id)
 end
+
+
+
 ---@param map_data MapData
 ---@param station_id uint
 ---@param station Station
@@ -806,12 +835,14 @@ local function main()
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	mod_settings.depot_bypass_enabled = settings.global["cybersyn-depot-bypass-enabled"].value--[[@as boolean]]
+	mod_settings.depot_live_update = true -- settings.global["cybersyn-depot-bypass-enabled"].value--[[@as boolean]]
 
 	mod_settings.missing_train_alert_enabled = true
 	mod_settings.stuck_train_alert_enabled = true
 	mod_settings.react_to_nonempty_train_in_depot = true
 	mod_settings.react_to_train_at_incorrect_station = true
 	mod_settings.react_to_train_early_to_depot = true
+	 
 
 	--NOTE: There is a concern that it is possible to build or destroy important entities without one of these events being triggered, in which case the mod will have undefined behavior
 	script.on_event(defines.events.on_built_entity, on_built, filter_built)
