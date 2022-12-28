@@ -208,7 +208,7 @@ local function on_train_arrives_station(map_data, station_id, train_id, train)
 			if train.p_station_id == station_id then
 				train.status = STATUS_P
 				local station = map_data.stations[station_id]
-				set_comb1(map_data, station, train.manifest, 1)
+				set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and 1 or -1)
 				set_p_wagon_combs(map_data, station, train)
 				interface_raise_train_status_changed(train_id, STATUS_TO_P, STATUS_P)
 			end
@@ -216,7 +216,7 @@ local function on_train_arrives_station(map_data, station_id, train_id, train)
 			if train.r_station_id == station_id then
 				train.status = STATUS_R
 				local station = map_data.stations[station_id]
-				set_comb1(map_data, station, train.manifest, -1)
+				set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and -1 or 1)
 				set_r_wagon_combs(map_data, station, train)
 				interface_raise_train_status_changed(train_id, STATUS_TO_R, STATUS_R)
 			end

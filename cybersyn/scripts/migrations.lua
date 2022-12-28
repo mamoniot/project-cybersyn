@@ -205,6 +205,7 @@ local migrations_table = {
 			train.se_depot_surface_i = nil
 			train.parked_at_depot_id = nil
 		end
+		settings.global["cybersyn-invert-sign"].value = true
 	end
 }
 --STATUS_R_TO_D = 5

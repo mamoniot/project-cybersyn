@@ -7,10 +7,12 @@ Date: 2022-12-26
     - Added a depot combinator setting to force trains to park at the same depot, enabled by default
     - Added network "each" for depots
   Changes:
+    - Inverted the sign of combinator outputs, a setting has been added to maintain backwards compatibility
     - Overhauled the wagon control combinator algorithm to spread items out between cargo wagons
     - Nonempty trains held in the depot now check if they have been emptied and reset when they have
     - Nonempty trains that park at a depot now always get held
     - Cargo capacity is now prioritized over distance when choosing trains
+    - Increased the default request threshold to 2000
     - Improved English localization
   Bugfixes:
     - Fixed a crash caused by changing a station combinator to the "each" network during a bad tick

@@ -665,6 +665,7 @@ local function on_settings_changed(event)
 	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
+	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
 	if event.setting == "cybersyn-ticks-per-second" then
 		if mod_settings.tps > DELTA then
 			local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
@@ -809,6 +810,7 @@ local function main()
 	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
+	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
 
 	mod_settings.missing_train_alert_enabled = true
 	mod_settings.stuck_train_alert_enabled = true

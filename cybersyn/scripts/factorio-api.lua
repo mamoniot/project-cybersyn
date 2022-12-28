@@ -595,13 +595,14 @@ end
 ---@param map_data MapData
 ---@param station Station
 function set_comb2(map_data, station)
+	local sign = mod_settings.invert_sign and -1 or 1
 	if station.entity_comb2 then
 		local deliveries = station.deliveries
 		local signals = {}
 		for item_name, count in pairs(deliveries) do
 			local i = #signals + 1
 			local is_fluid = game.item_prototypes[item_name] == nil--NOTE: this is expensive
-			signals[i] = {index = i, signal = {type = is_fluid and "fluid" or "item", name = item_name}, count = -count}
+			signals[i] = {index = i, signal = {type = is_fluid and "fluid" or "item", name = item_name}, count = sign*count}
 		end
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end

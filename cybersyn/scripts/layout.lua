@@ -160,6 +160,7 @@ function set_p_wagon_combs(map_data, station, train)
 	local carriages = train.entity.carriages
 	local manifest = train.manifest--[[@as Manifest]]
 	if not manifest[1] then return end
+	local sign = mod_settings.invert_sign and 1 or -1
 
 	local is_reversed = get_train_direction(station.entity_stop, train.entity)
 
@@ -218,7 +219,7 @@ function set_p_wagon_combs(map_data, station, train)
 						local count_to_fill = min(item_slots_capacity*stack_size, item_count)
 						local slots_to_fill = ceil(count_to_fill/stack_size)
 
-						signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = count_to_fill}
+						signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = sign*count_to_fill}
 						item_count = item_count - count_to_fill
 						item_slots_capacity = item_slots_capacity - slots_to_fill
 						for j = 1, slots_to_fill do
@@ -254,7 +255,7 @@ function set_p_wagon_combs(map_data, station, train)
 				if fluid.type == "fluid" then
 					local count_to_fill = min(fluid_count, fluid_capacity)
 
-					signals[1] = {index = 1, signal = {type = fluid.type, name = fluid.name}, count = count_to_fill}
+					signals[1] = {index = 1, signal = {type = fluid.type, name = fluid.name}, count = sign*count_to_fill}
 					fluid_count = fluid_count - count_to_fill
 					fluid_capacity = 0
 					do_inc = fluid_count == 0
@@ -285,6 +286,7 @@ function set_r_wagon_combs(map_data, station, train)
 	local carriages = train.entity.carriages
 
 	local is_reversed = get_train_direction(station.entity_stop, train.entity)
+	local sign = mod_settings.invert_sign and -1 or 1
 
 	local ivpairs = is_reversed and irpairs or ipairs
 	for carriage_i, carriage in ivpairs(carriages) do
@@ -306,7 +308,7 @@ function set_r_wagon_combs(map_data, station, train)
 					local stack = inv[stack_i]
 					if stack.valid_for_read then
 						local i = #signals + 1
-						signals[i] = {index = i, signal = {type = "item", name = stack.name}, count = -stack.count}
+						signals[i] = {index = i, signal = {type = "item", name = stack.name}, count = sign*stack.count}
 					end
 				end
 				set_combinator_output(map_data, comb, signals)
@@ -317,7 +319,7 @@ function set_r_wagon_combs(map_data, station, train)
 			local inv = carriage.get_fluid_contents()
 			for fluid_name, count in pairs(inv) do
 				local i = #signals + 1
-				signals[i] = {index = i, signal = {type = "fluid", name = fluid_name}, count = -floor(count)}
+				signals[i] = {index = i, signal = {type = "fluid", name = fluid_name}, count = sign*floor(count)}
 			end
 			set_combinator_output(map_data, comb, signals)
 		end

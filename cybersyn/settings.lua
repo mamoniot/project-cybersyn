@@ -23,8 +23,8 @@ data:extend({
 		name = "cybersyn-request-threshold",
 		order = "ac",
 		setting_type = "runtime-global",
-		default_value = 1,
-		minimum_value = 0,
+		default_value = 2000,
+		minimum_value = 1,
 		maximum_value = 2147483647,
 	},
 	{
@@ -62,5 +62,12 @@ data:extend({
 		default_value = 600,
 		minimum_value = 0,
 		maximum_value = 2147483647,
+	},
+	{
+		type = "bool-setting",
+		name = "cybersyn-invert-sign",
+		order = "ai",
+		setting_type = "runtime-global",
+		default_value = false,
 	},
 })
