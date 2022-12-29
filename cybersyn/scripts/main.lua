@@ -139,6 +139,10 @@ local function on_station_built(map_data, stop, comb1, comb2)
 	local id = stop.unit_number--[[@as uint]]
 	map_data.stations[id] = station
 	map_data.warmup_station_ids[#map_data.warmup_station_ids + 1] = id
+	if not map_data.queue_station_update then
+		map_data.queue_station_update = {}
+	end
+	map_data.queue_station_update[id] = true
 
 	update_stop_if_auto(map_data, station, true)
 	interface_raise_station_created(id)
