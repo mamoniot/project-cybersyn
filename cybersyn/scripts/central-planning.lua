@@ -514,9 +514,9 @@ local function tick_poll_station(map_data, mod_settings)
 		end
 	end
 	station.r_threshold = mod_settings.r_threshold
-	station.priority = 0
+	station.priority = mod_settings.priority
 	station.item_priority = nil
-	station.locked_slots = 0
+	station.locked_slots = mod_settings.locked_slots
 	local is_each = station.network_name == NETWORK_EACH
 	if is_each then
 		station.network_flag = {}

@@ -659,29 +659,6 @@ local function on_rename(event)
 end
 
 
-local function on_settings_changed(event)
-	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
-	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
-	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
-	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
-	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
-	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
-	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value--[[@as boolean]]
-	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
-	if event.setting == "cybersyn-ticks-per-second" then
-		if mod_settings.tps > DELTA then
-			local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
-			script.on_nth_tick(nth_tick, function()
-				tick(global, mod_settings)
-			end)
-		else
-			script.on_nth_tick(nil)
-		end
-	end
-	interface_raise_on_mod_settings_changed(event)
-end
-
 ---@param schedule TrainSchedule
 ---@param stop LuaEntity
 ---@param old_surface_index uint
@@ -796,6 +773,35 @@ local function setup_se_compat()
 end
 
 
+local function grab_all_settings()
+	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
+	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
+	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
+	mod_settings.priority = settings.global["cybersyn-priority"].value--[[@as int]]
+	mod_settings.locked_slots = settings.global["cybersyn-locked-slots"].value--[[@as int]]
+	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
+	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
+	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
+	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
+	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value--[[@as boolean]]
+	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
+end
+local function on_settings_changed(event)
+	grab_all_settings()
+	if event.setting == "cybersyn-ticks-per-second" then
+		if mod_settings.tps > DELTA then
+			local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
+			script.on_nth_tick(nth_tick, function()
+				tick(global, mod_settings)
+			end)
+		else
+			script.on_nth_tick(nil)
+		end
+	end
+	interface_raise_on_mod_settings_changed(event)
+end
+
+
 local filter_built = {
 	{filter = "name", name = "train-stop"},
 	{filter = "name", name = COMBINATOR_NAME},
@@ -812,15 +818,7 @@ local filter_broken = {
 	{filter = "rolling-stock"},
 }
 local function main()
-	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
-	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
-	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
-	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
-	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
-	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
-	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value--[[@as boolean]]
-	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
+	grab_all_settings()
 
 	mod_settings.missing_train_alert_enabled = true
 	mod_settings.stuck_train_alert_enabled = true

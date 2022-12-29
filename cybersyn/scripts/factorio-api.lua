@@ -382,7 +382,7 @@ function set_train_from_comb(mod_settings, train, comb)
 	else
 		train.network_flag = mod_settings.network_flag
 	end
-	train.priority = 0
+	train.priority = mod_settings.priority
 	local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
 	if signals then
 		for k, v in pairs(signals) do
@@ -420,7 +420,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 
 	refueler.network_name = signal and signal.name or nil
 	refueler.allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
-	refueler.priority = 0
+	refueler.priority = mod_settings.priority
 
 	local is_each = refueler.network_name == NETWORK_EACH
 	if is_each then

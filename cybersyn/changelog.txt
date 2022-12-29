@@ -6,6 +6,8 @@ Date: 2022-12-29
     - Added a depot combinator setting to enable depot bypass, enabled by default
     - Added a depot combinator setting to force trains to park at the same depot, enabled by default
     - Added network "each" for depots
+    - Added a map setting to modify the default locked slots per cargo wagon value
+    - Added a map setting to modify the default priority value
     - Added a map setting to allow trains with cargo at depots, disabled by default
   Changes:
     - Inverted the sign of combinator outputs, a map setting has been added to maintain backwards compatibility with <=1.2.1 worlds
