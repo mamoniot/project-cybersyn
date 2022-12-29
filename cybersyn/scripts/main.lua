@@ -375,7 +375,7 @@ function combinator_update(map_data, comb, reset_display)
 		if stop then
 			id = stop.unit_number--[[@as uint]]
 			station = map_data.stations[id]
-			if station.entity_comb1 ~= comb then
+			if station and station.entity_comb1 ~= comb then
 				station = nil
 			end
 			if should_reset and station then
