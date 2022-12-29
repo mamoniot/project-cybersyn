@@ -223,6 +223,13 @@ local migrations_table = {
 			train.se_depot_surface_i = nil
 			train.parked_at_depot_id = nil
 		end
+	end,
+	["1.2.3"] = function()
+		---@type MapData
+		local map_data = global
+		for _, station in pairs(map_data.stations) do
+			set_station_from_comb(station)
+		end
 	end
 }
 --STATUS_R_TO_D = 5
