@@ -126,7 +126,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		r_threshold = 0,
 		locked_slots = 0,
 		--network_name = set_station_from_comb,
-		network_flag = 0,
+		--network_flag = set_station_from_comb,
 		wagon_combs = nil,
 		deliveries = {},
 		accepted_layouts = {},
@@ -136,7 +136,6 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		item_thresholds = nil,
 		display_state = 0,
 	}
-	set_station_from_comb(station)
 	local id = stop.unit_number--[[@as uint]]
 	map_data.stations[id] = station
 	map_data.warmup_station_ids[#map_data.warmup_station_ids + 1] = id
@@ -361,8 +360,8 @@ function combinator_update(map_data, comb, reset_display)
 	local params = control.parameters
 	local old_params = map_data.to_comb_params[unit_number]
 	local has_changed = false
-	local station
-	local id
+	local station = nil
+	local id = nil
 
 
 	if params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST or params.operation == MODE_PRIMARY_IO then
@@ -372,7 +371,10 @@ function combinator_update(map_data, comb, reset_display)
 		if stop then
 			id = stop.unit_number--[[@as uint]]
 			station = map_data.stations[id]
-			if should_reset and station and station.entity_comb1 == comb then
+			if station.entity_comb1 ~= comb then
+				station = nil
+			end
+			if should_reset and station then
 				--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
 				if station.display_state == 0 then
 					params.operation = MODE_PRIMARY_IO
@@ -407,12 +409,12 @@ function combinator_update(map_data, comb, reset_display)
 
 		local stop = map_data.to_stop[comb.unit_number]
 		if stop and stop.valid then
-			id = stop.unit_number
-			station = map_data.stations[id]
 			if station then
-				if station.entity_comb1 == comb then
-					station.network_name = new_network
+				--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
+				if not map_data.queue_station_update then
+					map_data.queue_station_update = {}
 				end
+				map_data.queue_station_update[id] = true
 			else
 				local depot = map_data.depots[id]
 				if depot then
@@ -690,7 +692,13 @@ local function se_add_direct_to_station_order(schedule, stop, old_surface_index)
 		local records = schedule.records
 		for i = schedule.current, #records do
 			if records[i].station == name then
-				table_insert(records, i, create_direct_to_station_order(stop))
+				if i == 1 then
+					--we are assuming this is the depot order
+					records[#records + 1] = create_direct_to_station_order(stop)
+					schedule.current = #records--[[@as uint]]
+				else
+					table_insert(records, i, create_direct_to_station_order(stop))
+				end
 				break
 			end
 		end

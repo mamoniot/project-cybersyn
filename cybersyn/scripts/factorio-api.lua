@@ -44,6 +44,14 @@ function get_any_train_entity(train)
 	return train.front_stock or train.back_stock or train.carriages[1]
 end
 
+
+---@param e Station|Refueler|Train
+---@param network_name string
+function get_network_flag(e, network_name)
+	return e.network_name == NETWORK_EACH and (e.network_flag[network_name] or 0) or e.network_flag
+end
+
+
 ------------------------------------------------------------------------------
 --[[train schedules]]--
 ------------------------------------------------------------------------------
@@ -330,6 +338,7 @@ end
 ---@param station Station
 function set_station_from_comb(station)
 	--NOTE: this does nothing to update currently active deliveries
+	--NOTE: this can only be called at the tick init boundary
 	local params = get_comb_params(station.entity_comb1)
 	local signal = params.first_signal
 
@@ -345,6 +354,10 @@ function set_station_from_comb(station)
 	station.enable_inactive = enable_inactive
 	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
 	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
+
+	if station.network_name == NETWORK_EACH then
+		station.network_flag = {}
+	end
 end
 ---@param mod_settings CybersynModSettings
 ---@param train Train
@@ -403,6 +416,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	local bits = params.second_constant or 0
 	local signal = params.first_signal
 	local old_network = refueler.network_name
+	local old_network_flag = refueler.network_flag
 
 	refueler.network_name = signal and signal.name or nil
 	refueler.allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
@@ -442,7 +456,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 
 	local f, a
 	if old_network == NETWORK_EACH then
-		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
+		f, a = pairs(old_network_flag--[[@as {[string]: int}]])
 	elseif old_network ~= refueler.network_name then
 		f, a = once, old_network
 	else
@@ -614,9 +628,11 @@ function set_comb2(map_data, station)
 	end
 end
 
+
 ------------------------------------------------------------------------------
 --[[alerts]]--
 ------------------------------------------------------------------------------
+
 
 ---@param train LuaTrain
 ---@param icon {}
@@ -759,8 +775,8 @@ function process_active_alerts(map_data)
 				--this is an alert that we have to actively check if we can clear
 				local is_train_empty = next(train.get_contents()) == nil and next(train.get_fluid_contents()) == nil
 				if is_train_empty then
-					train.manual_mode = true
-					train.manual_mode = false
+					--NOTE: this function could get confused being called internally, be sure it can handle that
+					on_train_changed({train = train})
 				else
 					send_alert_for_train(train, send_nonempty_train_in_depot_alert_icon, "cybersyn-messages.nonempty-train")
 				end

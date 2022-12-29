@@ -158,7 +158,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		else
 			return
 		end
-		if is_train_empty then
+		if is_train_empty or mod_settings.allow_cargo_in_depot then
 			local old_status = train.status
 			local depot = map_data.depots[depot_id]
 			add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
@@ -166,14 +166,11 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			interface_raise_train_status_changed(train_id, old_status, STATUS_D)
 		else
 			--train still has cargo
-			if not mod_settings.allow_cargo_in_depot then
-				lock_train_to_depot(train_entity)
-				remove_train(map_data, train_id, train)
-				send_alert_nonempty_train_in_depot(map_data, train_entity)
-			end
-			interface_raise_train_nonempty_in_depot(depot_id, train_entity, train_id)
+			lock_train_to_depot(train_entity)
+			remove_train(map_data, train_id, train)
+			send_alert_nonempty_train_in_depot(map_data, train_entity)
 		end
-	elseif is_train_empty then
+	elseif is_train_empty or mod_settings.allow_cargo_in_depot then
 		--NOTE: only place where new Train
 		train = {
 			entity = train_entity,
@@ -202,10 +199,10 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		set_depot_schedule(train_entity, depot.entity_stop.backer_name)
 		interface_raise_train_created(train_id, depot_id)
 	else
-		if not mod_settings.allow_cargo_in_depot then
-			lock_train_to_depot(train_entity)
-			send_alert_nonempty_train_in_depot(map_data, train_entity)
-		end
+		lock_train_to_depot(train_entity)
+		send_alert_nonempty_train_in_depot(map_data, train_entity)
+	end
+	if not is_train_empty then
 		interface_raise_train_nonempty_in_depot(depot_id, train_entity)
 	end
 end

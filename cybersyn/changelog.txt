@@ -1,14 +1,14 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.2
-Date: 2022-12-26
+Date: 2022-12-29
   Features:
     - Added a station combinator setting to enable or disable the inactivity condition in a train's orders, disabled by default (but not in <=1.2.1 worlds)
     - Added a depot combinator setting to enable depot bypass, enabled by default
     - Added a depot combinator setting to force trains to park at the same depot, enabled by default
     - Added network "each" for depots
-    - Added a map setting to allow trains with cargo at depots
+    - Added a map setting to allow trains with cargo at depots, disabled by default
   Changes:
-    - Inverted the sign of combinator outputs, a setting has been added to maintain backwards compatibility
+    - Inverted the sign of combinator outputs, a map setting has been added to maintain backwards compatibility with <=1.2.1 worlds
     - Overhauled the wagon control combinator algorithm to spread items out between cargo wagons
     - Trains with cargo held in the depot now check if they have been emptied and reset when they have
     - Cargo capacity is now prioritized over distance when choosing trains
@@ -17,6 +17,7 @@ Date: 2022-12-26
   Bugfixes:
     - Fixed a bug where trains with cargo sometimes weren't getting held at depots
     - Fixed a crash caused by changing a station combinator to the "each" network during a bad tick
+    - Fixed a crash when changing a refueler away from network each
     - Multiple rare bugs and crashes relating to wagon control combinators are fixed
     - Fixed a bug with refueler direct orders not being applied after moving through a space elevator
     - Fixed a bug where filtered slots sometimes weren't being removed

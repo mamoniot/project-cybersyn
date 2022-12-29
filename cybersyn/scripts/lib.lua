@@ -49,11 +49,3 @@ end
 function irpairs(a)
 	return irnext, a, 0
 end
-
-
-
----@param e Station|Refueler|Train
----@param network_name string
-function get_network_flag(e, network_name)
-	return e.network_name == NETWORK_EACH and e.network_flag[network_name] or e.network_flag
-end

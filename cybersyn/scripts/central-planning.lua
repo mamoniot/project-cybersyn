@@ -358,7 +358,8 @@ local function tick_dispatch(map_data, mod_settings)
 			if trains then
 				for train_id, _ in pairs(trains) do
 					local train = map_data.trains[train_id]
-					if not btest(netand, train.network_flag) or train.se_is_being_teleported then
+					local train_flag = get_network_flag(train, network_name)
+					if not btest(netand, train_flag) or train.se_is_being_teleported then
 						goto train_continue
 					end
 					if correctness < 2 then
@@ -717,7 +718,7 @@ function tick(map_data, mod_settings)
 	map_data.total_ticks = map_data.total_ticks + 1
 
 	if map_data.active_alerts then
-		if map_data.total_ticks%(10*mod_settings.tps) < 1 then
+		if map_data.total_ticks%(8*mod_settings.tps) < 1 then
 			process_active_alerts(map_data)
 		end
 	end
