@@ -6,7 +6,7 @@ Behold one of the most feature-rich and performant train logistics network mods 
 
 ## Quick Start Guide
 
-Copy the contents of [Project Cybersyn Official Example Blueprints](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/cybersyn_blueprints.txt) and paste them into the import blueprint text box to see examples of how to create a functional network. I highly recommend taking a look at these; the blueprint book showcases both the basics of the mod and highly advanced designs you can create.
+Copy the contents of [Project Cybersyn Official Example Blueprints](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/cybersyn_blueprints.txt) and paste them into the import string text box to see examples of how to create a functional network. I highly recommend taking a look at these; the blueprint book showcases both the basics of the mod and highly advanced designs you can create.
 
 Within Project Cybersyn, you can think of requester stations as requester chests, provider stations as passive provider chests, depots as roboports and trains as the logistics bots. There is a direct correspondence between the Cybersyn train network and Factorio's robot logistics network.
 
