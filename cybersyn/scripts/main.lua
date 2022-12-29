@@ -860,6 +860,10 @@ local function main()
 	register_gui_actions()
 
 	script.on_init(function()
+		local setting = settings.global["cybersyn-invert-sign"]
+		setting.value = false
+		settings.global["cybersyn-invert-sign"] = setting
+		mod_settings.invert_sign = false
 		init_global()
 		setup_se_compat()
 	end)
