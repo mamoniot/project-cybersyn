@@ -3,21 +3,24 @@ Version: 1.2.2
 Date: 2022-12-26
   Features:
     - Added a station combinator setting to enable or disable the inactivity condition in a train's orders, disabled by default
+    - Using the above new combinator setting on a requester station replaces the empty all cargo condition with an inactivity condition
     - Added a depot combinator setting to enable depot bypass, enabled by default
     - Added a depot combinator setting to force trains to park at the same depot, enabled by default
     - Added network "each" for depots
+    - Added a setting to allow trains with cargo at depots
   Changes:
     - Inverted the sign of combinator outputs, a setting has been added to maintain backwards compatibility
     - Overhauled the wagon control combinator algorithm to spread items out between cargo wagons
-    - Nonempty trains held in the depot now check if they have been emptied and reset when they have
-    - Nonempty trains that park at a depot now always get held
+    - Trains with cargo held in the depot now check if they have been emptied and reset when they have
     - Cargo capacity is now prioritized over distance when choosing trains
     - Increased the default request threshold to 2000
     - Improved English localization
   Bugfixes:
+    - Fixed a bug where trains with cargo sometimes weren't getting held at depots
     - Fixed a crash caused by changing a station combinator to the "each" network during a bad tick
     - Multiple rare bugs and crashes relating to wagon control combinators are fixed
-    - Fixed bug with refueler direct orders not being applied after moving through a space elevator
+    - Fixed a bug with refueler direct orders not being applied after moving through a space elevator
+    - Fixed a bug where filtered slots sometimes weren't being removed
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.1
 Date: 2022-12-24

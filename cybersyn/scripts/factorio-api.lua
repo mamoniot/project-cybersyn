@@ -49,7 +49,10 @@ end
 ------------------------------------------------------------------------------
 
 
-local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
+local condition_wait_inactive = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
+local condition_only_inactive = {condition_wait_inactive}
+local condition_unloading_order = {{type = "empty", compare_type = "and"}}
+local condition_direct_to_station = {{type = "time", compare_type = "and", ticks = 1}}
 ---@param stop LuaEntity
 ---@param manifest Manifest
 ---@param enable_inactive boolean
@@ -70,27 +73,29 @@ function create_loading_order(stop, manifest, enable_inactive)
 		}
 	end
 	if enable_inactive then
-		condition[#condition + 1] = create_loading_order_condition
+		condition[#condition + 1] = condition_wait_inactive
 	end
 	return {station = stop.backer_name, wait_conditions = condition}
 end
 
-local create_unloading_order_condition = {{type = "empty", compare_type = "and"}}
 ---@param stop LuaEntity
-function create_unloading_order(stop)
-	return {station = stop.backer_name, wait_conditions = create_unloading_order_condition}
+---@param enable_inactive boolean
+function create_unloading_order(stop, enable_inactive)
+	if enable_inactive then
+		return {station = stop.backer_name, wait_conditions = condition_only_inactive}
+	else
+		return {station = stop.backer_name, wait_conditions = condition_unloading_order}
+	end
 end
 
-local create_inactivity_order_condition = {{type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}}
 ---@param depot_name string
 function create_inactivity_order(depot_name)
-	return {station = depot_name, wait_conditions = create_inactivity_order_condition}
+	return {station = depot_name, wait_conditions = condition_only_inactive}
 end
 
-local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 1}}
 ---@param stop LuaEntity
 function create_direct_to_station_order(stop)
-	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction, wait_conditions = create_direct_to_station_order_condition}
+	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction, wait_conditions = condition_direct_to_station}
 end
 
 ---@param train LuaTrain
@@ -151,9 +156,10 @@ end
 ---@param p_stop LuaEntity
 ---@param p_enable_inactive boolean
 ---@param r_stop LuaEntity
+---@param r_enable_inactive boolean
 ---@param manifest Manifest
 ---@param start_at_depot boolean?
-function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, p_enable_inactive, r_stop, manifest, start_at_depot)
+function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, p_enable_inactive, r_stop, r_enable_inactive, manifest, start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 	local old_schedule
 	if not start_at_depot then
@@ -175,7 +181,7 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 			create_direct_to_station_order(p_stop),
 			create_loading_order(p_stop, manifest, p_enable_inactive),
 			create_direct_to_station_order(r_stop),
-			create_unloading_order(r_stop),
+			create_unloading_order(r_stop, r_enable_inactive),
 		}
 		if same_depot then
 			records[6] = create_direct_to_station_order(depot_stop)
@@ -215,7 +221,7 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 						elseif t_surface_i == r_surface_i then
 							records[#records + 1] = create_direct_to_station_order(r_stop)
 						end
-						records[#records + 1] = create_unloading_order(r_stop)
+						records[#records + 1] = create_unloading_order(r_stop, r_enable_inactive)
 						if r_surface_i ~= d_surface_i then
 							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
 							is_train_in_orbit = not is_train_in_orbit
@@ -237,7 +243,7 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 	train.schedule = {current = 1, records = {
 		create_inactivity_order(depot_stop.backer_name),
 		create_loading_order(p_stop, manifest, p_enable_inactive),
-		create_unloading_order(r_stop),
+		create_unloading_order(r_stop, r_enable_inactive),
 	}}
 	lock_train(train)
 	send_alert_cannot_path_between_surfaces(map_data, train)

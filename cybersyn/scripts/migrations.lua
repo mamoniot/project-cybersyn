@@ -159,8 +159,10 @@ local migrations_table = {
 			local control = get_comb_control(comb)
 			local params = control.parameters
 			local bits = params.second_constant or 0
-
-			bits = bit32.replace(bits, 1, SETTING_ENABLE_INACTIVE)--[[@as int]]
+			local is_pr_state = bit32.extract(bits, 0, 2)
+			if is_pr_state ~= 2 then
+				bits = bit32.replace(bits, 1, SETTING_ENABLE_INACTIVE)--[[@as int]]
+			end
 			bits = bit32.replace(bits, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
 			params.second_constant = bits
 
@@ -171,7 +173,9 @@ local migrations_table = {
 			map_data.to_comb_params[id] = params
 		end
 		for _, station in pairs(map_data.stations) do
-			station.enable_inactive = true
+			if station.is_p then
+				station.enable_inactive = true
+			end
 		end
 		for train_id, train in pairs(map_data.trains) do
 			train.depot_id = train.parked_at_depot_id

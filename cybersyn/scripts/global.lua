@@ -112,9 +112,9 @@
 ---@field public stuck_train_time double
 ---@field public fuel_threshold double
 ---@field public invert_sign boolean
+---@field public allow_nonempty_in_depot boolean
 ---@field public missing_train_alert_enabled boolean --interface setting
 ---@field public stuck_train_alert_enabled boolean --interface setting
----@field public react_to_nonempty_train_in_depot boolean --interface setting
 ---@field public react_to_train_at_incorrect_station boolean --interface setting
 ---@field public react_to_train_early_to_depot boolean --interface setting
 

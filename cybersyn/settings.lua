@@ -21,7 +21,7 @@ data:extend({
 	{
 		type = "double-setting",
 		name = "cybersyn-request-threshold",
-		order = "ac",
+		order = "ba",
 		setting_type = "runtime-global",
 		default_value = 2000,
 		minimum_value = 1,
@@ -30,7 +30,7 @@ data:extend({
 	{
 		type = "int-setting",
 		name = "cybersyn-network-flag",
-		order = "ad",
+		order = "bb",
 		setting_type = "runtime-global",
 		default_value = -1,
 		minimum_value = -2147483648,
@@ -39,7 +39,7 @@ data:extend({
 	{
 		type = "double-setting",
 		name = "cybersyn-fuel-threshold",
-		order = "ae",
+		order = "bc",
 		setting_type = "runtime-global",
 		default_value = .5,
 		minimum_value = 0,
@@ -48,7 +48,7 @@ data:extend({
 	{
 		type = "double-setting",
 		name = "cybersyn-warmup-time",
-		order = "ag",
+		order = "ca",
 		setting_type = "runtime-global",
 		default_value = 20,
 		minimum_value = 0,
@@ -57,7 +57,7 @@ data:extend({
 	{
 		type = "double-setting",
 		name = "cybersyn-stuck-train-time",
-		order = "ah",
+		order = "cb",
 		setting_type = "runtime-global",
 		default_value = 600,
 		minimum_value = 0,
@@ -65,8 +65,15 @@ data:extend({
 	},
 	{
 		type = "bool-setting",
+		name = "allow-nonempty-in-depot",
+		order = "cc",
+		setting_type = "runtime-global",
+		default_value = false,
+	},
+	{
+		type = "bool-setting",
 		name = "cybersyn-invert-sign",
-		order = "ai",
+		order = "da",
 		setting_type = "runtime-global",
 		default_value = false,
 	},

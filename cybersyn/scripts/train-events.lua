@@ -48,6 +48,18 @@ function on_failed_delivery(map_data, train_id, train)
 			unset_wagon_combs(map_data, station)
 		end
 	end
+	if train.has_filtered_wagon then
+		train.has_filtered_wagon = nil
+		for carriage_i, carriage in ipairs(train.entity.cargo_wagons) do
+			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
+			if inv and inv.is_filtered() then
+				---@type uint
+				for i = 1, #inv do
+					inv.set_filter(i, nil)
+				end
+			end
+		end
+	end
 	train.r_station_id = nil
 	train.p_station_id = nil
 	train.manifest = nil
@@ -154,7 +166,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 			interface_raise_train_status_changed(train_id, old_status, STATUS_D)
 		else
 			--train still has cargo
-			if mod_settings.react_to_nonempty_train_in_depot then
+			if not mod_settings.allow_nonempty_in_depot then
 				lock_train_to_depot(train_entity)
 				remove_train(map_data, train_id, train)
 				send_alert_nonempty_train_in_depot(map_data, train_entity)
@@ -190,7 +202,7 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		set_depot_schedule(train_entity, depot.entity_stop.backer_name)
 		interface_raise_train_created(train_id, depot_id)
 	else
-		if mod_settings.react_to_nonempty_train_in_depot then
+		if not mod_settings.allow_nonempty_in_depot then
 			lock_train_to_depot(train_entity)
 			send_alert_nonempty_train_in_depot(map_data, train_entity)
 		end
