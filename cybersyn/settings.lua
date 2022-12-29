@@ -65,7 +65,7 @@ data:extend({
 	},
 	{
 		type = "bool-setting",
-		name = "cybersyn-allow-nonempty-in-depot",
+		name = "cybersyn-allow-cargo-in-depot",
 		order = "cc",
 		setting_type = "runtime-global",
 		default_value = false,
