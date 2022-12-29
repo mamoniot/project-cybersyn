@@ -103,7 +103,7 @@ local migrations_table = {
 		map_data.each_refuelers = {}
 		map_data.se_tele_old_id = nil
 
-		for k, comb in pairs(map_data.to_comb) do
+		for id, comb in pairs(map_data.to_comb) do
 			local control = get_comb_control(comb)
 			local params = control.parameters
 			local bits = params.second_constant or 0
@@ -114,6 +114,10 @@ local migrations_table = {
 			params.second_constant = new_bits
 
 			control.parameters = params
+			if params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
+				params.operation = MODE_PRIMARY_IO
+			end
+			map_data.to_comb_params[id] = params
 		end
 		for id, station in pairs(map_data.stations) do
 			station.display_state = (station.display_state >= 2 and 1 or 0) + (station.display_state%2)*2
@@ -147,8 +151,11 @@ local migrations_table = {
 	["1.2.2"] = function()
 		---@type MapData
 		local map_data = global
+		local setting = settings.global["cybersyn-invert-sign"]
+		setting.value = true
+		settings.global["cybersyn-invert-sign"] = setting
 
-		for k, comb in pairs(map_data.to_comb) do
+		for id, comb in pairs(map_data.to_comb) do
 			local control = get_comb_control(comb)
 			local params = control.parameters
 			local bits = params.second_constant or 0
@@ -158,6 +165,10 @@ local migrations_table = {
 			params.second_constant = bits
 
 			control.parameters = params
+			if params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
+				params.operation = MODE_PRIMARY_IO
+			end
+			map_data.to_comb_params[id] = params
 		end
 		for _, station in pairs(map_data.stations) do
 			station.enable_inactive = true
@@ -205,7 +216,6 @@ local migrations_table = {
 			train.se_depot_surface_i = nil
 			train.parked_at_depot_id = nil
 		end
-		settings.global["cybersyn-invert-sign"].value = true
 	end
 }
 --STATUS_R_TO_D = 5
