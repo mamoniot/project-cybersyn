@@ -1,5 +1,4 @@
 --By Mami
-local floor = math.floor
 local ceil = math.ceil
 local table_insert = table.insert
 
@@ -23,12 +22,24 @@ end
 ---@param depot_id uint
 ---@param depot Depot
 local function on_depot_broken(map_data, depot_id, depot)
-	local train_id = depot.available_train_id
-	if train_id then
-		local train = map_data.trains[train_id]
-		lock_train(train.entity)
-		send_alert_depot_of_train_broken(map_data, train.entity)
-		remove_train(map_data, train_id, train)
+	for train_id, train in pairs(map_data.trains) do
+		if train.depot_id == depot_id then
+			if train.use_any_depot then
+				local e = get_any_train_entity(train.entity)
+				local stops = e.force.get_train_stops({name = depot.entity_stop.backer_name, surface = e.surface})
+				for stop in rnext_consume, stops do
+					local new_depot_id = stop.unit_number
+					if map_data.depots[new_depot_id] then
+						train.depot_id = new_depot_id--[[@as uint]]
+						goto continue
+					end
+				end
+			end
+			lock_train(train.entity)
+			send_alert_depot_of_train_broken(map_data, train.entity)
+			remove_train(map_data, train_id, train)
+		end
+		::continue::
 	end
 	map_data.depots[depot_id] = nil
 	interface_raise_depot_removed(depot_id, depot)
@@ -105,17 +116,17 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		entity_stop = stop,
 		entity_comb1 = comb1,
 		entity_comb2 = comb2,
-		--is_p = set_station_from_comb_state,
-		--is_r = set_station_from_comb_state,
-		--allows_all_trains = set_station_from_comb_state,
+		--is_p = set_station_from_comb,
+		--is_r = set_station_from_comb,
+		--allows_all_trains = set_station_from_comb,
 		deliveries_total = 0,
 		last_delivery_tick = map_data.total_ticks,
 		priority = 0,
 		item_priotity = nil,
 		r_threshold = 0,
 		locked_slots = 0,
-		--network_name = set_station_from_comb_state,
-		network_flag = 0,
+		--network_name = set_station_from_comb,
+		--network_flag = set_station_from_comb,
 		wagon_combs = nil,
 		deliveries = {},
 		accepted_layouts = {},
@@ -125,7 +136,6 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		item_thresholds = nil,
 		display_state = 0,
 	}
-	set_station_from_comb_state(station)
 	local id = stop.unit_number--[[@as uint]]
 	map_data.stations[id] = station
 	map_data.warmup_station_ids[#map_data.warmup_station_ids + 1] = id
@@ -350,8 +360,8 @@ function combinator_update(map_data, comb, reset_display)
 	local params = control.parameters
 	local old_params = map_data.to_comb_params[unit_number]
 	local has_changed = false
-	local station
-	local id
+	local station = nil
+	local id = nil
 
 
 	if params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST or params.operation == MODE_PRIMARY_IO then
@@ -361,7 +371,10 @@ function combinator_update(map_data, comb, reset_display)
 		if stop then
 			id = stop.unit_number--[[@as uint]]
 			station = map_data.stations[id]
-			if should_reset and station and station.entity_comb1 == comb then
+			if station.entity_comb1 ~= comb then
+				station = nil
+			end
+			if should_reset and station then
 				--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
 				if station.display_state == 0 then
 					params.operation = MODE_PRIMARY_IO
@@ -396,12 +409,12 @@ function combinator_update(map_data, comb, reset_display)
 
 		local stop = map_data.to_stop[comb.unit_number]
 		if stop and stop.valid then
-			id = stop.unit_number
-			station = map_data.stations[id]
 			if station then
-				if station.entity_comb1 == comb then
-					station.network_name = new_network
+				--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
+				if not map_data.queue_station_update then
+					map_data.queue_station_update = {}
 				end
+				map_data.queue_station_update[id] = true
 			else
 				local depot = map_data.depots[id]
 				if depot then
@@ -426,11 +439,11 @@ function combinator_update(map_data, comb, reset_display)
 	if params.second_constant ~= old_params.second_constant then
 		has_changed = true
 		if station then
-			local pre = station.allows_all_trains
-			set_station_from_comb_state(station)
-			if station.allows_all_trains ~= pre then
-				update_stop_if_auto(map_data, station, true)
+			--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
+			if not map_data.queue_station_update then
+				map_data.queue_station_update = {}
 			end
+			map_data.queue_station_update[id] = true
 		else
 			local refueler = map_data.refuelers[id]
 			if refueler then
@@ -553,13 +566,6 @@ local function on_stop_rename(map_data, stop, old_name)
 				end
 			end
 		end
-	else
-		local depot = map_data.depots[station_id]
-		if depot and depot.available_train_id then
-			local train = map_data.trains[depot.available_train_id--[[@as uint]]]
-			train.depot_name = stop.backer_name
-			--train.se_depot_surface_i = stop.surface.index
-		end
 	end
 end
 
@@ -653,28 +659,28 @@ local function on_rename(event)
 end
 
 
-local function on_settings_changed(event)
-	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
-	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
-	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
-	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
-	mod_settings.depot_bypass_enabled = settings.global["cybersyn-depot-bypass-enabled"].value--[[@as boolean]]
-	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
-	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
-	if event.setting == "cybersyn-ticks-per-second" then
-		if mod_settings.tps > DELTA then
-			local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
-			script.on_nth_tick(nth_tick, function()
-				tick(global, mod_settings)
-			end)
-		else
-			script.on_nth_tick(nil)
+---@param schedule TrainSchedule
+---@param stop LuaEntity
+---@param old_surface_index uint
+local function se_add_direct_to_station_order(schedule, stop, old_surface_index)
+	local surface_i = stop.surface.index
+	if surface_i ~= old_surface_index then
+		local name = stop.backer_name
+		local records = schedule.records
+		for i = schedule.current, #records do
+			if records[i].station == name then
+				if i == 1 then
+					--we are assuming this is the depot order
+					records[#records + 1] = create_direct_to_station_order(stop)
+					schedule.current = #records--[[@as uint]]
+				else
+					table_insert(records, i, create_direct_to_station_order(stop))
+				end
+				break
+			end
 		end
 	end
-	interface_raise_on_mod_settings_changed(event)
 end
-
 local function setup_se_compat()
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if not IS_SE_PRESENT then return end
@@ -687,9 +693,6 @@ local function setup_se_compat()
 		---@type MapData
 		local map_data = global
 		local old_id = event.old_train_id_1
-		--NOTE: this is not guaranteed to be unique, it should be fine since the window of time for another train to mistakenly steal this train's event data is miniscule
-		--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
-		local train_unique_identifier = event.train.front_stock.backer_name
 
 		local train = map_data.trains[old_id]
 		if not train then return end
@@ -706,19 +709,27 @@ local function setup_se_compat()
 		---@type uint
 		local new_id = train_entity.id
 		local old_surface_index = event.old_surface_index
-		local train_unique_identifier = event.train.front_stock.backer_name
 
-		--NOTE: event.old_train_id_1 from this event is useless, it's for one of the many transient trains SE spawns while teleporting the old train, only se_on_train_teleport_started_event returns the correct old train id
-		--NOTE: please SE dev if you read this fix the issue where se_on_train_teleport_finished_event is returning the wrong old train id
 		local old_id = event.old_train_id_1
 		local train = map_data.trains[old_id]
 		if not train then return end
 
 		if train.is_available then
-			local network = map_data.available_trains[train.network_name--[[@as string]]]
-			if network then
-				network[new_id] = true
-				network[old_id] = nil
+			local f, a
+			if train.network_name == NETWORK_EACH then
+				f, a = next, train.network_flag
+			else
+				f, a = once, train.network_name
+			end
+			for network_name in f, a do
+				local network = map_data.available_trains[network_name]
+				if network then
+					network[new_id] = true
+					network[old_id] = nil
+					if next(network) == nil then
+						map_data.available_trains[network_name] = nil
+					end
+				end
 			end
 		end
 
@@ -737,48 +748,57 @@ local function setup_se_compat()
 			train.se_awaiting_rename = nil
 		end
 
-		if not (train.status == STATUS_TO_P or train.status == STATUS_TO_R) then return end
-
 		local schedule = train_entity.schedule
 		if schedule then
-			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
-				local p_station = map_data.stations[train.p_station_id]
-				local p_name = p_station.entity_stop.backer_name
-				local p_surface_i = p_station.entity_stop.surface.index
-				local r_station = map_data.stations[train.r_station_id]
-				local r_name = r_station.entity_stop.backer_name
-				local r_surface_i = r_station.entity_stop.surface.index
-				local records = schedule.records
-				local i = schedule.current
-				while i <= #records do
-					if records[i].station == p_name and p_surface_i ~= old_surface_index then
-						table_insert(records, i, create_direct_to_station_order(p_station.entity_stop))
-						i = i + 1
-					elseif records[i].station == r_name and r_surface_i ~= old_surface_index then
-						table_insert(records, i, create_direct_to_station_order(r_station.entity_stop))
-						i = i + 1
-					end
-					i = i + 1
-				end
-				train_entity.schedule = schedule
-			elseif train.status == STATUS_TO_F then
-				local refueler = map_data.refuelers[train.refueler_id]
-				local f_name = refueler.entity_stop.backer_name
-				local f_surface_i = refueler.entity_stop.surface.index
-				local records = schedule.records
-				local i = schedule.current
-				while i <= #records do
-					if records[i].station == f_name and f_surface_i ~= old_surface_index then
-						table_insert(records, i, create_direct_to_station_order(refueler.entity_stop))
-						i = i + 1
-					end
-					i = i + 1
-				end
-				train_entity.schedule = schedule
+			if train.status == STATUS_TO_P then
+				local stop = map_data.stations[train.p_station_id].entity_stop
+				se_add_direct_to_station_order(schedule, stop, old_surface_index)
 			end
+			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
+				local stop = map_data.stations[train.r_station_id].entity_stop
+				se_add_direct_to_station_order(schedule, stop, old_surface_index)
+			end
+			if train.status == STATUS_TO_F then
+				local stop = map_data.refuelers[train.refueler_id].entity_stop
+				se_add_direct_to_station_order(schedule, stop, old_surface_index)
+			end
+			if not train.use_any_depot then
+				local depot = map_data.depots[train.depot_id]
+				se_add_direct_to_station_order(schedule, depot.entity_stop, old_surface_index)
+			end
+			train_entity.schedule = schedule
 		end
 		interface_raise_train_teleported(new_id, old_id)
 	end)
+end
+
+
+local function grab_all_settings()
+	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
+	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
+	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
+	mod_settings.priority = settings.global["cybersyn-priority"].value--[[@as int]]
+	mod_settings.locked_slots = settings.global["cybersyn-locked-slots"].value--[[@as int]]
+	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
+	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
+	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
+	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
+	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value--[[@as boolean]]
+	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
+end
+local function on_settings_changed(event)
+	grab_all_settings()
+	if event.setting == "cybersyn-ticks-per-second" then
+		if mod_settings.tps > DELTA then
+			local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
+			script.on_nth_tick(nth_tick, function()
+				tick(global, mod_settings)
+			end)
+		else
+			script.on_nth_tick(nil)
+		end
+	end
+	interface_raise_on_mod_settings_changed(event)
 end
 
 
@@ -798,18 +818,10 @@ local filter_broken = {
 	{filter = "rolling-stock"},
 }
 local function main()
-	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
-	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
-	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
-	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
-	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
-	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
-	mod_settings.depot_bypass_enabled = settings.global["cybersyn-depot-bypass-enabled"].value--[[@as boolean]]
+	grab_all_settings()
 
 	mod_settings.missing_train_alert_enabled = true
 	mod_settings.stuck_train_alert_enabled = true
-	mod_settings.react_to_nonempty_train_in_depot = true
 	mod_settings.react_to_train_at_incorrect_station = true
 	mod_settings.react_to_train_early_to_depot = true
 
@@ -848,6 +860,10 @@ local function main()
 	register_gui_actions()
 
 	script.on_init(function()
+		local setting = settings.global["cybersyn-invert-sign"]
+		setting.value = false
+		settings.global["cybersyn-invert-sign"] = setting
+		mod_settings.invert_sign = false
 		init_global()
 		setup_se_compat()
 	end)

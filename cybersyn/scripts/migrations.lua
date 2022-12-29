@@ -1,3 +1,4 @@
+--By Mami
 local flib_migration = require("__flib__.migration")
 
 
@@ -103,23 +104,40 @@ local migrations_table = {
 		map_data.each_refuelers = {}
 		map_data.se_tele_old_id = nil
 
-		for k, comb in pairs(map_data.to_comb) do
+		for id, comb in pairs(map_data.to_comb) do
 			local control = get_comb_control(comb)
 			local params = control.parameters
+			local params_old = map_data.to_comb_params[id]
 			local bits = params.second_constant or 0
+			local bits_old = params_old.second_constant or 0
+
 			local allows_all_trains = bits%2
 			local is_pr_state = math.floor(bits/2)%3
+			local allows_all_trains_old = bits_old%2
+			local is_pr_state_old = math.floor(bits_old/2)%3
 
-			local new_bits = bit32.bor(is_pr_state, allows_all_trains*4)
-			params.second_constant = new_bits
+			bits = bit32.bor(is_pr_state, allows_all_trains*4)
+			bits_old = bit32.bor(is_pr_state_old, allows_all_trains_old*4)
+			params.second_constant = bits
+			params_old.second_constant = bits_old
 
 			control.parameters = params
+			map_data.to_comb_params[id] = params_old
 		end
 		for id, station in pairs(map_data.stations) do
 			station.display_state = (station.display_state >= 2 and 1 or 0) + (station.display_state%2)*2
 
-			set_station_from_comb_state(station)
-			update_stop_if_auto(map_data, station, true)
+			local params = get_comb_params(station.entity_comb1)
+
+			local bits = params.second_constant or 0
+			local is_pr_state = bit32.extract(bits, 0, 2)
+			local allows_all_trains = bit32.extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
+			local is_stack = bit32.extract(bits, SETTING_IS_STACK) > 0
+
+			station.allows_all_trains = allows_all_trains
+			station.is_stack = is_stack
+			station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
+			station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
 		end
 
 		map_data.layout_train_count = {}
@@ -135,6 +153,77 @@ local migrations_table = {
 			end
 		end
 	end,
+	["1.2.2"] = function()
+		---@type MapData
+		local map_data = global
+		local setting = settings.global["cybersyn-invert-sign"]
+		setting.value = true
+		settings.global["cybersyn-invert-sign"] = setting
+
+		for id, comb in pairs(map_data.to_comb) do
+			local control = get_comb_control(comb)
+			local params = control.parameters
+			local params_old = map_data.to_comb_params[id]
+			local bits = params.second_constant or 0
+			local bits_old = params_old.second_constant or 0
+
+			bits = bit32.replace(bits, 1, SETTING_ENABLE_INACTIVE)--[[@as int]]
+			bits = bit32.replace(bits, 1, SETTING_ENABLE_INACTIVE)--[[@as int]]
+			bits_old = bit32.replace(bits_old, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
+			bits_old = bit32.replace(bits_old, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
+			params.second_constant = bits
+			params_old.second_constant = bits_old
+
+			control.parameters = params
+			map_data.to_comb_params[id] = params_old
+		end
+		for _, station in pairs(map_data.stations) do
+			station.enable_inactive = true
+		end
+		for train_id, train in pairs(map_data.trains) do
+			train.depot_id = train.parked_at_depot_id
+			if not train.depot_id then
+				local e = get_any_train_entity(train.entity)
+				local stops = e.force.get_train_stops({name = train.depot_name, surface = e.surface})
+				for stop in rnext_consume, stops do
+					local new_depot_id = stop.unit_number
+					if map_data.depots[new_depot_id] then
+						train.depot_id = new_depot_id--[[@as uint]]
+						break
+					end
+				end
+			end
+			if not train.depot_id then
+				train.depot_id = next(map_data.depots)
+			end
+			if not train.depot_id then
+				train.entity.manual_mode = true
+				send_alert_depot_of_train_broken(map_data, train.entity)
+				local layout_id = train.layout_id
+				local count = global.layout_train_count[layout_id]
+				if count <= 1 then
+					global.layout_train_count[layout_id] = nil
+					global.layouts[layout_id] = nil
+					for _, stop in pairs(global.stations) do
+						stop.accepted_layouts[layout_id] = nil
+					end
+					for _, stop in pairs(global.refuelers) do
+						stop.accepted_layouts[layout_id] = nil
+					end
+				else
+					global.layout_train_count[layout_id] = count - 1
+				end
+				map_data.trains[train_id] = nil
+			end
+
+			train.use_any_depot = true
+			train.disable_bypass = nil
+
+			train.depot_name = nil
+			train.se_depot_surface_i = nil
+			train.parked_at_depot_id = nil
+		end
+	end
 }
 --STATUS_R_TO_D = 5
 

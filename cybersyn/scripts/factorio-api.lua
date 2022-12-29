@@ -39,15 +39,32 @@ function se_get_space_elevator_name(surface)
 end
 
 
+---@param train LuaTrain
+function get_any_train_entity(train)
+	return train.front_stock or train.back_stock or train.carriages[1]
+end
+
+
+---@param e Station|Refueler|Train
+---@param network_name string
+function get_network_flag(e, network_name)
+	return e.network_name == NETWORK_EACH and (e.network_flag[network_name] or 0) or e.network_flag
+end
+
+
 ------------------------------------------------------------------------------
 --[[train schedules]]--
 ------------------------------------------------------------------------------
 
 
-local create_loading_order_condition = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
+local condition_wait_inactive = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
+local condition_only_inactive = {condition_wait_inactive}
+local condition_unloading_order = {{type = "empty", compare_type = "and"}}
+local condition_direct_to_station = {{type = "time", compare_type = "and", ticks = 1}}
 ---@param stop LuaEntity
 ---@param manifest Manifest
-function create_loading_order(stop, manifest)
+---@param enable_inactive boolean
+function create_loading_order(stop, manifest, enable_inactive)
 	local condition = {}
 	for _, item in ipairs(manifest) do
 		local cond_type
@@ -63,26 +80,30 @@ function create_loading_order(stop, manifest)
 			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
 		}
 	end
-	condition[#condition + 1] = create_loading_order_condition
+	if enable_inactive then
+		condition[#condition + 1] = condition_wait_inactive
+	end
 	return {station = stop.backer_name, wait_conditions = condition}
 end
 
-local create_unloading_order_condition = {{type = "empty", compare_type = "and"}}
 ---@param stop LuaEntity
-function create_unloading_order(stop)
-	return {station = stop.backer_name, wait_conditions = create_unloading_order_condition}
+---@param enable_inactive boolean
+function create_unloading_order(stop, enable_inactive)
+	if enable_inactive then
+		return {station = stop.backer_name, wait_conditions = condition_only_inactive}
+	else
+		return {station = stop.backer_name, wait_conditions = condition_unloading_order}
+	end
 end
 
-local create_inactivity_order_condition = {{type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}}
 ---@param depot_name string
 function create_inactivity_order(depot_name)
-	return {station = depot_name, wait_conditions = create_inactivity_order_condition}
+	return {station = depot_name, wait_conditions = condition_only_inactive}
 end
 
-local create_direct_to_station_order_condition = {{type = "time", compare_type = "and", ticks = 1}}
 ---@param stop LuaEntity
 function create_direct_to_station_order(stop)
-	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction, wait_conditions = create_direct_to_station_order_condition}
+	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction, wait_conditions = condition_direct_to_station}
 end
 
 ---@param train LuaTrain
@@ -138,13 +159,15 @@ function se_create_elevator_order(elevator_name, is_train_in_orbit)
 end
 ---@param map_data MapData
 ---@param train LuaTrain
----@param depot_name string
----@param d_surface_i int
+---@param depot_stop LuaEntity
+---@param same_depot boolean
 ---@param p_stop LuaEntity
+---@param p_enable_inactive boolean
 ---@param r_stop LuaEntity
+---@param r_enable_inactive boolean
 ---@param manifest Manifest
 ---@param start_at_depot boolean?
-function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop, r_stop, manifest, start_at_depot)
+function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, p_enable_inactive, r_stop, r_enable_inactive, manifest, start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 	local old_schedule
 	if not start_at_depot then
@@ -153,6 +176,7 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 	local t_surface = train.front_stock.surface
 	local p_surface = p_stop.surface
 	local r_surface = r_stop.surface
+	local d_surface_i = depot_stop.surface.index
 	local t_surface_i = t_surface.index
 	local p_surface_i = p_surface.index
 	local r_surface_i = r_surface.index
@@ -160,15 +184,19 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 	local is_r_on_t = t_surface_i == r_surface_i
 	local is_d_on_t = t_surface_i == d_surface_i
 	if is_p_on_t and is_r_on_t and is_d_on_t then
+		local records = {
+			create_inactivity_order(depot_stop.backer_name),
+			create_direct_to_station_order(p_stop),
+			create_loading_order(p_stop, manifest, p_enable_inactive),
+			create_direct_to_station_order(r_stop),
+			create_unloading_order(r_stop, r_enable_inactive),
+		}
+		if same_depot then
+			records[6] = create_direct_to_station_order(depot_stop)
+		end
 		train.schedule = {
 			current = start_at_depot and 1 or 2--[[@as uint]],
-			records = {
-				create_inactivity_order(depot_name),
-				create_direct_to_station_order(p_stop),
-				create_loading_order(p_stop, manifest),
-				create_direct_to_station_order(r_stop),
-				create_unloading_order(r_stop),
-			}
+			records = records
 		}
 		if old_schedule and not train.has_path then
 			train.schedule = old_schedule
@@ -186,14 +214,14 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 				if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
 					local elevator_name = se_get_space_elevator_name(t_surface)
 					if elevator_name then
-						local records = {create_inactivity_order(depot_name)}
+						local records = {create_inactivity_order(depot_stop.backer_name)}
 						if t_surface_i == p_surface_i then
 							records[#records + 1] = create_direct_to_station_order(p_stop)
 						else
 							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
 							is_train_in_orbit = not is_train_in_orbit
 						end
-						records[#records + 1] = create_loading_order(p_stop, manifest)
+						records[#records + 1] = create_loading_order(p_stop, manifest, p_enable_inactive)
 
 						if p_surface_i ~= r_surface_i then
 							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
@@ -201,7 +229,7 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 						elseif t_surface_i == r_surface_i then
 							records[#records + 1] = create_direct_to_station_order(r_stop)
 						end
-						records[#records + 1] = create_unloading_order(r_stop)
+						records[#records + 1] = create_unloading_order(r_stop, r_enable_inactive)
 						if r_surface_i ~= d_surface_i then
 							records[#records + 1] = se_create_elevator_order(elevator_name, is_train_in_orbit)
 							is_train_in_orbit = not is_train_in_orbit
@@ -221,9 +249,9 @@ function set_manifest_schedule(map_data, train, depot_name, d_surface_i, p_stop,
 	end
 	--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
 	train.schedule = {current = 1, records = {
-		create_inactivity_order(depot_name),
-		create_loading_order(p_stop, manifest),
-		create_unloading_order(r_stop),
+		create_inactivity_order(depot_stop.backer_name),
+		create_loading_order(p_stop, manifest, p_enable_inactive),
+		create_unloading_order(r_stop, r_enable_inactive),
 	}}
 	lock_train(train)
 	send_alert_cannot_path_between_surfaces(map_data, train)
@@ -306,6 +334,78 @@ function get_comb_network_name(comb)
 
 	return signal and signal.name or nil
 end
+
+---@param station Station
+function set_station_from_comb(station)
+	--NOTE: this does nothing to update currently active deliveries
+	--NOTE: this can only be called at the tick init boundary
+	local params = get_comb_params(station.entity_comb1)
+	local signal = params.first_signal
+
+	local bits = params.second_constant or 0
+	local is_pr_state = bit_extract(bits, 0, 2)
+	local allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
+	local is_stack = bit_extract(bits, SETTING_IS_STACK) > 0
+	local enable_inactive = bit_extract(bits, SETTING_ENABLE_INACTIVE) > 0
+
+	station.network_name = signal and signal.name or nil
+	station.allows_all_trains = allows_all_trains
+	station.is_stack = is_stack
+	station.enable_inactive = enable_inactive
+	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
+	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
+
+	if station.network_name == NETWORK_EACH then
+		station.network_flag = {}
+	end
+end
+---@param mod_settings CybersynModSettings
+---@param train Train
+---@param comb LuaEntity
+function set_train_from_comb(mod_settings, train, comb)
+	--NOTE: this does nothing to update currently active deliveries
+	local params = get_comb_params(comb)
+	local signal = params.first_signal
+	local network_name = signal and signal.name or nil
+
+	local bits = params.second_constant or 0
+	local disable_bypass = bit_extract(bits, SETTING_DISABLE_DEPOT_BYPASS) > 0
+	local use_any_depot = bit_extract(bits, SETTING_USE_ANY_DEPOT) > 0
+
+	train.network_name = network_name
+	train.disable_bypass = disable_bypass
+	train.use_any_depot = use_any_depot
+
+	local is_each = train.network_name == NETWORK_EACH
+	if is_each then
+		train.network_flag = {}
+	else
+		train.network_flag = mod_settings.network_flag
+	end
+	train.priority = mod_settings.priority
+	local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
+	if signals then
+		for k, v in pairs(signals) do
+			local item_name = v.signal.name
+			local item_type = v.signal.type
+			local item_count = v.count
+			if item_name then
+				if item_type == "virtual" then
+					if item_name == SIGNAL_PRIORITY then
+						train.priority = item_count
+					elseif is_each then
+						if item_name ~= REQUEST_THRESHOLD and item_name ~= LOCKED_SLOTS then
+							train.network_flag[item_name] = item_count
+						end
+					end
+				end
+				if item_name == network_name then
+					train.network_flag = item_count
+				end
+			end
+		end
+	end
+end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 ---@param id uint
@@ -316,12 +416,14 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 	local bits = params.second_constant or 0
 	local signal = params.first_signal
 	local old_network = refueler.network_name
+	local old_network_flag = refueler.network_flag
 
 	refueler.network_name = signal and signal.name or nil
-	refueler.allows_all_trains = bit_extract(bits, 2) > 0
-	refueler.priority = 0
+	refueler.allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
+	refueler.priority = mod_settings.priority
 
-	if refueler.network_name == NETWORK_EACH then
+	local is_each = refueler.network_name == NETWORK_EACH
+	if is_each then
 		map_data.each_refuelers[id] = true
 		refueler.network_flag = {}
 	else
@@ -339,8 +441,10 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 				if item_type == "virtual" then
 					if item_name == SIGNAL_PRIORITY then
 						refueler.priority = item_count
-					elseif refueler.network_name == NETWORK_EACH then
-						refueler.network_flag[item_name] = item_count
+					elseif is_each then
+						if item_name ~= REQUEST_THRESHOLD and item_name ~= LOCKED_SLOTS then
+							refueler.network_flag[item_name] = item_count
+						end
 					end
 				end
 				if item_name == refueler.network_name then
@@ -352,7 +456,7 @@ function set_refueler_from_comb(map_data, mod_settings, id)
 
 	local f, a
 	if old_network == NETWORK_EACH then
-		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
+		f, a = pairs(old_network_flag--[[@as {[string]: int}]])
 	elseif old_network ~= refueler.network_name then
 		f, a = once, old_network
 	else
@@ -406,24 +510,6 @@ function update_display(map_data, station)
 	end
 end
 
-
----@param station Station
-function set_station_from_comb_state(station)
-	--NOTE: this does nothing to update currently active deliveries
-	local params = get_comb_params(station.entity_comb1)
-	local signal = params.first_signal
-
-	local bits = params.second_constant or 0
-	local is_pr_state = bit_extract(bits, 0, 2)
-	local allows_all_trains = bit_extract(bits, 2) > 0
-	local is_stack = bit_extract(bits, 3) > 0
-
-	station.network_name = signal and signal.name or nil
-	station.allows_all_trains = allows_all_trains
-	station.is_stack = is_stack
-	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
-	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
-end
 ---@param comb LuaEntity
 function get_comb_gui_settings(comb)
 	local params = get_comb_params(comb)
@@ -433,8 +519,6 @@ function get_comb_gui_settings(comb)
 	local switch_state = "none"
 	local bits = params.second_constant or 0
 	local is_pr_state = bit_extract(bits, 0, 2)
-	local allows_all_trains = bit_extract(bits, 2) > 0
-	local is_stack = bit_extract(bits, 3) > 0
 	if is_pr_state == 0 then
 		switch_state = "none"
 	elseif is_pr_state == 1 then
@@ -454,7 +538,7 @@ function get_comb_gui_settings(comb)
 	elseif op == MODE_WAGON then
 		selected_index = 5
 	end
-	return selected_index, params.first_signal, switch_state, not allows_all_trains, is_stack
+	return selected_index, params.first_signal, switch_state, bits
 end
 ---@param comb LuaEntity
 ---@param is_pr_state 0|1|2
@@ -467,23 +551,14 @@ function set_comb_is_pr_state(comb, is_pr_state)
 	control.parameters = param
 end
 ---@param comb LuaEntity
----@param allows_all_trains boolean
-function set_comb_allows_all_trains(comb, allows_all_trains)
+---@param n int
+---@param bit boolean
+function set_comb_setting(comb, n, bit)
 	local control = get_comb_control(comb)
 	local param = control.parameters
 	local bits = param.second_constant or 0
 
-	param.second_constant = bit_replace(bits, allows_all_trains and 1 or 0, 2)
-	control.parameters = param
-end
----@param comb LuaEntity
----@param is_stack boolean
-function set_comb_is_stack(comb, is_stack)
-	local control = get_comb_control(comb)
-	local param = control.parameters
-	local bits = param.second_constant or 0
-
-	param.second_constant = bit_replace(bits, is_stack and 1 or 0, 3)
+	param.second_constant = bit_replace(bits, bit and 1 or 0, n)
 	control.parameters = param
 end
 ---@param comb LuaEntity
@@ -540,21 +615,24 @@ end
 ---@param map_data MapData
 ---@param station Station
 function set_comb2(map_data, station)
+	local sign = mod_settings.invert_sign and -1 or 1
 	if station.entity_comb2 then
 		local deliveries = station.deliveries
 		local signals = {}
 		for item_name, count in pairs(deliveries) do
 			local i = #signals + 1
 			local is_fluid = game.item_prototypes[item_name] == nil--NOTE: this is expensive
-			signals[i] = {index = i, signal = {type = is_fluid and "fluid" or "item", name = item_name}, count = -count}
+			signals[i] = {index = i, signal = {type = is_fluid and "fluid" or "item", name = item_name}, count = sign*count}
 		end
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end
 end
 
+
 ------------------------------------------------------------------------------
 --[[alerts]]--
 ------------------------------------------------------------------------------
+
 
 ---@param train LuaTrain
 ---@param icon {}
@@ -694,7 +772,14 @@ function process_active_alerts(map_data)
 			if id == 1 then
 				send_alert_for_train(train, send_stuck_train_alert_icon, "cybersyn-messages.stuck-train")
 			elseif id == 2 then
-				send_alert_for_train(train, send_nonempty_train_in_depot_alert_icon, "cybersyn-messages.nonempty-train")
+				--this is an alert that we have to actively check if we can clear
+				local is_train_empty = next(train.get_contents()) == nil and next(train.get_fluid_contents()) == nil
+				if is_train_empty then
+					--NOTE: this function could get confused being called internally, be sure it can handle that
+					on_train_changed({train = train})
+				else
+					send_alert_for_train(train, send_nonempty_train_in_depot_alert_icon, "cybersyn-messages.nonempty-train")
+				end
 			elseif id == 3 then
 				send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.depot-broken")
 			elseif id == 4 then

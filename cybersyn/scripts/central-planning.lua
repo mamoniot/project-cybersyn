@@ -40,15 +40,13 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
 	local train = map_data.trains[train_id]
+	local depot = map_data.depots[train.depot_id]
 
-	remove_available_train(map_data, train_id, train)
-	local depot_id = train.parked_at_depot_id
-	if depot_id then
-		map_data.depots[depot_id].available_train_id = nil
-		train.parked_at_depot_id = nil
-	end
+	local is_at_depot = remove_available_train(map_data, train_id, train)
+
 	--NOTE: we assume that the train is not being teleported at this time
-	if set_manifest_schedule(map_data, train.entity, train.depot_name, train.se_depot_surface_i, p_station.entity_stop, r_station.entity_stop, manifest, depot_id ~= nil) then
+	--NOTE: set_manifest_schedule is allowed to cancel the delivery at the last second if applying the schedule to the train makes it lost
+	if set_manifest_schedule(map_data, train.entity, depot.entity_stop, not train.use_any_depot, p_station.entity_stop, p_station.enable_inactive, r_station.entity_stop, mod_settings.allow_cargo_in_depot and r_station.enable_inactive--[[@as boolean]], manifest, is_at_depot) then
 		local old_status = train.status
 		train.status = STATUS_TO_P
 		train.p_station_id = p_station_id
@@ -155,10 +153,12 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 
 	--locked slots is only taken into account after the train is already approved for dispatch
 	local locked_slots = p_station.locked_slots
-	local total_slots_left = train.item_slot_capacity
+	local total_item_slots
 	if locked_slots > 0 then
-		local total_cw = #train.entity.cargo_wagons
-		total_slots_left = min(total_slots_left, max(total_slots_left - total_cw*locked_slots, total_cw))
+		local total_cargo_wagons = #train.entity.cargo_wagons
+		total_item_slots = max(train.item_slot_capacity - total_cargo_wagons*locked_slots, 1)
+	else
+		total_item_slots = train.item_slot_capacity
 	end
 	local total_liquid_left = train.fluid_capacity
 
@@ -174,13 +174,13 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 				total_liquid_left = 0--no liquid merging
 				keep_item = true
 			end
-		elseif total_slots_left > 0 then
+		elseif total_item_slots > 0 then
 			local stack_size = get_stack_size(map_data, item.name)
 			local slots = ceil(item.count/stack_size)
-			if slots > total_slots_left then
-				item.count = total_slots_left*stack_size
+			if slots > total_item_slots then
+				item.count = total_item_slots*stack_size
 			end
-			total_slots_left = total_slots_left - slots
+			total_item_slots = total_item_slots - slots
 			keep_item = true
 		end
 		if keep_item then
@@ -329,7 +329,7 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
-			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_dist
+			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_dist
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
@@ -337,8 +337,8 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			p_flag = p_station.network_name == NETWORK_EACH and (p_station.network_flag[network_name] or 0) or p_station.network_flag
-			r_flag = r_station.network_name == NETWORK_EACH and (r_station.network_flag[network_name] or 0) or r_station.network_flag
+			p_flag = get_network_flag(p_station, network_name)
+			r_flag = get_network_flag(r_station, network_name)
 			netand = band(p_flag, r_flag)
 			if netand == 0 then
 				goto p_continue
@@ -353,11 +353,13 @@ local function tick_dispatch(map_data, mod_settings)
 			---@type uint?
 			best_p_train_id = nil
 			best_t_prior = -INF
+			best_capacity = 0
 			best_t_to_p_dist = INF
 			if trains then
 				for train_id, _ in pairs(trains) do
 					local train = map_data.trains[train_id]
-					if not btest(netand, train.network_flag) or train.se_is_being_teleported then
+					local train_flag = get_network_flag(train, network_name)
+					if not btest(netand, train_flag) or train.se_is_being_teleported then
 						goto train_continue
 					end
 					if correctness < 2 then
@@ -397,14 +399,19 @@ local function tick_dispatch(map_data, mod_settings)
 					if train.priority < best_t_prior then
 						goto train_continue
 					end
+
+					if train.priority == best_t_prior and capacity < best_capacity then
+						goto train_continue
+					end
+
 					--check if path is shortest so we prioritize locality
 					local t_to_p_dist = get_stop_dist(train.entity.front_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority
-
-					if train.priority == best_t_prior and t_to_p_dist > best_t_to_p_dist then
+					if capacity == best_capacity and t_to_p_dist > best_t_to_p_dist then
 						goto train_continue
 					end
 
 					best_p_train_id = train_id
+					best_capacity = capacity
 					best_t_prior = train.priority
 					best_t_to_p_dist = t_to_p_dist
 					::train_continue::
@@ -507,10 +514,11 @@ local function tick_poll_station(map_data, mod_settings)
 		end
 	end
 	station.r_threshold = mod_settings.r_threshold
-	station.priority = 0
+	station.priority = mod_settings.priority
 	station.item_priority = nil
-	station.locked_slots = 0
-	if station.network_name == NETWORK_EACH then
+	station.locked_slots = mod_settings.locked_slots
+	local is_each = station.network_name == NETWORK_EACH
+	if is_each then
 		station.network_flag = {}
 	else
 		station.network_flag = mod_settings.network_flag
@@ -548,12 +556,12 @@ local function tick_poll_station(map_data, mod_settings)
 				if item_type == "virtual" then
 					if item_name == SIGNAL_PRIORITY then
 						station.priority = item_count
-					elseif item_name == REQUEST_THRESHOLD and item_count ~= 0 then
+					elseif item_name == REQUEST_THRESHOLD then
 						--NOTE: thresholds must be >0 or they can cause a crash
 						station.r_threshold = abs(item_count)
 					elseif item_name == LOCKED_SLOTS then
 						station.locked_slots = max(item_count, 0)
-					elseif station.network_name == NETWORK_EACH then
+					elseif is_each then
 						station.network_flag[item_name] = item_count
 					end
 					comb1_signals[k] = nil
@@ -645,8 +653,38 @@ local function tick_poll_station(map_data, mod_settings)
 end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
-local function tick_poll_train(map_data, mod_settings)
+function tick_init(map_data, mod_settings)
 	local tick_data = map_data.tick_data
+
+	map_data.economy.all_p_stations = {}
+	map_data.economy.all_r_stations = {}
+	map_data.economy.all_names = {}
+
+	for i, id in pairs(map_data.warmup_station_ids) do
+		local station = map_data.stations[id]
+		if station then
+			if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
+				map_data.active_station_ids[#map_data.active_station_ids + 1] = id
+				map_data.warmup_station_ids[i] = nil
+			end
+		else
+			map_data.warmup_station_ids[i] = nil
+		end
+	end
+	if map_data.queue_station_update then
+		for id, _ in pairs(map_data.queue_station_update) do
+			local station = map_data.stations[id]
+			if station then
+				local pre = station.allows_all_trains
+				set_station_from_comb(station)
+				if station.allows_all_trains ~= pre then
+					update_stop_if_auto(map_data, station, true)
+				end
+			end
+		end
+		map_data.queue_station_update = nil
+	end
+
 	--NOTE: the following has undefined behavior if last_train is deleted, this should be ok since the following doesn't care how inconsistent our access pattern is
 	local train_id, train = next(map_data.trains, tick_data.last_train)
 	tick_data.last_train = train_id
@@ -657,10 +695,7 @@ local function tick_poll_train(map_data, mod_settings)
 		end
 		interface_raise_train_stuck(train_id)
 	end
-end
----@param map_data MapData
-local function tick_poll_comb(map_data, mod_settings)
-	local tick_data = map_data.tick_data
+
 	--NOTE: the following has undefined behavior if last_comb is deleted
 	local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
 	tick_data.last_comb = comb_id
@@ -673,6 +708,9 @@ local function tick_poll_comb(map_data, mod_settings)
 	if refueler_id then
 		set_refueler_from_comb(map_data, mod_settings, refueler_id)
 	end
+
+	map_data.tick_state = STATE_POLL_STATIONS
+	interface_raise_tick_init()
 end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
@@ -680,30 +718,13 @@ function tick(map_data, mod_settings)
 	map_data.total_ticks = map_data.total_ticks + 1
 
 	if map_data.active_alerts then
-		if map_data.total_ticks%(10*mod_settings.tps) < 1 then
+		if map_data.total_ticks%(8*mod_settings.tps) < 1 then
 			process_active_alerts(map_data)
 		end
 	end
 
 	if map_data.tick_state == STATE_INIT then
-		map_data.economy.all_p_stations = {}
-		map_data.economy.all_r_stations = {}
-		map_data.economy.all_names = {}
-		for i, id in pairs(map_data.warmup_station_ids) do
-			local station = map_data.stations[id]
-			if station then
-				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
-					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
-					map_data.warmup_station_ids[i] = nil
-				end
-			else
-				map_data.warmup_station_ids[i] = nil
-			end
-		end
-		map_data.tick_state = STATE_POLL_STATIONS
-		interface_raise_tick_init()
-		tick_poll_train(map_data, mod_settings)
-		tick_poll_comb(map_data)
+		tick_init(map_data, mod_settings)
 	elseif map_data.tick_state == STATE_POLL_STATIONS then
 		for i = 1, mod_settings.update_rate do
 			if tick_poll_station(map_data, mod_settings) then break end

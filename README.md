@@ -6,6 +6,8 @@ Behold one of the most feature-rich and performant train logistics network mods 
 
 ## Quick Start Guide
 
+Copy the contents of [Project Cybersyn Official Example Blueprints](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/cybersyn_blueprints.txt) and paste them into the import blueprint text box to see examples of how to create a functional network. I highly recommend taking a look at these; the blueprint book showcases both the basics of the mod and highly advanced designs you can create.
+
 Within Project Cybersyn, you can think of requester stations as requester chests, provider stations as passive provider chests, depots as roboports and trains as the logistics bots. There is a direct correspondence between the Cybersyn train network and Factorio's robot logistics network.
 
 A bare minimum Cybersyn train network consists of 2 components: depots and stations. Both are created by placing a cybernetic combinator adjacent to a train stop. Select the "Mode" of the combinator to "Station" to create a station, and to "Depot" to create a depot. Create a basic train and order it to park at the depot you just created, it is now controlled by the Cybersyn network. Depots and stations can have any train stop name, names do not impact their function. The circuit network input of a station's cybernetic combinator determines what items that station will request or provide to the Cybersyn network. A positive item signal is interpreted as that station providing that item to the network; A negative item signal is interpreted as that station requesting that item from the network.
@@ -15,7 +17,7 @@ A bare minimum Cybersyn train network consists of 2 components: depots and stati
 
 To make a basic provider station, create an item buffer of chests or tanks adjacent to the station's tracks, and connect that buffer by wire to the input of the cybernetic combinator. To make a basic requester station, repeat the same, except reverse the direction of the inserters or pumps so they are *unloading* instead of loading; then connect a constant combinator to the same circuit network, set it to output the number of item you want this requester station to keep loaded in its item buffer, and flip the sign of each so the signal strength is negative. Once the provider station contains the item being requested, a train will automatically be sent to deliver that item from the provider station to the requester station. The requester station's buffer will automatically be topped up on the item being requested. Be sure that the requester station has the space to at minimum unload 2 fully loaded trains.
 
-Follow the above directions and you have set up a bare minimum Cybersyn network! You may continue adding onto it with more stations and depots and Cybersyn will automatically manage all of them for you. At some point you may notice small hiccups within this network, like trains attempting to deliver a tiny amount of an item instead of a full cargo load, or you may want to extend your network with things like multi-item stations or centralized train refueling. In either case refer to **Mod Details** below for a in depth explanation of every feature within this mod.
+Follow the above directions and you have set up a bare minimum Cybersyn network! You may continue adding onto it with more stations and depots and Cybersyn will automatically manage all of them for you. There is one issue with this kind of network though; trains won't always deliver full loads of cargo, meaning trains will make deliveries more frequently than is necessary. To fix this issue you will need to start using "request thresholds". To get a full picture of how request thresholds work, either import the official example blueprints from above, or read the **Request thresholds** section below.
 
 ## Features
 
@@ -37,7 +39,7 @@ These all combine to make it possible to **create "universal" stations**; statio
 
 Stations can **automatically build allow-lists for trains** they can load or unload. Inserters or pumps adjacent to the station's tracks are auto-detected. No more deadlocks caused by trains mistakenly attempting to fulfill a delivery to a station that cannot unload it. This feature is compatible with miniloaders.
 
-Trains can automatically visit **centralized fuel loaders**. It is not required that every single depot loads trains with fuel.
+Trains can automatically visit **centralized refuelers**. It is not required that every single depot loads trains with fuel.
 
 Trains can **bypass visiting the depot** if they have enough fuel. Trains spend far more time productively making deliveries rather than travelling to and from their depot. Fewer reserve trains are needed as a result.
 
@@ -69,7 +71,7 @@ This mod adds a single new entity to the game, the cybernetic combinator. This c
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/multi-item.png)
 
-When placed adjacent to a vanilla train stop, a Cybersyn station is created. This station can provide or request items to your train network. Connect the input of the combinator to a circuit network; When a positive item signal is received, this station will provide that item to the network, when a negative signal is received, this station will request that item from the network. When a station is providing an item that another station is requesting, a train order will automatically be generated to transfer those items from the providing station to the requesting station. When a train arrives to fulfill this order, the output of the combinator will give the full list of items expected to be loaded (positive) or unloaded (negative) from the train.
+When placed adjacent to a vanilla train stop, a Cybersyn station is created. This station can provide or request items to your train network. Connect the input of the combinator to a circuit network; When a positive item signal is received, this station will provide that item to the network, when a negative signal is received, this station will request that item from the network. When a station is providing an item that another station is requesting, a train order will automatically be generated to transfer those items from the providing station to the requesting station. When a train arrives to fulfill this order, the output of the combinator will give the full list of items expected to be loaded (negative) or unloaded (positive) from the train.
 
 Stations can automatically build allow-lists. When this option is enabled, only trains that can be loaded or unloaded by this station will be allowed to make deliveries to it. Stations determine this based on what inserters or pumps are present at this station along its tracks. When disabled, all trains within the network are allowed.
 
@@ -81,11 +83,11 @@ Stations can be set to provide only or request only. By default stations can bot
 
 When placed adjacent to a vanilla train stop, a Cybersyn depot is created. Any train which parks at this depot will automatically be added to the train network. Whenever a train order is generated, if this train has the cargo capacity to fulfill it, and is allow-listed by both stations, then it will automatically be dispatched to fulfill the order. When the order is completed, the train will return to any train stop with the same name as the depot it first parked in. This almost always means it returns to a Cybersyn depot where it will again await to fulfill a new order. To save on UPS the input of a depot combinator is only read when a train parks at the depot; this is only relevant for networks which make extensive use of network masks on depots.
 
-### Fuel loader mode
+### Refueler mode
 
-When placed adjacent to a vanilla train stop, a Cybersyn fuel loader is created. Whenever a train completes a delivery, if it is running low on fuel (configurable in mod settings), it will attempt to visit a fuel loader before returning to the depot. The train will search for a fuel loader within its network that has not exceeded its train limit and that it is allow-listed for. If one is found it will schedule a detour to it to stock back up on fuel.
+When placed adjacent to a vanilla train stop, a Cybersyn refueler is created. Whenever a train completes a delivery, if it is running low on fuel (configurable in mod settings), it will attempt to visit a refueler before returning to the depot. The train will search for a refueler within its network that has not exceeded its train limit and that it is allow-listed for. If one is found it will schedule a detour to it to stock back up on fuel.
 
-Fuel loaders can automatically build allow-lists. When this option is enabled, trains will be prevented from parking at this station if one of their cargo wagons would be filled with fuel.
+Refuelers can automatically build allow-lists. When this option is enabled, trains will be prevented from parking at this station if one of their cargo wagons would be filled with fuel.
 
 ### Station control mode
 
@@ -107,11 +109,11 @@ When placed adjacent to the tracks of an already existing Cybersyn station, this
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/gui-network.png)
 
-Stations, depots and fuel loaders can be set to belong to a particular network by setting that network on their combinator. By default all combinators belong to the "signal-A" network. By setting a different signal Id, the combinator will belong to that different network. Networks identified with different signal Ids do not share any trains or items; Orders will never be generated to transfer items between separate networks.
+Stations, depots and refuelers can be set to belong to a particular network by setting that network on their combinator. By default all combinators belong to the "signal-A" network. By setting a different signal Id, the combinator will belong to that different network. Networks identified with different signal Ids do not share any trains or items; Orders will never be generated to transfer items between separate networks.
 
 In addition, if the combinator receives as input a signal of the same Id as its network signal Id, then the value of this signal will be interpreted as a bitmask to give 32 "sub-networks" to choose from. Each station can belong to any set of sub-networks based on its mask. A delivery will only be made between two stations if any two bits match between the two masks, i.e. if `mask1 & mask2 > 0`. When a network Id is an item, that item will be ignored by stations, its signal will only ever be interpreted as the network mask.
 
-Stations and fuel loader combinators allow their network to be set to the "each" virtual signal. When in this mode, each virtual signal given to them as input is interpretted as a network mask for that network Id. The station or fuel loader is thus made a part of that network with the specified network mask. This allows you to union together as many different networks as you would like.
+A network can be set to the "each" virtual signal. When in this mode, each virtual signal given to them as input is interpretted as a network mask for that network Id. The stop is thus made a part of that network with the specified network mask. This allows you to union together as many different networks as you would like.
 
 ### Request threshold
 
@@ -127,7 +129,7 @@ After an order has been generated, enough items will be subtracted from that ord
 
 ### Priority
 
-Orders will be generated first for stations, depots and fuel loaders which are receiving a higher priority signal than the others. If stations have the same priority, the least recently used requester station will be prioritized, and the provider station closest to the requester station will be prioritized. So in times of item shortage (front-pressure), round robin distribution will be used, and in times of item surplus (back-pressure), minimum travel distance distribution will be used. Provider stations will be prevented from providing items to lower priority requester stations until the highest priority requester station is satisfied.
+Orders will be generated first for stations, depots and refuelers which are receiving a higher priority signal than the others. If multiple depots or refuelers have the same priority, the closest one will be prioritized. Depots calculate distance based on the location of their train. If multiple stations have the same priority, the least recently used requester station will be prioritized, and the provider station closest to the requester station will be prioritized. So in times of item shortage (front-pressure), round robin distribution will be used, and in times of item surplus (back-pressure), minimum travel distance distribution will be used. Provider stations will be prevented from providing items to lower priority requester stations until the highest priority requester station is satisfied.
 
 If a combinator set to station control mode receives a priority signal, for each item signal input to the combinator, items of that type will have its priority overridden in addition to its request threshold. This effectively allows you to choose one of two possible priorities for each item that a station processes.
 

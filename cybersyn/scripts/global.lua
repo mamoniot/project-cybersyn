@@ -9,6 +9,7 @@
 ---@field public stations {[uint]: Station}
 ---@field public active_station_ids uint[]
 ---@field public warmup_station_ids uint[]
+---@field public queue_station_update {[uint]: true?}?
 ---@field public depots {[uint]: Depot}
 ---@field public refuelers {[uint]: Refueler}
 ---@field public trains {[uint]: Train}
@@ -29,6 +30,7 @@
 ---@field public is_p true?
 ---@field public is_r true?
 ---@field public is_stack true?
+---@field public enable_inactive true?
 ---@field public allows_all_trains true?
 ---@field public deliveries_total int
 ---@field public last_delivery_tick int
@@ -50,7 +52,7 @@
 ---@class Depot
 ---@field public entity_stop LuaEntity
 ---@field public entity_comb LuaEntity
----@field public available_train_id uint?--train_id
+---@field public available_train_id uint?--train_id, only present when a train is parked here
 
 ---@class Refueler
 ---@field public entity_stop LuaEntity
@@ -76,13 +78,13 @@
 ---@field public last_manifest_tick int
 ---@field public has_filtered_wagon true?
 ---@field public is_available true?
----@field public parked_at_depot_id uint?
----@field public depot_name string
+---@field public depot_id uint
+---@field public use_any_depot true?
+---@field public disable_bypass true?
 ---@field public network_name string? --can only be nil when the train is parked at a depot
 ---@field public network_flag int
 ---@field public priority int
 ---@field public refueler_id uint?
----@field public se_depot_surface_i uint --se only
 ---@field public se_is_being_teleported true? --se only
 ---@field public se_awaiting_removal any? --se only
 ---@field public se_awaiting_rename any? --se only
@@ -105,16 +107,20 @@
 ---@field public tps double
 ---@field public update_rate int
 ---@field public r_threshold int
+---@field public priority int
+---@field public locked_slots int
 ---@field public network_flag int
 ---@field public warmup_time double
 ---@field public stuck_train_time double
 ---@field public fuel_threshold double
----@field public depot_bypass_enabled boolean
+---@field public invert_sign boolean
+---@field public allow_cargo_in_depot boolean
 ---@field public missing_train_alert_enabled boolean --interface setting
 ---@field public stuck_train_alert_enabled boolean --interface setting
----@field public react_to_nonempty_train_in_depot boolean --interface setting
 ---@field public react_to_train_at_incorrect_station boolean --interface setting
 ---@field public react_to_train_early_to_depot boolean --interface setting
+
+--if this is uncommented it means there are migrations to write
 
 ---@alias cybersyn.global MapData
 ---@type CybersynModSettings
@@ -149,10 +155,4 @@ function init_global()
 	global.each_refuelers = {}
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
-end
-
----@param v string
----@param h string?
-function once(v, h)
-	return not h and v or nil--[[@as string|nil]]
 end
