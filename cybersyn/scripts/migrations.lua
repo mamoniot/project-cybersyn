@@ -168,8 +168,8 @@ local migrations_table = {
 			local bits_old = params_old.second_constant or 0
 
 			bits = bit32.replace(bits, 1, SETTING_ENABLE_INACTIVE)--[[@as int]]
-			bits = bit32.replace(bits, 1, SETTING_ENABLE_INACTIVE)--[[@as int]]
-			bits_old = bit32.replace(bits_old, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
+			bits = bit32.replace(bits, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
+			bits_old = bit32.replace(bits_old, 1, SETTING_ENABLE_INACTIVE)--[[@as int]]
 			bits_old = bit32.replace(bits_old, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
 			params.second_constant = bits
 			params_old.second_constant = bits_old
@@ -223,7 +223,40 @@ local migrations_table = {
 			train.se_depot_surface_i = nil
 			train.parked_at_depot_id = nil
 		end
-	end
+	end,
+	["1.2.3"] = function()
+		---@type MapData
+		local map_data = global
+		for _, station in pairs(map_data.stations) do
+			set_station_from_comb(station)
+		end
+	end,
+	["1.2.5"] = function()
+		---@type MapData
+		local map_data = global
+		local setting = settings.global["cybersyn-invert-sign"]
+		setting.value = true
+		settings.global["cybersyn-invert-sign"] = setting
+
+		for id, comb in pairs(map_data.to_comb) do
+			local control = get_comb_control(comb)
+			local params = control.parameters
+			local params_old = map_data.to_comb_params[id]
+			local bits = params.second_constant or 0
+			local bits_old = params_old.second_constant or 0
+
+			bits = bit32.replace(bits, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
+			bits_old = bit32.replace(bits_old, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
+			params.second_constant = bits
+			params_old.second_constant = bits_old
+
+			control.parameters = params
+			map_data.to_comb_params[id] = params_old
+		end
+		for train_id, train in pairs(map_data.trains) do
+			train.use_any_depot = true
+		end
+	end,
 }
 --STATUS_R_TO_D = 5
 
