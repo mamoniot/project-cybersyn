@@ -231,7 +231,7 @@ local migrations_table = {
 			set_station_from_comb(station)
 		end
 	end,
-	["1.2.4"] = function()
+	["1.2.5"] = function()
 		---@type MapData
 		local map_data = global
 		local setting = settings.global["cybersyn-invert-sign"]
