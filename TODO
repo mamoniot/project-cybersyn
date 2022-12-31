@@ -26,6 +26,7 @@ minor:
 	give the combinators a sensible reaction to low or no power
 
 compat:
-	deadlocks signals compat
-	railloader compat
-	picker dollies compat?
+	train upgrader mod
+	deadlocks signals
+	railloader
+	picker dollies?
