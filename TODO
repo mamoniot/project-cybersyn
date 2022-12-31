@@ -1,19 +1,32 @@
 bugs:
-	https://mods.factorio.com/mod/cybersyn/discussion/63a52e54be4341bccc0446f8
+	https://mods.factorio.com/mod/cybersyn/discussion/63afff871c9e44028b2acab8
+	https://mods.factorio.com/mod/cybersyn/discussion/63af6ed2f532e8870d639157
 
 major:
 	debug output
 	add in game guide
+	gui-based system readout:
+		absolute count of unfulfilled requests
+		item count of unfulfilled requests
+		absolute count of available provides (is this even possible without a provide threshold?)
+		item count of available provides
+		system log
+		check out LTN addons that do this for inspiration
 	move to an event based algorithm
 	models & art
 
 minor:
+	check if necessary entities can be destroyed without raising events
+	improve the behavior of trains if players intervene during deliveries
 	handle if signals are removed from the game during migration
 	update wagon control combinators immediately upon placement
-	railloader compat
-	deadlocks signals compat
 	close gui when the combinator is destroyed
 	do not play close sound when a different gui is opened
 	gui can desync if settings are changed outside of it while it is open
 	give the combinators a sensible reaction to low or no power
-	picker dollies compat?
+
+compat:
+	train upgrader mod
+	deadlocks signals
+	railloader
+	picker dollies?
