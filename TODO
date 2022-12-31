@@ -8,6 +8,7 @@ major:
 	models & art
 
 minor:
+	check if necessary entities can be destroyed without raising events
 	improve the behavior of trains if players intervene during deliveries
 	handle if signals are removed from the game during migration
 	update wagon control combinators immediately upon placement
