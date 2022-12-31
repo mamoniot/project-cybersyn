@@ -355,13 +355,14 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 						end
 					end
 					if best_refueler_id then
-						train.status = STATUS_TO_F
-						train.refueler_id = best_refueler_id
 						local refueler = map_data.refuelers[best_refueler_id]
-						refueler.trains_total = refueler.trains_total + 1
-						add_refueler_schedule(map_data, train.entity, refueler.entity_stop)
-						interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_F)
-						return
+						if add_refueler_schedule(map_data, train.entity, refueler.entity_stop) then
+							train.status = STATUS_TO_F
+							train.refueler_id = best_refueler_id
+							refueler.trains_total = refueler.trains_total + 1
+							interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_F)
+							return
+						end
 					end
 				end
 			end

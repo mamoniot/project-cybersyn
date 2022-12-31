@@ -169,6 +169,29 @@ end
 ---@param start_at_depot boolean?
 function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, p_enable_inactive, r_stop, r_enable_inactive, manifest, start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
+	if not p_stop.connected_rail or not r_stop.connected_rail then
+		--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
+		train.schedule = {current = 1, records = {
+			create_inactivity_order(depot_stop.backer_name),
+			create_loading_order(p_stop, manifest, p_enable_inactive),
+			create_unloading_order(r_stop, r_enable_inactive),
+		}}
+		lock_train(train)
+		send_alert_station_of_train_broken(map_data, train)
+		return true
+	end
+	if same_depot and not depot_stop.connected_rail then
+		--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
+		train.schedule = {current = 1, records = {
+			create_inactivity_order(depot_stop.backer_name),
+			create_loading_order(p_stop, manifest, p_enable_inactive),
+			create_unloading_order(r_stop, r_enable_inactive),
+		}}
+		lock_train(train)
+		send_alert_depot_of_train_broken(map_data, train)
+		return true
+	end
+
 	local old_schedule
 	if not start_at_depot then
 		old_schedule = train.schedule
@@ -269,6 +292,11 @@ function add_refueler_schedule(map_data, train, stop)
 		schedule.current = i
 	end
 
+	if not stop.connected_rail then
+		send_alert_refueler_of_train_broken(map_data, train)
+		return false
+	end
+
 	local t_surface = train.front_stock.surface
 	local f_surface = stop.surface
 	local t_surface_i = t_surface.index
@@ -279,7 +307,7 @@ function add_refueler_schedule(map_data, train, stop)
 		table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
 
 		train.schedule = schedule
-		return
+		return true
 	elseif IS_SE_PRESENT then
 		local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})--[[@as {}]]
 		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = f_surface_i})--[[@as {}]]
@@ -302,7 +330,7 @@ function add_refueler_schedule(map_data, train, stop)
 			end
 
 			train.schedule = schedule
-			return
+			return true
 		end
 	end
 	--create an order that probably cannot be fulfilled and alert the player
