@@ -153,12 +153,10 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 
 	--locked slots is only taken into account after the train is already approved for dispatch
 	local locked_slots = p_station.locked_slots
-	local total_item_slots
-	if locked_slots > 0 then
+	local total_item_slots = train.item_slot_capacity
+	if locked_slots > 0 and total_item_slots > 0 then
 		local total_cargo_wagons = #train.entity.cargo_wagons
-		total_item_slots = max(train.item_slot_capacity - total_cargo_wagons*locked_slots, 1)
-	else
-		total_item_slots = train.item_slot_capacity
+		total_item_slots = max(total_item_slots - total_cargo_wagons*locked_slots, 1)
 	end
 	local total_liquid_left = train.fluid_capacity
 
