@@ -2,6 +2,8 @@
 
 Behold one of the most feature-rich and performant train logistics network mods Factorio has to offer. Named for [Project Cybersyn](https://en.wikipedia.org//wiki/Project_Cybersyn) of Allende's Chile, with just this mod you can coordinate the economic inputs and outputs of your entire megabase. Similar in functionality to the famous Logistics Train Network mod, but with a much broader scope.
 
+[Join our discord!](https://discord.gg/krS6YJ2W) This is the prefered place for players to report bugs, make suggestions, or keep up with development.
+
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/outpost-resupply-station.png)
 
 ## Quick Start Guide
