@@ -322,7 +322,7 @@ function on_combinator_broken(map_data, comb)
 		if station then
 			if station.entity_comb1 == comb then
 				on_station_broken(map_data, id, station)
-				on_stop_built(map_data, stop, comb)
+				on_stop_built_or_updated(map_data, stop, comb)
 			elseif station.entity_comb2 == comb then
 				station.entity_comb2 = search_for_station_combinator(map_data, stop, MODE_SECONDARY_IO, comb)
 			end
@@ -331,13 +331,13 @@ function on_combinator_broken(map_data, comb)
 			if depot then
 				if depot.entity_comb == comb then
 					on_depot_broken(map_data, id, depot)
-					on_stop_built(map_data, stop, comb)
+					on_stop_built_or_updated(map_data, stop, comb)
 				end
 			else
 				local refueler = map_data.refuelers[id]
 				if refueler and refueler.entity_comb == comb then
 					on_refueler_broken(map_data, id, refueler)
-					on_stop_built(map_data, stop, comb)
+					on_stop_built_or_updated(map_data, stop, comb)
 				end
 			end
 		end
@@ -465,7 +465,8 @@ end
 ---@param map_data MapData
 ---@param stop LuaEntity
 ---@param comb_forbidden LuaEntity?
-function on_stop_built(map_data, stop, comb_forbidden)
+function on_stop_built_or_updated(map_data, stop, comb_forbidden)
+	--NOTE: this stop must not be a part of any station before entering this function
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
 
@@ -479,18 +480,22 @@ function on_stop_built(map_data, stop, comb_forbidden)
 	local refueler_comb = nil
 	local entities = stop.surface.find_entities_filtered({area = search_area, name = COMBINATOR_NAME})
 	for _, entity in pairs(entities) do
-		if entity.valid and entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == nil then
-			map_data.to_stop[entity.unit_number] = stop
-			local param = get_comb_params(entity)
-			local op = param.operation
-			if op == MODE_PRIMARY_IO then
-				comb1 = entity
-			elseif op == MODE_SECONDARY_IO then
-				comb2 = entity
-			elseif op == MODE_DEPOT then
-				depot_comb = entity
-			elseif op == MODE_REFUELER then
-				refueler_comb = entity
+		if entity.valid and entity ~= comb_forbidden then
+			local id = entity.unit_number--[[@as uint]]
+			local adj_stop = map_data.to_stop[id]
+			if adj_stop == nil or adj_stop == stop then
+				map_data.to_stop[id] = stop
+				local param = get_comb_params(entity)
+				local op = param.operation
+				if op == MODE_PRIMARY_IO then
+					comb1 = entity
+				elseif op == MODE_SECONDARY_IO then
+					comb2 = entity
+				elseif op == MODE_DEPOT then
+					depot_comb = entity
+				elseif op == MODE_REFUELER then
+					refueler_comb = entity
+				end
 			end
 		end
 	end
@@ -589,7 +594,7 @@ local function on_built(event)
 	if not entity or not entity.valid then return end
 
 	if entity.name == "train-stop" then
-		on_stop_built(global, entity)
+		on_stop_built_or_updated(global, entity)
 	elseif entity.name == COMBINATOR_NAME then
 		on_combinator_built(global, entity)
 	elseif entity.type == "inserter" then

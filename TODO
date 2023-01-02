@@ -12,6 +12,7 @@ major:
 		item count of available provides
 		system log
 		check out LTN addons that do this for inspiration
+	per-station statistics gui
 	move to an event based algorithm
 	models & art
 
