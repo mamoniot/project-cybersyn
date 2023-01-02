@@ -189,12 +189,9 @@ local function search_for_station_combinator(map_data, stop, comb_operation, com
 		{pos_x - 2, pos_y - 2},
 		{pos_x + 2, pos_y + 2}
 	}
-	local entities = stop.surface.find_entities(search_area)
+	local entities = stop.surface.find_entities_filtered({area = search_area, name = COMBINATOR_NAME})
 	for _, entity in pairs(entities) do
-		if
-		entity.valid and entity.name == COMBINATOR_NAME and
-		entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == stop
-		then
+		if entity.valid and entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == stop then
 			local param = get_comb_params(entity)
 			if param.operation == comb_operation then
 				return entity
@@ -223,7 +220,7 @@ local function on_combinator_built(map_data, comb)
 	end
 	local stop = nil
 	local rail = nil
-	local entities = comb.surface.find_entities(search_area)
+	local entities = comb.surface.find_entities_filtered({area = search_area, name = {"train-stop", "straight-rail"}})
 	for _, cur_entity in pairs(entities) do
 		if cur_entity.valid then
 			if cur_entity.name == "train-stop" then
@@ -480,9 +477,9 @@ function on_stop_built(map_data, stop, comb_forbidden)
 	local comb1 = nil
 	local depot_comb = nil
 	local refueler_comb = nil
-	local entities = stop.surface.find_entities(search_area)
+	local entities = stop.surface.find_entities_filtered({area = search_area, name = COMBINATOR_NAME})
 	for _, entity in pairs(entities) do
-		if entity.valid and entity ~= comb_forbidden and entity.name == COMBINATOR_NAME and map_data.to_stop[entity.unit_number] == nil then
+		if entity.valid and entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == nil then
 			map_data.to_stop[entity.unit_number] = stop
 			local param = get_comb_params(entity)
 			local op = param.operation
@@ -515,7 +512,7 @@ local function on_stop_broken(map_data, stop)
 		{pos_x - 2, pos_y - 2},
 		{pos_x + 2, pos_y + 2}
 	}
-	local entities = stop.surface.find_entities(search_area)
+	local entities = stop.surface.find_entities_filtered({area = search_area, name = COMBINATOR_NAME})
 	for _, entity in pairs(entities) do
 		if entity.valid and map_data.to_stop[entity.unit_number] == stop then
 			map_data.to_stop[entity.unit_number] = nil
