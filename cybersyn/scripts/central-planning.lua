@@ -667,6 +667,7 @@ function tick_init(map_data, mod_settings)
 			if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
 				map_data.active_station_ids[#map_data.active_station_ids + 1] = id
 				map_data.warmup_station_ids[i] = nil
+				combinator_update(map_data, station.entity_comb1)
 			end
 		else
 			map_data.warmup_station_ids[i] = nil
