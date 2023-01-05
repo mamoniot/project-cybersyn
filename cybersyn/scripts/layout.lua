@@ -5,6 +5,7 @@ local floor = math.floor
 local ceil = math.ceil
 local min = math.min
 local max = math.max
+local bit_extract = bit32.extract
 
 
 ---@param layout_pattern (0|1|2|3)[]
@@ -222,11 +223,13 @@ function set_p_wagon_combs(map_data, station, train)
 						signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = sign*count_to_fill}
 						item_count = item_count - count_to_fill
 						item_slots_capacity = item_slots_capacity - slots_to_fill
-						for j = 1, slots_to_fill do
-							inv.set_filter(inv_filter_i, item.name)
-							inv_filter_i = inv_filter_i + 1
+						if comb then
+							for j = 1, slots_to_fill do
+								inv.set_filter(inv_filter_i, item.name)
+								inv_filter_i = inv_filter_i + 1
+							end
+							train.has_filtered_wagon = true
 						end
-						train.has_filtered_wagon = true
 						do_inc = item_count == 0
 					else
 						do_inc = true
@@ -243,6 +246,10 @@ function set_p_wagon_combs(map_data, station, train)
 				end
 
 				if comb then
+					if bit_extract(get_comb_params(comb).second_constant, SETTING_ENABLE_SLOT_BARRING) > 0 then
+						inv.set_bar(inv_filter_i--[[@as uint]])
+						train.has_filtered_wagon = true
+					end
 					set_combinator_output(map_data, comb, signals)
 				end
 			end

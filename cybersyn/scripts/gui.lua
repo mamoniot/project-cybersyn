@@ -41,6 +41,7 @@ end
 local function set_visibility(main_window, selected_index)
 	local is_station = selected_index == 1
 	local is_depot = selected_index == 2
+	local is_wagon = selected_index == 5
 	local uses_network = is_station or is_depot or selected_index == 3
 	local uses_allow_list = is_station or selected_index == 3
 
@@ -56,6 +57,7 @@ local function set_visibility(main_window, selected_index)
 	first_settings.allow_list.visible = uses_allow_list
 	first_settings.is_stack.visible = is_station
 	bottom_flow.enable_inactive.visible = is_station
+	bottom_flow.enable_slot_barring.visible = is_wagon
 	depot_settings.visible = is_depot
 end
 
@@ -144,6 +146,12 @@ function gui_opened(comb, player)
 								on_checked_state_changed={"setting", comb.unit_number, SETTING_ENABLE_INACTIVE}
 							}},
 							{type="label", name="enable_inactive_label", style_mods={left_padding=3}, caption={"cybersyn-gui.enable-inactive-description"}},
+						}},
+						{type="flow", name="enable_slot_barring", direction="horizontal", style_mods={vertical_align="center"}, children={
+							{type="checkbox", name="enable_slot_barring", state=setting(bits, SETTING_ENABLE_SLOT_BARRING), tooltip={"cybersyn-gui.enable-slot-barring-tooltip"}, actions={
+								on_checked_state_changed={"setting", comb.unit_number, SETTING_ENABLE_SLOT_BARRING}
+							}},
+							{type="label", name="enable_slot_barring_label", style_mods={left_padding=3}, caption={"cybersyn-gui.enable-slot-barring-description"}},
 						}},
 					}}
 				}}

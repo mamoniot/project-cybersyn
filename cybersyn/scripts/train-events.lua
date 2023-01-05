@@ -52,11 +52,12 @@ function on_failed_delivery(map_data, train_id, train)
 		train.has_filtered_wagon = nil
 		for carriage_i, carriage in ipairs(train.entity.cargo_wagons) do
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
-			if inv and inv.is_filtered() then
+			if inv then
 				---@type uint
-				for i = 1, #inv do
+				for i = 1, inv.get_bar() - 1 do
 					inv.set_filter(i, nil)
 				end
+				inv.set_bar()
 			end
 		end
 	end
@@ -274,11 +275,12 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 			train.has_filtered_wagon = nil
 			for carriage_i, carriage in ipairs(train.entity.cargo_wagons) do
 				local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
-				if inv and inv.is_filtered() then
+				if inv then
 					---@type uint
-					for i = 1, #inv do
+					for i = 1, inv.get_bar() - 1 do
 						inv.set_filter(i, nil)
 					end
+					inv.set_bar()
 				end
 			end
 		end
