@@ -654,8 +654,38 @@ local function tick_poll_station(map_data, mod_settings)
 end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
-function tick_init(map_data, mod_settings)
+function tick_poll_entities(map_data, mod_settings)
 	local tick_data = map_data.tick_data
+
+	--NOTE: the following have undefined behaviour if the item on tick_data is deleted
+	if map_data.total_ticks%5 == 0 then
+		local train_id, train = next(map_data.trains, tick_data.last_train)
+		tick_data.last_train = train_id
+		if train then
+			if train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
+				if mod_settings.stuck_train_alert_enabled then
+					send_alert_stuck_train(map_data, train.entity)
+				end
+				interface_raise_train_stuck(train_id)
+			end
+		end
+
+		local refueler_id, _ = next(map_data.each_refuelers, tick_data.last_refueler)
+		tick_data.last_refueler = refueler_id
+		if refueler_id then
+			set_refueler_from_comb(map_data, mod_settings, refueler_id)
+		end
+	else
+		local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
+		tick_data.last_comb = comb_id
+		if comb and comb.valid then
+			combinator_update(map_data, comb, true)
+		end
+	end
+end
+---@param map_data MapData
+---@param mod_settings CybersynModSettings
+function tick_init(map_data, mod_settings)
 
 	map_data.economy.all_p_stations = {}
 	map_data.economy.all_r_stations = {}
@@ -687,30 +717,6 @@ function tick_init(map_data, mod_settings)
 		map_data.queue_station_update = nil
 	end
 
-	--NOTE: the following has undefined behavior if last_train is deleted, this should be ok since the following doesn't care how inconsistent our access pattern is
-	local train_id, train = next(map_data.trains, tick_data.last_train)
-	tick_data.last_train = train_id
-
-	if train and train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
-		if mod_settings.stuck_train_alert_enabled then
-			send_alert_stuck_train(map_data, train.entity)
-		end
-		interface_raise_train_stuck(train_id)
-	end
-
-	--NOTE: the following has undefined behavior if last_comb is deleted
-	local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
-	tick_data.last_comb = comb_id
-	local refueler_id, _ = next(map_data.each_refuelers, tick_data.last_refueler)
-	tick_data.last_refueler = refueler_id
-
-	if comb and comb.valid then
-		combinator_update(map_data, comb, true)
-	end
-	if refueler_id then
-		set_refueler_from_comb(map_data, mod_settings, refueler_id)
-	end
-
 	map_data.tick_state = STATE_POLL_STATIONS
 	interface_raise_tick_init()
 end
@@ -719,15 +725,20 @@ end
 function tick(map_data, mod_settings)
 	map_data.total_ticks = map_data.total_ticks + 1
 
+
 	if map_data.active_alerts then
 		if map_data.total_ticks%(8*mod_settings.tps) < 1 then
 			process_active_alerts(map_data)
 		end
 	end
 
-	if map_data.tick_state == STATE_INIT then
-		tick_init(map_data, mod_settings)
-	elseif mod_settings.enable_planner then
+	tick_poll_entities(map_data, mod_settings)
+
+	if mod_settings.enable_planner then
+		if map_data.tick_state == STATE_INIT then
+			tick_init(map_data, mod_settings)
+		end
+
 		if map_data.tick_state == STATE_POLL_STATIONS then
 			for i = 1, mod_settings.update_rate do
 				if tick_poll_station(map_data, mod_settings) then break end

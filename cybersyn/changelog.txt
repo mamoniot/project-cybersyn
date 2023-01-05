@@ -3,8 +3,12 @@ Version: 1.2.8
 Date: 2022-1-4
   Features:
     - Added a setting and keybind for toggling on or off the central planner
+  Changes:
+    - Sped up the rate at which copy-paste by blueprint will be noticed
   Bugfixes:
     - Fixed a bug with combinators sometimes failing to connect with train stops
+  Scripting:
+    - Added missing return values to some interface functions
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.7
 Date: 2022-1-1

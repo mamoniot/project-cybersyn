@@ -115,6 +115,7 @@ end
 --[[helper functions]]
 ------------------------------------------------------------------
 --NOTE: the policy of cybersyn is to give modders access to as much of the raw data of the mod as possible. Factorio only allows me to return copies of the original data rather than the actual thing, which sucks. The unsafe api has some tools to help you bypass this limitation.
+--Some of these functions are so simplistic I'd recommend not even using them and just copy-pasting their internal code.
 
 function interface.get_mod_settings()
 	return mod_settings
@@ -246,12 +247,13 @@ end
 --[[unsafe API]]
 ------------------------------------------------------------------
 --NOTE: The following functions can cause serious longterm damage to someone's world if they are given bad parameters. Please refer to global.lua for type information. Use caution.
+--If there is any useful function missing from this API I'd be happy to add it. Join the Cybersyn discord to request it be added.
 
 ---@param value any
 ---@param ... string|int
 function interface.write_global(value, ...)
 	--this can write anything into cybersyn's map_data, please be very careful with anything you write, it can cause permanent damage
-	--so interface.read_global(nil, "trains", 31415, "manifest") will cause global.trains[31415].manifest = nil (or return false if train 31415 does not exist)
+	--so interface.write_global(nil, "trains", 31415, "manifest") will cause global.trains[31415].manifest = nil (or return false if train 31415 does not exist)
 	local params = {...}
 	local size = #params
 	local key = params[size]
@@ -271,7 +273,7 @@ end
 function interface.remove_manifest_from_station_deliveries(station_id, manifest, sign)
 	local station = global.stations[station_id]
 	assert(station)
-	remove_manifest(global, station, manifest, sign)
+	return remove_manifest(global, station, manifest, sign)
 end
 ---@param r_station_id uint
 ---@param p_station_id uint
@@ -279,7 +281,7 @@ end
 function interface.create_manifest(r_station_id, p_station_id, train_id)
 	local train = global.trains[train_id]
 	assert(global.stations[r_station_id] and global.stations[p_station_id] and train and train.is_available)
-	create_manifest(global, r_station_id, p_station_id, train_id)
+	return create_manifest(global, r_station_id, p_station_id, train_id)
 end
 ---@param r_station_id uint
 ---@param p_station_id uint
@@ -288,19 +290,19 @@ end
 function interface.create_delivery(r_station_id, p_station_id, train_id, manifest)
 	local train = global.trains[train_id]
 	assert(global.stations[r_station_id] and global.stations[p_station_id] and train and train.is_available and manifest)
-	create_delivery(global, r_station_id, p_station_id, train_id, manifest)
+	return create_delivery(global, r_station_id, p_station_id, train_id, manifest)
 end
 ---@param train_id uint
 function interface.fail_delivery(train_id)
 	local train = global.trains[train_id]
 	assert(train)
-	on_failed_delivery(global, train_id, train)
+	return on_failed_delivery(global, train_id, train)
 end
 ---@param train_id uint
 function interface.remove_train(train_id)
 	local train = global.trains[train_id]
 	assert(train)
-	remove_train(global, train_id, train)
+	return remove_train(global, train_id, train)
 end
 
 ---@param train_id uint
@@ -320,14 +322,14 @@ function interface.add_available_train_to_depot(train_id, depot_id)
 	local train = global.trains[train_id]
 	local depot = global.depots[depot_id]
 	assert(train and depot)
-	add_available_train_to_depot(global, mod_settings, train_id, train, depot_id, depot)
+	return add_available_train_to_depot(global, mod_settings, train_id, train, depot_id, depot)
 end
 ---@param train_id uint
 function interface.remove_available_train(train_id)
 	--this function removes a train from the available trains list so it cannot be rescheduled and dispatched. if the train was not already available nothing will happen
 	local train = global.trains[train_id]
 	assert(train)
-	remove_available_train(global, train_id, train)
+	return remove_available_train(global, train_id, train)
 end
 
 ------------------------------------------------------------------
