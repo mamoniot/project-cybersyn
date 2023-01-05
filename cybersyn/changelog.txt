@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.8
-Date: 2022-1-4
+Date: 2022-1-5
   Features:
     - Improved placeholder cybernetic combinator art
     - Added a wagon control setting to bar unfiltered slots in adjacent cargo wagons
@@ -9,6 +9,7 @@ Date: 2022-1-4
     - Sped up the rate at which copy-paste by blueprint will be noticed
   Bugfixes:
     - Fixed a bug with combinators sometimes failing to connect with train stops
+    - Fixed wagon control combinators outputting wagon contents after inserters have already taken out items
   Scripting:
     - Added missing return values to some interface functions
 ---------------------------------------------------------------------------------------------------

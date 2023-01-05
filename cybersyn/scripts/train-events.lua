@@ -212,38 +212,19 @@ end
 ---@param train_id uint
 ---@param train Train
 local function on_train_arrives_station(map_data, station_id, train_id, train)
-	if train.manifest then
-		---@type uint
-		if train.status == STATUS_TO_P then
-			if train.p_station_id == station_id then
-				train.status = STATUS_P
-				local station = map_data.stations[station_id]
-				set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and 1 or -1)
-				set_p_wagon_combs(map_data, station, train)
-				interface_raise_train_status_changed(train_id, STATUS_TO_P, STATUS_P)
-			end
-		elseif train.status == STATUS_TO_R then
-			if train.r_station_id == station_id then
-				train.status = STATUS_R
-				local station = map_data.stations[station_id]
-				set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and -1 or 1)
-				set_r_wagon_combs(map_data, station, train)
-				interface_raise_train_status_changed(train_id, STATUS_TO_R, STATUS_R)
-			end
-		elseif train.status == STATUS_P and train.p_station_id == station_id then
-			--this is player intervention that is considered valid
-		elseif (train.status == STATUS_R or train.status == STATUS_TO_D or train.status == STATUS_TO_D_BYPASS) and train.r_station_id == station_id then
-			--this is player intervention that is considered valid
-		elseif mod_settings.react_to_train_at_incorrect_station then
-			on_failed_delivery(map_data, train_id, train)
-			remove_train(map_data, train_id, train)
-			lock_train(train.entity)
-			send_alert_train_at_incorrect_station(map_data, train.entity)
-		end
-	elseif mod_settings.react_to_train_at_incorrect_station then
-		--train is lost somehow, probably from player intervention
-		remove_train(map_data, train_id, train)
-		send_alert_train_at_incorrect_station(map_data, train.entity)
+	---@type uint
+	if train.status == STATUS_TO_P then
+		train.status = STATUS_P
+		local station = map_data.stations[station_id]
+		set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and 1 or -1)
+		set_p_wagon_combs(map_data, station, train)
+		interface_raise_train_status_changed(train_id, STATUS_TO_P, STATUS_P)
+	elseif train.status == STATUS_TO_R then
+		train.status = STATUS_R
+		local station = map_data.stations[station_id]
+		set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and -1 or 1)
+		set_r_wagon_combs(map_data, station, train)
+		interface_raise_train_status_changed(train_id, STATUS_TO_R, STATUS_R)
 	end
 end
 
@@ -428,19 +409,21 @@ function on_train_built(event)
 	end
 end
 function on_train_changed(event)
+	---@type MapData
+	local map_data = global
 	local train_e = event.train--[[@as LuaTrain]]
 	if not train_e.valid then return end
 	local train_id = train_e.id
 
-	if global.active_alerts then
+	if map_data.active_alerts then
 		--remove the alert if the train is interacted with at all
-		local data = global.active_alerts[train_id]
+		local data = map_data.active_alerts[train_id]
 		if data then
 			--we need to wait for the train to come to a stop from being locked
-			if data[3] + 10*mod_settings.tps < global.total_ticks then
-				global.active_alerts[train_id] = nil
-				if next(global.active_alerts) == nil then
-					global.active_alerts = nil
+			if data[3] + 10*mod_settings.tps < map_data.total_ticks then
+				map_data.active_alerts[train_id] = nil
+				if next(map_data.active_alerts) == nil then
+					map_data.active_alerts = nil
 				end
 			end
 		end
@@ -450,24 +433,48 @@ function on_train_changed(event)
 		local stop = train_e.station
 		if stop and stop.valid and stop.name == "train-stop" then
 			local id = stop.unit_number--[[@as uint]]
-			if global.stations[id] then
-				local train = global.trains[train_id]
-				if train then
-					on_train_arrives_station(global, id, train_id, train)
-				end
-			elseif global.depots[id] then
-				on_train_arrives_depot(global, id, train_e)
-			elseif global.refuelers[id] then
-				local train = global.trains[train_id]
-				if train then
-					on_train_arrives_refueler(global, id, train_id, train)
+			if map_data.depots[id] then
+				on_train_arrives_depot(map_data, id, train_e)
+			end
+		else
+			local train = map_data.trains[train_id]
+			if train then
+				local schedule = train_e.schedule
+				if schedule then
+					local rail = schedule.records[schedule.current].rail
+					if rail then
+						local id, station, is_station
+						if train.status == STATUS_TO_P then
+							id = train.p_station_id
+							station = map_data.stations[id]
+							is_station = true
+						elseif train.status == STATUS_TO_R then
+							id = train.r_station_id
+							station = map_data.stations[id]
+							is_station = true
+						elseif train.status == STATUS_TO_F then
+							id = train.refueler_id
+							station = map_data.refuelers[id]
+							is_station = false
+						end
+						if id and station.entity_stop.connected_rail == rail then
+							if is_station then
+								on_train_arrives_station(map_data, id, train_id, train)
+							else
+								on_train_arrives_refueler(map_data, id, train_id, train)
+							end
+						end
+					end
 				end
 			end
 		end
 	elseif event.old_state == defines.train_state.wait_station then
-		local train = global.trains[train_id]
-		if train then
-			on_train_leaves_stop(global, mod_settings, train_id, train)
+		local path = train_e.path
+		if path and path.total_distance > 4 then
+			local train = map_data.trains[train_id]
+			if train then
+				on_train_leaves_stop(map_data, mod_settings, train_id, train)
+			end
 		end
 	end
 end
