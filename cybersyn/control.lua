@@ -1,5 +1,4 @@
 --By Mami
---<goto p_continue> at line 310 jumps into the scope of local 'p_flag'
 require("scripts.constants")
 require("scripts.global")
 require("scripts.lib")
