@@ -2,6 +2,8 @@
 Version: 1.2.8
 Date: 2022-1-4
   Features:
+    - Improved placeholder cybernetic combinator art
+    - Added a wagon control setting to bar unfiltered slots in adjacent cargo wagons
     - Added a setting and keybind for toggling on or off the central planner
   Changes:
     - Sped up the rate at which copy-paste by blueprint will be noticed

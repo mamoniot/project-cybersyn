@@ -57,7 +57,7 @@ local function set_visibility(main_window, selected_index)
 	first_settings.allow_list.visible = uses_allow_list
 	first_settings.is_stack.visible = is_station
 	bottom_flow.enable_inactive.visible = is_station
-	bottom_flow.enable_slot_barring.visible = is_wagon
+	top_flow.enable_slot_barring.visible = is_wagon
 	depot_settings.visible = is_depot
 end
 
@@ -104,7 +104,13 @@ function gui_opened(comb, player)
 						}},
 						{type="switch", name="is_pr_switch", ref={"is_pr_switch"}, allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, actions={
 							on_switch_state_changed={"is_pr_switch", comb.unit_number}
-						}}
+						}},
+						{type="flow", name="enable_slot_barring", direction="horizontal", style_mods={vertical_align="center", left_padding=6}, children={
+							{type="checkbox", name="enable_slot_barring", state=setting(bits, SETTING_ENABLE_SLOT_BARRING), tooltip={"cybersyn-gui.enable-slot-barring-tooltip"}, actions={
+								on_checked_state_changed={"setting", comb.unit_number, SETTING_ENABLE_SLOT_BARRING}
+							}},
+							{type="label", name="enable_slot_barring_label", style_mods={left_padding=3}, caption={"cybersyn-gui.enable-slot-barring-description"}},
+						}},
 					}},
 					---choose-elem-button
 					{type="line", style_mods={top_padding=10}},
@@ -146,12 +152,6 @@ function gui_opened(comb, player)
 								on_checked_state_changed={"setting", comb.unit_number, SETTING_ENABLE_INACTIVE}
 							}},
 							{type="label", name="enable_inactive_label", style_mods={left_padding=3}, caption={"cybersyn-gui.enable-inactive-description"}},
-						}},
-						{type="flow", name="enable_slot_barring", direction="horizontal", style_mods={vertical_align="center"}, children={
-							{type="checkbox", name="enable_slot_barring", state=setting(bits, SETTING_ENABLE_SLOT_BARRING), tooltip={"cybersyn-gui.enable-slot-barring-tooltip"}, actions={
-								on_checked_state_changed={"setting", comb.unit_number, SETTING_ENABLE_SLOT_BARRING}
-							}},
-							{type="label", name="enable_slot_barring_label", style_mods={left_padding=3}, caption={"cybersyn-gui.enable-slot-barring-description"}},
 						}},
 					}}
 				}}
