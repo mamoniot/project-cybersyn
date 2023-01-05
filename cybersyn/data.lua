@@ -24,7 +24,7 @@ data:extend({
 	{
 		type = "custom-input",
 		name = "cybersyn-toggle-planner",
-		key_sequence = nil,
+		key_sequence = "",
 		consuming = "game-only"
 	}
 })
