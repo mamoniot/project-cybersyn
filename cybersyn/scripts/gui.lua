@@ -1,4 +1,5 @@
 --By Mami
+local flib_gui = require("__flib__.gui-lite")
 local flib_gui = require("__flib__.gui")
 local flib_event = require("__flib__.event")
 

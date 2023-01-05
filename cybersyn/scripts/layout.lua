@@ -1,5 +1,5 @@
 --By Mami
-local area = require("__flib__.area")
+local area = require("__flib__.bounding-box")
 local abs = math.abs
 local floor = math.floor
 local ceil = math.ceil

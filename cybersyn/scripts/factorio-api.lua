@@ -1,5 +1,5 @@
 --By Mami
-local get_distance = require("__flib__.misc").get_distance
+local get_distance = require("__flib__.position").distance
 local table_insert = table.insert
 local bit_extract = bit32.extract
 local bit_replace = bit32.replace
