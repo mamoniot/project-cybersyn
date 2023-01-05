@@ -205,7 +205,7 @@ function set_p_wagon_combs(map_data, station, train)
 				break
 			end
 		end
-		if carriage.type == "cargo-wagon" and item_i <= #manifest then
+		if carriage.type == "cargo-wagon" then
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
 			if inv then
 				---@type ConstantCombinatorParameters
@@ -213,7 +213,7 @@ function set_p_wagon_combs(map_data, station, train)
 
 				local inv_filter_i = 1
 				local item_slots_capacity = max(ceil((#inv - locked_slots)*percent_slots_to_use_per_wagon), 1)
-				while item_slots_capacity > 0 do
+				while item_slots_capacity > 0 and item_i <= #manifest do
 					local do_inc
 					if item.type == "item" then
 						local stack_size = get_stack_size(map_data, item.name)
@@ -254,11 +254,11 @@ function set_p_wagon_combs(map_data, station, train)
 					set_combinator_output(map_data, comb, signals)
 				end
 			end
-		elseif carriage.type == "fluid-wagon" and fluid_i <= #manifest then
+		elseif carriage.type == "fluid-wagon" then
 			local fluid_capacity = carriage.prototype.fluid_capacity
 			local signals = {}
 
-			while fluid_capacity > 0 do
+			while fluid_capacity > 0 and fluid_i <= #manifest do
 				local do_inc
 				if fluid.type == "fluid" then
 					local count_to_fill = min(fluid_count, fluid_capacity)
