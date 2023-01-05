@@ -1,6 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.8
 Date: 2022-1-4
+  Features:
+    - Added a setting and keybind for toggling on or off the central planner
   Bugfixes:
     - Fixed a bug with combinators sometimes failing to connect with train stops
 ---------------------------------------------------------------------------------------------------

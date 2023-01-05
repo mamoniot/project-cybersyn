@@ -1,9 +1,16 @@
 --By Mami
 data:extend({
 	{
+		type = "bool-setting",
+		name = "cybersyn-enable-planner",
+		order = "aa",
+		setting_type = "runtime-global",
+		default_value = true,
+	},
+	{
 		type = "double-setting",
 		name = "cybersyn-ticks-per-second",
-		order = "aa",
+		order = "ab",
 		setting_type = "runtime-global",
 		default_value = 30,
 		minimum_value = 0,
@@ -12,7 +19,7 @@ data:extend({
 	{
 		type = "int-setting",
 		name = "cybersyn-update-rate",
-		order = "ab",
+		order = "ac",
 		setting_type = "runtime-global",
 		default_value = 2,
 		minimum_value = 1,

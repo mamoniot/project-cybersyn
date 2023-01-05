@@ -780,6 +780,7 @@ end
 
 
 local function grab_all_settings()
+	mod_settings.enable_planner = settings.global["cybersyn-enable-planner"].value --[[@as boolean]]
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
@@ -847,6 +848,15 @@ local function main()
 
 	script.on_event(defines.events.on_entity_settings_pasted, on_paste)
 
+	script.on_event(defines.events.on_train_created, on_train_built)
+	script.on_event(defines.events.on_train_changed_state, on_train_changed)
+
+	script.on_event(defines.events.on_entity_renamed, on_rename)
+
+	script.on_event(defines.events.on_runtime_mod_setting_changed, on_settings_changed)
+
+	register_gui_actions()
+
 	if mod_settings.tps > DELTA then
 		local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
 		script.on_nth_tick(nth_tick, function()
@@ -856,14 +866,11 @@ local function main()
 		script.on_nth_tick(nil)
 	end
 
-	script.on_event(defines.events.on_train_created, on_train_built)
-	script.on_event(defines.events.on_train_changed_state, on_train_changed)
-
-	script.on_event(defines.events.on_entity_renamed, on_rename)
-
-	script.on_event(defines.events.on_runtime_mod_setting_changed, on_settings_changed)
-
-	register_gui_actions()
+	script.on_event("cybersyn-toggle-planner", function(event)
+		local setting = settings.global["cybersyn-enable-planner"]
+		setting.value = not setting.value
+		settings.global["cybersyn-enable-planner"] = setting
+	end)
 
 	script.on_init(function()
 		local setting = settings.global["cybersyn-invert-sign"]
