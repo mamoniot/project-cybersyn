@@ -16,7 +16,6 @@ major:
 	per-station statistics gui
 	move to an event based algorithm
 	models & art
-	setting to lock wagon slots on wagon control
 
 minor:
 	check if necessary entities can be destroyed without raising events
