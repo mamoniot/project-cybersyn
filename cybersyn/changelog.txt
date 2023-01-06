@@ -10,6 +10,7 @@ Date: 2022-1-5
   Bugfixes:
     - Fixed a bug with combinators sometimes failing to connect with train stops
     - Fixed wagon control combinators outputting wagon contents after inserters have already taken out items
+    - Fixed a rare crash on world migration
   Scripting:
     - Added missing return values to some interface functions
     - Migrated to non-deprecated flib modules

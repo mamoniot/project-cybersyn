@@ -16,6 +16,7 @@ major:
 	per-station statistics gui
 	move to an event based algorithm
 	models & art
+	dramatically improve the mods handling of invalid entities
 
 minor:
 	check if necessary entities can be destroyed without raising events
