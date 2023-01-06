@@ -185,13 +185,15 @@ local migrations_table = {
 		for train_id, train in pairs(map_data.trains) do
 			train.depot_id = train.parked_at_depot_id
 			if not train.depot_id then
-				local e = get_any_train_entity(train.entity)
-				local stops = e.force.get_train_stops({name = train.depot_name, surface = e.surface})
-				for stop in rnext_consume, stops do
-					local new_depot_id = stop.unit_number
-					if map_data.depots[new_depot_id] then
-						train.depot_id = new_depot_id--[[@as uint]]
-						break
+				if train.entity.valid then
+					local e = get_any_train_entity(train.entity)
+					local stops = e.force.get_train_stops({name = train.depot_name, surface = e.surface})
+					for stop in rnext_consume, stops do
+						local new_depot_id = stop.unit_number
+						if map_data.depots[new_depot_id] then
+							train.depot_id = new_depot_id--[[@as uint]]
+							break
+						end
 					end
 				end
 			end
@@ -200,7 +202,9 @@ local migrations_table = {
 			end
 			if not train.depot_id then
 				train.entity.manual_mode = true
-				send_alert_depot_of_train_broken(map_data, train.entity)
+				if train.entity.valid then
+					send_alert_depot_of_train_broken(map_data, train.entity)
+				end
 				local layout_id = train.layout_id
 				local count = global.layout_train_count[layout_id]
 				if count <= 1 then
