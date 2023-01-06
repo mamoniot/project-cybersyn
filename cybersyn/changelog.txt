@@ -12,6 +12,7 @@ Date: 2022-1-5
     - Fixed wagon control combinators outputting wagon contents after inserters have already taken out items
   Scripting:
     - Added missing return values to some interface functions
+    - Migrated to non-deprecated flib modules
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.7
 Date: 2022-1-1
