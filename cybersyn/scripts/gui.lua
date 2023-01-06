@@ -210,7 +210,7 @@ function gui_opened(comb, player)
 			{type="flow", name="titlebar", children={
 				{type="label", style="frame_title", caption={"cybersyn-gui.combinator-title"}, elem_mods={ignored_by_interaction=true}},
 				{type="empty-widget", style="flib_titlebar_drag_handle", elem_mods={ignored_by_interaction=true}},
-				{type="sprite-button", style="frame_action_button", mouse_button_filter={"left"}, sprite="utility/close_white", hovered_sprite="utility/close_black", name=COMBINATOR_NAME, handler={[defines.events.on_gui_click]=handle_close}, tags={id=comb.unit_number}}
+				{type="sprite-button", style="frame_action_button", mouse_button_filter={"left"}, sprite="utility/close_white", hovered_sprite="utility/close_black", name=COMBINATOR_NAME, handler=handle_close, tags={id=comb.unit_number}}
 			}},
 			{type="frame", name="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12, bottom_padding=9}, children={
 				{type="flow", name="vflow", direction="vertical", style_mods={horizontal_align="left"}, children={
@@ -226,16 +226,16 @@ function gui_opened(comb, player)
 					--drop down
 					{type="label", style="heading_3_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=8}},
 					{type="flow", name="top", direction="horizontal", style_mods={vertical_align="center"}, children={
-						{type="drop-down", style_mods={top_padding=3, right_margin=8}, handler={[defines.events.on_gui_selection_state_changed]=handle_drop_down}, tags={id=comb.unit_number}, selected_index=selected_index, items={
+						{type="drop-down", style_mods={top_padding=3, right_margin=8}, handler=handle_drop_down, tags={id=comb.unit_number}, selected_index=selected_index, items={
 							{"cybersyn-gui.comb1"},
 							{"cybersyn-gui.depot"},
 							{"cybersyn-gui.refueler"},
 							{"cybersyn-gui.comb2"},
 							{"cybersyn-gui.wagon-manifest"},
 						}},
-						{type="switch", name="is_pr_switch", allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, handler={[defines.events.on_gui_switch_state_changed]=handle_pr_switch}, tags={id=comb.unit_number}},
+						{type="switch", name="is_pr_switch", allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, handler=handle_pr_switch, tags={id=comb.unit_number}},
 						{type="flow", name="enable_slot_barring", direction="horizontal", style_mods={vertical_align="center", left_padding=6}, children={
-							{type="checkbox", name="enable_slot_barring", state=setting(bits, SETTING_ENABLE_SLOT_BARRING), handler={[defines.events.on_gui_checked_state_changed]=handle_setting}, tags={id=comb.unit_number, bit=SETTING_ENABLE_SLOT_BARRING}, tooltip={"cybersyn-gui.enable-slot-barring-tooltip"}},
+							{type="checkbox", name="enable_slot_barring", state=setting(bits, SETTING_ENABLE_SLOT_BARRING), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_SLOT_BARRING}, tooltip={"cybersyn-gui.enable-slot-barring-tooltip"}},
 							{type="label", name="enable_slot_barring_label", style_mods={left_padding=3}, caption={"cybersyn-gui.enable-slot-barring-description"}},
 						}},
 					}},
@@ -243,29 +243,29 @@ function gui_opened(comb, player)
 					{type="line", style_mods={top_padding=10}},
 					{type="label", name="network_label", style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
 					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="top"}, children={
-						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, handler={[defines.events.on_gui_elem_changed]=handle_network}, tags={id=comb.unit_number}},
+						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, handler=handle_network, tags={id=comb.unit_number}},
 						{type="flow", name="depot", direction="vertical", style_mods={horizontal_align="left"}, children={
 							{type="flow", name="use_any_depot", direction="horizontal", style_mods={vertical_align="center"}, children={
-								{type="checkbox", name="use_same_depot", state=setting_flip(bits, SETTING_USE_ANY_DEPOT), handler={[defines.events.on_gui_checked_state_changed]=handle_setting_flip}, tags={id=comb.unit_number, bit=SETTING_USE_ANY_DEPOT}, tooltip={"cybersyn-gui.use-same-depot-tooltip"}},
+								{type="checkbox", name="use_same_depot", state=setting_flip(bits, SETTING_USE_ANY_DEPOT), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_USE_ANY_DEPOT}, tooltip={"cybersyn-gui.use-same-depot-tooltip"}},
 								{type="label", name="use_same_depot_label", style_mods={left_padding=3}, caption={"cybersyn-gui.use-same-depot-description"}},
 							}},
 							{type="flow", name="depot_bypass", direction="horizontal", style_mods={vertical_align="center"}, children={
-								{type="checkbox", name="depot_bypass", state=setting_flip(bits, SETTING_DISABLE_DEPOT_BYPASS), handler={[defines.events.on_gui_checked_state_changed]=handle_setting_flip}, tags={id=comb.unit_number, bit=SETTING_DISABLE_DEPOT_BYPASS}, tooltip={"cybersyn-gui.depot-bypass-tooltip"}},
+								{type="checkbox", name="depot_bypass", state=setting_flip(bits, SETTING_DISABLE_DEPOT_BYPASS), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_DISABLE_DEPOT_BYPASS}, tooltip={"cybersyn-gui.depot-bypass-tooltip"}},
 								{type="label", name="depot_bypass_label", style_mods={left_padding=3}, caption={"cybersyn-gui.depot-bypass-description"}},
 							}},
 						}},
 						{type="flow", name="first", direction="vertical", style_mods={horizontal_align="left", right_margin=8}, children={
 							{type="flow", name="allow_list", direction="horizontal", style_mods={vertical_align="center"}, children={
-								{type="checkbox", name="allow_list", state=setting_flip(bits, SETTING_DISABLE_ALLOW_LIST), handler={[defines.events.on_gui_checked_state_changed]=handle_setting_flip}, tags={id=comb.unit_number, bit=SETTING_DISABLE_ALLOW_LIST}, tooltip={"cybersyn-gui.allow-list-tooltip"}},
+								{type="checkbox", name="allow_list", state=setting_flip(bits, SETTING_DISABLE_ALLOW_LIST), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_DISABLE_ALLOW_LIST}, tooltip={"cybersyn-gui.allow-list-tooltip"}},
 								{type="label", name="allow_list_label", style_mods={left_padding=3}, caption={"cybersyn-gui.allow-list-description"}},
 							}},
 							{type="flow", name="is_stack", direction="horizontal", style_mods={vertical_align="center"}, children={
-								{type="checkbox", name="is_stack", state=setting(bits, SETTING_IS_STACK), handler={[defines.events.on_gui_checked_state_changed]=handle_setting}, tags={id=comb.unit_number, bit=SETTING_IS_STACK}, tooltip={"cybersyn-gui.is-stack-tooltip"}},
+								{type="checkbox", name="is_stack", state=setting(bits, SETTING_IS_STACK), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_IS_STACK}, tooltip={"cybersyn-gui.is-stack-tooltip"}},
 								{type="label", name="is_stack_label", style_mods={left_padding=3}, caption={"cybersyn-gui.is-stack-description"}},
 							}},
 						}},
 						{type="flow", name="enable_inactive", direction="horizontal", style_mods={vertical_align="center"}, children={
-							{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler={[defines.events.on_gui_checked_state_changed]=handle_setting}, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}},
+							{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}},
 							{type="label", name="enable_inactive_label", style_mods={left_padding=3}, caption={"cybersyn-gui.enable-inactive-description"}},
 						}},
 					}}
