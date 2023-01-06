@@ -566,7 +566,7 @@ function get_comb_gui_settings(comb)
 	elseif op == MODE_WAGON then
 		selected_index = 5
 	end
-	return selected_index, params.first_signal, switch_state, bits
+	return selected_index--[[@as uint]], params.first_signal, switch_state, bits
 end
 ---@param comb LuaEntity
 ---@param is_pr_state 0|1|2
