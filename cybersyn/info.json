@@ -7,7 +7,7 @@
     "description": "Creates a feature-rich train logistics network through cybernetic combinators. With just this mod you can coordinate the economic inputs and outputs of your entire megabase.",
     "dependencies": [
         "base",
-        "flib >= 0.6.0",
+        "flib >= 0.12.0",
         "? space-exploration >= 0.6.94",
         "? miniloader",
         "? nullius",
