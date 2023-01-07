@@ -36,5 +36,6 @@
 	"Lua.runtime.plugin": "/home/mami/.config/Code/User/workspaceStorage/fdae937c5189f993d370b36f3104188f/justarandomgeek.factoriomod-debug/sumneko-3rd/factorio/plugin.lua",
 	"Lua.diagnostics.disable": [
 		"lowercase-global"
-	]
+	],
+	"Lua.workspace.checkThirdParty": false
 }
