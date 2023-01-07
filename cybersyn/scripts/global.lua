@@ -34,6 +34,7 @@
 ---@field public allows_all_trains true?
 ---@field public deliveries_total int
 ---@field public last_delivery_tick int
+---@field public trains_limit int --transient
 ---@field public priority int --transient
 ---@field public item_priority int? --transient
 ---@field public r_threshold int >= 0 --transient

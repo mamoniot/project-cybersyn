@@ -34,18 +34,22 @@ function on_failed_delivery(map_data, train_id, train)
 	local is_r_in_progress = is_p_in_progress or train.status == STATUS_TO_R or train.status == STATUS_R
 	if is_p_in_progress then
 		local station = map_data.stations[p_station_id]
-		remove_manifest(map_data, station, manifest, 1)
-		if train.status == STATUS_P then
-			set_comb1(map_data, station, nil)
-			unset_wagon_combs(map_data, station)
+		if station.entity_comb1.valid and (not station.entity_comb2 or station.entity_comb2.valid) then
+			remove_manifest(map_data, station, manifest, 1)
+			if train.status == STATUS_P then
+				set_comb1(map_data, station, nil)
+				unset_wagon_combs(map_data, station)
+			end
 		end
 	end
 	if is_r_in_progress then
 		local station = map_data.stations[r_station_id]
-		remove_manifest(map_data, station, manifest, -1)
-		if train.status == STATUS_R then
-			set_comb1(map_data, station, nil)
-			unset_wagon_combs(map_data, station)
+		if station.entity_comb1.valid and (not station.entity_comb2 or station.entity_comb2.valid) then
+			remove_manifest(map_data, station, manifest, -1)
+			if train.status == STATUS_R then
+				set_comb1(map_data, station, nil)
+				unset_wagon_combs(map_data, station)
+			end
 		end
 	end
 	if train.has_filtered_wagon then
@@ -100,7 +104,9 @@ end
 ---@param train Train
 function add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
 	local comb = depot.entity_comb
-	set_train_from_comb(mod_settings, train, comb)
+	if comb.valid then
+		set_train_from_comb(mod_settings, train, comb)
+	end
 	depot.available_train_id = train_id
 	train.depot_id = depot_id
 	train.status = STATUS_D
@@ -141,8 +147,9 @@ end
 
 ---@param map_data MapData
 ---@param depot_id uint
+---@param depot Depot
 ---@param train_entity LuaTrain
-local function on_train_arrives_depot(map_data, depot_id, train_entity)
+local function on_train_arrives_depot(map_data, depot_id, depot, train_entity)
 	local is_train_empty = next(train_entity.get_contents()) == nil and next(train_entity.get_fluid_contents()) == nil
 	local train_id = train_entity.id
 	local train = map_data.trains[train_id]
@@ -161,7 +168,6 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		end
 		if is_train_empty or mod_settings.allow_cargo_in_depot then
 			local old_status = train.status
-			local depot = map_data.depots[depot_id]
 			add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
 			set_depot_schedule(train_entity, depot.entity_stop.backer_name)
 			interface_raise_train_status_changed(train_id, old_status, STATUS_D)
@@ -194,7 +200,6 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 		}--[[@as Train]]
 		set_train_layout(map_data, train)
 		map_data.trains[train_id] = train
-		local depot = map_data.depots[depot_id]
 		add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
 
 		set_depot_schedule(train_entity, depot.entity_stop.backer_name)
@@ -208,20 +213,18 @@ local function on_train_arrives_depot(map_data, depot_id, train_entity)
 	end
 end
 ---@param map_data MapData
----@param station_id uint
+---@param station Station
 ---@param train_id uint
 ---@param train Train
-local function on_train_arrives_station(map_data, station_id, train_id, train)
+local function on_train_arrives_station(map_data, station, train_id, train)
 	---@type uint
 	if train.status == STATUS_TO_P then
 		train.status = STATUS_P
-		local station = map_data.stations[station_id]
 		set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and 1 or -1)
 		set_p_wagon_combs(map_data, station, train)
 		interface_raise_train_status_changed(train_id, STATUS_TO_P, STATUS_P)
 	elseif train.status == STATUS_TO_R then
 		train.status = STATUS_R
-		local station = map_data.stations[station_id]
 		set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and -1 or 1)
 		set_r_wagon_combs(map_data, station, train)
 		interface_raise_train_status_changed(train_id, STATUS_TO_R, STATUS_R)
@@ -229,12 +232,11 @@ local function on_train_arrives_station(map_data, station_id, train_id, train)
 end
 
 ---@param map_data MapData
----@param refueler_id uint
+---@param refueler Refueler
 ---@param train_id uint
 ---@param train Train
-local function on_train_arrives_refueler(map_data, refueler_id, train_id, train)
+local function on_train_arrives_refueler(map_data, refueler, train_id, train)
 	if train.status == STATUS_TO_F then
-		local refueler = map_data.refuelers[refueler_id]
 		train.status = STATUS_F
 		set_refueler_combs(map_data, refueler, train)
 		interface_raise_train_status_changed(train_id, STATUS_TO_F, STATUS_F)
@@ -319,21 +321,23 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 					local best_prior = -INF
 					for id, _ in pairs(refuelers) do
 						local refueler = map_data.refuelers[id]
-						set_refueler_from_comb(map_data, mod_settings, id)
+						if not refueler.entity_stop.valid or not refueler.entity_comb.valid then
+							on_refueler_broken(map_data, id, refueler)
+						else
+							set_refueler_from_comb(map_data, mod_settings, id, refueler)
 
-						local refueler_network_flag = get_network_flag(refueler, network_name)
-						local train_network_flag = get_network_flag(train, network_name)
-						if btest(train_network_flag, refueler_network_flag) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
-							local accepted = false
-							local dist = nil
-							if refueler.priority == best_prior then
-								dist = get_stop_dist(train.entity.front_stock, refueler.entity_stop)
-								accepted = dist < best_dist
-							end
-							if accepted or refueler.priority > best_prior then
-								best_refueler_id = id
-								best_dist = dist or get_stop_dist(train.entity.front_stock, refueler.entity_stop)
-								best_prior = refueler.priority
+							local refueler_network_flag = get_network_flag(refueler, network_name)
+							local train_network_flag = get_network_flag(train, network_name)
+							if btest(train_network_flag, refueler_network_flag) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
+								if refueler.priority >= best_prior then
+									local t = get_any_train_entity(train.entity)
+									local dist = t and get_dist(t, refueler.entity_stop) or INF
+									if refueler.priority > best_prior or dist < best_dist then
+										best_refueler_id = id
+										best_dist = dist
+										best_prior = refueler.priority
+									end
+								end
 							end
 						end
 					end
@@ -358,7 +362,9 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		train.refueler_id = nil
 		refueler.trains_total = refueler.trains_total - 1
 		unset_wagon_combs(map_data, refueler)
-		set_combinator_output(map_data, refueler.entity_comb, nil)
+		if refueler.entity_comb.valid then
+			set_combinator_output(map_data, refueler.entity_comb, nil)
+		end
 		if not train.disable_bypass then
 			train.status = STATUS_TO_D_BYPASS
 			add_available_train(map_data, train_id, train)
@@ -427,8 +433,13 @@ function on_train_changed(event)
 		local stop = train_e.station
 		if stop and stop.valid and stop.name == "train-stop" then
 			local id = stop.unit_number--[[@as uint]]
-			if map_data.depots[id] then
-				on_train_arrives_depot(map_data, id, train_e)
+			local depot = map_data.depots[id]
+			if depot then
+				if depot.entity_comb.valid and depot.entity_stop.valid then
+					on_train_arrives_depot(map_data, id, depot, train_e)
+				else
+					on_depot_broken(map_data, id, depot)
+				end
 			end
 		else
 			local train = map_data.trains[train_id]
@@ -451,11 +462,13 @@ function on_train_changed(event)
 							station = map_data.refuelers[id]
 							is_station = false
 						end
-						if id and station.entity_stop.connected_rail == rail then
+						if id and station.entity_stop.valid and station.entity_stop.connected_rail == rail then
 							if is_station then
-								on_train_arrives_station(map_data, id, train_id, train)
-							else
-								on_train_arrives_refueler(map_data, id, train_id, train)
+								if station.entity_comb1 and (not station.entity_comb2 or station.entity_comb2.valid) then
+									on_train_arrives_station(map_data, station, train_id, train)
+								end
+							elseif station.entity_comb.valid then
+								on_train_arrives_refueler(map_data, station, train_id, train)
 							end
 						end
 					end

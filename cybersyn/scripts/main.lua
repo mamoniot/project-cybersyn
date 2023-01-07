@@ -21,17 +21,19 @@ end
 ---@param map_data MapData
 ---@param depot_id uint
 ---@param depot Depot
-local function on_depot_broken(map_data, depot_id, depot)
+function on_depot_broken(map_data, depot_id, depot)
 	for train_id, train in pairs(map_data.trains) do
 		if train.depot_id == depot_id then
 			if train.use_any_depot then
 				local e = get_any_train_entity(train.entity)
-				local stops = e.force.get_train_stops({name = depot.entity_stop.backer_name, surface = e.surface})
-				for stop in rnext_consume, stops do
-					local new_depot_id = stop.unit_number
-					if map_data.depots[new_depot_id] then
-						train.depot_id = new_depot_id--[[@as uint]]
-						goto continue
+				if e then
+					local stops = e.force.get_train_stops({name = depot.entity_stop.backer_name, surface = e.surface})
+					for stop in rnext_consume, stops do
+						local new_depot_id = stop.unit_number
+						if map_data.depots[new_depot_id] then
+							train.depot_id = new_depot_id--[[@as uint]]
+							goto continue
+						end
 					end
 				end
 			end
@@ -63,14 +65,14 @@ local function on_refueler_built(map_data, stop, comb)
 	}
 	local id = stop.unit_number--[[@as uint]]
 	map_data.refuelers[id] = refueler
-	set_refueler_from_comb(map_data, mod_settings, id)
+	set_refueler_from_comb(map_data, mod_settings, id, refueler)
 	update_stop_if_auto(map_data, refueler, false)
 	interface_raise_refueler_created(id)
 end
 ---@param map_data MapData
 ---@param refueler_id uint
 ---@param refueler Refueler
-local function on_refueler_broken(map_data, refueler_id, refueler)
+function on_refueler_broken(map_data, refueler_id, refueler)
 	if refueler.trains_total > 0 then
 		--search for trains coming to the destroyed refueler
 		for train_id, train in pairs(map_data.trains) do
@@ -121,6 +123,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		--allows_all_trains = set_station_from_comb,
 		deliveries_total = 0,
 		last_delivery_tick = map_data.total_ticks,
+		trains_limit = math.huge,
 		priority = 0,
 		item_priotity = nil,
 		r_threshold = 0,
@@ -150,7 +153,7 @@ end
 ---@param map_data MapData
 ---@param station_id uint
 ---@param station Station
-local function on_station_broken(map_data, station_id, station)
+function on_station_broken(map_data, station_id, station)
 	if station.deliveries_total > 0 then
 		--search for trains coming to the destroyed station
 		for train_id, train in pairs(map_data.trains) do
@@ -430,7 +433,7 @@ function combinator_update(map_data, comb, reset_display)
 				else
 					local refueler = map_data.refuelers[id]
 					if refueler and refueler.entity_comb == comb then
-						set_refueler_from_comb(map_data, mod_settings, id)
+						set_refueler_from_comb(map_data, mod_settings, id, refueler)
 					end
 				end
 			end
@@ -448,7 +451,7 @@ function combinator_update(map_data, comb, reset_display)
 			local refueler = map_data.refuelers[id]
 			if refueler then
 				local pre = refueler.allows_all_trains
-				set_refueler_from_comb(map_data, mod_settings, id)
+				set_refueler_from_comb(map_data, mod_settings, id, refueler)
 				if refueler.allows_all_trains ~= pre then
 					update_stop_if_auto(map_data, refueler, false)
 				end
@@ -757,19 +760,27 @@ local function setup_se_compat()
 		if schedule then
 			if train.status == STATUS_TO_P then
 				local stop = map_data.stations[train.p_station_id].entity_stop
-				se_add_direct_to_station_order(schedule, stop, old_surface_index)
+				if stop.valid then
+					se_add_direct_to_station_order(schedule, stop, old_surface_index)
+				end
 			end
 			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
 				local stop = map_data.stations[train.r_station_id].entity_stop
-				se_add_direct_to_station_order(schedule, stop, old_surface_index)
+				if stop.valid then
+					se_add_direct_to_station_order(schedule, stop, old_surface_index)
+				end
 			end
 			if train.status == STATUS_TO_F then
 				local stop = map_data.refuelers[train.refueler_id].entity_stop
-				se_add_direct_to_station_order(schedule, stop, old_surface_index)
+				if stop.valid then
+					se_add_direct_to_station_order(schedule, stop, old_surface_index)
+				end
 			end
 			if not train.use_any_depot then
-				local depot = map_data.depots[train.depot_id]
-				se_add_direct_to_station_order(schedule, depot.entity_stop, old_surface_index)
+				local stop = map_data.depots[train.depot_id].entity_stop
+				if stop.valid then
+					se_add_direct_to_station_order(schedule, stop, old_surface_index)
+				end
 			end
 			train_entity.schedule = schedule
 		end

@@ -596,14 +596,15 @@ function update_stop_from_rail(map_data, rail, forbidden_entity, force)
 			return
 		end
 		if entity.name == "train-stop" then
-			local id = entity.unit_number
+			local id = entity.unit_number--[[@as uint]]
 			local is_station = true
+			---@type Station|Refueler
 			local stop = map_data.stations[id]
 			if not stop then
 				stop = map_data.refuelers[id]
 				is_station = false
 			end
-			if stop then
+			if stop and stop.entity_stop.valid then
 				if force then
 					reset_stop_layout(map_data, stop, is_station, forbidden_entity)
 				elseif not stop.allows_all_trains then
