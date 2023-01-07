@@ -15,10 +15,10 @@ function get_stack_size(map_data, item_name)
 	return game.item_prototypes[item_name].stack_size
 end
 
-
+---NOTE: does not check .valid
 ---@param entity0 LuaEntity
 ---@param entity1 LuaEntity
-function get_stop_dist(entity0, entity1)
+function get_dist(entity0, entity1)
 	local surface0 = entity0.surface.index
 	local surface1 = entity1.surface.index
 	return (surface0 == surface1 and get_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE)
@@ -41,7 +41,7 @@ end
 
 ---@param train LuaTrain
 function get_any_train_entity(train)
-	return train.front_stock or train.back_stock or train.carriages[1]
+	return train.valid and (train.front_stock or train.back_stock or train.carriages[1]) or nil
 end
 
 
@@ -109,31 +109,37 @@ end
 ---@param train LuaTrain
 ---@param depot_name string
 function set_depot_schedule(train, depot_name)
-	train.schedule = {current = 1, records = {create_inactivity_order(depot_name)}}
+	if train.valid then
+		train.schedule = {current = 1, records = {create_inactivity_order(depot_name)}}
+	end
 end
 
 ---@param train LuaTrain
 function lock_train(train)
-	train.manual_mode = true
+	if train.valid then
+		train.manual_mode = true
+	end
 end
 ---@param train LuaTrain
 function lock_train_to_depot(train)
-	local schedule = train.schedule
-	if schedule then
-		local record = schedule.records[schedule.current]
-		if record then
-			local wait = record.wait_conditions
-			if wait and wait[1] then
-				wait[1].ticks = LOCK_TRAIN_TIME
+	if train.valid then
+		local schedule = train.schedule
+		if schedule then
+			local record = schedule.records[schedule.current]
+			if record then
+				local wait = record.wait_conditions
+				if wait and wait[1] then
+					wait[1].ticks = LOCK_TRAIN_TIME
+				else
+					record.wait_conditions = {{type = "inactivity", compare_type = "and", ticks = LOCK_TRAIN_TIME}}
+				end
+				train.schedule = schedule
 			else
-				record.wait_conditions = {{type = "inactivity", compare_type = "and", ticks = LOCK_TRAIN_TIME}}
+				train.manual_mode = true
 			end
-			train.schedule = schedule
 		else
 			train.manual_mode = true
 		end
-	else
-		train.manual_mode = true
 	end
 end
 
@@ -141,15 +147,17 @@ end
 ---@param stop LuaEntity
 ---@param old_name string
 function rename_manifest_schedule(train, stop, old_name)
-	local new_name = stop.backer_name
-	local schedule = train.schedule
-	if not schedule then return end
-	for i, record in ipairs(schedule.records) do
-		if record.station == old_name then
-			record.station = new_name
+	if train.valid then
+		local new_name = stop.backer_name
+		local schedule = train.schedule
+		if not schedule then return end
+		for i, record in ipairs(schedule.records) do
+			if record.station == old_name then
+				record.station = new_name
+			end
 		end
+		train.schedule = schedule
 	end
-	train.schedule = schedule
 end
 
 ---@param elevator_name string
@@ -157,6 +165,7 @@ end
 function se_create_elevator_order(elevator_name, is_train_in_orbit)
 	return {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
 end
+---NOTE: does not check .valid
 ---@param map_data MapData
 ---@param train LuaTrain
 ---@param depot_stop LuaEntity
@@ -281,6 +290,7 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 	return true
 end
 
+---NOTE: does not check .valid
 ---@param map_data MapData
 ---@param train LuaTrain
 ---@param stop LuaEntity
@@ -355,14 +365,8 @@ end
 function get_comb_params(comb)
 	return comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
 end
----@param comb LuaEntity
-function get_comb_network_name(comb)
-	local params = get_comb_params(comb)
-	local signal = params.first_signal
 
-	return signal and signal.name or nil
-end
-
+---NOTE: does not check .valid
 ---@param station Station
 function set_station_from_comb(station)
 	--NOTE: this does nothing to update currently active deliveries
@@ -387,6 +391,7 @@ function set_station_from_comb(station)
 		station.network_flag = {}
 	end
 end
+---NOTE: does not check .valid
 ---@param mod_settings CybersynModSettings
 ---@param train Train
 ---@param comb LuaEntity
@@ -437,9 +442,9 @@ end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 ---@param id uint
-function set_refueler_from_comb(map_data, mod_settings, id)
+---@param refueler Refueler
+function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 	--NOTE: this does nothing to update currently active deliveries
-	local refueler = map_data.refuelers[id]
 	local params = get_comb_params(refueler.entity_comb)
 	local bits = params.second_constant or 0
 	local signal = params.first_signal
@@ -620,7 +625,6 @@ end
 
 ---@param station Station
 function get_signals(station)
-	--NOTE: the combinator must be valid, but checking for valid every time is too slow
 	local comb1 = station.entity_comb1
 	local status1 = comb1.status
 	---@type Signal[]?
@@ -693,7 +697,7 @@ end
 
 ---@param train LuaTrain
 function send_alert_sounds(train)
-	local loco = train.front_stock or train.back_stock
+	local loco = get_any_train_entity(train)
 	if loco then
 		for _, player in pairs(loco.force.players) do
 			player.play_sound({path = ALERT_SOUND})

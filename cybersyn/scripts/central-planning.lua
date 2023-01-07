@@ -42,71 +42,93 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 	local train = map_data.trains[train_id]
 	local depot = map_data.depots[train.depot_id]
 
-	local is_at_depot = remove_available_train(map_data, train_id, train)
 
-	--NOTE: we assume that the train is not being teleported at this time
-	--NOTE: set_manifest_schedule is allowed to cancel the delivery at the last second if applying the schedule to the train makes it lost
-	if set_manifest_schedule(map_data, train.entity, depot.entity_stop, not train.use_any_depot, p_station.entity_stop, p_station.enable_inactive, r_station.entity_stop, mod_settings.allow_cargo_in_depot and r_station.enable_inactive--[[@as boolean]], manifest, is_at_depot) then
-	local old_status = train.status
-	train.status = STATUS_TO_P
-	train.p_station_id = p_station_id
-	train.r_station_id = r_station_id
-	train.manifest = manifest
-	train.last_manifest_tick = map_data.total_ticks
-
-	r_station.last_delivery_tick = map_data.total_ticks
-	p_station.last_delivery_tick = map_data.total_ticks
-
-	r_station.deliveries_total = r_station.deliveries_total + 1
-	p_station.deliveries_total = p_station.deliveries_total + 1
-
-	local r_is_each = r_station.network_name == NETWORK_EACH
-	local p_is_each = p_station.network_name == NETWORK_EACH
-	for item_i, item in ipairs(manifest) do
-		assert(item.count > 0, "main.lua error, transfer amount was not positive")
-
-		r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
-		p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
-
-		if item_i > 1 or r_is_each or p_is_each then
-			local f, a
-			if r_is_each then
-				f, a = pairs(r_station.network_flag--[[@as {[string]: int}]])
-				if p_is_each then
-					for network_name, _ in f, a do
-						local item_network_name = network_name..":"..item.name
-						economy.all_r_stations[item_network_name] = nil
-						economy.all_p_stations[item_network_name] = nil
-					end
-					f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
-				end
-			elseif p_is_each then
-				f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
-			else
-				f, a = once, r_station.network_name
-			end
-			--prevent deliveries from being processed for these items until their stations are re-polled
-			--if we don't wait until they are repolled a duplicate delivery might be generated for stations that share inventories
-			for network_name, _ in f, a do
-				local item_network_name = network_name..":"..item.name
-				economy.all_r_stations[item_network_name] = nil
-				economy.all_p_stations[item_network_name] = nil
-			end
-		end
+	if not train.entity.valid then
+		on_train_broken(map_data, train_id, train)
+		interface_raise_train_dispatch_failed(train_id)
+		return
+	end
+	if not depot.entity_stop.valid then
+		on_depot_broken(map_data, train.depot_id, depot)
+		interface_raise_train_dispatch_failed(train_id)
+		return
+	end
+	if not p_station.entity_stop.valid then
+		on_station_broken(map_data, p_station_id, p_station)
+		interface_raise_train_dispatch_failed(train_id)
+		return
+	end
+	if not r_station.entity_stop.valid then
+		on_station_broken(map_data, r_station_id, r_station)
+		interface_raise_train_dispatch_failed(train_id)
+		return
 	end
 
-	set_comb2(map_data, p_station)
-	set_comb2(map_data, r_station)
+	local is_at_depot = remove_available_train(map_data, train_id, train)
+	--NOTE: we assume that the train is not being teleported at this time
+	--NOTE: set_manifest_schedule is allowed to cancel the delivery at the last second if applying the schedule to the train makes it lost and is_at_depot == false
+	local r_enable_inactive = mod_settings.allow_cargo_in_depot and r_station.enable_inactive--[[@as boolean]]
+	if set_manifest_schedule(map_data, train.entity, depot.entity_stop, not train.use_any_depot, p_station.entity_stop, p_station.enable_inactive, r_station.entity_stop, r_enable_inactive, manifest, is_at_depot) then
+		local old_status = train.status
+		train.status = STATUS_TO_P
+		train.p_station_id = p_station_id
+		train.r_station_id = r_station_id
+		train.manifest = manifest
+		train.last_manifest_tick = map_data.total_ticks
 
-	p_station.display_state = 1
-	update_display(map_data, p_station)
-	r_station.display_state = 1
-	update_display(map_data, r_station)
+		r_station.last_delivery_tick = map_data.total_ticks
+		p_station.last_delivery_tick = map_data.total_ticks
 
-	interface_raise_train_status_changed(train_id, old_status, STATUS_TO_P)
-else
-	interface_raise_train_dispatch_failed(train_id)
-end
+		r_station.deliveries_total = r_station.deliveries_total + 1
+		p_station.deliveries_total = p_station.deliveries_total + 1
+
+		local r_is_each = r_station.network_name == NETWORK_EACH
+		local p_is_each = p_station.network_name == NETWORK_EACH
+		for item_i, item in ipairs(manifest) do
+			assert(item.count > 0, "main.lua error, transfer amount was not positive")
+
+			r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
+			p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
+
+			if item_i > 1 or r_is_each or p_is_each then
+				local f, a
+				if r_is_each then
+					f, a = pairs(r_station.network_flag--[[@as {[string]: int}]])
+					if p_is_each then
+						for network_name, _ in f, a do
+							local item_network_name = network_name..":"..item.name
+							economy.all_r_stations[item_network_name] = nil
+							economy.all_p_stations[item_network_name] = nil
+						end
+						f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
+					end
+				elseif p_is_each then
+					f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
+				else
+					f, a = once, r_station.network_name
+				end
+				--prevent deliveries from being processed for these items until their stations are re-polled
+				--if we don't wait until they are repolled a duplicate delivery might be generated for stations that share inventories
+				for network_name, _ in f, a do
+					local item_network_name = network_name..":"..item.name
+					economy.all_r_stations[item_network_name] = nil
+					economy.all_p_stations[item_network_name] = nil
+				end
+			end
+		end
+
+		set_comb2(map_data, p_station)
+		set_comb2(map_data, r_station)
+
+		p_station.display_state = 1
+		update_display(map_data, p_station)
+		r_station.display_state = 1
+		update_display(map_data, r_station)
+
+		interface_raise_train_status_changed(train_id, old_status, STATUS_TO_P)
+	else
+		interface_raise_train_dispatch_failed(train_id)
+	end
 end
 ---@param map_data MapData
 ---@param r_station_id uint
@@ -255,7 +277,7 @@ local function tick_dispatch(map_data, mod_settings)
 		for i, id in ipairs(r_stations) do
 			local station = stations[id]
 			--NOTE: the station at r_station_id could have been deleted and reregistered since last poll, this check here prevents it from being processed for a delivery in that case
-			if not station or station.deliveries_total >= station.entity_stop.trains_limit then
+			if not station or station.deliveries_total >= station.trains_limit then
 				goto continue
 			end
 
@@ -331,7 +353,7 @@ local function tick_dispatch(map_data, mod_settings)
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
-			if not p_station or p_station.deliveries_total >= p_station.entity_stop.trains_limit then
+			if not p_station or p_station.deliveries_total >= p_station.trains_limit then
 				goto p_continue
 			end
 
@@ -403,7 +425,8 @@ local function tick_dispatch(map_data, mod_settings)
 					end
 
 					--check if path is shortest so we prioritize locality
-					local t_to_p_dist = get_stop_dist(train.entity.front_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority
+					local t = get_any_train_entity(train.entity)
+					local t_to_p_dist = t and p_station.entity_stop.valid and (get_dist(t, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority) or INF
 					if capacity == best_capacity and t_to_p_dist > best_t_to_p_dist then
 						goto train_continue
 					end
@@ -443,7 +466,7 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			best_p_dist = best_t_to_p_dist + get_stop_dist(p_station.entity_stop, r_station.entity_stop)
+			best_p_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and (best_t_to_p_dist + get_dist(p_station.entity_stop, r_station.entity_stop)) or INF
 			if p_prior == best_p_prior and best_p_dist > best_dist then
 				goto p_continue
 			end
@@ -501,11 +524,7 @@ local function tick_poll_station(map_data, mod_settings)
 		station_id = map_data.active_station_ids[tick_data.i]
 		station = map_data.stations[station_id]
 		if station then
-			if station_id == 70487 then
-				local i = 0
-			end
-			--NOTE: polling trains_limit here is expensive and not strictly necessary but using it to early out saves more ups
-			if station.network_name and station.deliveries_total < station.entity_stop.trains_limit then
+			if station.network_name then
 				break
 			end
 		else
@@ -513,6 +532,12 @@ local function tick_poll_station(map_data, mod_settings)
 			table_remove(map_data.active_station_ids, tick_data.i)
 			tick_data.i = tick_data.i - 1
 		end
+	end
+	if station.entity_stop.valid and station.entity_comb1.valid and (not station.entity_comb2 or station.entity_comb2.valid) then
+		station.trains_limit = station.entity_stop.trains_limit
+	else
+		on_station_broken(map_data, station_id, station)
+		return false
 	end
 	station.r_threshold = mod_settings.r_threshold
 	station.priority = mod_settings.priority
@@ -673,13 +698,22 @@ function tick_poll_entities(map_data, mod_settings)
 		local refueler_id, _ = next(map_data.each_refuelers, tick_data.last_refueler)
 		tick_data.last_refueler = refueler_id
 		if refueler_id then
-			set_refueler_from_comb(map_data, mod_settings, refueler_id)
+			local refueler = map_data.refuelers[refueler_id]
+			if refueler.entity_stop.valid and refueler.entity_comb.valid then
+				set_refueler_from_comb(map_data, mod_settings, refueler_id, refueler)
+			else
+				on_refueler_broken(map_data, refueler_id, refueler)
+			end
 		end
 	else
 		local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
 		tick_data.last_comb = comb_id
-		if comb and comb.valid then
-			combinator_update(map_data, comb, true)
+		if comb then
+			if comb.valid then
+				combinator_update(map_data, comb, true)
+			else
+				map_data.to_comb[comb_id] = nil
+			end
 		end
 	end
 end
@@ -697,7 +731,11 @@ function tick_init(map_data, mod_settings)
 			if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
 				map_data.active_station_ids[#map_data.active_station_ids + 1] = id
 				map_data.warmup_station_ids[i] = nil
-				combinator_update(map_data, station.entity_comb1)
+				if station.entity_comb1.valid then
+					combinator_update(map_data, station.entity_comb1)
+				else
+					on_station_broken(map_data, id, station)
+				end
 			end
 		else
 			map_data.warmup_station_ids[i] = nil
@@ -708,9 +746,13 @@ function tick_init(map_data, mod_settings)
 			local station = map_data.stations[id]
 			if station then
 				local pre = station.allows_all_trains
-				set_station_from_comb(station)
-				if station.allows_all_trains ~= pre then
-					update_stop_if_auto(map_data, station, true)
+				if station.entity_comb1.valid then
+					set_station_from_comb(station)
+					if station.allows_all_trains ~= pre then
+						update_stop_if_auto(map_data, station, true)
+					end
+				else
+					on_station_broken(map_data, id, station)
 				end
 			end
 		end
