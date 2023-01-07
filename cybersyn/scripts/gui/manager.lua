@@ -13,6 +13,15 @@ local trains_tab = require("scripts.gui.trains")
 --local alerts_tab = require("scripts.gui.alerts")
 
 
+--- @class PlayerData
+--- @field refs {[string]: LuaGuiElement}?
+--- @field search_query string?
+--- @field network_name string
+--- @field network_flag int
+--- @field pinning boolean
+
+
+
 function Index:dispatch(msg, e)
 	-- "Transform" the action based on criteria
 	if msg.transform == "handle_refresh_click" then
@@ -64,13 +73,13 @@ function manager.build(player, player_data)
 			type = "frame",
 			direction = "vertical",
 			visible = false,
-			handler = manager_handle.close,
+			handler = manager.handle.close,
 			children = {
 				{
 					name = "manager_titlebar",
 					type = "flow",
 					style = "flib_titlebar_flow",
-					handler = manager_handle.titlebar_click,
+					handler = manager.handle.titlebar_click,
 					children = {
 						{ type = "label", style = "frame_title", caption = { "mod-name.LtnManager" }, ignored_by_interaction = true },
 						{ type = "empty-widget", style = "flib_titlebar_drag_handle", ignored_by_interaction = true },
@@ -83,9 +92,9 @@ function manager.build(player, player_data)
 							tooltip = { "gui.ltnm-dispatcher-disabled-description" },
 							visible = not settings.global["cybersyn-enable-planner"].value,
 						},
-						templates.frame_action_button("manager_pin_button", "ltnm_pin", { "gui.ltnm-keep-open" }, manager_handle.pin),--on_gui_clicked
-						templates.frame_action_button("manager_refresh_button", "ltnm_refresh", { "gui.ltnm-refresh-tooltip" }, manager_handle.refresh_click),--on_gui_clicked
-						templates.frame_action_button(nil, "utility/close", { "gui.close-instruction" }, manager_handle.close),--on_gui_clicked
+						templates.frame_action_button("manager_pin_button", "ltnm_pin", { "gui.ltnm-keep-open" }, manager.handle.pin),--on_gui_clicked
+						templates.frame_action_button("manager_refresh_button", "ltnm_refresh", { "gui.ltnm-refresh-tooltip" }, manager.handle.refresh_click),--on_gui_clicked
+						templates.frame_action_button(nil, "utility/close", { "gui.close-instruction" }, manager.handle.close),--on_gui_clicked
 					},
 				},
 				{
@@ -102,7 +111,7 @@ function manager.build(player, player_data)
 									name = "manager_text_search_field",
 									type = "textfield",
 									clear_and_focus_on_right_click = true,
-									handler = manager_handle.update_text_search_query, --on_gui_text_changed
+									handler = manager.handle.update_text_search_query, --on_gui_text_changed
 								},
 								{ type = "empty-widget", style = "flib_horizontal_pusher" },
 								{ type = "label", style = "caption_label", caption = { "gui.ltnm-network-id-label" } },
@@ -114,13 +123,13 @@ function manager.build(player, player_data)
 									allow_negative = true,
 									clear_and_focus_on_right_click = true,
 									text = "-1",
-									handler = manager_handle.update_network_id_query, --on_gui_text_changed
+									handler = manager.handle.update_network_id_query, --on_gui_text_changed
 								},
 								{ type = "label", style = "caption_label", caption = { "gui.ltnm-surface-label" } },
 								{
 									name = "manager_surface_dropdown",
 									type = "drop-down",
-									handler = manager_handle.change_surface, --on_gui_selection_state_changed
+									handler = manager.handle.change_surface, --on_gui_selection_state_changed
 								},
 							},
 						},
@@ -194,7 +203,7 @@ function manager.wrapper(e, handler)
 	local player = game.get_player(e.player_index)
 	if not player then return end
 	local player_data = global.manager.players[e.player_index]
-	handler(player, player_data, refs)
+	handler(player, player_data, player_data.refs)
 end
 
 
@@ -237,13 +246,14 @@ end
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
-function manager.handle.update_text_search_query(player, player_data, refs)
+--- @param e GuiEventData
+function manager.handle.update_text_search_query(player, player_data, refs, e)
   local query = e.text
   -- Input sanitization
   for pattern, replacement in pairs(constants.input_sanitizers) do
     query = string.gsub(query, pattern, replacement)
   end
-  Gui.state.search_query = query
+  player_data.search_query = query
 
   if Gui.state.search_job then
     on_tick_n.remove(Gui.state.search_job)

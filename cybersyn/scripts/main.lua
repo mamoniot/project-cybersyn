@@ -162,7 +162,6 @@ local function on_station_broken(map_data, station_id, station)
 				local is_r_in_progress = is_p_in_progress or train.status == STATUS_TO_R or train.status == STATUS_R
 				if (is_p and is_p_in_progress) or (is_r and is_r_in_progress) then
 					--train is attempting delivery to a stop that was destroyed, stop it
-					on_failed_delivery(map_data, train_id, train)
 					if not train.se_is_being_teleported then
 						remove_train(map_data, train_id, train)
 						lock_train(train.entity)
