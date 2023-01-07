@@ -104,6 +104,7 @@
 --NOTE: any setting labeled as an "interface setting" can only be changed through the remote-interface, these settings are not save and have to be set at initialization
 --As a modder using the remote-interface, you may override any of these settings, including user settings. They will have to be overriden at initialization and whenever a user tries to change one.
 ---@class CybersynModSettings
+---@field public enable_planner boolean
 ---@field public tps double
 ---@field public update_rate int
 ---@field public r_threshold int

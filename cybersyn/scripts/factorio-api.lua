@@ -1,5 +1,5 @@
 --By Mami
-local get_distance = require("__flib__.misc").get_distance
+local get_distance = require("__flib__.position").distance
 local table_insert = table.insert
 local bit_extract = bit32.extract
 local bit_replace = bit32.replace
@@ -21,7 +21,7 @@ end
 function get_stop_dist(entity0, entity1)
 	local surface0 = entity0.surface.index
 	local surface1 = entity1.surface.index
-	return (surface0 == surface1 and get_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE)--[[@as number]]
+	return (surface0 == surface1 and get_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE)
 end
 
 
@@ -566,7 +566,7 @@ function get_comb_gui_settings(comb)
 	elseif op == MODE_WAGON then
 		selected_index = 5
 	end
-	return selected_index, params.first_signal, switch_state, bits
+	return selected_index--[[@as uint]], params.first_signal, switch_state, bits
 end
 ---@param comb LuaEntity
 ---@param is_pr_state 0|1|2

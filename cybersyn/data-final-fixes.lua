@@ -1,4 +1,5 @@
 
+--Credit to modo-lv for submitting the following code
 if mods["nullius"] then
     -- Place combinator in the same subgroup as the regular train stop
     data.raw["recipe"][COMBINATOR_NAME].subgroup = data.raw["train-stop"]["train-stop"].subgroup

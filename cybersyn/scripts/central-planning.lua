@@ -47,66 +47,66 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 	--NOTE: we assume that the train is not being teleported at this time
 	--NOTE: set_manifest_schedule is allowed to cancel the delivery at the last second if applying the schedule to the train makes it lost
 	if set_manifest_schedule(map_data, train.entity, depot.entity_stop, not train.use_any_depot, p_station.entity_stop, p_station.enable_inactive, r_station.entity_stop, mod_settings.allow_cargo_in_depot and r_station.enable_inactive--[[@as boolean]], manifest, is_at_depot) then
-		local old_status = train.status
-		train.status = STATUS_TO_P
-		train.p_station_id = p_station_id
-		train.r_station_id = r_station_id
-		train.manifest = manifest
-		train.last_manifest_tick = map_data.total_ticks
+	local old_status = train.status
+	train.status = STATUS_TO_P
+	train.p_station_id = p_station_id
+	train.r_station_id = r_station_id
+	train.manifest = manifest
+	train.last_manifest_tick = map_data.total_ticks
 
-		r_station.last_delivery_tick = map_data.total_ticks
-		p_station.last_delivery_tick = map_data.total_ticks
+	r_station.last_delivery_tick = map_data.total_ticks
+	p_station.last_delivery_tick = map_data.total_ticks
 
-		r_station.deliveries_total = r_station.deliveries_total + 1
-		p_station.deliveries_total = p_station.deliveries_total + 1
+	r_station.deliveries_total = r_station.deliveries_total + 1
+	p_station.deliveries_total = p_station.deliveries_total + 1
 
-		local r_is_each = r_station.network_name == NETWORK_EACH
-		local p_is_each = p_station.network_name == NETWORK_EACH
-		for item_i, item in ipairs(manifest) do
-			assert(item.count > 0, "main.lua error, transfer amount was not positive")
+	local r_is_each = r_station.network_name == NETWORK_EACH
+	local p_is_each = p_station.network_name == NETWORK_EACH
+	for item_i, item in ipairs(manifest) do
+		assert(item.count > 0, "main.lua error, transfer amount was not positive")
 
-			r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
-			p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
+		r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
+		p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
 
-			if item_i > 1 or r_is_each or p_is_each then
-				local f, a
-				if r_is_each then
-					f, a = pairs(r_station.network_flag--[[@as {[string]: int}]])
-					if p_is_each then
-						for network_name, _ in f, a do
-							local item_network_name = network_name..":"..item.name
-							economy.all_r_stations[item_network_name] = nil
-							economy.all_p_stations[item_network_name] = nil
-						end
-						f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
+		if item_i > 1 or r_is_each or p_is_each then
+			local f, a
+			if r_is_each then
+				f, a = pairs(r_station.network_flag--[[@as {[string]: int}]])
+				if p_is_each then
+					for network_name, _ in f, a do
+						local item_network_name = network_name..":"..item.name
+						economy.all_r_stations[item_network_name] = nil
+						economy.all_p_stations[item_network_name] = nil
 					end
-				elseif p_is_each then
 					f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
-				else
-					f, a = once, r_station.network_name
 				end
-				--prevent deliveries from being processed for these items until their stations are re-polled
-				--if we don't wait until they are repolled a duplicate delivery might be generated for stations that share inventories
-				for network_name, _ in f, a do
-					local item_network_name = network_name..":"..item.name
-					economy.all_r_stations[item_network_name] = nil
-					economy.all_p_stations[item_network_name] = nil
-				end
+			elseif p_is_each then
+				f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
+			else
+				f, a = once, r_station.network_name
+			end
+			--prevent deliveries from being processed for these items until their stations are re-polled
+			--if we don't wait until they are repolled a duplicate delivery might be generated for stations that share inventories
+			for network_name, _ in f, a do
+				local item_network_name = network_name..":"..item.name
+				economy.all_r_stations[item_network_name] = nil
+				economy.all_p_stations[item_network_name] = nil
 			end
 		end
-
-		set_comb2(map_data, p_station)
-		set_comb2(map_data, r_station)
-
-		p_station.display_state = 1
-		update_display(map_data, p_station)
-		r_station.display_state = 1
-		update_display(map_data, r_station)
-
-		interface_raise_train_status_changed(train_id, old_status, STATUS_TO_P)
-	else
-		interface_raise_train_dispatch_failed(train_id)
 	end
+
+	set_comb2(map_data, p_station)
+	set_comb2(map_data, r_station)
+
+	p_station.display_state = 1
+	update_display(map_data, p_station)
+	r_station.display_state = 1
+	update_display(map_data, r_station)
+
+	interface_raise_train_status_changed(train_id, old_status, STATUS_TO_P)
+else
+	interface_raise_train_dispatch_failed(train_id)
+end
 end
 ---@param map_data MapData
 ---@param r_station_id uint
@@ -654,8 +654,38 @@ local function tick_poll_station(map_data, mod_settings)
 end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
-function tick_init(map_data, mod_settings)
+function tick_poll_entities(map_data, mod_settings)
 	local tick_data = map_data.tick_data
+
+	--NOTE: the following have undefined behaviour if the item on tick_data is deleted
+	if map_data.total_ticks%5 == 0 then
+		local train_id, train = next(map_data.trains, tick_data.last_train)
+		tick_data.last_train = train_id
+		if train then
+			if train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
+				if mod_settings.stuck_train_alert_enabled then
+					send_alert_stuck_train(map_data, train.entity)
+				end
+				interface_raise_train_stuck(train_id)
+			end
+		end
+
+		local refueler_id, _ = next(map_data.each_refuelers, tick_data.last_refueler)
+		tick_data.last_refueler = refueler_id
+		if refueler_id then
+			set_refueler_from_comb(map_data, mod_settings, refueler_id)
+		end
+	else
+		local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
+		tick_data.last_comb = comb_id
+		if comb and comb.valid then
+			combinator_update(map_data, comb, true)
+		end
+	end
+end
+---@param map_data MapData
+---@param mod_settings CybersynModSettings
+function tick_init(map_data, mod_settings)
 
 	map_data.economy.all_p_stations = {}
 	map_data.economy.all_r_stations = {}
@@ -667,6 +697,7 @@ function tick_init(map_data, mod_settings)
 			if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
 				map_data.active_station_ids[#map_data.active_station_ids + 1] = id
 				map_data.warmup_station_ids[i] = nil
+				combinator_update(map_data, station.entity_comb1)
 			end
 		else
 			map_data.warmup_station_ids[i] = nil
@@ -686,30 +717,6 @@ function tick_init(map_data, mod_settings)
 		map_data.queue_station_update = nil
 	end
 
-	--NOTE: the following has undefined behavior if last_train is deleted, this should be ok since the following doesn't care how inconsistent our access pattern is
-	local train_id, train = next(map_data.trains, tick_data.last_train)
-	tick_data.last_train = train_id
-
-	if train and train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
-		if mod_settings.stuck_train_alert_enabled then
-			send_alert_stuck_train(map_data, train.entity)
-		end
-		interface_raise_train_stuck(train_id)
-	end
-
-	--NOTE: the following has undefined behavior if last_comb is deleted
-	local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
-	tick_data.last_comb = comb_id
-	local refueler_id, _ = next(map_data.each_refuelers, tick_data.last_refueler)
-	tick_data.last_refueler = refueler_id
-
-	if comb and comb.valid then
-		combinator_update(map_data, comb, true)
-	end
-	if refueler_id then
-		set_refueler_from_comb(map_data, mod_settings, refueler_id)
-	end
-
 	map_data.tick_state = STATE_POLL_STATIONS
 	interface_raise_tick_init()
 end
@@ -718,21 +725,30 @@ end
 function tick(map_data, mod_settings)
 	map_data.total_ticks = map_data.total_ticks + 1
 
+
 	if map_data.active_alerts then
 		if map_data.total_ticks%(8*mod_settings.tps) < 1 then
 			process_active_alerts(map_data)
 		end
 	end
 
-	if map_data.tick_state == STATE_INIT then
-		tick_init(map_data, mod_settings)
-	elseif map_data.tick_state == STATE_POLL_STATIONS then
-		for i = 1, mod_settings.update_rate do
-			if tick_poll_station(map_data, mod_settings) then break end
+	tick_poll_entities(map_data, mod_settings)
+
+	if mod_settings.enable_planner then
+		if map_data.tick_state == STATE_INIT then
+			tick_init(map_data, mod_settings)
 		end
-	elseif map_data.tick_state == STATE_DISPATCH then
-		for i = 1, mod_settings.update_rate do
-			tick_dispatch(map_data, mod_settings)
+
+		if map_data.tick_state == STATE_POLL_STATIONS then
+			for i = 1, mod_settings.update_rate do
+				if tick_poll_station(map_data, mod_settings) then break end
+			end
+		elseif map_data.tick_state == STATE_DISPATCH then
+			for i = 1, mod_settings.update_rate do
+				tick_dispatch(map_data, mod_settings)
+			end
 		end
+	else
+		map_data.tick_state = STATE_INIT
 	end
 end

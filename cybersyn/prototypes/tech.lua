@@ -33,6 +33,7 @@ if mods["pypostprocessing"] then
     cybersyn_tech.unit.ingredients[2] = nil
 end
 
+--Credit to modo-lv for submitting the following code
 if mods["nullius"] then
 	-- Enable recipe and place it just after regular station
 	combinator_recipe.order = "nullius-eca"

@@ -1,30 +1,40 @@
 {
-    "factorio.package.autoCommitAuthor": "Mami",
-    "factorio.versions": [
-        {
-            "name": "Steam",
-            "factorioPath": "~/.steam/steam/steamapps/common/Factorio/bin/x64/factorio",
-            "active": true
-        }
-    ],
-    "Lua.diagnostics.globals": [
-        "mods",
-        "table_size",
-        "log",
-        "localised_print",
-        "serpent",
-        "global",
-        "__DebugAdapter",
-        "__Profiler"
-    ],
-    "Lua.runtime.version": "Lua 5.2",
-    "Lua.workspace.library": [
-        "~/.steam/steam/steamapps/common/Factorio/data",
-        "~/.steam/steam/steamapps/common/Factorio/data/core/lualib",
-        "./.vscode/factorio"
-    ],
-    "Lua.workspace.userThirdParty": [
-        "/home/mami/.config/Code/User/workspaceStorage/9536dbf0665a54126a4b0958ecd5829f/justarandomgeek.factoriomod-debug/sumneko-3rd",
-        "/home/mami/.config/Code/User/workspaceStorage/fdae937c5189f993d370b36f3104188f/justarandomgeek.factoriomod-debug/sumneko-3rd"
-    ]
+	"factorio.package.autoCommitAuthor": "Mami",
+	"factorio.versions": [
+		{
+			"name": "steam",
+			"factorioPath": "/home/mami/.steam/steam/steamapps/common/Factorio/bin/x64/factorio",
+			"active": true
+		}
+	],
+	"Lua.runtime.version": "Lua 5.2",
+	"Lua.workspace.library": [
+		"~/.steam/steam/steamapps/common/Factorio/data",
+		"~/.steam/steam/steamapps/common/Factorio/data/core/lualib",
+		"./.vscode/factorio",
+		"./.vscode/flib",
+		"/home/mami/.config/Code/User/workspaceStorage/fdae937c5189f993d370b36f3104188f/justarandomgeek.factoriomod-debug/sumneko-3rd/factorio/library"
+	],
+	"Lua.workspace.userThirdParty": [
+		"/home/mami/.config/Code/User/workspaceStorage/fdae937c5189f993d370b36f3104188f/justarandomgeek.factoriomod-debug/sumneko-3rd",
+	],
+	"Lua.diagnostics.globals": [
+		"__DebugAdapter",
+		"__Profiler"
+	],
+	"Lua.runtime.builtin": {
+		"io": "disable",
+		"os": "disable",
+		"math": "disable",
+		"debug": "disable",
+		"coroutine": "disable",
+		"package": "disable"
+	},
+	"Lua.runtime.special": {
+		"__object_name": "type"
+	},
+	"Lua.runtime.plugin": "/home/mami/.config/Code/User/workspaceStorage/fdae937c5189f993d370b36f3104188f/justarandomgeek.factoriomod-debug/sumneko-3rd/factorio/plugin.lua",
+	"Lua.diagnostics.disable": [
+		"lowercase-global"
+	]
 }

@@ -1,4 +1,5 @@
 bugs:
+	https://github.com/mamoniot/project-cybersyn/issues/26
 	https://mods.factorio.com/mod/cybersyn/discussion/63afff871c9e44028b2acab8
 	https://mods.factorio.com/mod/cybersyn/discussion/63af6ed2f532e8870d639157
 
@@ -12,8 +13,10 @@ major:
 		item count of available provides
 		system log
 		check out LTN addons that do this for inspiration
+	per-station statistics gui
 	move to an event based algorithm
 	models & art
+	dramatically improve the mods handling of invalid entities
 
 minor:
 	check if necessary entities can be destroyed without raising events
@@ -24,9 +27,11 @@ minor:
 	do not play close sound when a different gui is opened
 	gui can desync if settings are changed outside of it while it is open
 	give the combinators a sensible reaction to low or no power
+	depot alerts when misconfigured
 
 compat:
 	train upgrader mod
 	deadlocks signals
 	railloader
 	picker dollies?
+	cargo ships

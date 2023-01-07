@@ -2,6 +2,8 @@
 
 Behold one of the most feature-rich and performant train logistics network mods Factorio has to offer. Named for [Project Cybersyn](https://en.wikipedia.org//wiki/Project_Cybersyn) of Allende's Chile, with just this mod you can coordinate the economic inputs and outputs of your entire megabase. Similar in functionality to the famous Logistics Train Network mod, but with a much broader scope.
 
+[Join our discord!](https://discord.gg/zmgUBu95HX) This is the preferred place for players to report bugs, make suggestions, or keep up with development.
+
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/outpost-resupply-station.png)
 
 ## Quick Start Guide
@@ -23,7 +25,7 @@ Follow the above directions and you have set up a bare minimum Cybersyn network!
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/gui-modes.png)
 
-**Intuitive and easy to learn**, without sacrificing features. Eases the player into building a train logistics network using parallels between the robot logistics network. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
+**Minimalistic and intuitively designed**, without sacrificing features. Configure your stations using just 3 virtual signals, a couple of combinator settings and the train stop's own train limit.
 
 ### A whole suite of new and optional circuit network inputs and outputs to control your stations precisely
 * Natively read out all deliveries currently in progress for a station, not just the loading or unloading orders of the parked train.
@@ -119,9 +121,11 @@ A network can be set to the "each" virtual signal. When in this mode, each virtu
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/virtual-signals.png)
 
-If a station combinator receives a request threshold signal as input, a request order for the station will only be generated if the station is requesting a number of items exceeding the request threshold. In addition, there must be a station in the network which is providing at least as many items as the request threshold, and there must be a train in the network that has cargo capacity exceeding the request threshold. Through this logic all generated orders must be for a number of items greater than or equal to the request threshold. By setting high thresholds, the traffic on your network can be greatly reduced, at the cost of needing to maintain larger item buffers at each station. There is no "provide threshold" in this mod because by design there is almost no need for one. If desired a provide threshold can be simulated with a single decider combinator. The request threshold signal sets the request threshold "per-station" whereas the station control combinator can set or override the threshold per-item as well.
+If a station combinator receives a request threshold signal as input, a request order for the station will only be generated if the station is requesting a number of items exceeding the request threshold. In addition, there must be a station in the network which is providing at least as many items as the request threshold, and there must be a train in the network that has cargo capacity exceeding the request threshold. Therefore all generated orders must be for a number of items greater than or equal to the request threshold. By setting high thresholds, the traffic on your network can be greatly reduced, at the cost of needing to maintain larger item buffers at each station. The request threshold signal sets the request threshold "per-station" whereas the station control combinator can set or override the threshold per-item as well.
 
 On station combinators there is a setting called "Stack thresholds". When set, any request threshold for this station will be multiplied by the stack size of any item it is being compared to. This applies to station control thresholds as well. Thus the request threshold can be specified based on total stack count rather than total item count. Fluids are unaffected by the "Stack thresholds" setting, they are always specified by total fluid count.
+
+There is no "provide threshold" in this mod because by design there is no need for one. Because the request threshold is enforced on the provider station as well as the requester, it pulls double duty as both the request and provide threshold.
 
 ### Locked slots per cargo wagon
 

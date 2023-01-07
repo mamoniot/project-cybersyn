@@ -1,10 +1,11 @@
 --By Mami
-local area = require("__flib__.area")
+local area = require("__flib__.bounding-box")
 local abs = math.abs
 local floor = math.floor
 local ceil = math.ceil
 local min = math.min
 local max = math.max
+local bit_extract = bit32.extract
 
 
 ---@param layout_pattern (0|1|2|3)[]
@@ -204,14 +205,15 @@ function set_p_wagon_combs(map_data, station, train)
 				break
 			end
 		end
-		if carriage.type == "cargo-wagon" and item_i <= #manifest then
+		if carriage.type == "cargo-wagon" then
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
 			if inv then
+				---@type ConstantCombinatorParameters
 				local signals = {}
 
 				local inv_filter_i = 1
 				local item_slots_capacity = max(ceil((#inv - locked_slots)*percent_slots_to_use_per_wagon), 1)
-				while item_slots_capacity > 0 do
+				while item_slots_capacity > 0 and item_i <= #manifest do
 					local do_inc
 					if item.type == "item" then
 						local stack_size = get_stack_size(map_data, item.name)
@@ -222,11 +224,13 @@ function set_p_wagon_combs(map_data, station, train)
 						signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = sign*count_to_fill}
 						item_count = item_count - count_to_fill
 						item_slots_capacity = item_slots_capacity - slots_to_fill
-						for j = 1, slots_to_fill do
-							inv.set_filter(inv_filter_i, item.name)
-							inv_filter_i = inv_filter_i + 1
+						if comb then
+							for j = 1, slots_to_fill do
+								inv.set_filter(inv_filter_i, item.name)
+								inv_filter_i = inv_filter_i + 1
+							end
+							train.has_filtered_wagon = true
 						end
-						train.has_filtered_wagon = true
 						do_inc = item_count == 0
 					else
 						do_inc = true
@@ -243,14 +247,18 @@ function set_p_wagon_combs(map_data, station, train)
 				end
 
 				if comb then
+					if bit_extract(get_comb_params(comb).second_constant, SETTING_ENABLE_SLOT_BARRING) > 0 then
+						inv.set_bar(inv_filter_i--[[@as uint]])
+						train.has_filtered_wagon = true
+					end
 					set_combinator_output(map_data, comb, signals)
 				end
 			end
-		elseif carriage.type == "fluid-wagon" and fluid_i <= #manifest then
+		elseif carriage.type == "fluid-wagon" then
 			local fluid_capacity = carriage.prototype.fluid_capacity
 			local signals = {}
 
-			while fluid_capacity > 0 do
+			while fluid_capacity > 0 and fluid_i <= #manifest do
 				local do_inc
 				if fluid.type == "fluid" then
 					local count_to_fill = min(fluid_count, fluid_capacity)

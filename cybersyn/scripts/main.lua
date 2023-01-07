@@ -189,12 +189,9 @@ local function search_for_station_combinator(map_data, stop, comb_operation, com
 		{pos_x - 2, pos_y - 2},
 		{pos_x + 2, pos_y + 2}
 	}
-	local entities = stop.surface.find_entities(search_area)
+	local entities = stop.surface.find_entities_filtered({area = search_area, name = COMBINATOR_NAME})
 	for _, entity in pairs(entities) do
-		if
-		entity.valid and entity.name == COMBINATOR_NAME and
-		entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == stop
-		then
+		if entity.valid and entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == stop then
 			local param = get_comb_params(entity)
 			if param.operation == comb_operation then
 				return entity
@@ -223,7 +220,7 @@ local function on_combinator_built(map_data, comb)
 	end
 	local stop = nil
 	local rail = nil
-	local entities = comb.surface.find_entities(search_area)
+	local entities = comb.surface.find_entities_filtered({area = search_area, name = {"train-stop", "straight-rail"}})
 	for _, cur_entity in pairs(entities) do
 		if cur_entity.valid then
 			if cur_entity.name == "train-stop" then
@@ -325,7 +322,7 @@ function on_combinator_broken(map_data, comb)
 		if station then
 			if station.entity_comb1 == comb then
 				on_station_broken(map_data, id, station)
-				on_stop_built(map_data, stop, comb)
+				on_stop_built_or_updated(map_data, stop, comb)
 			elseif station.entity_comb2 == comb then
 				station.entity_comb2 = search_for_station_combinator(map_data, stop, MODE_SECONDARY_IO, comb)
 			end
@@ -334,13 +331,13 @@ function on_combinator_broken(map_data, comb)
 			if depot then
 				if depot.entity_comb == comb then
 					on_depot_broken(map_data, id, depot)
-					on_stop_built(map_data, stop, comb)
+					on_stop_built_or_updated(map_data, stop, comb)
 				end
 			else
 				local refueler = map_data.refuelers[id]
 				if refueler and refueler.entity_comb == comb then
 					on_refueler_broken(map_data, id, refueler)
-					on_stop_built(map_data, stop, comb)
+					on_stop_built_or_updated(map_data, stop, comb)
 				end
 			end
 		end
@@ -468,7 +465,8 @@ end
 ---@param map_data MapData
 ---@param stop LuaEntity
 ---@param comb_forbidden LuaEntity?
-function on_stop_built(map_data, stop, comb_forbidden)
+function on_stop_built_or_updated(map_data, stop, comb_forbidden)
+	--NOTE: this stop must not be a part of any station before entering this function
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
 
@@ -480,20 +478,24 @@ function on_stop_built(map_data, stop, comb_forbidden)
 	local comb1 = nil
 	local depot_comb = nil
 	local refueler_comb = nil
-	local entities = stop.surface.find_entities(search_area)
+	local entities = stop.surface.find_entities_filtered({area = search_area, name = COMBINATOR_NAME})
 	for _, entity in pairs(entities) do
-		if entity.valid and entity ~= comb_forbidden and entity.name == COMBINATOR_NAME and map_data.to_stop[entity.unit_number] == nil then
-			map_data.to_stop[entity.unit_number] = stop
-			local param = get_comb_params(entity)
-			local op = param.operation
-			if op == MODE_PRIMARY_IO then
-				comb1 = entity
-			elseif op == MODE_SECONDARY_IO then
-				comb2 = entity
-			elseif op == MODE_DEPOT then
-				depot_comb = entity
-			elseif op == MODE_REFUELER then
-				refueler_comb = entity
+		if entity.valid and entity ~= comb_forbidden then
+			local id = entity.unit_number--[[@as uint]]
+			local adj_stop = map_data.to_stop[id]
+			if adj_stop == nil or adj_stop == stop then
+				map_data.to_stop[id] = stop
+				local param = get_comb_params(entity)
+				local op = param.operation
+				if op == MODE_PRIMARY_IO then
+					comb1 = entity
+				elseif op == MODE_SECONDARY_IO then
+					comb2 = entity
+				elseif op == MODE_DEPOT then
+					depot_comb = entity
+				elseif op == MODE_REFUELER then
+					refueler_comb = entity
+				end
 			end
 		end
 	end
@@ -515,7 +517,7 @@ local function on_stop_broken(map_data, stop)
 		{pos_x - 2, pos_y - 2},
 		{pos_x + 2, pos_y + 2}
 	}
-	local entities = stop.surface.find_entities(search_area)
+	local entities = stop.surface.find_entities_filtered({area = search_area, name = COMBINATOR_NAME})
 	for _, entity in pairs(entities) do
 		if entity.valid and map_data.to_stop[entity.unit_number] == stop then
 			map_data.to_stop[entity.unit_number] = nil
@@ -592,7 +594,7 @@ local function on_built(event)
 	if not entity or not entity.valid then return end
 
 	if entity.name == "train-stop" then
-		on_stop_built(global, entity)
+		on_stop_built_or_updated(global, entity)
 	elseif entity.name == COMBINATOR_NAME then
 		on_combinator_built(global, entity)
 	elseif entity.type == "inserter" then
@@ -778,6 +780,7 @@ end
 
 
 local function grab_all_settings()
+	mod_settings.enable_planner = settings.global["cybersyn-enable-planner"].value --[[@as boolean]]
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
@@ -845,6 +848,15 @@ local function main()
 
 	script.on_event(defines.events.on_entity_settings_pasted, on_paste)
 
+	script.on_event(defines.events.on_train_created, on_train_built)
+	script.on_event(defines.events.on_train_changed_state, on_train_changed)
+
+	script.on_event(defines.events.on_entity_renamed, on_rename)
+
+	script.on_event(defines.events.on_runtime_mod_setting_changed, on_settings_changed)
+
+	register_gui_actions()
+
 	if mod_settings.tps > DELTA then
 		local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
 		script.on_nth_tick(nth_tick, function()
@@ -854,14 +866,11 @@ local function main()
 		script.on_nth_tick(nil)
 	end
 
-	script.on_event(defines.events.on_train_created, on_train_built)
-	script.on_event(defines.events.on_train_changed_state, on_train_changed)
-
-	script.on_event(defines.events.on_entity_renamed, on_rename)
-
-	script.on_event(defines.events.on_runtime_mod_setting_changed, on_settings_changed)
-
-	register_gui_actions()
+	script.on_event("cybersyn-toggle-planner", function(event)
+		local setting = settings.global["cybersyn-enable-planner"]
+		setting.value = not setting.value
+		settings.global["cybersyn-enable-planner"] = setting
+	end)
 
 	script.on_init(function()
 		local setting = settings.global["cybersyn-invert-sign"]
