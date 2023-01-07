@@ -865,12 +865,6 @@ local function main()
 		script.on_nth_tick(nil)
 	end
 
-	script.on_event("cybersyn-toggle-planner", function(event)
-		local setting = settings.global["cybersyn-enable-planner"]
-		setting.value = not setting.value
-		settings.global["cybersyn-enable-planner"] = setting
-	end)
-
 	script.on_init(function()
 		local setting = settings.global["cybersyn-invert-sign"]
 		setting.value = false

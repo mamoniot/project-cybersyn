@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.9
+Date: 2022-1-7
+  Bugfixes:
+    - Fixed a bug with deliveries sometimes failing to be removed
+    - Updated flib dependency to the correct version
+---------------------------------------------------------------------------------------------------
 Version: 1.2.8
 Date: 2022-1-5
   Features:

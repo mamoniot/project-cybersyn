@@ -20,11 +20,5 @@ data:extend({
 	locked_slots_signal,
 	missing_train_icon,
 	lost_train_icon,
-	nonempty_train_icon,
-	{
-		type = "custom-input",
-		name = "cybersyn-toggle-planner",
-		key_sequence = "",
-		consuming = "game-only"
-	}
+	nonempty_train_icon
 })
