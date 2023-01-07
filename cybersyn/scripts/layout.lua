@@ -55,6 +55,9 @@ end
 ---@param train_id uint
 ---@param train Train
 function remove_train(map_data, train_id, train)
+	if train.manifest then
+		on_failed_delivery(map_data, train_id, train)
+	end
 	remove_available_train(map_data, train_id, train)
 
 	local layout_id = train.layout_id

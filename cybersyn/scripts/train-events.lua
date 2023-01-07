@@ -379,9 +379,6 @@ end
 function on_train_broken(map_data, train_id, train)
 	--NOTE: train.entity is only absent if the train is climbing a space elevator as of 0.5.0
 	if not train.se_is_being_teleported then
-		if train.manifest then
-			on_failed_delivery(map_data, train_id, train)
-		end
 		remove_train(map_data, train_id, train)
 	end
 end
@@ -391,9 +388,6 @@ local function on_train_modified(map_data, pre_train_id)
 	local train = map_data.trains[pre_train_id]
 	--NOTE: train.entity is only absent if the train is climbing a space elevator as of 0.5.0
 	if train and not train.se_is_being_teleported then
-		if train.manifest then
-			on_failed_delivery(map_data, pre_train_id, train)
-		end
 		remove_train(map_data, pre_train_id, train)
 	end
 end
