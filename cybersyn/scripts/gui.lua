@@ -190,9 +190,9 @@ function register_gui_actions()
 		["setting"] = handle_setting,
 		["setting_flip"] = handle_setting_flip,
 	})
+	flib_gui.handle_events()
 	script.on_event(defines.events.on_gui_opened, on_gui_opened)
 	script.on_event(defines.events.on_gui_closed, on_gui_closed)
-	flib_gui.handle_events()
 end
 
 ---@param comb LuaEntity
