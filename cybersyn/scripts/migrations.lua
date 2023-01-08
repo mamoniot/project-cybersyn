@@ -187,12 +187,14 @@ local migrations_table = {
 			if not train.depot_id then
 				if train.entity.valid then
 					local e = get_any_train_entity(train.entity)
-					local stops = e.force.get_train_stops({name = train.depot_name, surface = e.surface})
-					for stop in rnext_consume, stops do
-						local new_depot_id = stop.unit_number
-						if map_data.depots[new_depot_id] then
-							train.depot_id = new_depot_id--[[@as uint]]
-							break
+					if e then
+						local stops = e.force.get_train_stops({name = train.depot_name, surface = e.surface})
+						for stop in rnext_consume, stops do
+							local new_depot_id = stop.unit_number
+							if map_data.depots[new_depot_id] then
+								train.depot_id = new_depot_id--[[@as uint]]
+								break
+							end
 						end
 					end
 				end

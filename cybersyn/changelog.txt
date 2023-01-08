@@ -3,6 +3,8 @@ Version: 1.2.9
 Date: 2022-1-7
   Bugfixes:
     - Fixed a bug with deliveries sometimes failing to be removed
+    - Fixed several rare crashes
+    - Fixed cybernetic combinator gui not allowing checkbox toggling when clicking on a checkbox caption
     - Updated flib dependency to the correct version
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.8
