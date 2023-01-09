@@ -1,6 +1,7 @@
 --By Mami
 local ceil = math.ceil
 local table_insert = table.insert
+local table_remove = table.remove
 
 
 ---@param map_data MapData
@@ -138,10 +139,25 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		item_p_counts = {},
 		item_thresholds = nil,
 		display_state = 0,
+		is_warming_up = true,
 	}
 	local id = stop.unit_number--[[@as uint]]
+
 	map_data.stations[id] = station
+
+	--prevent the same station from warming up multiple times
+	if map_data.warmup_station_cycles[id] then
+		--enforce FIFO
+		for i, v in ipairs(map_data.warmup_station_ids) do
+			if v == id then
+				table_remove(map_data.warmup_station_ids, i)
+				break
+			end
+		end
+	end
 	map_data.warmup_station_ids[#map_data.warmup_station_ids + 1] = id
+	map_data.warmup_station_cycles[id] = 0
+
 	if not map_data.queue_station_update then
 		map_data.queue_station_update = {}
 	end

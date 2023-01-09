@@ -267,6 +267,32 @@ local migrations_table = {
 			train.use_any_depot = true
 		end
 	end,
+	["1.3.0"] = function()
+		---@type MapData
+		local map_data = global
+		map_data.warmup_station_cycles = {}
+
+		local is_registered = {}
+
+		for i = #map_data.warmup_station_ids, 1, -1 do
+			local id = map_data.warmup_station_ids[i]
+			if is_registered[id] then
+				table.remove(map_data.warmup_station_ids, i)
+			else
+				is_registered[id] = true
+				map_data.warmup_station_cycles[id] = 0
+			end
+		end
+
+		for i = #map_data.active_station_ids, 1, -1 do
+			local id = map_data.active_station_ids[i]
+			if is_registered[id] then
+				table.remove(map_data.active_station_ids, i)
+			else
+				is_registered[id] = true
+			end
+		end
+	end
 }
 --STATUS_R_TO_D = 5
 

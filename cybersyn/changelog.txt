@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.3.0
+Date: 2022-1-7
+  Bugfixes:
+    - Fixed a bug where it was possible for a single station to be updated twice per dispatch cycle, which could cause a crash
+---------------------------------------------------------------------------------------------------
 Version: 1.2.9
 Date: 2022-1-7
   Bugfixes:
