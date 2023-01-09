@@ -278,28 +278,30 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		train.r_station_id = nil
 		train.manifest = nil
 		--add to available trains for depot bypass
-		local fuel_fill = INF
-		for _, v in pairs(train.entity.locomotives) do
-			for _, loco in pairs(v) do
-				local inv = loco.get_fuel_inventory()
-				if inv then
-					local inv_size = #inv
-					if inv_size > 0 then
-						local fuel_total = 0
-						---@type uint
-						for i = 1, inv_size do
-							local item = inv[i]
-							if item.valid_for_read then
-								fuel_total = fuel_total + item.count/get_stack_size(map_data, item.name)
+		local fuel_fill = 1
+		if mod_settings.fuel_threshold < 1 then
+			for _, v in pairs(train.entity.locomotives) do
+				for _, loco in pairs(v) do
+					local inv = loco.get_fuel_inventory()
+					if inv then
+						local inv_size = #inv
+						if inv_size > 0 then
+							local fuel_total = 0
+							---@type uint
+							for i = 1, inv_size do
+								local item = inv[i]
+								if item.valid_for_read then
+									fuel_total = fuel_total + item.count/get_stack_size(map_data, item.name)
+								end
 							end
+							fuel_fill = min(fuel_fill, fuel_total/inv_size)
 						end
-						fuel_fill = min(fuel_fill, fuel_total/inv_size)
 					end
 				end
 			end
 		end
 		if fuel_fill > mod_settings.fuel_threshold then
-			--if fuel_fill == INF, it's probably a modded electric train
+			--if fuel_fill == 1, it's probably a modded electric train
 			if not train.disable_bypass then
 				train.status = STATUS_TO_D_BYPASS
 				add_available_train(map_data, train_id, train)

@@ -9,6 +9,7 @@
 ---@field public stations {[uint]: Station}
 ---@field public active_station_ids uint[]
 ---@field public warmup_station_ids uint[]
+---@field public warmup_station_cycles {[uint]: int}
 ---@field public queue_station_update {[uint]: true?}?
 ---@field public depots {[uint]: Depot}
 ---@field public refuelers {[uint]: Refueler}
@@ -49,6 +50,7 @@
 ---@field public item_p_counts {[string]: int} --transient
 ---@field public item_thresholds {[string]: int}? --transient
 ---@field public display_state int
+---@field public is_warming_up true?
 
 ---@class Depot
 ---@field public entity_stop LuaEntity
@@ -146,6 +148,7 @@ function init_global()
 	global.stations = {}
 	global.active_station_ids = {}
 	global.warmup_station_ids = {}
+	global.warmup_station_cycles = {}
 	global.depots = {}
 	global.trains = {}
 	global.available_trains = {}

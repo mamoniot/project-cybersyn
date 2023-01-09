@@ -523,7 +523,7 @@ local function tick_poll_station(map_data, mod_settings)
 		end
 		station_id = map_data.active_station_ids[tick_data.i]
 		station = map_data.stations[station_id]
-		if station then
+		if station and not station.is_warming_up then
 			if station.network_name then
 				break
 			end
@@ -725,22 +725,35 @@ function tick_init(map_data, mod_settings)
 	map_data.economy.all_r_stations = {}
 	map_data.economy.all_names = {}
 
-	for i, id in pairs(map_data.warmup_station_ids) do
+	local i = 1
+	while i <= #map_data.warmup_station_ids do
+		local id = map_data.warmup_station_ids[i]
 		local station = map_data.stations[id]
 		if station then
-			if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
-				map_data.active_station_ids[#map_data.active_station_ids + 1] = id
-				map_data.warmup_station_ids[i] = nil
-				if station.entity_comb1.valid then
-					combinator_update(map_data, station.entity_comb1)
-				else
-					on_station_broken(map_data, id, station)
+			local cycles = map_data.warmup_station_cycles[id]
+			--force a station to wait at least 1 cycle so we can be sure active_station_ids was flushed of duplicates
+			if cycles > 0 then
+				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
+					station.is_warming_up = nil
+					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
+					map_data.warmup_station_ids[i] = nil
+					map_data.warmup_station_cycles[id] = nil
+					if station.entity_comb1.valid then
+						combinator_update(map_data, station.entity_comb1)
+					else
+						on_station_broken(map_data, id, station)
+					end
 				end
+			else
+				map_data.warmup_station_cycles[id] = cycles + 1
 			end
+			i = i + 1
 		else
-			map_data.warmup_station_ids[i] = nil
+			table_remove(map_data.warmup_station_ids, i)
+			map_data.warmup_station_cycles[id] = nil
 		end
 	end
+
 	if map_data.queue_station_update then
 		for id, _ in pairs(map_data.queue_station_update) do
 			local station = map_data.stations[id]
@@ -787,7 +800,7 @@ function tick(map_data, mod_settings)
 			end
 		elseif map_data.tick_state == STATE_DISPATCH then
 			for i = 1, mod_settings.update_rate do
-				tick_dispatch(map_data, mod_settings)
+				if tick_dispatch(map_data, mod_settings) then break end
 			end
 		end
 	else
