@@ -35,3 +35,4 @@ compat:
 	railloader
 	picker dollies?
 	cargo ships
+	editor extensions (test surface separation)

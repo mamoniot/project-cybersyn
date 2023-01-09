@@ -725,9 +725,8 @@ function tick_init(map_data, mod_settings)
 	map_data.economy.all_r_stations = {}
 	map_data.economy.all_names = {}
 
-	local i = 1
-	while i <= #map_data.warmup_station_ids do
-		local id = map_data.warmup_station_ids[i]
+	while #map_data.warmup_station_ids > 0 do
+		local id = map_data.warmup_station_ids[1]
 		local station = map_data.stations[id]
 		if station then
 			local cycles = map_data.warmup_station_cycles[id]
@@ -736,20 +735,22 @@ function tick_init(map_data, mod_settings)
 				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
 					station.is_warming_up = nil
 					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
-					map_data.warmup_station_ids[i] = nil
+					table_remove(map_data.warmup_station_ids, 1)
 					map_data.warmup_station_cycles[id] = nil
 					if station.entity_comb1.valid then
 						combinator_update(map_data, station.entity_comb1)
 					else
 						on_station_broken(map_data, id, station)
 					end
+				else
+					break
 				end
 			else
 				map_data.warmup_station_cycles[id] = cycles + 1
+				break
 			end
-			i = i + 1
 		else
-			table_remove(map_data.warmup_station_ids, i)
+			table_remove(map_data.warmup_station_ids, 1)
 			map_data.warmup_station_cycles[id] = nil
 		end
 	end
