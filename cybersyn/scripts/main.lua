@@ -31,7 +31,7 @@ function on_depot_broken(map_data, depot_id, depot)
 					local stops = e.force.get_train_stops({name = depot.entity_stop.backer_name, surface = e.surface})
 					for stop in rnext_consume, stops do
 						local new_depot_id = stop.unit_number
-						if map_data.depots[new_depot_id] then
+						if new_depot_id ~= depot_id and map_data.depots[new_depot_id] then
 							train.depot_id = new_depot_id--[[@as uint]]
 							goto continue
 						end

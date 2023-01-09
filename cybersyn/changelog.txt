@@ -1,8 +1,11 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.3.0
 Date: 2022-1-7
+  Changes:
+    - Improved performance when fuel threshold is set to 1
   Bugfixes:
     - Fixed a bug where it was possible for a single station to be updated twice per dispatch cycle, which could cause a crash
+    - Fixed a crash where trains would sometimes think a destoyed depot still exists
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.9
 Date: 2022-1-7
