@@ -267,7 +267,7 @@ local migrations_table = {
 			train.use_any_depot = true
 		end
 	end,
-	["1.3.0"] = function()
+	["1.2.10"] = function()
 		---@type MapData
 		local map_data = global
 		map_data.warmup_station_cycles = {}

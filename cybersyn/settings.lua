@@ -102,13 +102,13 @@ data:extend({
 		setting_type = "runtime-global",
 		default_value = false,
 	},
-  {
-    type = "int-setting",
-    name = "cybersyn-history-length",
-    setting_type = "runtime-global",
-    minimum_value = 10,
-    maximum_value = 1000,
-    default_value = 50,
-    order = "ea",
-  },
+  --{
+  --  type = "int-setting",
+  --  name = "cybersyn-history-length",
+  --  setting_type = "runtime-global",
+  --  minimum_value = 10,
+  --  maximum_value = 1000,
+  --  default_value = 50,
+  --  order = "ea",
+  --},
 })
