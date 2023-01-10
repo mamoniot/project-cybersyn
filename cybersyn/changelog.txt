@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.10
-Date: 2022-1-9
+Date: 2023-1-9
   Changes:
     - Made the automatic allow list slightly more forgiving to stations where the last wagon would be on a curved rail
     - Improved performance when fuel threshold is set to 1
@@ -12,7 +12,7 @@ Date: 2022-1-9
     - Removed unfinished mod setting with the broken translation key
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.9
-Date: 2022-1-7
+Date: 2023-1-7
   Bugfixes:
     - Fixed a bug with deliveries sometimes failing to be removed
     - Fixed several rare crashes
@@ -20,7 +20,7 @@ Date: 2022-1-7
     - Updated flib dependency to the correct version
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.8
-Date: 2022-1-5
+Date: 2023-1-5
   Features:
     - Improved placeholder cybernetic combinator art
     - Added a wagon control setting to bar unfiltered slots in adjacent cargo wagons
@@ -36,7 +36,7 @@ Date: 2022-1-5
     - Migrated to non-deprecated flib modules
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.7
-Date: 2022-1-1
+Date: 2023-1-1
   Bugfixes:
     - Fixed a bug with items attempting to be loaded into fluid wagons
 ---------------------------------------------------------------------------------------------------
