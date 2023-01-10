@@ -40,6 +40,7 @@ end
 
 
 ---@param train LuaTrain
+---@return LuaEntity?
 function get_any_train_entity(train)
 	return train.valid and (train.front_stock or train.back_stock or train.carriages[1]) or nil
 end
@@ -47,8 +48,9 @@ end
 
 ---@param e Station|Refueler|Train
 ---@param network_name string
+---@return int
 function get_network_flag(e, network_name)
-	return e.network_name == NETWORK_EACH and (e.network_flag[network_name] or 0) or e.network_flag
+	return e.network_name == NETWORK_EACH and (e.network_flag[network_name] or 0) or e.network_flag--[[@as int]]
 end
 
 

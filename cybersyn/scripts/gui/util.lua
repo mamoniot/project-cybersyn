@@ -38,8 +38,8 @@ end
 --- @param color string
 --- @return GuiElemDef[]
 function util.slot_table_build(manifest, color)
+  ---@type GuiElemDef[]
   local children = {}
-  local i = 1
   for _, item in pairs(manifest) do
     local name = item.name
     local sprite
@@ -49,7 +49,7 @@ function util.slot_table_build(manifest, color)
       sprite = string.gsub(name, ",", "/")
     end
     if game.is_valid_sprite_path(sprite) then
-      children[i] = {
+      children[#children + 1] = {
         type = "sprite-button",
         enabled = false,
         style = "ltnm_small_slot_button_" .. color,
@@ -61,7 +61,6 @@ function util.slot_table_build(manifest, color)
           "\n"..format.number(count),
         },
       }
-      i = i + 1
     end
   end
   return children

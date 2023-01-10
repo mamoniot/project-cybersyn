@@ -363,6 +363,35 @@ local function tick_dispatch(map_data, mod_settings)
 			if netand == 0 then
 				goto p_continue
 			end
+
+			effective_count = p_station.item_p_counts[item_name]
+			override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
+			if override_threshold and p_station.is_stack and not is_fluid then
+				override_threshold = override_threshold*get_stack_size(map_data, item_name)
+			end
+			if effective_count < (override_threshold or r_threshold) then
+				--this p station should have serviced the current r station, lock it so it can't serve any others
+				--this will lock stations even when the r station manages to find a p station, this not a problem because all stations will be unlocked before it could be an issue
+				table_remove(p_stations, j)
+				if band(p_station.display_state, 4) == 0 then
+					p_station.display_state = p_station.display_state + 4
+					update_display(map_data, p_station)
+				end
+				goto p_continue_remove
+			end
+
+			p_prior = p_station.priority
+			if override_threshold and p_station.item_priority then
+				p_prior = p_station.item_priority--[[@as int]]
+			end
+			if p_prior < best_p_prior then
+				goto p_continue
+			end
+
+			best_p_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and (best_t_to_p_dist + get_dist(p_station.entity_stop, r_station.entity_stop)) or INF
+			if p_prior == best_p_prior and best_p_dist > best_dist then
+				goto p_continue
+			end
 			if correctness < 1 then
 				correctness = 1
 				closest_to_correct_p_station = p_station
@@ -439,35 +468,6 @@ local function tick_dispatch(map_data, mod_settings)
 				end
 			end
 			if not best_p_train_id then
-				goto p_continue
-			end
-
-			effective_count = p_station.item_p_counts[item_name]
-			override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
-			if override_threshold and p_station.is_stack and not is_fluid then
-				override_threshold = override_threshold*get_stack_size(map_data, item_name)
-			end
-			if effective_count < (override_threshold or r_threshold) then
-				--this p station should have serviced the current r station, lock it so it can't serve any others
-				--this will lock stations even when the r station manages to find a p station, this not a problem because all stations will be unlocked before it could be an issue
-				table_remove(p_stations, j)
-				if band(p_station.display_state, 4) == 0 then
-					p_station.display_state = p_station.display_state + 4
-					update_display(map_data, p_station)
-				end
-				goto p_continue_remove
-			end
-
-			p_prior = p_station.priority
-			if override_threshold and p_station.item_priority then
-				p_prior = p_station.item_priority--[[@as int]]
-			end
-			if p_prior < best_p_prior then
-				goto p_continue
-			end
-
-			best_p_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and (best_t_to_p_dist + get_dist(p_station.entity_stop, r_station.entity_stop)) or INF
-			if p_prior == best_p_prior and best_p_dist > best_dist then
 				goto p_continue
 			end
 
