@@ -474,7 +474,7 @@ local function tick_dispatch(map_data, mod_settings)
 			p_station_i = j
 			best_train_id = best_p_train_id
 			best_p_prior = p_prior
-			best_dist = best_t_to_p_dist + best_p_to_r_dist
+			best_dist = best_p_to_r_dist
 			::p_continue::
 			j = j + 1
 			::p_continue_remove::
