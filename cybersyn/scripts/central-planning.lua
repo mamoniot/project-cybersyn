@@ -387,11 +387,6 @@ local function tick_dispatch(map_data, mod_settings)
 			if p_prior < best_p_prior then
 				goto p_continue
 			end
-
-			best_p_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and (best_t_to_p_dist + get_dist(p_station.entity_stop, r_station.entity_stop)) or INF
-			if p_prior == best_p_prior and best_p_dist > best_dist then
-				goto p_continue
-			end
 			if correctness < 1 then
 				correctness = 1
 				closest_to_correct_p_station = p_station
@@ -468,6 +463,11 @@ local function tick_dispatch(map_data, mod_settings)
 				end
 			end
 			if not best_p_train_id then
+				goto p_continue
+			end
+
+			best_p_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and (best_t_to_p_dist + get_dist(p_station.entity_stop, r_station.entity_stop)) or INF
+			if p_prior == best_p_prior and best_p_dist > best_dist then
 				goto p_continue
 			end
 
