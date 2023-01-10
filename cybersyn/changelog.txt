@@ -4,6 +4,7 @@ Date: 2022-1-9
   Changes:
     - Made the automatic allow list slightly more forgiving to stations where the last wagon would be on a curved rail
     - Improved performance when fuel threshold is set to 1
+    - Prioritized distance from provider to requester over distance from train to provider
   Bugfixes:
     - Fixed a bug where it was possible for a single station to be updated twice per dispatch cycle, which could cause a crash
     - Fixed a crash where trains would sometimes think a destroyed depot still exists

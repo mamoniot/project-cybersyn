@@ -349,7 +349,7 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
-			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_dist
+			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
@@ -385,6 +385,11 @@ local function tick_dispatch(map_data, mod_settings)
 				p_prior = p_station.item_priority--[[@as int]]
 			end
 			if p_prior < best_p_prior then
+				goto p_continue
+			end
+
+			best_p_to_r_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and get_dist(p_station.entity_stop, r_station.entity_stop) or INF
+			if p_prior == best_p_prior and best_p_to_r_dist > best_dist then
 				goto p_continue
 			end
 			if correctness < 1 then
@@ -466,15 +471,10 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			best_p_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and (best_t_to_p_dist + get_dist(p_station.entity_stop, r_station.entity_stop)) or INF
-			if p_prior == best_p_prior and best_p_dist > best_dist then
-				goto p_continue
-			end
-
 			p_station_i = j
 			best_train_id = best_p_train_id
 			best_p_prior = p_prior
-			best_dist = best_p_dist
+			best_dist = best_t_to_p_dist + best_p_to_r_dist
 			::p_continue::
 			j = j + 1
 			::p_continue_remove::
