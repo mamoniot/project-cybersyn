@@ -15,6 +15,14 @@ function get_stack_size(map_data, item_name)
 	return game.item_prototypes[item_name].stack_size
 end
 
+---@param item_order table<string, int>
+---@param item1_name string
+---@param item2_name string
+function item_lt(item_order, item1_name, item2_name)
+	return item_order[item1_name] < item_order[item2_name]
+end
+
+
 ---NOTE: does not check .valid
 ---@param entity0 LuaEntity
 ---@param entity1 LuaEntity

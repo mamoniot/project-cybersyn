@@ -19,6 +19,7 @@ major:
 	dramatically improve the mods handling of invalid entities
 
 minor:
+	break the central planner into a separate library
 	check if necessary entities can be destroyed without raising events
 	improve the behavior of trains if players intervene during deliveries
 	handle if signals are removed from the game during migration

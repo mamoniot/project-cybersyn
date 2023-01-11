@@ -3,6 +3,8 @@ local mod_gui = require("__core__.lualib.mod-gui")
 
 local manager = require("scripts.gui.manager")
 
+--- @class Manager
+--- @field item_order table<string, int>
 
 --- @class PlayerData
 --- @field refs {[string]: LuaGuiElement}?
@@ -88,6 +90,45 @@ function manager_gui.on_runtime_mod_setting_changed(e)
 end
 
 
+--- @param manager Manager
+local function init_items(manager)
+	local item_order = {}
+	manager.item_order = item_order
+	local i = 1
+
+	for _, protos in pairs{game.item_prototypes, game.fluid_prototypes} do
+		--- @type (LuaItemPrototype|LuaFluidPrototype)[]
+		local all_items = {}
+		for _, proto in pairs(protos) do
+			all_items[#all_items + 1] = proto
+		end
+		table.sort(all_items, function(a, b)
+			if a.group.order == b.group.order then
+				if a.subgroup.order == b.subgroup.order then
+					return a.order < b.order
+				else
+					return a.subgroup.order < b.subgroup.order
+				end
+			else
+				return a.group.order < b.group.order
+			end
+		end)
+		for _, v in ipairs(all_items) do
+			item_order[v.name] = i
+			i = i + 1
+		end
+	end
+end
+
+
+function manager.on_migration()
+	init_items(global.manager)
+end
+
+function manager.on_init()
+	global.manager = {}
+	init_items(global.manager)
+end
 --gui.handle_events()
 
 return manager_gui

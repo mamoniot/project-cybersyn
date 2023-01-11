@@ -23,6 +23,7 @@
 ---@field public economy Economy
 ---@field public each_refuelers {[uint]: true}
 ---@field public active_alerts {[uint]: {[1]: LuaTrain, [2]: int}}?
+---@field public manager Manager
 
 ---@class Station
 ---@field public entity_stop LuaEntity
