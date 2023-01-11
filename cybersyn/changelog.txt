@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.10
-Date: 2023-1-9
+Date: 2023-1-11
   Changes:
     - Made the automatic allow list slightly more forgiving to stations where the last wagon would be on a curved rail
     - Improved performance when fuel threshold is set to 1
@@ -10,6 +10,8 @@ Date: 2023-1-9
     - Fixed a crash where trains would sometimes think a destroyed depot still exists
     - Fixed a case where the central planner generated a confusing alert
     - Removed unfinished mod setting with the broken translation key
+  Translation:
+    - Chinese translation contributed by plexpt
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.9
 Date: 2023-1-7
