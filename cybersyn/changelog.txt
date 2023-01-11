@@ -4,7 +4,7 @@ Date: 2023-1-11
   Bugfixes:
     - Fixed a bug in 1.2.10 where allow lists were being set incorrectly, if you downloaded 1.2.10 and were affected by this uncheck and check "automatic allow list"
   Translation:
-    - Deutsche Sprache (German) contributed by Ebaw
+    - Deutsche Sprache (German language) contributed by Ebaw
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.10
 Date: 2023-1-11
@@ -18,7 +18,7 @@ Date: 2023-1-11
     - Fixed a case where the central planner generated a confusing alert
     - Removed unfinished mod setting with the broken translation key
   Translation:
-    - 中文 (Chinese) contributed by plexpt
+    - 中文 (Chinese language) contributed by plexpt
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.9
 Date: 2023-1-7
