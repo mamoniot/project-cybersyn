@@ -50,45 +50,24 @@ function irpairs(a)
 	return irnext, a, 0
 end
 
----@generic V
----@param arr Array<V>
----@param comp fun(a: V, b: V) A comparison function for sorting. Must return truthy if `a < b`.
-function stable_sort(arr, comp)
-	local size = #arr
-	for i = 2, size do
-		local a = arr[i]
-		local j = i
-		while j > 1 do
-			local b = arr[j - 1]
-			if comp(a, b) then
-				arr[j] = b
-				j = j - 1
-			else
-				break
+--- @generic K
+--- @param t1 table<K, any>
+--- @param t2 table<K, any>
+--- @return fun(): K?
+function dual_pairs(t1, t2)
+	local state = true
+	local key = nil
+	return function()
+		if state then
+			key = next(t1, key)
+			if key then
+				return key
 			end
+			state = false
 		end
-		arr[j] = a
-	end
-end
-
----@param values number[]
----@param keys any[]
-function dual_sort(values, keys)
-	local size = #values
-	for i = 2, size do
-		local a = values[i]
-		local j = i
-		while j > 1 do
-			local b = values[j - 1]
-			if a < b then
-				values[j] = b
-				keys[j] = keys[j - 1]
-				j = j - 1
-			else
-				break
-			end
-		end
-		values[j] = a
-		keys[j] = keys[i]
+		repeat
+			key = next(t2, key)
+		until t1[key] == nil
+		return key
 	end
 end

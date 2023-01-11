@@ -471,7 +471,7 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 	local wagon_number = 0
 	for i = 1, 112 do
 		local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({rail_direction = rail_direction_from_stop, rail_connection_direction = defines.rail_connection_direction.straight})
-		if not rail or rail_connection_direction ~= defines.rail_connection_direction.straight or not rail.valid then
+		if not rail or not rail.valid then
 			is_break = true
 			break
 		end
@@ -554,6 +554,10 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 				--layout_pattern[wagon_number] = nil
 			end
 			search_area = area.move(search_area, area_delta)
+		end
+		if not rail_connection_direction ~= defines.rail_connection_direction.straight then
+			is_break = true
+			break
 		end
 	end
 	stop.layout_pattern = layout_pattern

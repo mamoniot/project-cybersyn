@@ -103,12 +103,19 @@ data:extend({
 		default_value = false,
 	},
   --{
+  --  type = "bool-setting",
+  --  name = "cybersyn-disable-top-left-button",
+  --  setting_type = "runtime-player",
+  --  default_value = false,
+  --  order = "ea",
+  --},
+  --{
   --  type = "int-setting",
   --  name = "cybersyn-history-length",
   --  setting_type = "runtime-global",
   --  minimum_value = 10,
   --  maximum_value = 1000,
   --  default_value = 50,
-  --  order = "ea",
+  --  order = "eb",
   --},
 })

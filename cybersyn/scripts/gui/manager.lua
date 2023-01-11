@@ -13,61 +13,16 @@ local trains_tab = require("scripts.gui.trains")
 --local alerts_tab = require("scripts.gui.alerts")
 
 
---- @class PlayerData
---- @field refs {[string]: LuaGuiElement}?
---- @field search_query string?
---- @field network_name string
---- @field network_flag int
---- @field pinning boolean
-
-
-
-function Index:dispatch(msg, e)
-	-- "Transform" the action based on criteria
-	if msg.transform == "handle_refresh_click" then
-		if e.shift then
-			msg.action = "toggle_auto_refresh"
-		else
-			self.state.ltn_data = global.data
-			self.do_update = true
-		end
-	elseif msg.transform == "handle_titlebar_click" then
-		if e.button == defines.mouse_button_type.middle then
-			msg.action = "recenter"
-		end
-	end
-
-	-- Dispatch the associated action
-	if msg.action then
-		local func = self.actions[msg.action]
-		if func then
-			func(self, msg, e)
-		else
-			log("Attempted to call action `" .. msg.action .. "` for which there is no handler yet.")
-		end
-	end
-
-	-- Update if necessary
-	if self.do_update then
-		self:update()
-		self.do_update = false
-	end
-end
-
-function Index:schedule_update()
-	self.do_update = true
-end
-
-
 local manager = {}
 
 
-function manager.build(player, player_data)
+--- @param player LuaPlayer
+function manager.create(player)
 	local widths = constants.gui["en"]
 	---@type table<string, LuaGuiElement>
 	local refs = {}
 
-	local _, window = gui.add(player.gui.screen, {
+	gui.add(player.gui.screen, {
 		{
 			name = "manager_window",
 			type = "frame",
@@ -111,25 +66,25 @@ function manager.build(player, player_data)
 									name = "manager_text_search_field",
 									type = "textfield",
 									clear_and_focus_on_right_click = true,
-									handler = manager.handle.update_text_search_query, --on_gui_text_changed
+									handler = manager.handle.update_text_search, --on_gui_text_changed
 								},
 								{ type = "empty-widget", style = "flib_horizontal_pusher" },
 								{ type = "label", style = "caption_label", caption = { "gui.ltnm-network-id-label" } },
 								{
-									name = "manager_network_id_field",
+									name = "manager_network_mask_field",
 									type = "textfield",
 									style_mods = { width = 120 },
 									numeric = true,
 									allow_negative = true,
 									clear_and_focus_on_right_click = true,
 									text = "-1",
-									handler = manager.handle.update_network_id_query, --on_gui_text_changed
+									handler = manager.handle.update_network_mask, --on_gui_text_changed
 								},
 								{ type = "label", style = "caption_label", caption = { "gui.ltnm-surface-label" } },
 								{
 									name = "manager_surface_dropdown",
 									type = "drop-down",
-									handler = manager.handle.change_surface, --on_gui_selection_state_changed
+									handler = manager.handle.update_surface, --on_gui_selection_state_changed
 								},
 							},
 						},
@@ -137,9 +92,6 @@ function manager.build(player, player_data)
 							name = "manager_tabbed_pane",
 							type = "tabbed-pane",
 							style = "ltnm_tabbed_pane",
-							children = {
-								trains_tab.build(widths, refs),
-							},
 						},
 					},
 				},
@@ -149,23 +101,49 @@ function manager.build(player, player_data)
 
 
 
-	refs.manager_titlebar.drag_target = window
-	window.force_auto_center()
+	refs.manager_titlebar.drag_target = refs.manager_window
+	refs.manager_window.force_auto_center()
+
+	return refs
 end
 
+--- @param map_data MapData
 --- @param player LuaPlayer
---- @param refs table<string, LuaGuiElement>
-function manager.destroy(player, refs)
-	refs.manager_window.destroy()
-
-	player.set_shortcut_toggled("ltnm-toggle-gui", false)
-	player.set_shortcut_available("ltnm-toggle-gui", false)
+--- @param player_data PlayerData
+function manager.update(map_data, player, player_data)
+	local tab = trains_tab.build(map_data, player_data)
+	gui.add(_, tab, player_data.refs)
 end
+
+
+
+manager.handle = {}
+
+--- @param e {player_index: uint}
+function manager.wrapper(e, handler)
+	local player = game.get_player(e.player_index)
+	if not player then return end
+	local player_data = global.manager_data.players[e.player_index]
+	handler(player, player_data, player_data.refs, e)
+end
+
+
+local function toggle_fab(elem, sprite, state)
+	if state then
+		elem.style = "flib_selected_frame_action_button"
+		elem.sprite = sprite .. "_black"
+	else
+		elem.style = "frame_action_button"
+		elem.sprite = sprite .. "_white"
+	end
+end
+
+
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
-function manager.open(player, player_data, refs)
+function manager.handle.open(player, player_data, refs)
 	refs.manager_window.bring_to_front()
 	refs.manager_window.visible = true
 	player_data.visible = true
@@ -177,10 +155,11 @@ function manager.open(player, player_data, refs)
 	player.set_shortcut_toggled("ltnm-toggle-gui", true)
 end
 
+
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
-function manager.close(player, player_data, refs)
+function manager.handle.close(player, player_data, refs)
 	if player_data.pinning then
 		return
 	end
@@ -195,86 +174,76 @@ function manager.close(player, player_data, refs)
 	player.set_shortcut_toggled("ltnm-toggle-gui", false)
 end
 
+--- @param player LuaPlayer
+--- @param player_data PlayerData
+--- @param refs table<string, LuaGuiElement>
+function manager.handle.toggle(player, player_data, refs)
 
-manager.handle = {}
-
---- @param e GuiEventData
-function manager.wrapper(e, handler)
-	local player = game.get_player(e.player_index)
-	if not player then return end
-	local player_data = global.manager.players[e.player_index]
-	handler(player, player_data, player_data.refs)
 end
-
-
-local function toggle_fab(elem, sprite, state)
-  if state then
-    elem.style = "flib_selected_frame_action_button"
-    elem.sprite = sprite .. "_black"
-  else
-    elem.style = "frame_action_button"
-    elem.sprite = sprite .. "_white"
-  end
-end
-
-
-manager.handle.close = manager.close
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
 function manager.handle.recenter(player, player_data, refs)
-  refs.window.force_auto_center()
+	refs.window.force_auto_center()
 end
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
 function manager.handle.toggle_auto_refresh(player, player_data, refs)
-  player_data.auto_refresh = not player_data.auto_refresh
-  toggle_fab(refs.manager_refresh_button, "ltnm_refresh", player_data.auto_refresh)
+	player_data.auto_refresh = not player_data.auto_refresh
+	toggle_fab(refs.manager_refresh_button, "ltnm_refresh", player_data.auto_refresh)
 end
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
 function manager.handle.toggle_pinned(player, player_data, refs)
-  player_data.pinned = not player_data.pinned
-  toggle_fab(refs.manager_pin_button, "ltnm_pin", player_data.pinned)
+	player_data.pinned = not player_data.pinned
+	toggle_fab(refs.manager_pin_button, "ltnm_pin", player_data.pinned)
 end
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
 --- @param e GuiEventData
-function manager.handle.update_text_search_query(player, player_data, refs, e)
-  local query = e.text
-  -- Input sanitization
-  for pattern, replacement in pairs(constants.input_sanitizers) do
-    query = string.gsub(query, pattern, replacement)
-  end
-  player_data.search_query = query
-
-  if Gui.state.search_job then
-    on_tick_n.remove(Gui.state.search_job)
-  end
-
-  if #query == 0 then
-    Gui:schedule_update()
-  else
-    Gui.state.search_job = on_tick_n.add(
-      game.tick + 30,
-      { gui = "main", action = "update", player_index = Gui.player.index }
-    )
-  end
+function manager.handle.update_text_search(player, player_data, refs, e)
+	local query = e.text
+	-- Input sanitization
+	for pattern, replacement in pairs(constants.input_sanitizers) do
+		query = string.gsub(query, pattern, replacement)
+	end
+	player_data.search_query = query
 end
+
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
-function manager.handle.update_network_id_query(player, player_data, refs)
-  Gui.state.network_id = tonumber(Gui.refs.toolbar.network_id_field.text) or -1
-  Gui:schedule_update()
+function manager.handle.update_network_name(player, player_data, refs)
+	local signal = refs.manager_network_name.elem_value
+	if signal then
+		player_data.search_network_name = signal.name
+	else
+		player_data.search_network_name = nil
+	end
 end
+--- @param player LuaPlayer
+--- @param player_data PlayerData
+--- @param refs table<string, LuaGuiElement>
+function manager.handle.update_network_mask(player, player_data, refs)
+	player_data.search_network_mask = tonumber(refs.manager_network_mask_field.text) or -1
+end
+--- @param player LuaPlayer
+--- @param player_data PlayerData
+--- @param refs table<string, LuaGuiElement>
+function manager.handle.update_surface(player, player_data, refs)
+	local i = refs.manager_surface_dropdown.selected_index
+	player_data.search_surface_idx = i--TODO: fix this
+end
+
+
+gui.add_handlers(manager.handle, manager.wrapper)
 
 return manager

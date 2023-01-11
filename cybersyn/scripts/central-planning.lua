@@ -349,7 +349,7 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
-			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_dist
+			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
@@ -361,6 +361,35 @@ local function tick_dispatch(map_data, mod_settings)
 			r_flag = get_network_flag(r_station, network_name)
 			netand = band(p_flag, r_flag)
 			if netand == 0 then
+				goto p_continue
+			end
+
+			effective_count = p_station.item_p_counts[item_name]
+			override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
+			if override_threshold and p_station.is_stack and not is_fluid then
+				override_threshold = override_threshold*get_stack_size(map_data, item_name)
+			end
+			if effective_count < (override_threshold or r_threshold) then
+				--this p station should have serviced the current r station, lock it so it can't serve any others
+				--this will lock stations even when the r station manages to find a p station, this not a problem because all stations will be unlocked before it could be an issue
+				table_remove(p_stations, j)
+				if band(p_station.display_state, 4) == 0 then
+					p_station.display_state = p_station.display_state + 4
+					update_display(map_data, p_station)
+				end
+				goto p_continue_remove
+			end
+
+			p_prior = p_station.priority
+			if override_threshold and p_station.item_priority then
+				p_prior = p_station.item_priority--[[@as int]]
+			end
+			if p_prior < best_p_prior then
+				goto p_continue
+			end
+
+			best_p_to_r_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and get_dist(p_station.entity_stop, r_station.entity_stop) or INF
+			if p_prior == best_p_prior and best_p_to_r_dist > best_dist then
 				goto p_continue
 			end
 			if correctness < 1 then
@@ -442,39 +471,10 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			effective_count = p_station.item_p_counts[item_name]
-			override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
-			if override_threshold and p_station.is_stack and not is_fluid then
-				override_threshold = override_threshold*get_stack_size(map_data, item_name)
-			end
-			if effective_count < (override_threshold or r_threshold) then
-				--this p station should have serviced the current r station, lock it so it can't serve any others
-				--this will lock stations even when the r station manages to find a p station, this not a problem because all stations will be unlocked before it could be an issue
-				table_remove(p_stations, j)
-				if band(p_station.display_state, 4) == 0 then
-					p_station.display_state = p_station.display_state + 4
-					update_display(map_data, p_station)
-				end
-				goto p_continue_remove
-			end
-
-			p_prior = p_station.priority
-			if override_threshold and p_station.item_priority then
-				p_prior = p_station.item_priority--[[@as int]]
-			end
-			if p_prior < best_p_prior then
-				goto p_continue
-			end
-
-			best_p_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and (best_t_to_p_dist + get_dist(p_station.entity_stop, r_station.entity_stop)) or INF
-			if p_prior == best_p_prior and best_p_dist > best_dist then
-				goto p_continue
-			end
-
 			p_station_i = j
 			best_train_id = best_p_train_id
 			best_p_prior = p_prior
-			best_dist = best_p_dist
+			best_dist = best_p_to_r_dist
 			::p_continue::
 			j = j + 1
 			::p_continue_remove::
@@ -725,9 +725,8 @@ function tick_init(map_data, mod_settings)
 	map_data.economy.all_r_stations = {}
 	map_data.economy.all_names = {}
 
-	local i = 1
-	while i <= #map_data.warmup_station_ids do
-		local id = map_data.warmup_station_ids[i]
+	while #map_data.warmup_station_ids > 0 do
+		local id = map_data.warmup_station_ids[1]
 		local station = map_data.stations[id]
 		if station then
 			local cycles = map_data.warmup_station_cycles[id]
@@ -736,20 +735,22 @@ function tick_init(map_data, mod_settings)
 				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
 					station.is_warming_up = nil
 					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
-					map_data.warmup_station_ids[i] = nil
+					table_remove(map_data.warmup_station_ids, 1)
 					map_data.warmup_station_cycles[id] = nil
 					if station.entity_comb1.valid then
 						combinator_update(map_data, station.entity_comb1)
 					else
 						on_station_broken(map_data, id, station)
 					end
+				else
+					break
 				end
 			else
 				map_data.warmup_station_cycles[id] = cycles + 1
+				break
 			end
-			i = i + 1
 		else
-			table_remove(map_data.warmup_station_ids, i)
+			table_remove(map_data.warmup_station_ids, 1)
 			map_data.warmup_station_cycles[id] = nil
 		end
 	end
