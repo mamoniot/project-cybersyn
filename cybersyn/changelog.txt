@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.11
+Date: 2023-1-11
+  Bugfixes:
+    - Fixed a bug in 1.2.10 where allow lists were being set incorrectly, if you downloaded 1.2.10 and were affected by this uncheck and check "automatic allow list"
+  Translation:
+    - German translation contributed by Ebaw
+---------------------------------------------------------------------------------------------------
 Version: 1.2.10
 Date: 2023-1-11
   Changes:
