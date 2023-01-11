@@ -555,7 +555,7 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 			end
 			search_area = area.move(search_area, area_delta)
 		end
-		if not rail_connection_direction ~= defines.rail_connection_direction.straight then
+		if rail_connection_direction ~= defines.rail_connection_direction.straight then
 			is_break = true
 			break
 		end
