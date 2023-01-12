@@ -1,11 +1,15 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.12
+Date: 2023-1-11
+  Translation:
+    - русский язык (Russian language) contributed by Eldrinn Elantey
+---------------------------------------------------------------------------------------------------
 Version: 1.2.11
 Date: 2023-1-11
   Bugfixes:
     - Fixed a bug in 1.2.10 where allow lists were being set incorrectly, if you downloaded 1.2.10 and were affected by this uncheck and check "automatic allow list"
   Translation:
     - Deutsche sprache (German language) contributed by Ebaw
-    - русский язык (Russian language) contributed by Eldrinn Elantey
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.10
 Date: 2023-1-11
