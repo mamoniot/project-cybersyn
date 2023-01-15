@@ -50,7 +50,7 @@ Trains can **bypass visiting the depot** if they have enough fuel. Trains spend 
 
 **Improved fault handling.** Mistakes and misconfigured stations are unlikely to result in cargo being delivered to places they shouldn't, and the player will be alerted immediately about the fault.
 
-Runs a custom, **highly optimized central planning algorithm**, resulting in exceptionally good performance. Outperforms LTN by a factor of ~3x *(disclaimer: there is no perfectly apples-to-apples performance test since the features and algorithms of these mods are not the same, see [project-cybersyn/previews/performance/](https://github.com/mamoniot/project-cybersyn/tree/main/previews/performance) for more details)*. The station update rate is twice that of LTN by default, and depots don't count towards station updates.
+Runs a custom, **highly optimized central planning algorithm**, resulting in exceptionally good performance, see https://forums.factorio.com/viewtopic.php?p=580024#p580024. This allows the station update rate to be twice that of LTN by default, resulting in more responsive dispatching, especially on larger bases.
 
 ![Image](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/se-compat.png)
 
