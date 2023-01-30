@@ -467,7 +467,7 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 	local length = 2
 	local pre_rail = stop_rail
 	local layout_pattern = {0}
-	local type_filter = {"inserter", "pump", "arithmetic-combinator"}
+	local type_filter = {"inserter", "pump", "arithmetic-combinator", "loader-1x1"}
 	local wagon_number = 0
 	for i = 1, 112 do
 		local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({rail_direction = rail_direction_from_stop, rail_connection_direction = defines.rail_connection_direction.straight})
@@ -508,6 +508,17 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 								if is_there then
 									supports_cargo = true
 								end
+							end
+						end
+					elseif entity.type == "loader-1x1" then
+						if not supports_cargo then
+							local direction = entity.direction
+							if is_ver then
+								if direction == defines.direction.east or defines.direction.west then
+									supports_cargo = true
+								end
+							elseif direction == defines.direction.north or direction == defines.direction.south then
+								supports_cargo = true
 							end
 						end
 					elseif entity.type == "pump" then
@@ -656,5 +667,100 @@ function update_stop_from_inserter(map_data, inserter, forbidden_entity)
 	})
 	if rails[1] then
 		update_stop_from_rail(map_data, rails[1], forbidden_entity)
+	end
+end
+---@param map_data MapData
+---@param loader LuaEntity
+---@param forbidden_entity LuaEntity?
+function update_stop_from_loader(map_data, loader, forbidden_entity)
+	local surface = loader.surface
+	local direction = loader.direction
+	local loader_type = loader.loader_type
+	local position = loader.position
+	--check input/output direction and loader position, and case position and modify x or y by +/- 1 for search
+	if loader_type == "input" then --loading train
+		if direction == defines.direction.east then
+			position.x = position.x + 1 -- input and facing east -> move on X axis 1 to the right
+			local rails = surface.find_entities_filtered({
+				type = "straight-rail",
+				position = position,
+				radius = 1,
+			})
+			if rails[1] then
+				update_stop_from_rail(map_data, rails[1], forbidden_entity)
+			end
+		elseif direction == defines.direction.south then
+			position.y = position.y - 1 -- input and facing south -> move on Y axis down 1 unit
+			local rails = surface.find_entities_filtered({
+				type = "straight-rail",
+				position = position,
+				radius = 1,
+			})
+			if rails[1] then
+				update_stop_from_rail(map_data, rails[1], forbidden_entity)
+			end
+		elseif direction == defines.direction.west then
+			position.x = position.x - 1 -- input and facing west -> move on X axis 1 to the left
+			local rails = surface.find_entities_filtered({
+				type = "straight-rail",
+				position = position,
+				radius = 1,
+			})
+			if rails[1] then
+				update_stop_from_rail(map_data, rails[1], forbidden_entity)
+			end
+		elseif direction == defines.direction.north then
+			position.y = position.y + 1 -- input and facing south -> move on Y axis up 1 unit
+			local rails = surface.find_entities_filtered({
+				type = "straight-rail",
+				position = position,
+				radius = 1,
+			})
+			if rails[1] then
+				update_stop_from_rail(map_data, rails[1], forbidden_entity)
+			end
+		end
+	elseif loader_type == "output" then --unloading train
+		if direction == defines.direction.east then
+			position.x = position.x - 1 -- output and facing east -> move on X axis 1 to the left
+			local rails = surface.find_entities_filtered({
+				type = "straight-rail",
+				position = position,
+				radius = 1,
+			})
+			if rails[1] then
+				update_stop_from_rail(map_data, rails[1], forbidden_entity)
+			end
+		elseif direction == defines.direction.south then
+			position.y = position.y + 1 -- output and facing south -> move on Y axis up 1 unit
+			local rails = surface.find_entities_filtered({
+				type = "straight-rail",
+				position = position,
+				radius = 1,
+			})
+			if rails[1] then
+				update_stop_from_rail(map_data, rails[1], forbidden_entity)
+			end
+		elseif direction == defines.direction.west then
+			position.x = position.x + 1 -- output and facing west -> move on X axis 1 to the right
+			local rails = surface.find_entities_filtered({
+				type = "straight-rail",
+				position = position,
+				radius = 1,
+			})
+			if rails[1] then
+				update_stop_from_rail(map_data, rails[1], forbidden_entity)
+			end
+		elseif direction == defines.direction.north then
+			position.y = position.y - 1 -- output and facing south -> move on Y axis down 1 unit
+			local rails = surface.find_entities_filtered({
+				type = "straight-rail",
+				position = position,
+				radius = 1,
+			})
+			if rails[1] then
+				update_stop_from_rail(map_data, rails[1], forbidden_entity)
+			end
+		end
 	end
 end
