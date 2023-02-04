@@ -617,6 +617,8 @@ local function on_built(event)
 		on_combinator_built(global, entity)
 	elseif entity.type == "inserter" then
 		update_stop_from_inserter(global, entity)
+	elseif entity.type == "loader-1x1" then
+		update_stop_from_loader(global, entity)
 	elseif entity.type == "pump" then
 		update_stop_from_pump(global, entity)
 	elseif entity.type == "straight-rail" then
@@ -633,6 +635,8 @@ local function on_broken(event)
 		on_combinator_broken(global, entity)
 	elseif entity.type == "inserter" then
 		update_stop_from_inserter(global, entity, entity)
+	elseif entity.type == "loader-1x1" then
+		update_stop_from_loader(global, entity)
 	elseif entity.type == "pump" then
 		update_stop_from_pump(global, entity, entity)
 	elseif entity.type == "straight-rail" then
@@ -841,6 +845,7 @@ local filter_built = {
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
+	{filter = "type", type = "loader-1x1"},
 }
 local filter_broken = {
 	{filter = "name", name = "train-stop"},
@@ -848,6 +853,7 @@ local filter_broken = {
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
+	{filter = "type", type = "loader-1x1"},
 	{filter = "rolling-stock"},
 }
 local function main()
