@@ -2,7 +2,7 @@
 Version: 1.2.13
 Date: 2023-2-5
   Features:
-    - Loader support for automatical allow-list contributed by BadgersOnWalls
+    - Loader support for automatic allow-list contributed by BadgersOnWalls
   Bugfixes:
     - Fixed a crash caused when certain mod entities are deleted
 ---------------------------------------------------------------------------------------------------
