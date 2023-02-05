@@ -682,38 +682,49 @@ end
 function tick_poll_entities(map_data, mod_settings)
 	local tick_data = map_data.tick_data
 
-	--NOTE: the following have undefined behaviour if the item on tick_data is deleted
 	if map_data.total_ticks%5 == 0 then
-		local train_id, train = next(map_data.trains, tick_data.last_train)
-		tick_data.last_train = train_id
-		if train then
-			if train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
-				if mod_settings.stuck_train_alert_enabled then
-					send_alert_stuck_train(map_data, train.entity)
+		if tick_data.last_train == nil or map_data.trains[tick_data.last_train] then
+			local train_id, train = next(map_data.trains, tick_data.last_train)
+			tick_data.last_train = train_id
+			if train then
+				if train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
+					if mod_settings.stuck_train_alert_enabled then
+						send_alert_stuck_train(map_data, train.entity)
+					end
+					interface_raise_train_stuck(train_id)
 				end
-				interface_raise_train_stuck(train_id)
 			end
+		else
+			tick_data.last_train = nil
 		end
 
-		local refueler_id, _ = next(map_data.each_refuelers, tick_data.last_refueler)
-		tick_data.last_refueler = refueler_id
-		if refueler_id then
-			local refueler = map_data.refuelers[refueler_id]
-			if refueler.entity_stop.valid and refueler.entity_comb.valid then
-				set_refueler_from_comb(map_data, mod_settings, refueler_id, refueler)
-			else
-				on_refueler_broken(map_data, refueler_id, refueler)
+		if tick_data.last_refueler == nil or map_data.each_refuelers[tick_data.last_refueler] then
+			local refueler_id, _ = next(map_data.each_refuelers, tick_data.last_refueler)
+			tick_data.last_refueler = refueler_id
+			if refueler_id then
+				local refueler = map_data.refuelers[refueler_id]
+				if refueler.entity_stop.valid and refueler.entity_comb.valid then
+					set_refueler_from_comb(map_data, mod_settings, refueler_id, refueler)
+				else
+					on_refueler_broken(map_data, refueler_id, refueler)
+				end
 			end
+		else
+			tick_data.last_refueler = nil
 		end
 	else
-		local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
-		tick_data.last_comb = comb_id
-		if comb then
-			if comb.valid then
-				combinator_update(map_data, comb, true)
-			else
-				map_data.to_comb[comb_id] = nil
+		if tick_data.last_comb == nil or map_data.to_comb[tick_data.last_comb] then
+			local comb_id, comb = next(map_data.to_comb, tick_data.last_comb)
+			tick_data.last_comb = comb_id
+			if comb then
+				if comb.valid then
+					combinator_update(map_data, comb, true)
+				else
+					map_data.to_comb[comb_id] = nil
+				end
 			end
+		else
+			tick_data.last_comb = nil
 		end
 	end
 end

@@ -13,7 +13,8 @@
 		"~/.steam/steam/steamapps/common/Factorio/data/core/lualib",
 		"./.vscode/factorio",
 		"./.vscode/flib",
-		"/home/mami/.config/Code/User/workspaceStorage/fdae937c5189f993d370b36f3104188f/justarandomgeek.factoriomod-debug/sumneko-3rd/factorio/library"
+		"/home/mami/.config/Code/User/workspaceStorage/fdae937c5189f993d370b36f3104188f/justarandomgeek.factoriomod-debug/sumneko-3rd/factorio/library",
+		"/home/mami/.config/Code/User/workspaceStorage/95c2a8450056100ba3db30ac2a468857/justarandomgeek.factoriomod-debug/sumneko-3rd/factorio/library"
 	],
 	"Lua.workspace.userThirdParty": [
 		"/home/mami/.config/Code/User/workspaceStorage/fdae937c5189f993d370b36f3104188f/justarandomgeek.factoriomod-debug/sumneko-3rd",
@@ -34,9 +35,9 @@
 	"Lua.runtime.special": {
 		"__object_name": "type"
 	},
-	"Lua.runtime.plugin": "/home/mami/.config/Code/User/workspaceStorage/fdae937c5189f993d370b36f3104188f/justarandomgeek.factoriomod-debug/sumneko-3rd/factorio/plugin.lua",
+	"Lua.runtime.plugin": "/home/mami/.config/Code/User/workspaceStorage/95c2a8450056100ba3db30ac2a468857/justarandomgeek.factoriomod-debug/sumneko-3rd/factorio/plugin.lua",
 	"Lua.diagnostics.disable": [
 		"lowercase-global"
 	],
-	"Lua.workspace.checkThirdParty": false
+	"Lua.workspace.checkThirdParty": true
 }
