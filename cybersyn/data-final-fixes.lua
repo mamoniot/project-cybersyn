@@ -1,3 +1,5 @@
+flib = require("__flib__.table")
+require('scripts.constants')
 
 --Credit to modo-lv for submitting the following code
 if mods["nullius"] then
@@ -8,3 +10,6 @@ if mods["nullius"] then
     -- Place combinator in the same place on the research tree as LTN
     table.insert(data.raw.technology["nullius-broadcasting-1"].prerequisites, "cybersyn-train-network")
 end
+
+-- Reset the combinator recipe back to arithmetic combinator recipe in case a mod has changed it
+data.raw["recipe"][COMBINATOR_NAME].ingredients = flib.deep_copy(data.raw["recipe"]["arithmetic-combinator"].ingredients)
