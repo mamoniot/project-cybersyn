@@ -55,6 +55,12 @@
                 "debugadapter": true,
                 "flib": true,
             },
-        }
+        },
+        {
+            "type": "factoriomod",
+            "request": "launch",
+            "name": "Factorio Debug (Modded)",
+            "modsPath": "~/.factorio/mods-debug/",
+        },
     ]
 }

@@ -6,7 +6,7 @@ local templates = require("scripts.gui.templates")
 
 local stations_tab = {}
 
-function stations_tab.build(widths)
+function stations_tab.create(widths)
 	return {
 		tab = {
 			type = "tab",

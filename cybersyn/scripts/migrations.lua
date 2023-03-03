@@ -1,5 +1,6 @@
 --By Mami
 local flib_migration = require("__flib__.migration")
+local manager_gui = require('gui.main')
 
 
 local migrations_table = {
@@ -292,7 +293,13 @@ local migrations_table = {
 				is_registered[id] = true
 			end
 		end
-	end
+	end,
+	["1.2.14"] = function()
+		manager_gui.on_init()
+		for i, v in pairs(game.players) do
+			manager_gui.on_player_created({player_index = i})
+		end
+	end,
 }
 --STATUS_R_TO_D = 5
 

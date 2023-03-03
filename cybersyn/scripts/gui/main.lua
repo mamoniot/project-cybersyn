@@ -4,9 +4,11 @@ local mod_gui = require("__core__.lualib.mod-gui")
 local manager = require("scripts.gui.manager")
 
 --- @class Manager
+--- @field players table<int, PlayerData>
 --- @field item_order table<string, int>
 
 --- @class PlayerData
+--- @field is_manager_open boolean
 --- @field refs {[string]: LuaGuiElement}?
 --- @field search_query string?
 --- @field search_network_name string?
@@ -33,8 +35,8 @@ local function top_left_button_update(player, player_data)
 			name = "top_left_button",
 			style = "mis_mod_gui_button_green",
 			sprite = "mis_configure_white",
-			tooltip = { "", "\n", { "mis-config-gui.configure-tooltip" } },
-			handler = manager.handle.toggle,
+			tooltip = { "", "\n", { "cybersyn.gui.configure-tooltip" } },
+			handler = manager.handle.manager_toggle,
 		})
 	end
 end
@@ -45,7 +47,7 @@ local manager_gui = {}
 
 function manager_gui.on_lua_shortcut(e)
 	if e.prototype_name == "ltnm-toggle-gui" then
-		manager.wrapper(e, manager.handle.toggle)
+		manager.wrapper(e, manager.handle.manager_toggle)
 	end
 end
 
@@ -61,14 +63,14 @@ function manager_gui.on_player_created(e)
 		pinning = false,
 		refs = manager.create(player),
 	}
-	global.manager_data.players[e.player_index] = player_data
+	global.manager.players[e.player_index] = player_data
 
 	manager.update(global, player, player_data)
-	top_left_button_update(player, player_data)
+	--top_left_button_update(player, player_data)
 end
 
 function manager_gui.on_player_removed(e)
-	global.manager_data.players[e.player_index] = nil
+	global.manager.players[e.player_index] = nil
 end
 
 --script.on_event(defines.events.on_player_joined_game, function(e)
@@ -83,7 +85,7 @@ function manager_gui.on_runtime_mod_setting_changed(e)
 		local player = game.get_player(e.player_index)
 		if not player then return end
 
-		local player_data = global.manager_data.players[e.player_index]
+		local player_data = global.manager.players[e.player_index]
 		player_data.disable_top_left_button = player.mod_settings["cybersyn-disable-top-left-button"].value
 		top_left_button_update(player, player_data)
 	end
@@ -121,12 +123,14 @@ local function init_items(manager)
 end
 
 
-function manager.on_migration()
+function manager_gui.on_migration()
 	init_items(global.manager)
 end
 
-function manager.on_init()
-	global.manager = {}
+function manager_gui.on_init()
+	global.manager = {
+		players = {},
+	}
 	init_items(global.manager)
 end
 --gui.handle_events()

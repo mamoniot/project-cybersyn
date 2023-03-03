@@ -8,6 +8,8 @@ require('prototypes.entity')
 require('prototypes.signal')
 require('prototypes.misc')
 
+require('prototypes.gui-style')
+
 data:extend({
 	combinator_entity,
 	combinator_out_entity,

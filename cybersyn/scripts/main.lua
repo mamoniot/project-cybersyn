@@ -1,7 +1,10 @@
 --By Mami
+local manager = require('gui.main')
+
 local ceil = math.ceil
 local table_insert = table.insert
 local table_remove = table.remove
+
 
 
 ---@param map_data MapData
@@ -835,6 +838,7 @@ local function on_settings_changed(event)
 			script.on_nth_tick(nil)
 		end
 	end
+	manager.on_runtime_mod_setting_changed(event)
 	interface_raise_on_mod_settings_changed(event)
 end
 
@@ -898,6 +902,9 @@ local function main()
 		script.on_nth_tick(nil)
 	end
 
+
+	local MANAGER_ENABLED = true
+
 	script.on_init(function()
 		local setting = settings.global["cybersyn-invert-sign"]
 		setting.value = false
@@ -905,13 +912,29 @@ local function main()
 		mod_settings.invert_sign = false
 		init_global()
 		setup_se_compat()
+		if MANAGER_ENABLED then
+			manager.on_init()
+		end
 	end)
 
-	script.on_configuration_changed(on_config_changed)
+
+	script.on_configuration_changed(function(e)
+		on_config_changed(e)
+		if MANAGER_ENABLED then
+			manager.on_migration()
+		end
+	end)
 
 	script.on_load(function()
 		setup_se_compat()
 	end)
+
+	if MANAGER_ENABLED then
+		script.on_event(defines.events.on_player_removed, manager.on_player_removed)
+		script.on_event(defines.events.on_player_created, manager.on_player_created)
+		script.on_event(defines.events.on_lua_shortcut, manager.on_lua_shortcut)
+	end
+
 end
 
 

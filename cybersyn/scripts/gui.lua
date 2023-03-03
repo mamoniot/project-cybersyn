@@ -183,12 +183,12 @@ end
 
 function register_gui_actions()
 	flib_gui.add_handlers({
-		["close"] = handle_close,
-		["drop_down"] = handle_drop_down,
-		["pr_switch"] = handle_pr_switch,
-		["network"] = handle_network,
-		["setting"] = handle_setting,
-		["setting_flip"] = handle_setting_flip,
+		["comb_close"] = handle_close,
+		["comb_drop_down"] = handle_drop_down,
+		["comb_pr_switch"] = handle_pr_switch,
+		["comb_network"] = handle_network,
+		["comb_setting"] = handle_setting,
+		["comb_setting_flip"] = handle_setting_flip,
 	})
 	flib_gui.handle_events()
 	script.on_event(defines.events.on_gui_opened, on_gui_opened)
