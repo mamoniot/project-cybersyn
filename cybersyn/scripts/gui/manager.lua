@@ -5,9 +5,9 @@ local constants = require("scripts.gui.constants")
 --local actions = require("scripts.gui.actions")
 local templates = require("scripts.gui.templates")
 
-local trains_tab = require("scripts.gui.trains")
+local stations_tab = require("scripts.gui.stations")
+--local trains_tab = require("scripts.gui.trains")
 --local depots_tab = require("scripts.gui.depots")
---local stations_tab = require("scripts.gui.stations")
 --local inventory_tab = require("scripts.gui.inventory")
 --local history_tab = require("scripts.gui.history")
 --local alerts_tab = require("scripts.gui.alerts")
@@ -28,7 +28,7 @@ function manager.create(player)
 			type = "frame",
 			direction = "vertical",
 			visible = false,
-			handler = manager.handle.manager_close,
+			--handler = manager.handle.manager_close,
 			children = {
 				{
 					name = "manager_titlebar",
@@ -92,6 +92,10 @@ function manager.create(player)
 							name = "manager_tabbed_pane",
 							type = "tabbed-pane",
 							style = "ltnm_tabbed_pane",
+							selected_tab_index = 1,
+							tabs = {
+								stations_tab.create(widths)
+							}
 						},
 					},
 				},
@@ -174,6 +178,10 @@ function manager.handle.manager_close(player, player_data, refs)
 
 	player_data.is_manager_open = false
 	player.set_shortcut_toggled("ltnm-toggle-gui", false)
+
+
+	player_data.refs.manager_window.destroy()
+	player_data.refs = manager.create(player)
 end
 
 --- @param player LuaPlayer
@@ -216,9 +224,11 @@ end
 --- @param e GuiEventData
 function manager.handle.manager_update_text_search(player, player_data, refs, e)
 	local query = e.text
-	-- Input sanitization
-	for pattern, replacement in pairs(constants.input_sanitizers) do
-		query = string.gsub(query, pattern, replacement)
+	if query then
+		-- Input sanitization
+		for pattern, replacement in pairs(constants.input_sanitizers) do
+			query = string.gsub(query, pattern, replacement)
+		end
 	end
 	player_data.search_query = query
 end
