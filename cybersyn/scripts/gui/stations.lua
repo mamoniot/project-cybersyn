@@ -9,6 +9,7 @@ local stations_tab = {}
 function stations_tab.create(widths)
 	return {
 		tab = {
+			name = "manager_stations_tab",
 			type = "tab",
 			caption = { "gui.ltnm-stations" },
 			ref = { "stations", "tab" },
@@ -17,6 +18,7 @@ function stations_tab.create(widths)
 			},
 		},
 		content = {
+			name = "manager_stations_content_frame",
 			type = "frame",
 			style = "ltnm_main_content_frame",
 			direction = "vertical",
@@ -37,7 +39,7 @@ function stations_tab.create(widths)
 			templates.sort_checkbox(widths, "stations", "shipments", false, { "gui.ltnm-shipments-description" }),
 			templates.sort_checkbox(widths, "stations", "control_signals", false),
 		},
-		{ type = "scroll-pane", style = "ltnm_table_scroll_pane", ref = { "stations", "scroll_pane" } },
+		{ name = "manager_stations_tab_scroll_pane", type = "scroll-pane", style = "ltnm_table_scroll_pane", ref = { "stations", "scroll_pane" } },
 		{
 			type = "flow",
 			style = "ltnm_warning_flow",
@@ -60,6 +62,7 @@ end
 function stations_tab.build(map_data, player_data)
 
 	local widths = constants.gui["en"]
+	local refs = player_data.refs
 
 	local search_item = player_data.search_item
 	local search_network_name = player_data.search_network_name
@@ -182,65 +185,45 @@ function stations_tab.build(map_data, player_data)
 		return (not player_data.trains_orderings_invert[#player_data.trains_orderings_invert]) == (a < b)
 	end)
 
-	local scroll_pane = refs.scroll_pane
+	local scroll_pane = refs.manager_stations_tab_scroll_pane
 
 
 	for i, station_id in pairs(stations_sorted) do
 		local station = map_data.stations[station_id]
 
 		local color = i % 2 == 0 and "dark" or "light"
-		local row = gui.add(scroll_pane, {
+		gui.add(scroll_pane, {
 			type = "frame",
 			style = "ltnm_table_row_frame_" .. color,
 			{
 				type = "label",
 				style = "ltnm_clickable_semibold_label",
-				style_mods = { width = widths.name },
+				style_mods = { width = widths.stations.name },
 				tooltip = constants.open_station_gui_tooltip,
+				caption = station.entity_stop.backer_name,
 			},
-			templates.status_indicator(widths.status, true),
-			{ type = "label", style_mods = { width = widths.network_id, horizontal_align = "center" } },
-			templates.small_slot_table(widths, color, "provided_requested"),
-			templates.small_slot_table(widths, color, "shipments"),
-			templates.small_slot_table(widths, color, "control_signals"),
-		})
+			--templates.status_indicator(widths.stations.status, true), --repurposing status column for network name
+			{ type = "label", style_mods = { width = widths.stations.network_id, }, caption = station.network_name  },
+			{ type = "label", style_mods = { width = widths.stations.network_id, horizontal_align = "center" }, caption = station.network_flag },
+			templates.small_slot_table(widths.stations, color, "provided_requested"),
+			templates.small_slot_table(widths.stations, color, "shipments"),
+			templates.small_slot_table(widths.stations, color, "control_signals"),
+		}, refs)
 
-		gui.add(row, {
-			{
-				elem_mods = { caption = station.entity_stop.name },
-				handler = stations_tab.hande.open_station_gui,
-				tags = station_id,
-			},
-			{ elem_mods = { caption = station.network_name } },
-			{ elem_mods = { caption = station.network_flag } },
-		})
+		gui.add(refs.provided_requested_table, util.slot_table_build_from_station(station), refs)
+		gui.add(refs.shipments_table, util.slot_table_build_from_deliveries(station), refs)
+		gui.add(refs.control_signals_table, util.slot_table_build_from_control_signals(station), refs)
 
-		util.slot_table_update(row.provided_requested_frame.provided_requested_table, {
-			{ color = "green", entries = station.provided, translations = dictionaries.materials },
-			{ color = "red", entries = station.requested, translations = dictionaries.materials },
-		})
-		util.slot_table_update(row.shipments_frame.shipments_table, {
-			{ color = "green", entries = station.inbound, translations = dictionaries.materials },
-			{ color = "blue", entries = station.outbound, translations = dictionaries.materials },
-		})
-		util.slot_table_update(row.control_signals_frame.control_signals_table, {
-			{
-				color = "default",
-				entries = station.control_signals,
-				translations = dictionaries.virtual_signals,
-				type = "virtual-signal",
-			},
-		})
 	end
 
 	if #stations_sorted == 0 then
-		refs.warning_flow.visible = true
+		--refs.warning_flow.visible = true
 		scroll_pane.visible = false
-		refs.content_frame.style = "ltnm_main_warning_frame"
+		--refs.content_frame.style = "ltnm_main_warning_frame"
 	else
-		refs.warning_flow.visible = false
+		--refs.warning_flow.visible = false
 		scroll_pane.visible = true
-		refs.content_frame.style = "ltnm_main_content_frame"
+		--refs.content_frame.style = "ltnm_main_content_frame"
 	end
 end
 

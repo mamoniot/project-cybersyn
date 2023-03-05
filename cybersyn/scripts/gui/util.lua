@@ -37,7 +37,7 @@ end
 --- @param manifest Manifest
 --- @param color string
 --- @return GuiElemDef[]
-function util.slot_table_build(manifest, color)
+function util.slot_table_build_from_manifest(manifest, color)
   ---@type GuiElemDef[]
   local children = {}
   for _, item in pairs(manifest) do
@@ -61,6 +61,127 @@ function util.slot_table_build(manifest, color)
           "\n"..format.number(count),
         },
       }
+    end
+  end
+  return children
+end
+
+--- @param station Station
+--- @param color string
+--- @return GuiElemDef[]
+function util.slot_table_build_from_station(station)
+  ---@type GuiElemDef[]
+  local children = {}
+  local comb1_signals, comb2_signals = get_signals(station)
+  if comb1_signals then
+    for _, v in pairs(comb1_signals) do
+      local item = v.signal
+      local count = v.count
+      local name = item.name
+      local sprite
+      local color
+      if count > 0 then
+        color = "green"
+      else
+        color = "red"
+      end
+      if item.type then
+        sprite = item.type .. "/" .. name
+      else
+        if name then
+          sprite = string.gsub(name, ",", "/")
+        else
+          --idunno?
+        end
+      end
+      if game.is_valid_sprite_path(sprite) then
+        children[#children + 1] = {
+          type = "sprite-button",
+          enabled = false,
+          style = "ltnm_small_slot_button_" .. color,
+          sprite = sprite,
+          tooltip = {
+            "",
+            "[img=" .. sprite  .. "]",
+            { "item-name." .. name },
+            "\n"..format.number(count),
+          },
+          number = count
+        }
+      end
+    end
+  end
+  return children
+end
+
+function util.slot_table_build_from_deliveries(station)
+  ---@type GuiElemDef[]
+  local children = {}
+  local deliveries = station.deliveries
+  local sprite = ""
+  for item, count in pairs(deliveries) do
+    local color
+    if count > 0 then
+      color = "green"
+    else
+      color = "blue"
+    end
+    if game.is_valid_sprite_path("item/" .. item) then
+      sprite = "item/" .. item
+    elseif game.is_valid_sprite_path("fluid/" .. item) then
+      sprite = "fluid/" .. item
+    end
+    if game.is_valid_sprite_path(sprite) then
+      children[#children + 1] = {
+        type = "sprite-button",
+        enabled = false,
+        style = "ltnm_small_slot_button_" .. color,
+        sprite = sprite,
+        tooltip = {
+          "",
+          "[img=" .. sprite  .. "]",
+          { item },
+          "\n"..format.number(count),
+        },
+        number = count
+      }
+    end
+  end
+  return children
+end
+
+--- @param station Station
+--- @return GuiElemDef[]
+function util.slot_table_build_from_control_signals(station)
+  ---@type GuiElemDef[]
+  local children = {}
+  local comb1_signals, comb2_signals = get_signals(station)
+  if comb1_signals then
+    for _, v in pairs(comb1_signals) do
+      local item = v.signal
+      local count = v.count
+      local name = item.name
+      local sprite = ""
+      local color = "default"
+      if item.type == "virtual" then
+      -- don't know how to get the sprite path for signals like cybersyn-priority, so this fizzles
+        sprite = item.type .. "/" .. name
+      end
+      if game.is_valid_sprite_path(sprite) then
+        children[#children + 1] = {
+          type = "sprite-button",
+          enabled = false,
+          style = "ltnm_small_slot_button_" .. color,
+          sprite = sprite,
+          tooltip = {
+            "",
+            "[img=" .. sprite  .. "]",
+            { "item-name." .. name },
+            "\n"..format.number(count),
+          },
+          number = count
+        }
+      end
     end
   end
   return children
