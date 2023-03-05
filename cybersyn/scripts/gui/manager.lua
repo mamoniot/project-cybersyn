@@ -92,10 +92,8 @@ function manager.create(player)
 							name = "manager_tabbed_pane",
 							type = "tabbed-pane",
 							style = "ltnm_tabbed_pane",
+							stations_tab.create(widths),
 							selected_tab_index = 1,
-							tabs = {
-								stations_tab.create(widths)
-							}
 						},
 					},
 				},
@@ -112,11 +110,9 @@ function manager.create(player)
 end
 
 --- @param map_data MapData
---- @param player LuaPlayer
 --- @param player_data PlayerData
-function manager.update(map_data, player, player_data)
-	--local tab = trains_tab.build(map_data, player_data)
-	--gui.add(_, tab, player_data.refs)
+function manager.update(map_data, player_data)
+	stations_tab.build(map_data, player_data)
 end
 
 
@@ -258,6 +254,7 @@ function manager.handle.manager_update_surface(player, player_data, refs)
 	local i = refs.manager_surface_dropdown.selected_index
 	player_data.search_surface_idx = i--TODO: fix this
 end
+
 
 
 gui.add_handlers(manager.handle, manager.wrapper)
