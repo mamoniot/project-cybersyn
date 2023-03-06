@@ -8,7 +8,7 @@ local templates = require("scripts.gui.templates")
 local stations_tab = require("scripts.gui.stations")
 --local trains_tab = require("scripts.gui.trains")
 --local depots_tab = require("scripts.gui.depots")
---local inventory_tab = require("scripts.gui.inventory")
+local inventory_tab = require("scripts.gui.inventory")
 --local history_tab = require("scripts.gui.history")
 --local alerts_tab = require("scripts.gui.alerts")
 
@@ -93,6 +93,7 @@ function manager.create(player)
 							type = "tabbed-pane",
 							style = "ltnm_tabbed_pane",
 							stations_tab.create(widths),
+							inventory_tab.create(),
 							selected_tab_index = 1,
 						},
 					},
@@ -113,6 +114,7 @@ end
 --- @param player_data PlayerData
 function manager.update(map_data, player_data)
 	stations_tab.build(map_data, player_data)
+	inventory_tab.build(map_data, player_data)
 end
 
 
