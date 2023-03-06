@@ -92,36 +92,29 @@ function util.slot_table_build_from_station(station)
       local item = v.signal
       local count = v.count
       local name = item.name
-      local sprite
-      local color
-      if count > 0 then
-        color = "green"
-      else
-        color = "red"
-      end
-      if item.type then
-        sprite = item.type .. "/" .. name
-      else
-        if name then
-          sprite = string.gsub(name, ",", "/")
+      local sprite = util.build_sprite_path(name)
+      if sprite ~= nil then
+        local color
+        if count > 0 then
+          color = "green"
         else
-          --idunno?
+          color = "red"
         end
-      end
-      if game.is_valid_sprite_path(sprite) then
-        children[#children + 1] = {
-          type = "sprite-button",
-          enabled = false,
-          style = "ltnm_small_slot_button_" .. color,
-          sprite = sprite,
-          tooltip = {
-            "",
-            "[img=" .. sprite  .. "]",
-            { "item-name." .. name },
-            "\n"..format.number(count),
-          },
-          number = count
-        }
+        if game.is_valid_sprite_path(sprite) then
+          children[#children + 1] = {
+            type = "sprite-button",
+            enabled = false,
+            style = "ltnm_small_slot_button_" .. color,
+            sprite = sprite,
+            tooltip = {
+              "",
+              "[img=" .. sprite  .. "]",
+              { "item-name." .. name },
+              "\n"..format.number(count),
+            },
+            number = count
+          }
+        end
       end
     end
   end
@@ -132,33 +125,32 @@ function util.slot_table_build_from_deliveries(station)
   ---@type GuiElemDef[]
   local children = {}
   local deliveries = station.deliveries
-  local sprite = ""
+  
   for item, count in pairs(deliveries) do
-    local color
-    if count > 0 then
-      color = "green"
-    else
-      color = "blue"
-    end
-    if game.is_valid_sprite_path("item/" .. item) then
-      sprite = "item/" .. item
-    elseif game.is_valid_sprite_path("fluid/" .. item) then
-      sprite = "fluid/" .. item
-    end
-    if game.is_valid_sprite_path(sprite) then
-      children[#children + 1] = {
-        type = "sprite-button",
-        enabled = false,
-        style = "ltnm_small_slot_button_" .. color,
-        sprite = sprite,
-        tooltip = {
-          "",
-          "[img=" .. sprite  .. "]",
-          { item },
-          "\n"..format.number(count),
-        },
-        number = count
-      }
+    
+    local sprite = util.build_sprite_path(item)
+    if sprite ~= nil then
+      local color
+      if count > 0 then
+        color = "green"
+      else
+        color = "blue"
+      end
+      if game.is_valid_sprite_path(sprite) then
+        children[#children + 1] = {
+          type = "sprite-button",
+          enabled = false,
+          style = "ltnm_small_slot_button_" .. color,
+          sprite = sprite,
+          tooltip = {
+            "",
+            "[img=" .. sprite  .. "]",
+            { item },
+            "\n"..format.number(count),
+          },
+          number = count
+        }
+      end
     end
   end
   return children
@@ -180,7 +172,6 @@ function util.slot_table_build_from_control_signals(station)
       if item.type ~= "virtual" then 
         goto continue
       else
-      -- don't know how to get the sprite path for signals like cybersyn-priority, so this fizzles
         sprite = "virtual-signal" .. "/" .. name
       end
       if game.is_valid_sprite_path(sprite) then
