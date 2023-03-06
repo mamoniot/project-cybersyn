@@ -1,5 +1,6 @@
 local gui = require("__flib__.gui-lite")
 
+local util = require("scripts.gui.util")
 local templates = require("scripts.gui.templates")
 local misc = require("__flib__.misc")
 
@@ -45,6 +46,8 @@ function inventory_tab.build(map_data, player_data)
   local inventory_requested = {}
 
   local stations_sorted = {}
+
+  
 
   for id, station in pairs(map_data.stations) do
 		local entity = station.entity_stop
@@ -131,6 +134,7 @@ function inventory_tab.build(map_data, player_data)
         if count > 0 then
           if inventory_in_transit[item] == nil then
             inventory_in_transit[item] = 0
+            inventory_in_transit[item] = inventory_in_transit[item] + count
           else
             inventory_in_transit[item] = inventory_in_transit[item] + count
           end
@@ -139,17 +143,13 @@ function inventory_tab.build(map_data, player_data)
     end
   end
 
+  local inventory_provided_table = refs.inventory_provided_table
   local provided_children = {}
 
   local i = 0
   for item, count in pairs(inventory_provided) do
     i = i + 1
-    local sprite = ""
-    if game.is_valid_sprite_path("item/" .. item) then
-      sprite = "item/" .. item
-    elseif game.is_valid_sprite_path("fluid/" .. item) then
-      sprite = "fluid/" .. item
-    end
+    local sprite = util.build_sprite_path(item)
     if game.is_valid_sprite_path(sprite) then
       provided_children[#provided_children+1] = {
         type = "sprite-button",
@@ -162,22 +162,17 @@ function inventory_tab.build(map_data, player_data)
           .. "] [font=default-semibold]"
           .. item
           .. "[/font]\n"
-          .. misc.delineate_number(count)
-      }
+          .. misc.delineate_number(count)}
     end
   end
 
+  local inventory_requested_table = refs.inventory_requested_table
   local requested_children = {}
 
   local i = 0
   for item, count in pairs(inventory_requested) do
     i = i + 1
-    local sprite = ""
-    if game.is_valid_sprite_path("item/" .. item) then
-      sprite = "item/" .. item
-    elseif game.is_valid_sprite_path("fluid/" .. item) then
-      sprite = "fluid/" .. item
-    end
+    local sprite = util.build_sprite_path(item)
     if game.is_valid_sprite_path(sprite) then
       requested_children[#requested_children+1] = {
         type = "sprite-button",
@@ -190,22 +185,17 @@ function inventory_tab.build(map_data, player_data)
           .. "] [font=default-semibold]"
           .. item
           .. "[/font]\n"
-          .. misc.delineate_number(count)
-      }
+          .. misc.delineate_number(count)}
     end
   end
 
+  local inventory_in_transit_table = refs.inventory_in_transit_table
   local in_transit_children = {}
 
   local i = 0
   for item, count in pairs(inventory_in_transit) do
     i = i + 1
-    local sprite = ""
-    if game.is_valid_sprite_path("item/" .. item) then
-      sprite = "item/" .. item
-    elseif game.is_valid_sprite_path("fluid/" .. item) then
-      sprite = "fluid/" .. item
-    end
+    local sprite = util.build_sprite_path(item)
     if game.is_valid_sprite_path(sprite) then
       in_transit_children[#in_transit_children+1] = {
         type = "sprite-button",
@@ -218,11 +208,19 @@ function inventory_tab.build(map_data, player_data)
           .. "] [font=default-semibold]"
           .. item
           .. "[/font]\n"
-          .. misc.delineate_number(count)
-      }
+          .. misc.delineate_number(count)}
+      end
     end
-  end
 
+  if next(inventory_provided_table.children) ~= nil then
+    refs.inventory_provided_table.clear()
+  end
+  if next(inventory_requested_table.children) ~= nil then
+    refs.inventory_requested_table.clear()
+  end
+  if next(inventory_in_transit_table.children) ~=nil then
+    refs.inventory_in_transit_table.clear()
+  end
   gui.add(refs.inventory_provided_table, provided_children)
   gui.add(refs.inventory_requested_table, requested_children)
   gui.add(refs.inventory_in_transit_table, in_transit_children)

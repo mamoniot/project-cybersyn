@@ -186,7 +186,9 @@ function stations_tab.build(map_data, player_data)
 	end)
 
 	local scroll_pane = refs.manager_stations_tab_scroll_pane
-
+	if next(scroll_pane.children) ~= nil then
+		refs.manager_stations_tab_scroll_pane.clear()
+	end
 
 	for i, station_id in pairs(stations_sorted) do
 		local station = map_data.stations[station_id]
@@ -203,16 +205,16 @@ function stations_tab.build(map_data, player_data)
 				caption = station.entity_stop.backer_name,
 			},
 			--templates.status_indicator(widths.stations.status, true), --repurposing status column for network name
-			{ type = "label", style_mods = { width = widths.stations.network_id, }, caption = station.network_name  },
+			{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = "virtual-signal/" .. station.network_name, },
 			{ type = "label", style_mods = { width = widths.stations.network_id, horizontal_align = "center" }, caption = station.network_flag },
 			templates.small_slot_table(widths.stations, color, "provided_requested"),
 			templates.small_slot_table(widths.stations, color, "shipments"),
 			templates.small_slot_table(widths.stations, color, "control_signals"),
 		}, refs)
 
-		gui.add(refs.provided_requested_table, util.slot_table_build_from_station(station), refs)
-		gui.add(refs.shipments_table, util.slot_table_build_from_deliveries(station), refs)
-		gui.add(refs.control_signals_table, util.slot_table_build_from_control_signals(station), refs)
+		gui.add(refs.provided_requested_table, util.slot_table_build_from_station(station))
+		gui.add(refs.shipments_table, util.slot_table_build_from_deliveries(station))
+		gui.add(refs.control_signals_table, util.slot_table_build_from_control_signals(station))
 
 	end
 

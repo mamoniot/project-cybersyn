@@ -33,6 +33,20 @@ function util.gui_list(parent, iterator, test, build, update, ...)
   end
 end
 
+--- Builds a valid sprite path or returns nil
+--- @param item string
+--- @return string
+function util.build_sprite_path(item)
+  local sprite = nil
+  if game.is_valid_sprite_path("item/" .. item) then
+    sprite = "item/" .. item
+  elseif game.is_valid_sprite_path("fluid/" .. item) then
+    sprite = "fluid/" .. item
+  end
+  return sprite
+end
+
+
 --- Updates a slot table based on the passed criteria.
 --- @param manifest Manifest
 --- @param color string
@@ -163,9 +177,11 @@ function util.slot_table_build_from_control_signals(station)
       local name = item.name
       local sprite = ""
       local color = "default"
-      if item.type == "virtual" then
+      if item.type ~= "virtual" then 
+        goto continue
+      else
       -- don't know how to get the sprite path for signals like cybersyn-priority, so this fizzles
-        sprite = item.type .. "/" .. name
+        sprite = "virtual-signal" .. "/" .. name
       end
       if game.is_valid_sprite_path(sprite) then
         children[#children + 1] = {
@@ -182,6 +198,7 @@ function util.slot_table_build_from_control_signals(station)
           number = count
         }
       end
+      ::continue::
     end
   end
   return children
