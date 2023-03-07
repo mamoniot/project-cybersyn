@@ -36,6 +36,7 @@ function inventory_tab.build(map_data, player_data)
 
   local refs = player_data.refs
 
+  local search_query = player_data.search_query
   local search_item = player_data.search_item
 	local search_network_name = player_data.search_network_name
 	local search_network_mask = player_data.search_network_mask
@@ -55,10 +56,28 @@ function inventory_tab.build(map_data, player_data)
 			goto continue
 		end
 
+		if search_query then
+			if not string.match(entity.backer_name, search_query) then
+				goto continue
+			end
+		end
+		-- move surface comparison up higher in query to short circuit query earlier if surface doesn't match
+    if search_surface_idx then
+			if search_surface_idx == -1 then
+				goto has_match
+			elseif entity.surface.index ~= search_surface_idx then
+				goto continue
+			end
+			::has_match::
+		end
 		if search_network_name then
+      if search_network_name == (NETWORK_EACH or NETWORK_ANYTHING) then
+				goto has_match
+			end
 			if search_network_name ~= station.network_name then
 				goto continue
 			end
+      ::has_match::
 			local train_flag = get_network_flag(station, search_network_name)
 			if not bit32.btest(search_network_mask, train_flag) then
 				goto continue
@@ -74,12 +93,6 @@ function inventory_tab.build(map_data, player_data)
 				goto continue
 				::has_match::
 			elseif not bit32.btest(search_network_mask, station.network_flag) then
-				goto continue
-			end
-		end
-
-		if search_surface_idx then
-			if entity.surface.index ~= search_surface_idx then
 				goto continue
 			end
 		end

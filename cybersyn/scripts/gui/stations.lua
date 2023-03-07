@@ -64,6 +64,7 @@ function stations_tab.build(map_data, player_data)
 	local widths = constants.gui["en"]
 	local refs = player_data.refs
 
+	local search_query = player_data.search_query
 	local search_item = player_data.search_item
 	local search_network_name = player_data.search_network_name
 	local search_network_mask = player_data.search_network_mask
@@ -78,10 +79,33 @@ function stations_tab.build(map_data, player_data)
 			goto continue
 		end
 
+
+
+		if search_query then
+			if not string.match(entity.backer_name, search_query) then
+				goto continue
+			end
+		end
+		
+		-- move surface comparison up higher in query to short circuit query earlier if surface doesn't match; this can exclude hundreds of stations instantly in SE
+		if search_surface_idx then
+			if search_surface_idx == -1 then
+				goto has_match
+			elseif entity.surface.index ~= search_surface_idx then
+				goto continue
+			end
+			::has_match::
+		end
+
 		if search_network_name then
+			--setting default for GUI to NETWORK_EACH, which will match all
+			if search_network_name == (NETWORK_EACH or NETWORK_ANYTHING) then
+				goto has_match
+			end
 			if search_network_name ~= station.network_name then
 				goto continue
 			end
+			::has_match::
 			local train_flag = get_network_flag(station, search_network_name)
 			if not bit32.btest(search_network_mask, train_flag) then
 				goto continue
@@ -101,11 +125,6 @@ function stations_tab.build(map_data, player_data)
 			end
 		end
 
-		if search_surface_idx then
-			if entity.surface.index ~= search_surface_idx then
-				goto continue
-			end
-		end
 
 		if search_item then
 			if not station.deliveries then
