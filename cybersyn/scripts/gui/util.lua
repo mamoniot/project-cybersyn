@@ -35,15 +35,21 @@ end
 
 --- Builds a valid sprite path or returns nil
 --- @param item string
---- @return string
-function util.build_sprite_path(item)
+--- @return string, string, string
+function util.generate_item_references(item)
   local sprite = nil
+  local image_path = ""
+  local item_name = ""
   if game.is_valid_sprite_path("item/" .. item) then
     sprite = "item/" .. item
+    image_path = "[img=item." .. item .. "]"
+    item_name = "item-name." .. item
   elseif game.is_valid_sprite_path("fluid/" .. item) then
     sprite = "fluid/" .. item
+    image_path = "[img=fluid." .. item .. "]"
+    item_name = "fluid-name." .. item
   end
-  return sprite
+  return sprite, image_path, item_name
 end
 
 
@@ -92,7 +98,7 @@ function util.slot_table_build_from_station(station)
       local item = v.signal
       local count = v.count
       local name = item.name
-      local sprite = util.build_sprite_path(name)
+      local sprite, img_path, item_string = util.generate_item_references(name)
       if sprite ~= nil then
         local color
         if count > 0 then
@@ -108,8 +114,8 @@ function util.slot_table_build_from_station(station)
             sprite = sprite,
             tooltip = {
               "",
-              "[img=" .. sprite  .. "]",
-              { "item-name." .. name },
+              img_path,
+              { item_string },
               "\n"..format.number(count),
             },
             number = count
@@ -128,7 +134,7 @@ function util.slot_table_build_from_deliveries(station)
   
   for item, count in pairs(deliveries) do
     
-    local sprite = util.build_sprite_path(item)
+    local sprite, img_path, item_string = util.generate_item_references(item)
     if sprite ~= nil then
       local color
       if count > 0 then
@@ -144,8 +150,8 @@ function util.slot_table_build_from_deliveries(station)
           sprite = sprite,
           tooltip = {
             "",
-            "[img=" .. sprite  .. "]",
-            { item },
+            img_path,
+            { item_string },
             "\n"..format.number(count),
           },
           number = count
@@ -182,8 +188,8 @@ function util.slot_table_build_from_control_signals(station)
           sprite = sprite,
           tooltip = {
             "",
-            "[img=" .. sprite  .. "]",
-            { "item-name." .. name },
+            "[img=virtual-signal." .. name  .. "]",
+            { "virtual-signal-name." .. name },
             "\n"..format.number(count),
           },
           number = count

@@ -30,7 +30,7 @@ function templates.inventory_slot_table(name, columns)
 	return {
 		type = "flow",
 		direction = "vertical",
-		{ type = "label", style = "bold_label", caption = { "gui.ltnm-" .. string.gsub(name, "_", "-") } },
+		{ type = "label", style = "bold_label", caption = { "cybersyn-gui." .. string.gsub(name, "_", "-") } },
 		{
 			type = "frame",
 			style = "deep_frame_in_shallow_frame",
@@ -77,7 +77,7 @@ function templates.sort_checkbox(widths, tab, column, selected, tooltip, state)
 		type = "checkbox",
 		style = selected and "ltnm_selected_sort_checkbox" or "ltnm_sort_checkbox",
 		style_mods = { width = widths and widths[tab][column] or nil, horizontally_stretchable = not widths },
-		caption = { "gui.ltnm-" .. string.gsub(column, "_", "-") },
+		caption = { "cybersyn-gui." .. string.gsub(column, "_", "-") },
 		tooltip = tooltip,
 		state = state,
 		ref = { tab, "toolbar", column .. "_checkbox" },

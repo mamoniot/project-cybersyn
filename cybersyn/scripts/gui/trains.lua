@@ -133,7 +133,7 @@ function trains_tab.build(map_data, player_data)
 		train_list[1] = {
 			type = "label",
 			style = "ltnm_semibold_label",
-			caption = { "gui.ltnm-no-trains" },
+			caption = { "cybersyn-gui.no-trains" },
 		}
 	else
 		for idx, train_id in ipairs(trains_sorted) do
@@ -156,7 +156,7 @@ function trains_tab.build(map_data, player_data)
 							{
 								type = "button",
 								style = "ltnm_train_minimap_button",
-								tooltip = { "gui.ltnm-open-train-gui" },
+								tooltip = { "cybersyn-gui.open-train-gui" },
 								elem_mods = { entity = get_any_train_entity(train.entity) },
 								handler = trains_tab.handle.open_train_gui, --on_click
 								tags = { train_id = train_id },
@@ -197,7 +197,7 @@ function trains_tab.build(map_data, player_data)
 		tab = {
 			name = "trains_tab",
 			type = "tab",
-			caption = #trains_sorted == 0 and { "gui.ltnm-trains" } or { "gui.ltnm-trains", #train_list },
+			caption = #trains_sorted == 0 and { "cybersyn-gui.trains" } or { "cybersyn-gui.trains", #train_list },
 			--badge_text = format.number(#ltn_data.sorted_trains.composition),
 			handler = trains_tab.handle.change_tab, --on_click
 			tags = { tab = "trains_tab" },
@@ -212,7 +212,7 @@ function trains_tab.build(map_data, player_data)
 					type = "frame",
 					style = "ltnm_table_toolbar_frame",
 					templates.sort_checkbox(widths, "trains", "status", false),
-					templates.sort_checkbox(widths, "trains", "layout", false, { "gui.ltnm-composition-description" }),
+					templates.sort_checkbox(widths, "trains", "layout", false, { "cybersyn-gui.composition-description" }),
 					templates.sort_checkbox(widths, "trains", "depot", false),
 					templates.sort_checkbox(widths, "trains", "shipment", false),
 				},

@@ -2,7 +2,7 @@ local gui = require("__flib__.gui-lite")
 
 local util = require("scripts.gui.util")
 local templates = require("scripts.gui.templates")
-local misc = require("__flib__.misc")
+local format = require("__flib__.format")
 
 local inventory_tab = {}
 
@@ -11,7 +11,7 @@ function inventory_tab.create()
     tab = {
       name = "manager_inventory_tab",
       type = "tab",
-      caption = { "gui.ltnm-inventory" },
+      caption = { "cybersyn-gui.inventory" },
       ref = { "inventory", "tab" },
       actions = {
         on_click = { gui = "main", action = "change_tab", tab = "inventory" },
@@ -149,7 +149,7 @@ function inventory_tab.build(map_data, player_data)
   local i = 0
   for item, count in pairs(inventory_provided) do
     i = i + 1
-    local sprite = util.build_sprite_path(item)
+    local sprite, img_path, item_string = util.generate_item_references(item)
     if game.is_valid_sprite_path(sprite) then
       provided_children[#provided_children+1] = {
         type = "sprite-button",
@@ -157,12 +157,13 @@ function inventory_tab.build(map_data, player_data)
         enabled = false,
         sprite = sprite,
         number = count,
-        tooltip = "[img="
-          .. string.gsub(item, ",", "/")
-          .. "] [font=default-semibold]"
-          .. item
-          .. "[/font]\n"
-          .. misc.delineate_number(count)}
+        tooltip = { "",
+          img_path,
+          " [font=default-semibold]",
+          { item_string },
+          "[/font]\n"..format.number(count),
+        },
+      }
     end
   end
 
@@ -172,7 +173,7 @@ function inventory_tab.build(map_data, player_data)
   local i = 0
   for item, count in pairs(inventory_requested) do
     i = i + 1
-    local sprite = util.build_sprite_path(item)
+    local sprite, img_path, item_string = util.generate_item_references(item)
     if game.is_valid_sprite_path(sprite) then
       requested_children[#requested_children+1] = {
         type = "sprite-button",
@@ -180,12 +181,13 @@ function inventory_tab.build(map_data, player_data)
         enabled = false,
         sprite = sprite,
         number = count,
-        tooltip = "[img="
-          .. string.gsub(item, ",", "/")
-          .. "] [font=default-semibold]"
-          .. item
-          .. "[/font]\n"
-          .. misc.delineate_number(count)}
+        tooltip = { "",
+          img_path,
+          " [font=default-semibold]",
+          { item_string },
+          "[/font]\n"..format.number(count),
+        },
+      }
     end
   end
 
@@ -195,7 +197,7 @@ function inventory_tab.build(map_data, player_data)
   local i = 0
   for item, count in pairs(inventory_in_transit) do
     i = i + 1
-    local sprite = util.build_sprite_path(item)
+    local sprite, img_path, item_string = util.generate_item_references(item)
     if game.is_valid_sprite_path(sprite) then
       in_transit_children[#in_transit_children+1] = {
         type = "sprite-button",
@@ -203,12 +205,13 @@ function inventory_tab.build(map_data, player_data)
         enabled = false,
         sprite = sprite,
         number = count,
-        tooltip = "[img="
-          .. string.gsub(item, ",", "/")
-          .. "] [font=default-semibold]"
-          .. item
-          .. "[/font]\n"
-          .. misc.delineate_number(count)}
+        tooltip = { "",
+          img_path,
+          " [font=default-semibold]",
+          { item_string },
+          "[/font]\n"..format.number(count),
+        },
+      }
       end
     end
 

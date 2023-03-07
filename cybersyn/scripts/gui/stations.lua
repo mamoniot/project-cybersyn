@@ -11,7 +11,7 @@ function stations_tab.create(widths)
 		tab = {
 			name = "manager_stations_tab",
 			type = "tab",
-			caption = { "gui.ltnm-stations" },
+			caption = { "cybersyn-gui.stations" },
 			ref = { "stations", "tab" },
 			actions = {
 				on_click = { gui = "main", action = "change_tab", tab = "stations" },
@@ -27,16 +27,16 @@ function stations_tab.create(widths)
 				type = "frame",
 				style = "ltnm_table_toolbar_frame",
 				templates.sort_checkbox(widths, "stations", "name", true),
-				templates.sort_checkbox(widths, "stations", "status", false, { "gui.ltnm-status-description" }),
+				templates.sort_checkbox(widths, "stations", "status", false), --repurposed status column, description no longer necessary
 				templates.sort_checkbox(widths, "stations", "network_id", false),
 				templates.sort_checkbox(
 				widths,
 				"stations",
 				"provided_requested",
 				false,
-				{ "gui.ltnm-provided-requested-description" }
+				{ "cybersyn-gui-provided-requested-description" }
 			),
-			templates.sort_checkbox(widths, "stations", "shipments", false, { "gui.ltnm-shipments-description" }),
+			templates.sort_checkbox(widths, "stations", "shipments", false, { "cybersyn-gui-shipments-description" }),
 			templates.sort_checkbox(widths, "stations", "control_signals", false),
 		},
 		{ name = "manager_stations_tab_scroll_pane", type = "scroll-pane", style = "ltnm_table_scroll_pane", ref = { "stations", "scroll_pane" } },
@@ -48,7 +48,7 @@ function stations_tab.create(widths)
 			{
 				type = "label",
 				style = "ltnm_semibold_label",
-				caption = { "gui.ltnm-no-stations" },
+				caption = { "cybersyn-gui-no-stations" },
 				ref = { "stations", "warning_label" },
 			},
 		},

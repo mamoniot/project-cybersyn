@@ -36,19 +36,19 @@ function manager.create(player)
 					style = "flib_titlebar_flow",
 					handler = manager.handle.manager_titlebar_click,
 					children = {
-						{ type = "label", style = "frame_title", caption = { "mod-name.LtnManager" }, ignored_by_interaction = true },
+						{ type = "label", style = "frame_title", caption = { "mod-name.cybersyn" }, ignored_by_interaction = true },
 						{ type = "empty-widget", style = "flib_titlebar_drag_handle", ignored_by_interaction = true },
 						{
 							name = "manager_dispatcher_status_label",
 							type = "label",
 							style = "bold_label",
 							style_mods = { font_color = constants.colors.red.tbl, left_margin = -4, top_margin = 1 },
-							caption = { "gui.ltnm-dispatcher-disabled" },
-							tooltip = { "gui.ltnm-dispatcher-disabled-description" },
+							caption = { "cybersyn-gui.dispatcher-disabled" },
+							tooltip = { "cybersyn-gui.dispatcher-disabled-description" },
 							visible = not settings.global["cybersyn-enable-planner"].value,
 						},
-						templates.frame_action_button("manager_pin_button", "ltnm_pin", { "gui.ltnm-keep-open" }, manager.handle.manager_pin),--on_gui_clicked
-						templates.frame_action_button("manager_refresh_button", "ltnm_refresh", { "gui.ltnm-refresh-tooltip" }, manager.handle.manager_refresh_click),--on_gui_clicked
+						templates.frame_action_button("manager_pin_button", "ltnm_pin", { "cybersyn-gui.keep-open" }, manager.handle.manager_pin),--on_gui_clicked
+						templates.frame_action_button("manager_refresh_button", "ltnm_refresh", { "cybersyn-gui.refresh-tooltip" }, manager.handle.manager_refresh_click),--on_gui_clicked
 						templates.frame_action_button(nil, "utility/close", { "gui.close-instruction" }, manager.handle.manager_close),--on_gui_clicked
 					},
 				},
@@ -61,7 +61,7 @@ function manager.create(player)
 							type = "frame",
 							style = "ltnm_main_toolbar_frame",
 							children = {
-								{ type = "label", style = "subheader_caption_label", caption = { "gui.ltnm-search-label" } },
+								{ type = "label", style = "subheader_caption_label", caption = { "cybersyn-gui.search-label" } },
 								{
 									name = "manager_text_search_field",
 									type = "textfield",
@@ -69,7 +69,7 @@ function manager.create(player)
 									handler = manager.handle.manager_update_text_search, --on_gui_text_changed
 								},
 								{ type = "empty-widget", style = "flib_horizontal_pusher" },
-								{ type = "label", style = "caption_label", caption = { "gui.ltnm-network-id-label" } },
+								{ type = "label", style = "caption_label", caption = { "cybersyn-gui.network-id-label" } },
 								{
 									name = "manager_network_mask_field",
 									type = "textfield",
@@ -80,7 +80,7 @@ function manager.create(player)
 									text = "-1",
 									handler = manager.handle.manager_update_network_mask, --on_gui_text_changed
 								},
-								{ type = "label", style = "caption_label", caption = { "gui.ltnm-surface-label" } },
+								{ type = "label", style = "caption_label", caption = { "cybersyn-gui.surface-label" } },
 								{
 									name = "manager_surface_dropdown",
 									type = "drop-down",
@@ -155,7 +155,7 @@ function manager.handle.manager_open(player, player_data, refs)
 	end
 
 	player_data.is_manager_open = true
-	player.set_shortcut_toggled("ltnm-toggle-gui", true)
+	player.set_shortcut_toggled("cybersyn-toggle-gui", true)
 end
 
 
@@ -175,7 +175,7 @@ function manager.handle.manager_close(player, player_data, refs)
 	end
 
 	player_data.is_manager_open = false
-	player.set_shortcut_toggled("ltnm-toggle-gui", false)
+	player.set_shortcut_toggled("cybersyn-toggle-gui", false)
 
 
 	player_data.refs.manager_window.destroy()

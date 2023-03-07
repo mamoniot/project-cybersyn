@@ -12,7 +12,7 @@ function history_tab.build(widths)
   return {
     tab = {
       type = "tab",
-      caption = { "gui.ltnm-history" },
+      caption = { "cybersyn-gui.history" },
       ref = { "history", "tab" },
       actions = {
         on_click = { gui = "main", action = "change_tab", tab = "history" },
@@ -38,7 +38,7 @@ function history_tab.build(widths)
           type = "sprite-button",
           style = "tool_button_red",
           sprite = "utility/trash",
-          tooltip = { "gui.ltnm-clear-history" },
+          tooltip = { "cybersyn-gui.clear-history" },
           ref = { "history", "clear_button" },
           actions = {
             on_click = { gui = "main", action = "clear_history" },
@@ -54,7 +54,7 @@ function history_tab.build(widths)
         {
           type = "label",
           style = "ltnm_semibold_label",
-          caption = { "gui.ltnm-no-history" },
+          caption = { "cybersyn-gui.no-history" },
           ref = { "history", "warning_label" },
         },
       },
