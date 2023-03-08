@@ -211,7 +211,7 @@ function stations_tab.build(map_data, player_data)
 
 	for i, station_id in pairs(stations_sorted) do
 		local station = map_data.stations[station_id]
-        local network_name = "signal-nothing"
+        local network_name = "signal-everything"
 		local network_flag = -1
 		if station.search_network_name ~= nil then
 			network_name = station.network_name
