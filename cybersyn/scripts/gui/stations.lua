@@ -211,6 +211,14 @@ function stations_tab.build(map_data, player_data)
 
 	for i, station_id in pairs(stations_sorted) do
 		local station = map_data.stations[station_id]
+        local network_name = "signal-nothing"
+		local network_flag = -1
+		if station.search_network_name ~= nil then
+			network_name = station.network_name
+		end
+		if station.network_flag ~= nil then
+			network_flag = station.network_flag
+		end
 
 		local color = i % 2 == 0 and "dark" or "light"
 		gui.add(scroll_pane, {
@@ -224,8 +232,8 @@ function stations_tab.build(map_data, player_data)
 				caption = station.entity_stop.backer_name,
 			},
 			--templates.status_indicator(widths.stations.status, true), --repurposing status column for network name
-			{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = "virtual-signal/" .. station.network_name, },
-			{ type = "label", style_mods = { width = widths.stations.network_id, horizontal_align = "center" }, caption = station.network_flag },
+			{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = "virtual-signal/" .. network_name, },
+			{ type = "label", style_mods = { width = widths.stations.network_id, horizontal_align = "center" }, caption = network_flag },
 			templates.small_slot_table(widths.stations, color, "provided_requested"),
 			templates.small_slot_table(widths.stations, color, "shipments"),
 			templates.small_slot_table(widths.stations, color, "control_signals"),
