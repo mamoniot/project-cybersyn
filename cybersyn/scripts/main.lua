@@ -825,6 +825,7 @@ local function grab_all_settings()
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value--[[@as boolean]]
 	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
+	mod_settings.manager_update_rate = settings.startup["cybersyn-manager-update-rate"].value--[[@as int]]
 end
 local function on_settings_changed(event)
 	grab_all_settings()
@@ -933,7 +934,8 @@ local function main()
 		script.on_event(defines.events.on_player_removed, manager.on_player_removed)
 		script.on_event(defines.events.on_player_created, manager.on_player_created)
 		script.on_event(defines.events.on_lua_shortcut, manager.on_lua_shortcut)
-		script.on_nth_tick(60, function() --TODO: tick value needs to be converted to mod setting
+		-- TODO: rework this to work as a per-player runtime setting
+		script.on_nth_tick(mod_settings.manager_update_rate, function()
 			manager.tick(global)
 		end)
 	end

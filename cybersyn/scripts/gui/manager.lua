@@ -11,6 +11,7 @@ local stations_tab = require("scripts.gui.stations")
 local inventory_tab = require("scripts.gui.inventory")
 --local history_tab = require("scripts.gui.history")
 --local alerts_tab = require("scripts.gui.alerts")
+local util = require("scripts.gui.util")
 
 
 local manager = {}
@@ -68,6 +69,14 @@ function manager.create(player)
 									clear_and_focus_on_right_click = true,
 									handler = manager.handle.manager_update_text_search, --on_gui_text_changed
 								},
+								-- item search box commented out. It *works*, but, the filtering logic only checks delivieres, so I'm not sure what Mami intended it for, so I'm leaving it off for now...
+								--{ type = "label", style = "subheader_caption_label", caption = { "cybersyn-gui.search-item-label" } },
+								--{
+								--	name = "manager_item_search_field",
+								--	type = "textfield",
+								--	clear_and_focus_on_right_click = true,
+								--	handler = manager.handle.manager_update_item_search, --on_gui_text_changed
+								--},
 								{ type = "empty-widget", style = "flib_horizontal_pusher" },
 								{ type = "label", style = "caption_label", caption = { "cybersyn-gui.network-name-label" } },
 								{ type= "choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=NETWORK_SIGNAL_GUI_DEFAULT, handler=manager.handle.manager_update_network_name, },
@@ -201,21 +210,7 @@ end
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
 function manager.handle.manager_close(player, player_data, refs)
-	if player_data.pinning then
-		return
-	end
-
-	refs.manager_window.visible = false
-	player_data.visible = false
-
-	if player.opened == refs.manager_window then
-		player.opened = nil
-	end
-
-	player_data.is_manager_open = false
-	player.set_shortcut_toggled("cybersyn-toggle-gui", false)
-
-
+	util.close_manager_window(player, player_data, refs)
 	player_data.refs.manager_window.destroy()
 	player_data.refs = manager.create(player)
 end
@@ -267,6 +262,21 @@ function manager.handle.manager_update_text_search(player, player_data, refs, e)
 		end
 	end
 	player_data.search_query = query
+end
+
+--- @param player LuaPlayer
+--- @param player_data PlayerData
+--- @param refs table<string, LuaGuiElement>
+--- @param e GuiEventData
+function manager.handle.manager_update_item_search(player, player_data, refs, e)
+	local query = e.text
+	if query then
+		-- Input sanitization
+		for pattern, replacement in pairs(constants.input_sanitizers) do
+			query = string.gsub(query, pattern, replacement)
+		end
+	end
+	player_data.search_item = query
 end
 
 

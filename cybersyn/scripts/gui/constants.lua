@@ -145,7 +145,6 @@ if script then
   constants.open_station_gui_tooltip = {
     "",
     { "cybersyn-gui.open-station-gui" },
-    remote.interfaces["ltn-combinator"] and { "", "\n", { "cybersyn-gui.open-ltn-combinator-gui" } } or nil,
   }
 end
 

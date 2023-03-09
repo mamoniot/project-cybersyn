@@ -221,4 +221,21 @@ function util.signed_int32(val)
   return (val >= MAX_INT and val - (2 * MAX_INT)) or val
 end
 
+function util.close_manager_window(player, player_data, refs)
+  if player_data.pinning then
+		return
+	end
+
+	refs.manager_window.visible = false
+	player_data.visible = false
+
+	if player.opened == refs.manager_window then
+		player.opened = nil
+	end
+
+	player_data.is_manager_open = false
+	player.set_shortcut_toggled("cybersyn-toggle-gui", false)
+
+end
+
 return util
