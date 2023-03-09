@@ -99,10 +99,6 @@ function stations_tab.build(map_data, player_data)
 		end
 
 		if search_network_name then
-			--nil matches all?
-			if search_network_name == nil then
-				goto has_match
-			end
 			if search_network_name ~= station.network_name then
 				goto continue
 			end
