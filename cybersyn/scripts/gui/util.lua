@@ -48,6 +48,10 @@ function util.generate_item_references(item)
     sprite = "fluid/" .. item
     image_path = "[img=fluid." .. item .. "]"
     item_name = "fluid-name." .. item
+  elseif game.is_valid_sprite_path("virtual-signal/" .. item) then
+    sprite = "virtual-signal/" .. item
+    image_path = "[img=virtual-signal." .. item .. "]"
+    item_name = "virtual-signal." .. item
   end
   return sprite, image_path, item_name
 end

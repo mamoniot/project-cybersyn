@@ -234,7 +234,7 @@ function inventory_tab.build(map_data, player_data)
   if next(inventory_requested_table.children) ~= nil then
     refs.inventory_requested_table.clear()
   end
-  if next(inventory_in_transit_table.children) ~=nil then
+  if next(inventory_in_transit_table.children) ~= nil then
     refs.inventory_in_transit_table.clear()
   end
   gui.add(refs.inventory_provided_table, provided_children)
