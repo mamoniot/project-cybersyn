@@ -91,7 +91,20 @@ function manager_gui.on_runtime_mod_setting_changed(e)
 	end
 end
 
-
+commands.add_command("cybersyn_rebuild_manager_windows", nil, function(command)
+	local manager_data = global.manager
+	if manager_data then
+		
+		---@param v PlayerData
+		for i, v in pairs(manager_data.players) do
+			local player = game.get_player(i)
+			if player ~= nil then
+				v.refs.manager_window.destroy()
+				v.refs = manager.create(player)
+			end
+		end
+	end
+end)
 
 
 --- @param manager Manager

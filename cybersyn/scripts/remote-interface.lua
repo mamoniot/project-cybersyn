@@ -243,21 +243,6 @@ function interface.update_stop_from_rail(rail, forbidden_entity, force_update)
 	update_stop_from_rail(global, rail, forbidden_entity, force_update)
 end
 
-function interface.rebuild_manager_windows()
-	local manager = require("scripts.gui.manager")
-	local manager_data = global.manager
-	if manager_data then
-		
-		---@param v PlayerData
-		for i, v in pairs(manager_data.players) do
-			v.refs.manager_window.destroy()
-			player = game.get_player(i)
-			if player ~= nil then
-				v.refs = manager.create(player)
-			end
-		end
-	end
-end
 
 ------------------------------------------------------------------
 --[[unsafe API]]
