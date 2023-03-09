@@ -211,8 +211,6 @@ end
 --- @param refs table<string, LuaGuiElement>
 function manager.handle.manager_close(player, player_data, refs)
 	util.close_manager_window(player, player_data, refs)
-	player_data.refs.manager_window.destroy()
-	player_data.refs = manager.create(player)
 end
 
 --- @param player LuaPlayer
