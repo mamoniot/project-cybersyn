@@ -99,15 +99,15 @@ function stations_tab.build(map_data, player_data)
 		end
 
 		if search_network_name then
-			--setting default for GUI to NETWORK_EACH, which will match all
-			if search_network_name == (NETWORK_EACH or NETWORK_ANYTHING) then --NETWORK_ANYTHING prevents crash due station having a nil issue, may need to be addressed in a different way
+			--nil matches all?
+			if search_network_name == nil then
 				goto has_match
 			end
 			if search_network_name ~= station.network_name then
 				goto continue
 			end
 			::has_match::
-			local train_flag = get_network_flag(station, station.network_name) --we already validated search network name or a "match anything"
+			local train_flag = get_network_flag(station, station.network_name)
 			if not bit32.btest(search_network_mask, train_flag) then
 				goto continue
 			end
@@ -213,7 +213,7 @@ function stations_tab.build(map_data, player_data)
 	for i, station_id in pairs(stations_sorted) do
 		--- @type Station
 		local station = stations[station_id]
-        local network_sprite = "virtual-signal/signal-everything"
+        local network_sprite = "utility/close_black"
 		local network_name = station.network_name
 		local network_flag = get_network_flag(station, network_name)
 		if network_name ~= nil then

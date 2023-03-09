@@ -79,7 +79,7 @@ function manager.create(player)
 								--},
 								{ type = "empty-widget", style = "flib_horizontal_pusher" },
 								{ type = "label", style = "caption_label", caption = { "cybersyn-gui.network-name-label" } },
-								{ type= "choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=NETWORK_SIGNAL_GUI_DEFAULT, handler=manager.handle.manager_update_network_name, },
+								{ type= "choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, handler=manager.handle.manager_update_network_name, },
 								{ type = "label", style = "caption_label", caption = { "cybersyn-gui.network-id-label" } },
 								{
 									name = "manager_network_mask_field",
