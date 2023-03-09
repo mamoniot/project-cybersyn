@@ -825,6 +825,7 @@ local function grab_all_settings()
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value--[[@as boolean]]
 	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
+	mod_settings.manager_enabled = settings.startup["cybersyn-manager-enabled"].value--[[@as boolean]]
 	mod_settings.manager_update_rate = settings.startup["cybersyn-manager-update-rate"].value--[[@as int]]
 end
 local function on_settings_changed(event)
@@ -904,7 +905,7 @@ local function main()
 	end
 
 
-	local MANAGER_ENABLED = true --convert to mod setting?
+	local MANAGER_ENABLED = mod_settings.manager_enabled
 
 	script.on_init(function()
 		local setting = settings.global["cybersyn-invert-sign"]

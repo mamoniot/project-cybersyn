@@ -111,6 +111,13 @@ data:extend({
 		minimum_value = 1,
 		maximum_value = 2147483647,
 	},
+	{
+		type = "bool-setting",
+		name = "cybersyn-manager-enabled",
+		order = "aa",
+		setting_type = "startup",
+		default_value = true,
+	},
   --{
   --  type = "bool-setting",
   --  name = "cybersyn-disable-top-left-button",
