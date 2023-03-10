@@ -13,9 +13,7 @@ function stations_tab.create(widths)
 			type = "tab",
 			caption = { "cybersyn-gui.stations" },
 			ref = { "stations", "tab" },
-			actions = {
-				on_click = { gui = "main", action = "change_tab", tab = "stations" },
-			},
+			handler = stations_tab.handle.on_stations_tab_selected
 		},
 		content = {
 			name = "manager_stations_content_frame",
@@ -313,6 +311,12 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
     else
         player.opened = station_entity
     end
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+function stations_tab.handle.on_stations_tab_selected(player, player_data)
+    player_data.selected_tab = "stations_tab"
 end
 
 gui.add_handlers(stations_tab.handle, stations_tab.wrapper)

@@ -18,6 +18,7 @@ local manager = require("scripts.gui.manager")
 --- @field trains_orderings uint[]
 --- @field trains_orderings_invert boolean[]
 --- @field pinning boolean
+--- @field selected_tab string?
 
 
 

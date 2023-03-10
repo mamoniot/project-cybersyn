@@ -13,9 +13,7 @@ function inventory_tab.create()
       type = "tab",
       caption = { "cybersyn-gui.inventory" },
       ref = { "inventory", "tab" },
-      actions = {
-        on_click = { gui = "main", action = "change_tab", tab = "inventory" },
-      },
+      handler = inventory_tab.handle.on_inventory_tab_selected
     },
     content = {
       name = "manager_inventory_content_frame",
@@ -242,5 +240,23 @@ function inventory_tab.build(map_data, player_data)
   gui.add(refs.inventory_in_transit_table, in_transit_children)
 
 end
+
+inventory_tab.handle = {}
+
+--- @param e {player_index: uint}
+function inventory_tab.wrapper(e, handler)
+	local player = game.get_player(e.player_index)
+	if not player then return end
+	local player_data = global.manager.players[e.player_index]
+	handler(player, player_data, player_data.refs, e)
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+function inventory_tab.handle.on_inventory_tab_selected(player, player_data)
+    player_data.selected_tab = "inventory_tab"
+end
+
+gui.add_handlers(inventory_tab.handle, inventory_tab.wrapper)
 
 return inventory_tab
