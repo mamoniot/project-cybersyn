@@ -16,7 +16,7 @@ function trains_tab.create(widths)
 			--caption = #trains_sorted == 0 and { "cybersyn-gui.trains" } or { "cybersyn-gui.trains", #train_list },
 			caption = { "cybersyn-gui.trains" },
 			--badge_text = format.number(#ltn_data.sorted_trains.composition),
-			--handler = trains_tab.handle.change_tab, --on_click
+			handler = trains_tab.handle.on_trains_tab_selected, --on_click
 			tags = { tab = "trains_tab" },
 		},
 		content = {
@@ -279,6 +279,12 @@ function trains_tab.handle.open_train_gui(player, player_data, refs, e)
         return
     end
 	train_util.open_gui(player.index, train_entity)
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+function trains_tab.handle.on_trains_tab_selected(player, player_data)
+    player_data.selected_tab = "trains_tab"
 end
 
 gui.add_handlers(trains_tab.handle, trains_tab.wrapper)
