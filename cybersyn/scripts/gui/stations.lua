@@ -285,7 +285,7 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
 
     if e.shift then
 		if station_entity.surface ~= player.surface then
-			util.error_flying_text(gui.player, { "cybersyn-message.error-cross-surface-camera-invalid" })
+			util.error_flying_text(player, { "cybersyn-message.error-cross-surface-camera-invalid" })
 		else
 			player.zoom_to_world(station_entity.position, 1, station_entity)
 				
