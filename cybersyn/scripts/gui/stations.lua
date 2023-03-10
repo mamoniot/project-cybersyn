@@ -279,7 +279,7 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
 	local station_comb2 = station.entity_comb2
 
     if not station_entity or not station_entity.valid then
-        util.error_flying_text(gui.player, { "message.ltnm-error-station-is-invalid" })
+        util.error_flying_text(player, { "message.ltnm-error-station-is-invalid" })
         return
     end
 
