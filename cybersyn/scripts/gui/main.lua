@@ -157,7 +157,8 @@ function manager_gui.tick(global)
 	if manager_data then
 		for i, v in pairs(manager_data.players) do
 			if v.is_manager_open then
-					manager.update(global, v)
+				local query_limit = settings.get_player_settings(i)["cybersyn-manager-result-limit"].value
+				manager.update(global, v, query_limit)
 			end
 		end
 	end

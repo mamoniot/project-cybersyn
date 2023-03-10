@@ -118,6 +118,15 @@ data:extend({
 		setting_type = "startup",
 		default_value = true,
 	},
+	{
+		type = "int-setting",
+		name = "cybersyn-manager-result-limit",
+		order = "aa",
+		setting_type = "runtime-per-user",
+		default_value = -1,
+		minimum_value = -1,
+		maximum_value = 2147483647,
+	}
   --{
   --  type = "bool-setting",
   --  name = "cybersyn-disable-top-left-button",

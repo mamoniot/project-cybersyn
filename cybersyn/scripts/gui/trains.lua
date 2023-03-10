@@ -12,7 +12,7 @@ local trains_tab = {}
 --- @param map_data MapData
 --- @param player_data PlayerData
 --- @return GuiElemDef
-function trains_tab.build(map_data, player_data)
+function trains_tab.build(map_data, player_data, query_limit)
 	local widths = constants.gui["en"]
 
 	local search_item = player_data.search_item
@@ -22,6 +22,8 @@ function trains_tab.build(map_data, player_data)
 
 
 	local trains_sorted = {}
+
+	local i = 0
 	for id, train in pairs(map_data.trains) do
 		if search_network_name then
 			if search_network_name ~= train.network_name then
@@ -70,6 +72,10 @@ function trains_tab.build(map_data, player_data)
 		end
 
 		trains_sorted[#trains_sorted + 1] = id
+		i = i + 1
+		if query_limit ~= -1 and i >= query_limit then
+			break
+		end
 		::continue::
 	end
 

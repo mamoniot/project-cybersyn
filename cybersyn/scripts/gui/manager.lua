@@ -159,12 +159,12 @@ end
 
 --- @param map_data MapData
 --- @param player_data PlayerData
-function manager.update(map_data, player_data)
+function manager.update(map_data, player_data, query_limit)
 	if player_data.selected_tab ~= nil then
 		manager.build(player_data)
 	end
 	if player_data.selected_tab == "stations_tab" then
-		stations_tab.build(map_data, player_data)
+		stations_tab.build(map_data, player_data, query_limit)
 	elseif player_data.selected_tab == "inventory_tab" then
 		inventory_tab.build(map_data, player_data)
 	end

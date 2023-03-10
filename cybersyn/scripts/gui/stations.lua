@@ -57,7 +57,7 @@ end
 --- @param map_data MapData
 --- @param player_data PlayerData
 --- @return GuiElemDef
-function stations_tab.build(map_data, player_data)
+function stations_tab.build(map_data, player_data, query_limit)
 
 	local widths = constants.gui["en"]
 	local refs = player_data.refs
@@ -72,6 +72,8 @@ function stations_tab.build(map_data, player_data)
 
 	local stations_sorted = {}
 	local to_sorted_manifest = {}
+
+	local i = 0
 	for id, station in pairs(stations) do
 		local entity = station.entity_stop
 		if not entity.valid then
@@ -139,6 +141,10 @@ function stations_tab.build(map_data, player_data)
 		end
 
 		stations_sorted[#stations_sorted + 1] = id
+		i = i + 1
+		if query_limit ~= -1 and i >= query_limit then
+			break
+		end
 		::continue::
 	end
 
