@@ -268,6 +268,7 @@ function stations_tab.wrapper(e, handler)
 end
 
 --- @param e GuiEventData
+--- @param player LuaPlayer
 --- @param player_data PlayerData
 function stations_tab.handle.open_station_gui(player, player_data, refs, e)
 	local station_id = e.element.tags.station_id
@@ -283,20 +284,24 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
     end
 
     if e.shift then
-        player.zoom_to_world(station_entity.position, 1, station_entity)
+		if station_entity.surface ~= player.surface then
+			util.error_flying_text(gui.player, { "cybersyn-message.error-cross-surface-camera-invalid" })
+		else
+			player.zoom_to_world(station_entity.position, 1, station_entity)
+				
+			rendering.draw_circle({
+				color = constants.colors.red.tbl,
+				target = station_entity.position,
+				surface = station_entity.surface,
+				radius = 0.5,
+				filled = false,
+				width = 5,
+				time_to_live = 60 * 3,
+				players = { player },
+			})
 
-        rendering.draw_circle({
-            color = constants.colors.red.tbl,
-            target = station_entity.position,
-            surface = station_entity.surface,
-            radius = 0.5,
-            filled = false,
-            width = 5,
-            time_to_live = 60 * 3,
-            players = { player },
-        })
-
-        if not player_data.pinning then util.close_manager_window(player, player_data, refs) end
+			if not player_data.pinning then util.close_manager_window(player, player_data, refs) end
+		end
     elseif e.control then
 		if station_comb1 ~= nil and station_comb1.valid then
 			player.opened = station_comb1
