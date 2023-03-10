@@ -61,6 +61,9 @@ function trains_tab.build(map_data, player_data)
 
 	local trains_sorted = {}
 	for id, train in pairs(trains) do
+		if not train.entity.valid then
+			goto continue
+		end
 		if search_network_name then
 			if search_network_name ~= train.network_name then
 				goto continue
