@@ -135,7 +135,8 @@ function manager.build(player_data)
 		currently_selected_surface = surface_dropdown.get_item(currently_selected_index)
 	end
 	surface_dropdown.clear_items()
-	i = 0
+	surface_dropdown.add_item("all", 1)
+	i = 1
 	for name, _ in pairs(surfaces) do
 		i = i + 1
 		surface_dropdown.add_item(name, i)
@@ -159,11 +160,17 @@ end
 
 --- @param map_data MapData
 --- @param player_data PlayerData
-function manager.update(map_data, player_data)
-	manager.build(player_data)
-	stations_tab.build(map_data, player_data)
-	inventory_tab.build(map_data, player_data)
-	trains_tab.build(map_data,player_data)
+function manager.update(map_data, player_data, query_limit)
+	if player_data.selected_tab ~= nil then
+		manager.build(player_data)
+	end
+	if player_data.selected_tab == "stations_tab" then
+		stations_tab.build(map_data, player_data, query_limit)
+	elseif player_data.selected_tab == "inventory_tab" then
+		inventory_tab.build(map_data, player_data)
+	elseif player_data.selected_tab == "trains_tab" then
+		trains_tab.build(map_data, player_data, query_limit)
+	end
 end
 
 
@@ -307,7 +314,8 @@ function manager.handle.manager_update_surface(player, player_data, refs, e)
 	local i = element.selected_index
 	local refs = player_data.refs
 	local surface_id = -1
-	if i > 0 then
+	--all surfaces should always be the first entry with an index of 1
+	if i > 1 then
 		local surface_name = refs.manager_surface_dropdown.get_item(i)
 		local surface = game.get_surface(surface_name)
 		surface_id = surface.index

@@ -47,7 +47,7 @@ end
 --- @param map_data MapData
 --- @param player_data PlayerData
 --- @return GuiElemDef
-function trains_tab.build(map_data, player_data)
+function trains_tab.build(map_data, player_data, query_limit)
 	local widths = constants.gui["en"]
 	local refs = player_data.refs
 
@@ -60,6 +60,8 @@ function trains_tab.build(map_data, player_data)
 	local trains = map_data.trains
 
 	local trains_sorted = {}
+
+	local i = 0
 	for id, train in pairs(trains) do
 		if not train.entity.valid then
 			goto continue
@@ -115,6 +117,10 @@ function trains_tab.build(map_data, player_data)
 		end
 
 		trains_sorted[#trains_sorted + 1] = id
+		i = i + 1
+		if query_limit ~= -1 and i >= query_limit then
+			break
+		end
 		::continue::
 	end
 

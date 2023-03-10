@@ -99,6 +99,9 @@ function util.slot_table_build_from_station(station)
   if comb1_signals then
     for _, v in pairs(comb1_signals) do
       local item = v.signal
+      if item.type == "virtual" then
+        goto continue
+      end
       local count = v.count
       local name = item.name
       local sprite, img_path, item_string = util.generate_item_references(name)
@@ -125,6 +128,7 @@ function util.slot_table_build_from_station(station)
           }
         end
       end
+      ::continue::
     end
   end
   return children

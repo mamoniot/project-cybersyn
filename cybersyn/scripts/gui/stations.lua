@@ -13,9 +13,7 @@ function stations_tab.create(widths)
 			type = "tab",
 			caption = { "cybersyn-gui.stations" },
 			ref = { "stations", "tab" },
-			actions = {
-				on_click = { gui = "main", action = "change_tab", tab = "stations" },
-			},
+			handler = stations_tab.handle.on_stations_tab_selected
 		},
 		content = {
 			name = "manager_stations_content_frame",
@@ -59,7 +57,7 @@ end
 --- @param map_data MapData
 --- @param player_data PlayerData
 --- @return GuiElemDef
-function stations_tab.build(map_data, player_data)
+function stations_tab.build(map_data, player_data, query_limit)
 
 	local widths = constants.gui["en"]
 	local refs = player_data.refs
@@ -74,6 +72,8 @@ function stations_tab.build(map_data, player_data)
 
 	local stations_sorted = {}
 	local to_sorted_manifest = {}
+
+	local i = 0
 	for id, station in pairs(stations) do
 		local entity = station.entity_stop
 		if not entity.valid then
@@ -137,6 +137,10 @@ function stations_tab.build(map_data, player_data)
 		end
 
 		stations_sorted[#stations_sorted + 1] = id
+		i = i + 1
+		if query_limit ~= -1 and i >= query_limit then
+			break
+		end
 		::continue::
 	end
 
@@ -309,6 +313,12 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
     else
         player.opened = station_entity
     end
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+function stations_tab.handle.on_stations_tab_selected(player, player_data)
+    player_data.selected_tab = "stations_tab"
 end
 
 gui.add_handlers(stations_tab.handle, stations_tab.wrapper)
