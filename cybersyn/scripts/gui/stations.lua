@@ -102,7 +102,6 @@ function stations_tab.build(map_data, player_data, query_limit)
 			if search_network_name ~= station.network_name then
 				goto continue
 			end
-			::has_match::
 			local train_flag = get_network_flag(station, station.network_name)
 			if not bit32.btest(search_network_mask, train_flag) then
 				goto continue
@@ -124,12 +123,22 @@ function stations_tab.build(map_data, player_data, query_limit)
 
 
 		if search_item then
-			if not station.deliveries then
-				goto continue
+			if station.deliveries then
+				for item_name, _ in pairs(station.deliveries) do
+					if item_name == search_item then
+						goto has_match
+					end
+				end
 			end
-			for item_name, _ in pairs(station.deliveries) do
-				if item_name == search_item then
-					goto has_match
+			local comb1_signals, _ = get_signals(station)
+			if comb1_signals then
+				for _, signal_ID in pairs(comb1_signals) do
+					local item = signal_ID.signal.name
+					if item then
+						if string.match(item, search_item) then
+							goto has_match
+						end
+					end
 				end
 			end
 			goto continue
