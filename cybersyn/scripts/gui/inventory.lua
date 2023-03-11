@@ -108,7 +108,7 @@ function inventory_tab.build(map_data, player_data)
 				for _, signal_ID in pairs(comb1_signals) do
 					local item = signal_ID.signal.name
 					if item then
-						if string.match(item, search_item) then
+						if item == search_item then
 							goto has_match
 						end
 					end
