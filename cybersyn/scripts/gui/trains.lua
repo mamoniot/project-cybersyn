@@ -108,7 +108,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 				goto continue
 			end
 			for i, v in ipairs(train.manifest) do
-				if v.name == search_item then
+				if string.match(v.name, search_item) then
 					goto has_match
 				end
 			end
