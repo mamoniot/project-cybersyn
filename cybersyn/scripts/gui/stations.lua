@@ -123,15 +123,15 @@ function stations_tab.build(map_data, player_data, query_limit)
 
 
 		if search_item then
-
 			if station.deliveries then
 				for item_name, _ in pairs(station.deliveries) do
 					if item_name == search_item then
 						goto has_match
 					end
 				end
-			else
-				local comb1_signals, _ = get_signals(station)
+			end
+			local comb1_signals, _ = get_signals(station)
+			if comb1_signals then
 				for _, signal_ID in pairs(comb1_signals) do
 					local item = signal_ID.signal.name
 					if item then
