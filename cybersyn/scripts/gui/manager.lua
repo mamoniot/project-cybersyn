@@ -273,7 +273,7 @@ end
 --- @param refs table<string, LuaGuiElement>
 --- @param e GuiEventData
 function manager.handle.manager_update_item_search(player, player_data, refs, e)
-	local query = e.text
+	local query = e.element.text
 	if query then
 		-- Input sanitization
 		for pattern, replacement in pairs(constants.input_sanitizers) do
