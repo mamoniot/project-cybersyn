@@ -390,15 +390,20 @@ function set_station_from_comb(station)
 	local is_stack = bit_extract(bits, SETTING_IS_STACK) > 0
 	local enable_inactive = bit_extract(bits, SETTING_ENABLE_INACTIVE) > 0
 
-	station.network_name = signal and signal.name or nil
 	station.allows_all_trains = allows_all_trains
 	station.is_stack = is_stack
 	station.enable_inactive = enable_inactive
 	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
 	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
 
-	if station.network_name == NETWORK_EACH then
-		station.network_flag = {}
+	local new_name = signal and signal.name or nil
+	if station.network_name ~= new_name then
+		station.network_name = new_name
+		if station.network_name == NETWORK_EACH then
+			station.network_flag = {}
+		else
+			station.network_flag = 0
+		end
 	end
 end
 ---NOTE: does not check .valid
