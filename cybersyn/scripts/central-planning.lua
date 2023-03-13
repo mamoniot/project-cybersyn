@@ -326,19 +326,12 @@ local function tick_dispatch(map_data, mod_settings)
 		end
 		local trains = map_data.available_trains[network_name]
 		local is_fluid = item_type == "fluid"
+		if not is_fluid and r_station.is_stack then
+			r_threshold = r_threshold*get_stack_size(map_data, item_name)
+		end
 		--no train exists with layout accepted by both provide and request stations
 		local correctness = 0
 		local closest_to_correct_p_station = nil
-
-		local slot_threshold
-		if is_fluid then
-			slot_threshold = r_threshold
-		elseif r_station.is_stack then
-			slot_threshold = r_threshold
-			r_threshold = r_threshold*get_stack_size(map_data, item_name)
-		else
-			slot_threshold = ceil(r_threshold/get_stack_size(map_data, item_name))
-		end
 
 		---@type uint?
 		local p_station_i = nil
@@ -349,7 +342,7 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
-			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist
+			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist, effective_threshold, slot_threshold
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
@@ -369,7 +362,13 @@ local function tick_dispatch(map_data, mod_settings)
 			if override_threshold and p_station.is_stack and not is_fluid then
 				override_threshold = override_threshold*get_stack_size(map_data, item_name)
 			end
-			if effective_count < (override_threshold or r_threshold) then
+			if override_threshold and override_threshold <= r_threshold then
+				effective_threshold = override_threshold
+			else
+				effective_threshold = r_threshold
+			end
+
+			if effective_count < effective_threshold then
 				--this p station should have serviced the current r station, lock it so it can't serve any others
 				--this will lock stations even when the r station manages to find a p station, this not a problem because all stations will be unlocked before it could be an issue
 				table_remove(p_stations, j)
@@ -392,6 +391,13 @@ local function tick_dispatch(map_data, mod_settings)
 			if p_prior == best_p_prior and best_p_to_r_dist > best_dist then
 				goto p_continue
 			end
+
+			if is_fluid then
+				slot_threshold = effective_threshold
+			else
+				slot_threshold = ceil(effective_threshold/get_stack_size(map_data, item_name))
+			end
+
 			if correctness < 1 then
 				correctness = 1
 				closest_to_correct_p_station = p_station
