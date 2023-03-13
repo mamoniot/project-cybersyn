@@ -11,6 +11,7 @@
         "? space-exploration >= 0.6.94",
         "? miniloader",
         "? nullius",
-        "? pypostprocessing"
+        "? pypostprocessing",
+        "! LtnManager"
     ]
 }

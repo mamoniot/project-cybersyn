@@ -124,6 +124,8 @@
 ---@field public stuck_train_alert_enabled boolean --interface setting
 ---@field public react_to_train_at_incorrect_station boolean --interface setting
 ---@field public react_to_train_early_to_depot boolean --interface setting
+---@field public enable_manager boolean
+---@field public manager_update_rate int
 
 --if this is uncommented it means there are migrations to write
 

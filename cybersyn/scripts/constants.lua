@@ -30,6 +30,8 @@ SETTING_DISABLE_DEPOT_BYPASS = 6
 SETTING_ENABLE_SLOT_BARRING = 7
 
 NETWORK_SIGNAL_DEFAULT = {name="signal-A", type="virtual"}
+NETWORK_SIGNAL_GUI_DEFAULT = {name="signal-each", type="virtual"}
+NETWORK_ANYTHING = "signal-anything"
 NETWORK_EACH = "signal-each"
 INACTIVITY_TIME = 100
 LOCK_TRAIN_TIME = 60*60*60*24*7

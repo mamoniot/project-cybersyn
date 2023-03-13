@@ -8,7 +8,7 @@ function depots_tab.build(widths)
   return {
     tab = {
       type = "tab",
-      caption = { "gui.ltnm-depots" },
+      caption = { "cybersyn-gui.depots" },
       ref = { "depots", "tab" },
       actions = {
         on_click = { gui = "main", action = "change_tab", tab = "depots" },
@@ -25,7 +25,7 @@ function depots_tab.build(widths)
         style_mods = { right_padding = 4 },
         templates.sort_checkbox(widths, "depots", "name", true, nil, true),
         templates.sort_checkbox(widths, "depots", "network_id", false),
-        templates.sort_checkbox(widths, "depots", "status", false, { "gui.ltnm-status-description" }),
+        templates.sort_checkbox(widths, "depots", "status", false, { "cybersyn-gui.status-description" }),
         templates.sort_checkbox(widths, "depots", "trains", false),
       },
       { type = "scroll-pane", style = "ltnm_table_scroll_pane", ref = { "depots", "scroll_pane" } },
@@ -37,7 +37,7 @@ function depots_tab.build(widths)
         {
           type = "label",
           style = "ltnm_semibold_label",
-          caption = { "gui.ltnm-no-depots" },
+          caption = { "cybersyn-gui.no-depots" },
           ref = { "depots", "warning_label" },
         },
       },

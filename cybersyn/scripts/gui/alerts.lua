@@ -12,7 +12,7 @@ function alerts_tab.build(widths)
   return {
     tab = {
       type = "tab",
-      caption = { "gui.ltnm-alerts" },
+      caption = { "cybersyn-gui.alerts" },
       ref = { "alerts", "tab" },
       actions = {
         on_click = { gui = "main", action = "change_tab", tab = "alerts" },
@@ -36,7 +36,7 @@ function alerts_tab.build(widths)
           type = "sprite-button",
           style = "tool_button_red",
           sprite = "utility/trash",
-          tooltip = { "gui.ltnm-delete-all-alerts" },
+          tooltip = { "cybersyn-gui.delete-all-alerts" },
           ref = { "alerts", "delete_all_button" },
           actions = {
             on_click = { gui = "main", action = "delete_all_alerts" },
@@ -52,7 +52,7 @@ function alerts_tab.build(widths)
         {
           type = "label",
           style = "ltnm_semibold_label",
-          caption = { "gui.ltnm-no-alerts" },
+          caption = { "cybersyn-gui.no-alerts" },
           ref = { "alerts", "warning_label" },
         },
       },
@@ -121,7 +121,7 @@ function alerts_tab.update(self)
               type = "label",
               style = "ltnm_clickable_semibold_label",
               style_mods = { width = widths.alerts.train_id, horizontal_align = "center" },
-              tooltip = { "gui.ltnm-open-train-gui" },
+              tooltip = { "cybersyn-gui.open-train-gui" },
             },
             {
               type = "flow",
@@ -153,7 +153,7 @@ function alerts_tab.update(self)
               type = "sprite-button",
               style = "tool_button_red",
               sprite = "utility/trash",
-              tooltip = { "gui.ltnm-delete-alert" },
+              tooltip = { "cybersyn-gui.delete-alert" },
             },
           })
         end
@@ -185,8 +185,8 @@ function alerts_tab.update(self)
           { elem_mods = { caption = util.signed_int32(alerts_entry.train.network_id) } },
           {
             elem_mods = {
-              caption = { "gui.ltnm-alert-" .. string.gsub(alerts_entry.type, "_", "-") },
-              tooltip = { "gui.ltnm-alert-" .. string.gsub(alerts_entry.type, "_", "-") .. "-description" },
+              caption = { "cybersyn-gui.alert-" .. string.gsub(alerts_entry.type, "_", "-") },
+              tooltip = { "cybersyn-gui.alert-" .. string.gsub(alerts_entry.type, "_", "-") .. "-description" },
             },
           },
           {},

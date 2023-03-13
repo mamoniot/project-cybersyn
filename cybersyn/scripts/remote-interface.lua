@@ -243,6 +243,7 @@ function interface.update_stop_from_rail(rail, forbidden_entity, force_update)
 	update_stop_from_rail(global, rail, forbidden_entity, force_update)
 end
 
+
 ------------------------------------------------------------------
 --[[unsafe API]]
 ------------------------------------------------------------------

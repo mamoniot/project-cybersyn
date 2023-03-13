@@ -4,7 +4,7 @@ local mod_gui = require("__core__.lualib.mod-gui")
 local manager = require("scripts.gui.manager")
 
 --- @class Manager
---- @field players table<int, PlayerData>
+--- @field players table<uint, PlayerData>
 --- @field item_order table<string, int>
 
 --- @class PlayerData
@@ -18,6 +18,7 @@ local manager = require("scripts.gui.manager")
 --- @field trains_orderings uint[]
 --- @field trains_orderings_invert boolean[]
 --- @field pinning boolean
+--- @field selected_tab string?
 
 
 
@@ -46,7 +47,7 @@ end
 local manager_gui = {}
 
 function manager_gui.on_lua_shortcut(e)
-	if e.prototype_name == "ltnm-toggle-gui" then
+	if e.prototype_name == "cybersyn-toggle-gui" then
 		manager.wrapper(e, manager.handle.manager_toggle)
 	end
 end
@@ -65,7 +66,7 @@ function manager_gui.on_player_created(e)
 	}
 	global.manager.players[e.player_index] = player_data
 
-	manager.update(global, player, player_data)
+	--manager.update(global, player, player_data)
 	--top_left_button_update(player, player_data)
 end
 
@@ -90,6 +91,21 @@ function manager_gui.on_runtime_mod_setting_changed(e)
 		top_left_button_update(player, player_data)
 	end
 end
+
+commands.add_command("cybersyn_rebuild_manager_windows", nil, function(command)
+	local manager_data = global.manager
+	if manager_data then
+		
+		---@param v PlayerData
+		for i, v in pairs(manager_data.players) do
+			local player = game.get_player(i)
+			if player ~= nil then
+				v.refs.manager_window.destroy()
+				v.refs = manager.create(player)
+			end
+		end
+	end
+end)
 
 
 --- @param manager Manager
@@ -134,5 +150,18 @@ function manager_gui.on_init()
 	init_items(global.manager)
 end
 --gui.handle_events()
+
+---@param global cybersyn.global
+function manager_gui.tick(global)
+	local manager_data = global.manager
+	if manager_data then
+		for i, v in pairs(manager_data.players) do
+			if v.is_manager_open then
+				local query_limit = settings.get_player_settings(i)["cybersyn-manager-result-limit"].value
+				manager.update(global, v, query_limit)
+			end
+		end
+	end
+end
 
 return manager_gui
