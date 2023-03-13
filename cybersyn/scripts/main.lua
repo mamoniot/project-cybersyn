@@ -133,7 +133,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		r_threshold = 0,
 		locked_slots = 0,
 		--network_name = set_station_from_comb,
-		--network_flag = set_station_from_comb,
+		network_flag = 0,
 		wagon_combs = nil,
 		deliveries = {},
 		accepted_layouts = {},
