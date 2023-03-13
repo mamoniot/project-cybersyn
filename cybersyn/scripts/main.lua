@@ -693,24 +693,28 @@ end
 ---@param schedule TrainSchedule
 ---@param stop LuaEntity
 ---@param old_surface_index uint
-local function se_add_direct_to_station_order(schedule, stop, old_surface_index)
+---@param search_start uint
+local function se_add_direct_to_station_order(schedule, stop, old_surface_index, search_start)
+	--assert(search_start ~= 1 or schedule.current == 1)
 	local surface_i = stop.surface.index
 	if surface_i ~= old_surface_index then
 		local name = stop.backer_name
 		local records = schedule.records
-		for i = schedule.current, #records do
+		for i = search_start, #records do
 			if records[i].station == name then
 				if i == 1 then
-					--we are assuming this is the depot order
+					--i == search_start == 1 only if schedule.current == 1, so we can append this order to the very end of the list and let it wrap around
 					records[#records + 1] = create_direct_to_station_order(stop)
 					schedule.current = #records--[[@as uint]]
+					return 2
 				else
 					table_insert(records, i, create_direct_to_station_order(stop))
+					return i + 2--[[@as uint]]
 				end
-				break
 			end
 		end
 	end
+	return search_start
 end
 local function setup_se_compat()
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
@@ -781,28 +785,34 @@ local function setup_se_compat()
 
 		local schedule = train_entity.schedule
 		if schedule then
-			if train.status == STATUS_TO_P then
-				local stop = map_data.stations[train.p_station_id].entity_stop
-				if stop.valid then
-					se_add_direct_to_station_order(schedule, stop, old_surface_index)
-				end
-			end
-			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
-				local stop = map_data.stations[train.r_station_id].entity_stop
-				if stop.valid then
-					se_add_direct_to_station_order(schedule, stop, old_surface_index)
-				end
-			end
-			if train.status == STATUS_TO_F then
-				local stop = map_data.refuelers[train.refueler_id].entity_stop
-				if stop.valid then
-					se_add_direct_to_station_order(schedule, stop, old_surface_index)
-				end
-			end
+			--this code relies on train chedules being in this specific order to work
+			local start = schedule.current
+			--check depot
 			if not train.use_any_depot then
 				local stop = map_data.depots[train.depot_id].entity_stop
 				if stop.valid then
-					se_add_direct_to_station_order(schedule, stop, old_surface_index)
+					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
+				end
+			end
+			--check provider
+			if train.status == STATUS_TO_P then
+				local stop = map_data.stations[train.p_station_id].entity_stop
+				if stop.valid then
+					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
+				end
+			end
+			--check requester
+			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
+				local stop = map_data.stations[train.r_station_id].entity_stop
+				if stop.valid then
+					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
+				end
+			end
+			--check refueler
+			if train.status == STATUS_TO_F then
+				local stop = map_data.refuelers[train.refueler_id].entity_stop
+				if stop.valid then
+					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
 				end
 			end
 			train_entity.schedule = schedule
