@@ -26,14 +26,14 @@ data:extend({
 
   --{
   --  type = "shortcut",
-  --  name = "ltnm-toggle-gui",
+  --  name = "cybersyn-toggle-gui",
   --  icon = data_util.build_sprite(nil, { 0, 0 }, util.paths.shortcut_icons, 32, 2),
   --  disabled_icon = data_util.build_sprite(nil, { 48, 0 }, util.paths.shortcut_icons, 32, 2),
   --  small_icon = data_util.build_sprite(nil, { 0, 32 }, util.paths.shortcut_icons, 24, 2),
   --  disabled_small_icon = data_util.build_sprite(nil, { 36, 32 }, util.paths.shortcut_icons, 24, 2),
   --  toggleable = true,
   --  action = "lua",
-  --  associated_control_input = "ltnm-toggle-gui",
+  --  associated_control_input = "cybersyn-toggle-gui",
   --  technology_to_unlock = "logistic-train-network",
   --},
 })

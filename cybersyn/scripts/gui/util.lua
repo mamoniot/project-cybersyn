@@ -33,11 +33,35 @@ function util.gui_list(parent, iterator, test, build, update, ...)
   end
 end
 
+--- Builds a valid sprite path or returns nil
+--- @param item string
+--- @return string, string, string
+function util.generate_item_references(item)
+  local sprite = nil
+  local image_path = ""
+  local item_name = ""
+  if game.is_valid_sprite_path("item/" .. item) then
+    sprite = "item/" .. item
+    image_path = "[img=item." .. item .. "]"
+    item_name = "item-name." .. item
+  elseif game.is_valid_sprite_path("fluid/" .. item) then
+    sprite = "fluid/" .. item
+    image_path = "[img=fluid." .. item .. "]"
+    item_name = "fluid-name." .. item
+  elseif game.is_valid_sprite_path("virtual-signal/" .. item) then
+    sprite = "virtual-signal/" .. item
+    image_path = "[img=virtual-signal." .. item .. "]"
+    item_name = "virtual-signal." .. item
+  end
+  return sprite, image_path, item_name
+end
+
+
 --- Updates a slot table based on the passed criteria.
 --- @param manifest Manifest
 --- @param color string
 --- @return GuiElemDef[]
-function util.slot_table_build(manifest, color)
+function util.slot_table_build_from_manifest(manifest, color)
   ---@type GuiElemDef[]
   local children = {}
   for _, item in pairs(manifest) do
@@ -66,6 +90,125 @@ function util.slot_table_build(manifest, color)
   return children
 end
 
+--- @param station Station
+--- @param color string
+--- @return GuiElemDef[]
+function util.slot_table_build_from_station(station)
+  ---@type GuiElemDef[]
+  local children = {}
+  local comb1_signals, comb2_signals = get_signals(station)
+  if comb1_signals then
+    for _, v in pairs(comb1_signals) do
+      local item = v.signal
+      if item.type == "virtual" then
+        goto continue
+      end
+      local count = v.count
+      local name = item.name
+      local sprite, img_path, item_string = util.generate_item_references(name)
+      if sprite ~= nil then
+        local color
+        if count > 0 then
+          color = "green"
+        else
+          color = "red"
+        end
+        if game.is_valid_sprite_path(sprite) then
+          children[#children + 1] = {
+            type = "sprite-button",
+            enabled = false,
+            style = "ltnm_small_slot_button_" .. color,
+            sprite = sprite,
+            tooltip = {
+              "",
+              img_path,
+              { item_string },
+              "\n"..format.number(count),
+            },
+            number = count
+          }
+        end
+      end
+      ::continue::
+    end
+  end
+  return children
+end
+
+function util.slot_table_build_from_deliveries(station)
+  ---@type GuiElemDef[]
+  local children = {}
+  local deliveries = station.deliveries
+  
+  for item, count in pairs(deliveries) do
+    
+    local sprite, img_path, item_string = util.generate_item_references(item)
+    if sprite ~= nil then
+      local color
+      if count > 0 then
+        color = "green"
+      else
+        color = "blue"
+      end
+      if game.is_valid_sprite_path(sprite) then
+        children[#children + 1] = {
+          type = "sprite-button",
+          enabled = false,
+          style = "ltnm_small_slot_button_" .. color,
+          sprite = sprite,
+          tooltip = {
+            "",
+            img_path,
+            { item_string },
+            "\n"..format.number(count),
+          },
+          number = count
+        }
+      end
+    end
+  end
+  return children
+end
+
+--- @param station Station
+--- @return GuiElemDef[]
+function util.slot_table_build_from_control_signals(station)
+  ---@type GuiElemDef[]
+  local children = {}
+  local comb1_signals, comb2_signals = get_signals(station)
+  if comb1_signals then
+    for _, v in pairs(comb1_signals) do
+      local item = v.signal
+      local count = v.count
+      local name = item.name
+      local sprite = ""
+      local color = "default"
+      if item.type ~= "virtual" then 
+        goto continue
+      else
+        sprite = "virtual-signal" .. "/" .. name
+      end
+      if game.is_valid_sprite_path(sprite) then
+        children[#children + 1] = {
+          type = "sprite-button",
+          enabled = false,
+          style = "ltnm_small_slot_button_" .. color,
+          sprite = sprite,
+          tooltip = {
+            "",
+            "[img=virtual-signal." .. name  .. "]",
+            { "virtual-signal-name." .. name },
+            "\n"..format.number(count),
+          },
+          number = count
+        }
+      end
+      ::continue::
+    end
+  end
+  return children
+end
+
 function util.sorted_iterator(arr, src_tbl, sort_state)
   local step = sort_state and 1 or -1
   local i = sort_state and 1 or #arr
@@ -84,6 +227,23 @@ end
 local MAX_INT = 2147483648 -- math.pow(2, 31)
 function util.signed_int32(val)
   return (val >= MAX_INT and val - (2 * MAX_INT)) or val
+end
+
+function util.close_manager_window(player, player_data, refs)
+  if player_data.pinning then
+		return
+	end
+
+	refs.manager_window.visible = false
+	player_data.visible = false
+
+	if player.opened == refs.manager_window then
+		player.opened = nil
+	end
+
+	player_data.is_manager_open = false
+	player.set_shortcut_toggled("cybersyn-toggle-gui", false)
+
 end
 
 return util

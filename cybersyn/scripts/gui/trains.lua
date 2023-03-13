@@ -12,7 +12,7 @@ local trains_tab = {}
 --- @param map_data MapData
 --- @param player_data PlayerData
 --- @return GuiElemDef
-function trains_tab.build(map_data, player_data)
+function trains_tab.build(map_data, player_data, query_limit)
 	local widths = constants.gui["en"]
 
 	local search_item = player_data.search_item
@@ -22,6 +22,8 @@ function trains_tab.build(map_data, player_data)
 
 
 	local trains_sorted = {}
+
+	local i = 0
 	for id, train in pairs(map_data.trains) do
 		if search_network_name then
 			if search_network_name ~= train.network_name then
@@ -70,6 +72,10 @@ function trains_tab.build(map_data, player_data)
 		end
 
 		trains_sorted[#trains_sorted + 1] = id
+		i = i + 1
+		if query_limit ~= -1 and i >= query_limit then
+			break
+		end
 		::continue::
 	end
 
@@ -133,7 +139,7 @@ function trains_tab.build(map_data, player_data)
 		train_list[1] = {
 			type = "label",
 			style = "ltnm_semibold_label",
-			caption = { "gui.ltnm-no-trains" },
+			caption = { "cybersyn-gui.no-trains" },
 		}
 	else
 		for idx, train_id in ipairs(trains_sorted) do
@@ -156,7 +162,7 @@ function trains_tab.build(map_data, player_data)
 							{
 								type = "button",
 								style = "ltnm_train_minimap_button",
-								tooltip = { "gui.ltnm-open-train-gui" },
+								tooltip = { "cybersyn-gui.open-train-gui" },
 								elem_mods = { entity = get_any_train_entity(train.entity) },
 								handler = trains_tab.handle.open_train_gui, --on_click
 								tags = { train_id = train_id },
@@ -197,7 +203,7 @@ function trains_tab.build(map_data, player_data)
 		tab = {
 			name = "trains_tab",
 			type = "tab",
-			caption = #trains_sorted == 0 and { "gui.ltnm-trains" } or { "gui.ltnm-trains", #train_list },
+			caption = #trains_sorted == 0 and { "cybersyn-gui.trains" } or { "cybersyn-gui.trains", #train_list },
 			--badge_text = format.number(#ltn_data.sorted_trains.composition),
 			handler = trains_tab.handle.change_tab, --on_click
 			tags = { tab = "trains_tab" },
@@ -212,7 +218,7 @@ function trains_tab.build(map_data, player_data)
 					type = "frame",
 					style = "ltnm_table_toolbar_frame",
 					templates.sort_checkbox(widths, "trains", "status", false),
-					templates.sort_checkbox(widths, "trains", "layout", false, { "gui.ltnm-composition-description" }),
+					templates.sort_checkbox(widths, "trains", "layout", false, { "cybersyn-gui.composition-description" }),
 					templates.sort_checkbox(widths, "trains", "depot", false),
 					templates.sort_checkbox(widths, "trains", "shipment", false),
 				},

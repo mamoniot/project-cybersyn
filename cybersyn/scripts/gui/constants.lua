@@ -85,14 +85,14 @@ constants.gui_content_frame_height = 744
 constants.gui_inventory_table_height = 40 * 18
 
 constants.gui_translations = {
-  delivering_to = { "gui.ltnm-delivering-to" },
-  fetching_from = { "gui.ltnm-fetching-from" },
-  loading_at = { "gui.ltnm-loading-at" },
-  not_available = { "gui.ltnm-not-available" },
-  parked_at_depot_with_residue = { "gui.ltnm-parked-at-depot-with-residue" },
-  parked_at_depot = { "gui.ltnm-parked-at-depot" },
-  returning_to_depot = { "gui.ltnm-returning-to-depot" },
-  unloading_at = { "gui.ltnm-unloading-at" },
+  delivering_to = { "cybersyn-gui.delivering-to" },
+  fetching_from = { "cybersyn-gui.fetching-from" },
+  loading_at = { "cybersyn-gui.loading-at" },
+  not_available = { "cybersyn-gui.not-available" },
+  parked_at_depot_with_residue = { "cybersyn-gui.parked-at-depot-with-residue" },
+  parked_at_depot = { "cybersyn-gui.parked-at-depot" },
+  returning_to_depot = { "cybersyn-gui.returning-to-depot" },
+  unloading_at = { "cybersyn-gui.unloading-at" },
 }
 
 constants.input_sanitizers = {
@@ -144,8 +144,7 @@ constants.ltn_event_names = {
 if script then
   constants.open_station_gui_tooltip = {
     "",
-    { "gui.ltnm-open-station-gui" },
-    remote.interfaces["ltn-combinator"] and { "", "\n", { "gui.ltnm-open-ltn-combinator-gui" } } or nil,
+    { "cybersyn-gui.open-station-gui" },
   }
 end
 
