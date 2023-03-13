@@ -116,7 +116,7 @@ data:extend({
 		name = "cybersyn-manager-enabled",
 		order = "aa",
 		setting_type = "startup",
-		default_value = true,
+		default_value = false,
 	},
 	{
 		type = "int-setting",
