@@ -86,7 +86,7 @@
 ---@field public use_any_depot true?
 ---@field public disable_bypass true?
 ---@field public network_name string? --can only be nil when the train is parked at a depot
----@field public network_flag int
+---@field public network_flag int|{[string]: int} --transient
 ---@field public priority int
 ---@field public refueler_id uint?
 ---@field public se_is_being_teleported true? --se only
