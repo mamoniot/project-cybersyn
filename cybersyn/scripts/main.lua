@@ -4,7 +4,6 @@ local manager = require('gui.main')
 local ceil = math.ceil
 local table_insert = table.insert
 local table_remove = table.remove
-local mod_gui = require("__core__.lualib.mod-gui")
 
 
 
@@ -959,12 +958,6 @@ local function main()
 		script.on_nth_tick(mod_settings.manager_update_rate, function()
 			manager.tick(global)
 		end)
-	else
-		local button_flow = mod_gui.get_button_flow(player)
-		local button = button_flow["top_left_button"]
-		if button then
-		    button.destroy()
-		end
 	end
 
 end
