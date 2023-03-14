@@ -4,6 +4,7 @@ local manager = require('gui.main')
 local ceil = math.ceil
 local table_insert = table.insert
 local table_remove = table.remove
+local mod_gui = require("__core__.lualib.mod-gui")
 
 
 
