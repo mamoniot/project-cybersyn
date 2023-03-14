@@ -1,4 +1,14 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.14
+Date: 2023-3-14
+  Features:
+    - Added opt-in WIP train and station manager gui (highly experimental, use at your own risk)
+  Bugfixes:
+    - Provider override thresholds now correctly override the required train capacity as well; fix contributed by shopt
+    - Fixed a rare crash relating to an uninitialized network mask on a new station
+    - Fixed a SE space elevator bug that caused incorrect orders when the provider and requester station had the same name
+    - Added an incompatibility error with picker dollies, proper compatibility to come in a later update
+---------------------------------------------------------------------------------------------------
 Version: 1.2.13
 Date: 2023-2-5
   Features:
