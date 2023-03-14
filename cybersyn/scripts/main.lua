@@ -949,6 +949,12 @@ local function main()
 		script.on_nth_tick(mod_settings.manager_update_rate, function()
 			manager.tick(global)
 		end)
+	else
+		local button_flow = mod_gui.get_button_flow(player)
+		local button = button_flow["top_left_button"]
+		if button then
+		    button.destroy()
+		end
 	end
 
 end
