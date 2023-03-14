@@ -821,6 +821,13 @@ local function setup_se_compat()
 	end)
 end
 
+local function setup_picker_dollies_compat()
+	IS_PICKER_DOLLIES_PRESENT = remote.interfaces["PickerDollies"] and remote.interfaces["PickerDollies"]["add_blacklist_name"]
+	if IS_PICKER_DOLLIES_PRESENT then
+		remote.call("PickerDollies", "add_blacklist_name", COMBINATOR_NAME)
+		remote.call("PickerDollies", "add_blacklist_name", COMBINATOR_OUT_NAME)
+	end
+end
 
 local function grab_all_settings()
 	mod_settings.enable_planner = settings.global["cybersyn-enable-planner"].value --[[@as boolean]]
@@ -924,6 +931,7 @@ local function main()
 		mod_settings.invert_sign = false
 		init_global()
 		setup_se_compat()
+		setup_picker_dollies_compat()
 		if MANAGER_ENABLED then
 			manager.on_init()
 		end
@@ -939,6 +947,7 @@ local function main()
 
 	script.on_load(function()
 		setup_se_compat()
+		setup_picker_dollies_compat()
 	end)
 
 	if MANAGER_ENABLED then
