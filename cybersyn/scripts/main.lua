@@ -4,7 +4,6 @@ local manager = require('gui.main')
 local ceil = math.ceil
 local table_insert = table.insert
 local table_remove = table.remove
-local mod_gui = require("__core__.lualib.mod-gui")
 
 
 
@@ -955,16 +954,11 @@ local function main()
 		script.on_event(defines.events.on_player_removed, manager.on_player_removed)
 		script.on_event(defines.events.on_player_created, manager.on_player_created)
 		script.on_event(defines.events.on_lua_shortcut, manager.on_lua_shortcut)
+        script.on_event("cybersyn-toggle-gui", manager.on_lua_shortcut)
 		-- TODO: rework this to work as a per-player runtime setting
 		script.on_nth_tick(mod_settings.manager_update_rate, function()
 			manager.tick(global)
 		end)
-	else
-		local button_flow = mod_gui.get_button_flow(player)
-		local button = button_flow["top_left_button"]
-		if button then
-		    button.destroy()
-		end
 	end
 
 end

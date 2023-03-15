@@ -48,8 +48,8 @@ function manager.create(player)
 							tooltip = { "cybersyn-gui.dispatcher-disabled-description" },
 							visible = not settings.global["cybersyn-enable-planner"].value,
 						},
-						templates.frame_action_button("manager_pin_button", "ltnm_pin", { "cybersyn-gui.keep-open" }, manager.handle.manager_pin),--on_gui_clicked
-						templates.frame_action_button("manager_refresh_button", "ltnm_refresh", { "cybersyn-gui.refresh-tooltip" }, manager.handle.manager_refresh_click),--on_gui_clicked
+						--templates.frame_action_button("manager_pin_button", "ltnm_pin", { "cybersyn-gui.keep-open" }, manager.handle.manager_pin),--on_gui_clicked
+						--templates.frame_action_button("manager_refresh_button", "ltnm_refresh", { "cybersyn-gui.refresh-tooltip" }, manager.handle.manager_refresh_click),--on_gui_clicked
 						templates.frame_action_button(nil, "utility/close", { "gui.close-instruction" }, manager.handle.manager_close),--on_gui_clicked
 					},
 				},
@@ -69,7 +69,6 @@ function manager.create(player)
 									clear_and_focus_on_right_click = true,
 									handler = manager.handle.manager_update_text_search, --on_gui_text_changed
 								},
-								--item search box commented out. It *works*, but, the filtering logic only checks delivieres, so I'm not sure what Mami intended it for, so I'm leaving it off for now...
 								{ type = "label", style = "subheader_caption_label", caption = { "cybersyn-gui.search-item-label" } },
 								{ type= "choose-elem-button", name="manager_item_filter", style="slot_button_in_shallow_frame", elem_type="signal", handler=manager.handle.manager_update_item_search, },
 								{ type = "empty-widget", style = "flib_horizontal_pusher" },
