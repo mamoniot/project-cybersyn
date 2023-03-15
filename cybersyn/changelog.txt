@@ -2,7 +2,7 @@
 Version: 1.2.14
 Date: 2023-3-14
   Features:
-    - Added opt-in WIP train and station manager gui (highly experimental, use at your own risk)
+    - Added opt-in WIP inventory and station manager gui (highly experimental, use at your own risk)
   Bugfixes:
     - Provider override thresholds now correctly override the required train capacity as well; fix contributed by shopt
     - Fixed a rare crash relating to an uninitialized network mask on a new station
