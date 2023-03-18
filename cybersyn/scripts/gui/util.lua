@@ -245,4 +245,20 @@ function util.close_manager_window(player, player_data, refs)
 
 end
 
+function util.build_train_layout_table(map_data)
+  local layouts = map_data.layouts
+  local layouts_table = {}
+  for i, v in pairs(layouts) do
+    local layout_string = table.concat(v, ",")
+    layout_string = layout_string.gsub(layout_string, "0", "[item=locomotive]")
+    layout_string = layout_string.gsub(layout_string, "1", "[item=cargo-wagon]")
+    layout_string = layout_string.gsub(layout_string, "2", "[item=fluid-wagon]")
+    layout_string = layout_string.gsub(layout_string, ",", "")
+    layouts_table[i] = layout_string
+  end
+  return layouts_table
+
+  
+end
+
 return util

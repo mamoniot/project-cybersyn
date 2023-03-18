@@ -28,8 +28,9 @@ function trains_tab.create(widths)
 				{
 					type = "frame",
 					style = "ltnm_table_toolbar_frame",
+					templates.sort_checkbox(widths, "trains", "train_id", false),
 					templates.sort_checkbox(widths, "trains", "status", false),
-					templates.sort_checkbox(widths, "trains", "layout", false, { "cybersyn-gui.composition-description" }),
+					templates.sort_checkbox(widths, "trains", "layout", false),
 					templates.sort_checkbox(widths, "trains", "depot", false),
 					templates.sort_checkbox(widths, "trains", "shipment", false),
 				},
@@ -60,6 +61,8 @@ function trains_tab.build(map_data, player_data, query_limit)
 	local trains = map_data.trains
 
 	local trains_sorted = {}
+
+	local layouts_table = util.build_train_layout_table(map_data)
 
 	local i = 0
 	for id, train in pairs(trains) do
@@ -108,7 +111,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 				goto continue
 			end
 			for i, v in ipairs(train.manifest) do
-				if string.match(v.name, search_item) then
+				if v.name == search_item then
 					goto has_match
 				end
 			end
@@ -204,7 +207,12 @@ function trains_tab.build(map_data, player_data, query_limit)
 			if train.manifest ~= nil then
 				manifest = train.manifest
 			end
-
+			local network_sprite = "utility/close_black"
+			local network_name = train.network_name
+			local network_id = train.network_flag
+			if network_name then
+				network_sprite, _, _ = util.generate_item_references(network_name)
+			end
 			local color = idx % 2 == 0 and "dark" or "light"
 			gui.add(scroll_pane, {
 				type = "frame",
@@ -216,7 +224,8 @@ function trains_tab.build(map_data, player_data, query_limit)
 							type = "minimap",
 							name = "train_minimap",
 							style = "ltnm_train_minimap",
-							{ type = "label", style = "ltnm_minimap_label" },
+
+							{ type = "label", style = "ltnm_minimap_label", caption = train_id },
 							{
 								type = "button",
 								style = "ltnm_train_minimap_button",
@@ -227,9 +236,15 @@ function trains_tab.build(map_data, player_data, query_limit)
 						},
 					},
 					{
+						type = "frame",
+						style = "ltnm_table_row_frame_" .. color,
+						style_mods = { width = widths.trains.status },
+						{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = network_sprite, number = network_id },
+					},
+					{
 						type = "label",
-						style_mods = { width = widths.trains.composition },
-						caption = train.layout_id,
+						style_mods = { width = widths.trains.layout },
+						caption = layouts_table[train.layout_id],
 					},
 					{
 						type = "label",
