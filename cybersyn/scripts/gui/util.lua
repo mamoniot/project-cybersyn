@@ -64,27 +64,26 @@ end
 function util.slot_table_build_from_manifest(manifest, color)
   ---@type GuiElemDef[]
   local children = {}
-  for _, item in pairs(manifest) do
-    local name = item.name
-    local sprite
-    if item.type then
-      sprite = item.type .. "/" .. name
-    else
-      sprite = string.gsub(name, ",", "/")
-    end
-    if game.is_valid_sprite_path(sprite) then
-      children[#children + 1] = {
-        type = "sprite-button",
-        enabled = false,
-        style = "ltnm_small_slot_button_" .. color,
-        sprite = sprite,
-        tooltip = {
-          "",
-          "[img=" .. sprite  .. "]",
-          { "item-name." .. name },
-          "\n"..format.number(count),
-        },
-      }
+  if manifest then
+    for _, item in pairs(manifest) do
+      local name = item.name
+      local count = item.count
+      local sprite, img_path, item_string = util.generate_item_references(name)
+      if game.is_valid_sprite_path(sprite) then
+        children[#children + 1] = {
+          type = "sprite-button",
+          enabled = false,
+          style = "ltnm_small_slot_button_" .. color,
+          sprite = sprite,
+          number = count,
+          tooltip = {
+            "",
+          img_path,
+            { item_string },
+            "\n"..format.number(count),
+          },
+        }
+      end
     end
   end
   return children
@@ -244,6 +243,22 @@ function util.close_manager_window(player, player_data, refs)
 	player_data.is_manager_open = false
 	player.set_shortcut_toggled("cybersyn-toggle-gui", false)
 
+end
+
+function util.build_train_layout_table(map_data)
+  local layouts = map_data.layouts
+  local layouts_table = {}
+  for i, v in pairs(layouts) do
+    local layout_string = table.concat(v, ",")
+    layout_string = layout_string.gsub(layout_string, "0", "[item=locomotive]")
+    layout_string = layout_string.gsub(layout_string, "1", "[item=cargo-wagon]")
+    layout_string = layout_string.gsub(layout_string, "2", "[item=fluid-wagon]")
+    layout_string = layout_string.gsub(layout_string, ",", "")
+    layouts_table[i] = layout_string
+  end
+  return layouts_table
+
+  
 end
 
 return util
