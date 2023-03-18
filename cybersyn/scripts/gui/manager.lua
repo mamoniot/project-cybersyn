@@ -10,7 +10,7 @@ local trains_tab = require("scripts.gui.trains")
 --local depots_tab = require("scripts.gui.depots")
 local inventory_tab = require("scripts.gui.inventory")
 --local history_tab = require("scripts.gui.history")
---local alerts_tab = require("scripts.gui.alerts")
+local alerts_tab = require("scripts.gui.alerts")
 local util = require("scripts.gui.util")
 
 
@@ -100,6 +100,7 @@ function manager.create(player)
 							trains_tab.create(widths),
 							stations_tab.create(widths),
 							inventory_tab.create(),
+							alerts_tab.create(widths),
 							selected_tab_index = 1,
 						},
 					},
@@ -164,6 +165,8 @@ function manager.update(map_data, player_data, query_limit)
 		inventory_tab.build(map_data, player_data)
 	elseif player_data.selected_tab == "trains_tab" then
 		trains_tab.build(map_data, player_data, query_limit)
+	elseif player_data.selected_tab == "alerts_tab" then
+		alerts_tab.build(map_data, player_data)
 	end
 end
 
