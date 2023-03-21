@@ -39,14 +39,14 @@ function inventory_tab.build(map_data, player_data)
 	local search_network_name = player_data.search_network_name
 	local search_network_mask = player_data.search_network_mask
 	local search_surface_idx = player_data.search_surface_idx
-  
+
   local inventory_provided = {}
   local inventory_in_transit = {}
   local inventory_requested = {}
 
   local stations_sorted = {}
 
-  
+
 
   for id, station in pairs(map_data.stations) do
 		local entity = station.entity_stop
@@ -61,12 +61,9 @@ function inventory_tab.build(map_data, player_data)
 		end
 		-- move surface comparison up higher in query to short circuit query earlier if surface doesn't match
     if search_surface_idx then
-			if search_surface_idx == -1 then
-				goto has_match
-			elseif entity.surface.index ~= search_surface_idx then
+			if entity.surface.index ~= search_surface_idx then
 				goto continue
 			end
-			::has_match::
 		end
 		if search_network_name then
       if search_network_name == (NETWORK_EACH or NETWORK_ANYTHING) then
@@ -76,21 +73,21 @@ function inventory_tab.build(map_data, player_data)
 				goto continue
 			end
       ::has_match::
-			local train_flag = get_network_flag(station, station.network_name)
+			local train_flag = get_network_mask(station, station.network_name)
 			if not bit32.btest(search_network_mask, train_flag) then
 				goto continue
 			end
 		elseif search_network_mask ~= -1 then
 			if station.network_name == NETWORK_EACH then
-				local masks = station.network_flag--[[@as {}]]
-				for _, network_flag in pairs(masks) do
-					if bit32.btest(search_network_mask, network_flag) then
+				local masks = station.network_mask--[[@as {}]]
+				for _, network_mask in pairs(masks) do
+					if bit32.btest(search_network_mask, network_mask) then
 						goto has_match
 					end
 				end
 				goto continue
 				::has_match::
-			elseif not bit32.btest(search_network_mask, station.network_flag) then
+			elseif not bit32.btest(search_network_mask, station.network_mask) then
 				goto continue
 			end
 		end

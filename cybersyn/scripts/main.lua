@@ -65,7 +65,7 @@ local function on_refueler_built(map_data, stop, comb)
 		--allows_all_trains = set_refueler_from_comb,
 		--priority = set_refueler_from_comb,
 		--network_name = set_refueler_from_comb,
-		--network_flag = set_refueler_from_comb,
+		--network_mask = set_refueler_from_comb,
 	}
 	local id = stop.unit_number--[[@as uint]]
 	map_data.refuelers[id] = refueler
@@ -94,7 +94,7 @@ function on_refueler_broken(map_data, refueler_id, refueler)
 	end
 	local f, a
 	if refueler.network_name == NETWORK_EACH then
-		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
+		f, a = pairs(refueler.network_mask--[[@as {[string]: int}]])
 	else
 		f, a = once, refueler.network_name
 	end
@@ -133,7 +133,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		r_threshold = 0,
 		locked_slots = 0,
 		--network_name = set_station_from_comb,
-		network_flag = 0,
+		network_mask = 0,
 		wagon_combs = nil,
 		deliveries = {},
 		accepted_layouts = {},
@@ -752,7 +752,7 @@ local function setup_se_compat()
 		if train.is_available then
 			local f, a
 			if train.network_name == NETWORK_EACH then
-				f, a = next, train.network_flag
+				f, a = next, train.network_mask
 			else
 				f, a = once, train.network_name
 			end
@@ -836,26 +836,34 @@ local function grab_all_settings()
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
 	mod_settings.priority = settings.global["cybersyn-priority"].value--[[@as int]]
 	mod_settings.locked_slots = settings.global["cybersyn-locked-slots"].value--[[@as int]]
-	mod_settings.network_flag = settings.global["cybersyn-network-flag"].value--[[@as int]]
+	mod_settings.network_mask = settings.global["cybersyn-network-flag"].value--[[@as int]]
 	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
 	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value--[[@as boolean]]
 	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
+	mod_settings.manager_ups = settings.global["cybersyn-manager-updates-per-second"].value--[[@as int]]
 	mod_settings.manager_enabled = settings.startup["cybersyn-manager-enabled"].value--[[@as boolean]]
-	mod_settings.manager_update_rate = settings.startup["cybersyn-manager-update-rate"].value--[[@as int]]
+end
+local function register_tick()
+	script.on_nth_tick(nil)
+	if mod_settings.tps > DELTA then
+		local nth_tick_main = ceil(60/mod_settings.tps)--[[@as uint]]
+		script.on_nth_tick(nth_tick_main, function()
+			tick(global, mod_settings)
+		end)
+	end
+	if mod_settings.manager_enabled and mod_settings.manager_ups > DELTA then
+		local nth_tick_manager = ceil(60/mod_settings.manager_ups)--[[@as uint]]
+		script.on_nth_tick(nth_tick_manager, function()
+			manager.tick(global)
+		end)
+	end
 end
 local function on_settings_changed(event)
 	grab_all_settings()
-	if event.setting == "cybersyn-ticks-per-second" then
-		if mod_settings.tps > DELTA then
-			local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
-			script.on_nth_tick(nth_tick, function()
-				tick(global, mod_settings)
-			end)
-		else
-			script.on_nth_tick(nil)
-		end
+	if event.setting == "cybersyn-ticks-per-second" or event.setting == "cybersyn-manager-updates-per-second" then
+		register_tick()
 	end
 	manager.on_runtime_mod_setting_changed(event)
 	interface_raise_on_mod_settings_changed(event)
@@ -912,15 +920,6 @@ local function main()
 
 	register_gui_actions()
 
-	if mod_settings.tps > DELTA then
-		local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]];
-		script.on_nth_tick(nth_tick, function()
-			tick(global, mod_settings)
-		end)
-	else
-		script.on_nth_tick(nil)
-	end
-
 
 	local MANAGER_ENABLED = mod_settings.manager_enabled
 
@@ -954,13 +953,10 @@ local function main()
 		script.on_event(defines.events.on_player_removed, manager.on_player_removed)
 		script.on_event(defines.events.on_player_created, manager.on_player_created)
 		script.on_event(defines.events.on_lua_shortcut, manager.on_lua_shortcut)
-        script.on_event("cybersyn-toggle-gui", manager.on_lua_shortcut)
-		-- TODO: rework this to work as a per-player runtime setting
-		script.on_nth_tick(mod_settings.manager_update_rate, function()
-			manager.tick(global)
-		end)
+		script.on_event("cybersyn-toggle-gui", manager.on_lua_shortcut)
 	end
 
+	register_tick()
 end
 
 

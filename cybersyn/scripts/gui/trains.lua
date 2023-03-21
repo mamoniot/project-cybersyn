@@ -47,7 +47,6 @@ end
 
 --- @param map_data MapData
 --- @param player_data PlayerData
---- @return GuiElemDef
 function trains_tab.build(map_data, player_data, query_limit)
 	local widths = constants.gui["en"]
 	local refs = player_data.refs
@@ -57,7 +56,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 	local search_network_name = player_data.search_network_name
 	local search_network_mask = player_data.search_network_mask
 	local search_surface_idx = player_data.search_surface_idx
-	
+
 	local trains = map_data.trains
 
 	local trains_sorted = {}
@@ -73,29 +72,26 @@ function trains_tab.build(map_data, player_data, query_limit)
 			if search_network_name ~= train.network_name then
 				goto continue
 			end
-			local train_flag = get_network_flag(train, search_network_name)
+			local train_flag = get_network_mask(train, search_network_name)
 			if not bit32.btest(search_network_mask, train_flag) then
 				goto continue
 			end
 		elseif search_network_mask ~= -1 then
 			if train.network_name == NETWORK_EACH then
-				local masks = train.network_flag--[[@as {}]]
-				for _, network_flag in pairs(masks) do
-					if bit32.btest(search_network_mask, network_flag) then
+				local masks = train.network_mask--[[@as {}]]
+				for _, network_mask in pairs(masks) do
+					if bit32.btest(search_network_mask, network_mask) then
 						goto has_match
 					end
 				end
 				goto continue
 				::has_match::
-			elseif not bit32.btest(search_network_mask, train.network_flag) then
+			elseif not bit32.btest(search_network_mask, train.network_mask) then
 				goto continue
 			end
 		end
 
 		if search_surface_idx then
-			if search_surface_idx == -1 then
-				goto has_match
-			end
 			local entity = get_any_train_entity(train.entity)
 			if not entity then
 				goto continue
@@ -103,7 +99,6 @@ function trains_tab.build(map_data, player_data, query_limit)
 			if entity.surface.index ~= search_surface_idx then
 				goto continue
 			end
-			::has_match::
 		end
 
 		if search_item then
@@ -203,70 +198,73 @@ function trains_tab.build(map_data, player_data, query_limit)
 			else
 				locomotive = train_entity.locomotives["back_movers"][1]
 			end
-			local manifest = {}
-			if train.manifest ~= nil then
-				manifest = train.manifest
-			end
+			local manifest = train.manifest
 			local network_sprite = "utility/close_black"
 			local network_name = train.network_name
-			local network_id = train.network_flag
+			---@type int?
+			local network_id = nil
 			if network_name then
+				if network_name == NETWORK_EACH then
+					network_id = train.network_mask[search_network_name]--[[@as int?]]
+				else
+					network_id = train.network_mask--[[@as int]]
+				end
 				network_sprite, _, _ = util.generate_item_references(network_name)
 			end
 			local color = idx % 2 == 0 and "dark" or "light"
 			gui.add(scroll_pane, {
 				type = "frame",
 				style = "ltnm_table_row_frame_" .. color,
+				{
+					type = "frame",
+					style = "ltnm_table_inset_frame_" .. color,
 					{
-						type = "frame",
-						style = "ltnm_table_inset_frame_" .. color,
-						{
-							type = "minimap",
-							name = "train_minimap",
-							style = "ltnm_train_minimap",
+						type = "minimap",
+						name = "train_minimap",
+						style = "ltnm_train_minimap",
 
-							{ type = "label", style = "ltnm_minimap_label", caption = train_id },
-							{
-								type = "button",
-								style = "ltnm_train_minimap_button",
-								tooltip = { "cybersyn-gui.open-train-gui" },
-								tags = { train_id = train_id },
-								handler = trains_tab.handle.open_train_gui, --on_click
-							},
+						{ type = "label", style = "ltnm_minimap_label", caption = train_id },
+						{
+							type = "button",
+							style = "ltnm_train_minimap_button",
+							tooltip = { "cybersyn-gui.open-train-gui" },
+							tags = { train_id = train_id },
+							handler = trains_tab.handle.open_train_gui, --on_click
 						},
 					},
+				},
+				{
+					type = "frame",
+					style = "ltnm_table_row_frame_" .. color,
+					style_mods = { width = widths.trains.status },
+					{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = network_sprite, number = network_id },
+				},
+				{
+					type = "label",
+					style_mods = { width = widths.trains.layout },
+					caption = layouts_table[train.layout_id],
+				},
+				{
+					type = "label",
+					style_mods = { width = widths.trains.depot },
+					caption = depot_name,
+				},
+				{
+					type = "frame",
+					name = "shipment_frame",
+					style = "ltnm_small_slot_table_frame_" .. color,
+					style_mods = { width = widths.trains.shipment },
 					{
-						type = "frame",
-						style = "ltnm_table_row_frame_" .. color,
-						style_mods = { width = widths.trains.status },
-						{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = network_sprite, number = network_id },
+						type = "table",
+						name = "shipment_table",
+						style = "slot_table",
+						column_count = widths.trains.shipment_columns,
+						{  },
 					},
-					{
-						type = "label",
-						style_mods = { width = widths.trains.layout },
-						caption = layouts_table[train.layout_id],
-					},
-					{
-						type = "label",
-						style_mods = { width = widths.trains.depot },
-						caption = depot_name,
-					},
-					{
-						type = "frame",
-						name = "shipment_frame",
-						style = "ltnm_small_slot_table_frame_" .. color,
-						style_mods = { width = widths.trains.shipment },
-							{
-								type = "table",
-								name = "shipment_table",
-								style = "slot_table",
-								column_count = widths.trains.shipment_columns,
-								{  },
-							},
-						},
-					}, refs)
-					refs.train_minimap.entity = locomotive
-					gui.add(refs.shipment_table, util.slot_table_build_from_manifest(manifest, "default"))
+				},
+			}, refs)
+			refs.train_minimap.entity = locomotive
+			gui.add(refs.shipment_table, util.slot_table_build_from_manifest(manifest, "default"))
 		end
 	end
 end
@@ -289,17 +287,17 @@ function trains_tab.handle.open_train_gui(player, player_data, refs, e)
 	local train = global.trains[train_id]
 	local train_entity = train.entity
 
-    if not train_entity or not train_entity.valid then
-        util.error_flying_text(gui.player, { "message.ltnm-error-train-is-invalid" })
-        return
-    end
+	if not train_entity or not train_entity.valid then
+		util.error_flying_text(player, { "message.ltnm-error-train-is-invalid" })
+		return
+	end
 	train_util.open_gui(player.index, train_entity)
 end
 
 ---@param player LuaPlayer
 ---@param player_data PlayerData
 function trains_tab.handle.on_trains_tab_selected(player, player_data)
-    player_data.selected_tab = "trains_tab"
+	player_data.selected_tab = "trains_tab"
 end
 
 gui.add_handlers(trains_tab.handle, trains_tab.wrapper)
