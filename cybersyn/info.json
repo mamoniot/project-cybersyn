@@ -1,6 +1,6 @@
 {
     "name": "cybersyn",
-    "version": "1.2.11",
+    "version": "1.2.14",
     "title": "Project Cybersyn",
     "author": "Mami",
     "factorio_version": "1.1",
@@ -11,6 +11,7 @@
         "? space-exploration >= 0.6.94",
         "? miniloader",
         "? nullius",
-        "? pypostprocessing"
+        "? pypostprocessing",
+        "! LtnManager"
     ]
 }

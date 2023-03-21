@@ -37,7 +37,7 @@ constants.gui = {
     trains = {
       train_id = 90,
       status = 378,
-      layout = 200,
+      composition = 200,
       depot = 149,
       shipment = 36 * 6,
       shipment_columns = 6,
@@ -145,6 +145,7 @@ if script then
   constants.open_station_gui_tooltip = {
     "",
     { "cybersyn-gui.open-station-gui" },
+    remote.interfaces["ltn-combinator"] and { "", "\n", { "cybersyn-gui.open-ltn-combinator-gui" } } or nil,
   }
 end
 

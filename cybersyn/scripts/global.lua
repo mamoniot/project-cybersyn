@@ -86,7 +86,7 @@
 ---@field public use_any_depot true?
 ---@field public disable_bypass true?
 ---@field public network_name string? --can only be nil when the train is parked at a depot
----@field public network_flag int
+---@field public network_flag int|{[string]: int} --transient
 ---@field public priority int
 ---@field public refueler_id uint?
 ---@field public se_is_being_teleported true? --se only
@@ -124,6 +124,8 @@
 ---@field public stuck_train_alert_enabled boolean --interface setting
 ---@field public react_to_train_at_incorrect_station boolean --interface setting
 ---@field public react_to_train_early_to_depot boolean --interface setting
+---@field public enable_manager boolean
+---@field public manager_update_rate int
 
 --if this is uncommented it means there are migrations to write
 

@@ -4,9 +4,11 @@ local mod_gui = require("__core__.lualib.mod-gui")
 local manager = require("scripts.gui.manager")
 
 --- @class Manager
+--- @field players table<uint, PlayerData>
 --- @field item_order table<string, int>
 
 --- @class PlayerData
+--- @field is_manager_open boolean
 --- @field refs {[string]: LuaGuiElement}?
 --- @field search_query string?
 --- @field search_network_name string?
@@ -16,6 +18,7 @@ local manager = require("scripts.gui.manager")
 --- @field trains_orderings uint[]
 --- @field trains_orderings_invert boolean[]
 --- @field pinning boolean
+--- @field selected_tab string?
 
 
 
@@ -33,8 +36,8 @@ local function top_left_button_update(player, player_data)
 			name = "top_left_button",
 			style = "mis_mod_gui_button_green",
 			sprite = "mis_configure_white",
-			tooltip = { "", "\n", { "mis-config-gui.configure-tooltip" } },
-			handler = manager.handle.toggle,
+			tooltip = { "", "\n", { "cybersyn.gui.configure-tooltip" } },
+			handler = manager.handle.manager_toggle,
 		})
 	end
 end
@@ -44,8 +47,8 @@ end
 local manager_gui = {}
 
 function manager_gui.on_lua_shortcut(e)
-	if e.prototype_name == "ltnm-toggle-gui" then
-		manager.wrapper(e, manager.handle.toggle)
+	if e.prototype_name == "cybersyn-toggle-gui" or e.input_name == "cybersyn-toggle-gui" then
+		manager.wrapper(e, manager.handle.manager_toggle)
 	end
 end
 
@@ -61,14 +64,14 @@ function manager_gui.on_player_created(e)
 		pinning = false,
 		refs = manager.create(player),
 	}
-	global.manager_data.players[e.player_index] = player_data
+	global.manager.players[e.player_index] = player_data
 
-	manager.update(global, player, player_data)
-	top_left_button_update(player, player_data)
+	--manager.update(global, player, player_data)
+	--top_left_button_update(player, player_data)
 end
 
 function manager_gui.on_player_removed(e)
-	global.manager_data.players[e.player_index] = nil
+	global.manager.players[e.player_index] = nil
 end
 
 --script.on_event(defines.events.on_player_joined_game, function(e)
@@ -83,11 +86,26 @@ function manager_gui.on_runtime_mod_setting_changed(e)
 		local player = game.get_player(e.player_index)
 		if not player then return end
 
-		local player_data = global.manager_data.players[e.player_index]
+		local player_data = global.manager.players[e.player_index]
 		player_data.disable_top_left_button = player.mod_settings["cybersyn-disable-top-left-button"].value
 		top_left_button_update(player, player_data)
 	end
 end
+
+commands.add_command("cybersyn_rebuild_manager_windows", nil, function(command)
+	local manager_data = global.manager
+	if manager_data then
+		
+		---@param v PlayerData
+		for i, v in pairs(manager_data.players) do
+			local player = game.get_player(i)
+			if player ~= nil then
+				v.refs.manager_window.destroy()
+				v.refs = manager.create(player)
+			end
+		end
+	end
+end)
 
 
 --- @param manager Manager
@@ -121,14 +139,29 @@ local function init_items(manager)
 end
 
 
-function manager.on_migration()
+function manager_gui.on_migration()
 	init_items(global.manager)
 end
 
-function manager.on_init()
-	global.manager = {}
+function manager_gui.on_init()
+	global.manager = {
+		players = {},
+	}
 	init_items(global.manager)
 end
 --gui.handle_events()
+
+---@param global cybersyn.global
+function manager_gui.tick(global)
+	local manager_data = global.manager
+	if manager_data then
+		for i, v in pairs(manager_data.players) do
+			if v.is_manager_open then
+				local query_limit = settings.get_player_settings(i)["cybersyn-manager-result-limit"].value
+				manager.update(global, v, query_limit)
+			end
+		end
+	end
+end
 
 return manager_gui

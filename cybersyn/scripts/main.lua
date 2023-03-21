@@ -1,7 +1,10 @@
 --By Mami
+local manager = require('gui.main')
+
 local ceil = math.ceil
 local table_insert = table.insert
 local table_remove = table.remove
+
 
 
 ---@param map_data MapData
@@ -130,7 +133,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		r_threshold = 0,
 		locked_slots = 0,
 		--network_name = set_station_from_comb,
-		--network_flag = set_station_from_comb,
+		network_flag = 0,
 		wagon_combs = nil,
 		deliveries = {},
 		accepted_layouts = {},
@@ -690,24 +693,28 @@ end
 ---@param schedule TrainSchedule
 ---@param stop LuaEntity
 ---@param old_surface_index uint
-local function se_add_direct_to_station_order(schedule, stop, old_surface_index)
+---@param search_start uint
+local function se_add_direct_to_station_order(schedule, stop, old_surface_index, search_start)
+	--assert(search_start ~= 1 or schedule.current == 1)
 	local surface_i = stop.surface.index
 	if surface_i ~= old_surface_index then
 		local name = stop.backer_name
 		local records = schedule.records
-		for i = schedule.current, #records do
+		for i = search_start, #records do
 			if records[i].station == name then
 				if i == 1 then
-					--we are assuming this is the depot order
+					--i == search_start == 1 only if schedule.current == 1, so we can append this order to the very end of the list and let it wrap around
 					records[#records + 1] = create_direct_to_station_order(stop)
 					schedule.current = #records--[[@as uint]]
+					return 2
 				else
 					table_insert(records, i, create_direct_to_station_order(stop))
+					return i + 2--[[@as uint]]
 				end
-				break
 			end
 		end
 	end
+	return search_start
 end
 local function setup_se_compat()
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
@@ -778,28 +785,34 @@ local function setup_se_compat()
 
 		local schedule = train_entity.schedule
 		if schedule then
-			if train.status == STATUS_TO_P then
-				local stop = map_data.stations[train.p_station_id].entity_stop
-				if stop.valid then
-					se_add_direct_to_station_order(schedule, stop, old_surface_index)
-				end
-			end
-			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
-				local stop = map_data.stations[train.r_station_id].entity_stop
-				if stop.valid then
-					se_add_direct_to_station_order(schedule, stop, old_surface_index)
-				end
-			end
-			if train.status == STATUS_TO_F then
-				local stop = map_data.refuelers[train.refueler_id].entity_stop
-				if stop.valid then
-					se_add_direct_to_station_order(schedule, stop, old_surface_index)
-				end
-			end
+			--this code relies on train chedules being in this specific order to work
+			local start = schedule.current
+			--check depot
 			if not train.use_any_depot then
 				local stop = map_data.depots[train.depot_id].entity_stop
 				if stop.valid then
-					se_add_direct_to_station_order(schedule, stop, old_surface_index)
+					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
+				end
+			end
+			--check provider
+			if train.status == STATUS_TO_P then
+				local stop = map_data.stations[train.p_station_id].entity_stop
+				if stop.valid then
+					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
+				end
+			end
+			--check requester
+			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
+				local stop = map_data.stations[train.r_station_id].entity_stop
+				if stop.valid then
+					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
+				end
+			end
+			--check refueler
+			if train.status == STATUS_TO_F then
+				local stop = map_data.refuelers[train.refueler_id].entity_stop
+				if stop.valid then
+					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
 				end
 			end
 			train_entity.schedule = schedule
@@ -808,6 +821,13 @@ local function setup_se_compat()
 	end)
 end
 
+local function setup_picker_dollies_compat()
+	IS_PICKER_DOLLIES_PRESENT = remote.interfaces["PickerDollies"] and remote.interfaces["PickerDollies"]["add_blacklist_name"]
+	if IS_PICKER_DOLLIES_PRESENT then
+		remote.call("PickerDollies", "add_blacklist_name", COMBINATOR_NAME)
+		remote.call("PickerDollies", "add_blacklist_name", COMBINATOR_OUT_NAME)
+	end
+end
 
 local function grab_all_settings()
 	mod_settings.enable_planner = settings.global["cybersyn-enable-planner"].value --[[@as boolean]]
@@ -822,6 +842,8 @@ local function grab_all_settings()
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value--[[@as boolean]]
 	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
+	mod_settings.manager_enabled = settings.startup["cybersyn-manager-enabled"].value--[[@as boolean]]
+	mod_settings.manager_update_rate = settings.startup["cybersyn-manager-update-rate"].value--[[@as int]]
 end
 local function on_settings_changed(event)
 	grab_all_settings()
@@ -835,6 +857,7 @@ local function on_settings_changed(event)
 			script.on_nth_tick(nil)
 		end
 	end
+	manager.on_runtime_mod_setting_changed(event)
 	interface_raise_on_mod_settings_changed(event)
 end
 
@@ -898,6 +921,9 @@ local function main()
 		script.on_nth_tick(nil)
 	end
 
+
+	local MANAGER_ENABLED = mod_settings.manager_enabled
+
 	script.on_init(function()
 		local setting = settings.global["cybersyn-invert-sign"]
 		setting.value = false
@@ -905,13 +931,36 @@ local function main()
 		mod_settings.invert_sign = false
 		init_global()
 		setup_se_compat()
+		setup_picker_dollies_compat()
+		if MANAGER_ENABLED then
+			manager.on_init()
+		end
 	end)
 
-	script.on_configuration_changed(on_config_changed)
+
+	script.on_configuration_changed(function(e)
+		on_config_changed(e)
+		if MANAGER_ENABLED then
+			manager.on_migration()
+		end
+	end)
 
 	script.on_load(function()
 		setup_se_compat()
+		setup_picker_dollies_compat()
 	end)
+
+	if MANAGER_ENABLED then
+		script.on_event(defines.events.on_player_removed, manager.on_player_removed)
+		script.on_event(defines.events.on_player_created, manager.on_player_created)
+		script.on_event(defines.events.on_lua_shortcut, manager.on_lua_shortcut)
+        script.on_event("cybersyn-toggle-gui", manager.on_lua_shortcut)
+		-- TODO: rework this to work as a per-player runtime setting
+		script.on_nth_tick(mod_settings.manager_update_rate, function()
+			manager.tick(global)
+		end)
+	end
+
 end
 
 
