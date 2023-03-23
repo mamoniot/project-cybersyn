@@ -639,7 +639,7 @@ local function on_broken(event)
 	elseif entity.type == "inserter" then
 		update_stop_from_inserter(global, entity, entity)
 	elseif entity.type == "loader-1x1" then
-		update_stop_from_loader(global, entity)
+		update_stop_from_loader(global, entity, entity)
 	elseif entity.type == "pump" then
 		update_stop_from_pump(global, entity, entity)
 	elseif entity.type == "straight-rail" then

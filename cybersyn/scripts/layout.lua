@@ -690,7 +690,7 @@ function update_stop_from_loader(map_data, loader, forbidden_entity)
 				update_stop_from_rail(map_data, rails[1], forbidden_entity)
 			end
 		elseif direction == defines.direction.south then
-			position.y = position.y - 1 -- input and facing south -> move on Y axis down 1 unit
+			position.y = position.y + 1 -- input and facing south -> move on Y axis down 1 unit
 			local rails = surface.find_entities_filtered({
 				type = "straight-rail",
 				position = position,
@@ -710,7 +710,7 @@ function update_stop_from_loader(map_data, loader, forbidden_entity)
 				update_stop_from_rail(map_data, rails[1], forbidden_entity)
 			end
 		elseif direction == defines.direction.north then
-			position.y = position.y + 1 -- input and facing south -> move on Y axis up 1 unit
+			position.y = position.y - 1 -- input and facing south -> move on Y axis up 1 unit
 			local rails = surface.find_entities_filtered({
 				type = "straight-rail",
 				position = position,
@@ -732,7 +732,7 @@ function update_stop_from_loader(map_data, loader, forbidden_entity)
 				update_stop_from_rail(map_data, rails[1], forbidden_entity)
 			end
 		elseif direction == defines.direction.south then
-			position.y = position.y + 1 -- output and facing south -> move on Y axis up 1 unit
+			position.y = position.y - 1 -- output and facing south -> move on Y axis up 1 unit
 			local rails = surface.find_entities_filtered({
 				type = "straight-rail",
 				position = position,
@@ -752,7 +752,7 @@ function update_stop_from_loader(map_data, loader, forbidden_entity)
 				update_stop_from_rail(map_data, rails[1], forbidden_entity)
 			end
 		elseif direction == defines.direction.north then
-			position.y = position.y - 1 -- output and facing south -> move on Y axis down 1 unit
+			position.y = position.y + 1 -- output and facing south -> move on Y axis down 1 unit
 			local rails = surface.find_entities_filtered({
 				type = "straight-rail",
 				position = position,
