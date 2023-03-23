@@ -295,9 +295,25 @@ local migrations_table = {
 		end
 	end,
 	["1.2.14"] = function()
+	---@type MapData
+		local map_data = global
+
 		manager_gui.on_init()
 		for i, v in pairs(game.players) do
 			manager_gui.on_player_created({player_index = i})
+		end
+
+		for _, e in pairs(map_data.refuelers) do
+			e.network_mask = e.network_flag
+			e.network_flag = nil
+		end
+		for _, e in pairs(map_data.stations) do
+			e.network_mask = e.network_flag
+			e.network_flag = nil
+		end
+		for _, e in pairs(map_data.trains) do
+			e.network_mask = e.network_flag
+			e.network_flag = nil
 		end
 	end,
 }
@@ -305,6 +321,9 @@ local migrations_table = {
 
 ---@param data ConfigurationChangedData
 function on_config_changed(data)
+	for i, v in pairs(game.players) do
+		manager_gui.reset_player(i, v)
+	end
 	global.tick_state = STATE_INIT
 	global.tick_data = {}
 	flib_migration.on_config_changed(data, migrations_table)

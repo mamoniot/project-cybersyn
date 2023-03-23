@@ -57,8 +57,8 @@ end
 ---@param e Station|Refueler|Train
 ---@param network_name string
 ---@return int
-function get_network_flag(e, network_name)
-	return e.network_name == NETWORK_EACH and (e.network_flag[network_name] or 0) or e.network_flag--[[@as int]]
+function get_network_mask(e, network_name)
+	return e.network_name == NETWORK_EACH and (e.network_mask[network_name] or 0) or e.network_mask--[[@as int]]
 end
 
 
@@ -400,9 +400,9 @@ function set_station_from_comb(station)
 	if station.network_name ~= new_name then
 		station.network_name = new_name
 		if station.network_name == NETWORK_EACH then
-			station.network_flag = {}
+			station.network_mask = {}
 		else
-			station.network_flag = 0
+			station.network_mask = 0
 		end
 	end
 end
@@ -426,9 +426,9 @@ function set_train_from_comb(mod_settings, train, comb)
 
 	local is_each = train.network_name == NETWORK_EACH
 	if is_each then
-		train.network_flag = {}
+		train.network_mask = {}
 	else
-		train.network_flag = mod_settings.network_flag
+		train.network_mask = mod_settings.network_mask
 	end
 	train.priority = mod_settings.priority
 	local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
@@ -443,12 +443,12 @@ function set_train_from_comb(mod_settings, train, comb)
 						train.priority = item_count
 					elseif is_each then
 						if item_name ~= REQUEST_THRESHOLD and item_name ~= LOCKED_SLOTS then
-							train.network_flag[item_name] = item_count
+							train.network_mask[item_name] = item_count
 						end
 					end
 				end
 				if item_name == network_name then
-					train.network_flag = item_count
+					train.network_mask = item_count
 				end
 			end
 		end
@@ -464,7 +464,7 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 	local bits = params.second_constant or 0
 	local signal = params.first_signal
 	local old_network = refueler.network_name
-	local old_network_flag = refueler.network_flag
+	local old_network_mask = refueler.network_mask
 
 	refueler.network_name = signal and signal.name or nil
 	refueler.allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
@@ -473,10 +473,10 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 	local is_each = refueler.network_name == NETWORK_EACH
 	if is_each then
 		map_data.each_refuelers[id] = true
-		refueler.network_flag = {}
+		refueler.network_mask = {}
 	else
 		map_data.each_refuelers[id] = nil
-		refueler.network_flag = mod_settings.network_flag
+		refueler.network_mask = mod_settings.network_mask
 	end
 
 	local signals = refueler.entity_comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
@@ -491,12 +491,12 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 						refueler.priority = item_count
 					elseif is_each then
 						if item_name ~= REQUEST_THRESHOLD and item_name ~= LOCKED_SLOTS then
-							refueler.network_flag[item_name] = item_count
+							refueler.network_mask[item_name] = item_count
 						end
 					end
 				end
 				if item_name == refueler.network_name then
-					refueler.network_flag = item_count
+					refueler.network_mask = item_count
 				end
 			end
 		end
@@ -504,7 +504,7 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 
 	local f, a
 	if old_network == NETWORK_EACH then
-		f, a = pairs(old_network_flag--[[@as {[string]: int}]])
+		f, a = pairs(old_network_mask--[[@as {[string]: int}]])
 	elseif old_network ~= refueler.network_name then
 		f, a = once, old_network
 	else
@@ -521,7 +521,7 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 	end
 
 	if refueler.network_name == NETWORK_EACH then
-		f, a = pairs(refueler.network_flag--[[@as {[string]: int}]])
+		f, a = pairs(refueler.network_mask--[[@as {[string]: int}]])
 	elseif old_network ~= refueler.network_name then
 		f, a = once, refueler.network_name
 	else

@@ -67,7 +67,7 @@ function manager.create(player)
 									name = "manager_text_search_field",
 									type = "textfield",
 									clear_and_focus_on_right_click = true,
-									handler = manager.handle.manager_update_text_search, --on_gui_text_changed
+									handler = { [defines.events.on_gui_text_changed] = manager.handle.manager_update_text_search },
 								},
 								{ type = "label", style = "subheader_caption_label", caption = { "cybersyn-gui.search-item-label" } },
 								{ type= "choose-elem-button", name="manager_item_filter", style="slot_button_in_shallow_frame", elem_type="signal", handler=manager.handle.manager_update_item_search, },
@@ -83,13 +83,13 @@ function manager.create(player)
 									allow_negative = true,
 									clear_and_focus_on_right_click = true,
 									text = "-1",
-									handler = manager.handle.manager_update_network_mask, --on_gui_text_changed
+									handler = { [defines.events.on_gui_text_changed] = manager.handle.manager_update_network_mask },
 								},
 								{ type = "label", style = "caption_label", caption = { "cybersyn-gui.surface-label" } },
 								{
 									name = "manager_surface_dropdown",
 									type = "drop-down",
-									handler = manager.handle.manager_update_surface, --on_gui_selection_state_changed
+									handler = { [defines.events.on_gui_selection_state_changed] = manager.handle.manager_update_surface },
 								},
 							},
 						},
@@ -117,13 +117,13 @@ function manager.create(player)
 	return refs
 end
 
+--- @param player_data PlayerData
 function manager.build(player_data)
 	local refs = player_data.refs
-    -- Surface dropdown
+	-- Surface dropdown
 	--- @type LuaGuiElement
-    local surface_dropdown = refs.manager_surface_dropdown
-    local surfaces = game.surfaces
-	local selected_surface_id = player_data.search_surface_idx
+	local surface_dropdown = refs.manager_surface_dropdown
+	local surfaces = game.surfaces
 	local currently_selected_index = surface_dropdown.selected_index
 	local currently_selected_surface = nil
 	if currently_selected_index ~= (nil or 0) then
@@ -131,26 +131,23 @@ function manager.build(player_data)
 	end
 	surface_dropdown.clear_items()
 	surface_dropdown.add_item("all", 1)
-	i = 1
+	local i = 1
 	for name, _ in pairs(surfaces) do
 		i = i + 1
 		surface_dropdown.add_item(name, i)
 		--reselect same surface
 		if name == currently_selected_surface then
-			refs.manager_surface_dropdown.selected_index = i
+			refs.manager_surface_dropdown.selected_index = i--[[@as uint]]
 		end
 	end
-    -- Validate that the selected index still exist
-	if selected_surface_id then
-    	local selected_surface = game.get_surface(selected_surface_id)
-    	-- If the surface was invalidated since last update, reset to all
+	-- Validate that the selected index still exist
+	if player_data.search_surface_idx then
+		local selected_surface = game.get_surface(player_data.search_surface_idx)
+		-- If the surface was invalidated since last update, reset to all
 		if not selected_surface then
-			player_data.search_surface_idx = -1
+			player_data.search_surface_idx = nil
 		end
-	else
-		player_data.search_surface_idx = -1
 	end
-    
 end
 
 --- @param map_data MapData
@@ -274,7 +271,8 @@ end
 --- @param e GuiEventData
 function manager.handle.manager_update_item_search(player, player_data, refs, e)
 	local element = e.element
-	local signal = element.elem_value
+	if not element then return end
+	local signal = e.element.elem_value
 	if signal then
 		player_data.search_item = signal.name
 	else
@@ -286,8 +284,10 @@ end
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
+--- @param e GuiEventData
 function manager.handle.manager_update_network_name(player, player_data, refs, e)
 	local element = e.element
+	if not element then return end
 	local signal = element.elem_value
 	if signal then
 		player_data.search_network_name = signal.name
@@ -298,23 +298,28 @@ end
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
+--- @param e GuiEventData
 function manager.handle.manager_update_network_mask(player, player_data, refs, e)
 	player_data.search_network_mask = tonumber(e.text) or -1
+	e.text = tostring(player_data.search_network_mask)
 end
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
+--- @param e GuiEventData
 function manager.handle.manager_update_surface(player, player_data, refs, e)
-	--- @type LuaGuiElement
 	local element = e.element
+	if not element then return end
 	local i = element.selected_index
-	local refs = player_data.refs
-	local surface_id = -1
+	---@type uint?
+	local surface_id = nil
 	--all surfaces should always be the first entry with an index of 1
 	if i > 1 then
 		local surface_name = refs.manager_surface_dropdown.get_item(i)
 		local surface = game.get_surface(surface_name)
-		surface_id = surface.index
+		if surface then
+			surface_id = surface.index
+		end
 	end
 
 	player_data.search_surface_idx = surface_id

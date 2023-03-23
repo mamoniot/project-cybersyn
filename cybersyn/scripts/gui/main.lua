@@ -9,7 +9,7 @@ local manager = require("scripts.gui.manager")
 
 --- @class PlayerData
 --- @field is_manager_open boolean
---- @field refs {[string]: LuaGuiElement}?
+--- @field refs {[string]: LuaGuiElement}
 --- @field search_query string?
 --- @field search_network_name string?
 --- @field search_network_mask int
@@ -63,6 +63,7 @@ function manager_gui.on_player_created(e)
 		trains_orderings_invert = {},
 		pinning = false,
 		refs = manager.create(player),
+		selected_tab = "stations_tab",
 	}
 	global.manager.players[e.player_index] = player_data
 
@@ -95,7 +96,7 @@ end
 commands.add_command("cybersyn_rebuild_manager_windows", nil, function(command)
 	local manager_data = global.manager
 	if manager_data then
-		
+
 		---@param v PlayerData
 		for i, v in pairs(manager_data.players) do
 			local player = game.get_player(i)

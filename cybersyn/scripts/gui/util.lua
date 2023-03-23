@@ -58,7 +58,7 @@ end
 
 
 --- Updates a slot table based on the passed criteria.
---- @param manifest Manifest
+--- @param manifest Manifest?
 --- @param color string
 --- @return GuiElemDef[]
 function util.slot_table_build_from_manifest(manifest, color)
@@ -138,9 +138,9 @@ function util.slot_table_build_from_deliveries(station)
   ---@type GuiElemDef[]
   local children = {}
   local deliveries = station.deliveries
-  
+
   for item, count in pairs(deliveries) do
-    
+
     local sprite, img_path, item_string = util.generate_item_references(item)
     if sprite ~= nil then
       local color
@@ -182,7 +182,7 @@ function util.slot_table_build_from_control_signals(station)
       local name = item.name
       local sprite = ""
       local color = "default"
-      if item.type ~= "virtual" then 
+      if item.type ~= "virtual" then
         goto continue
       else
         sprite = "virtual-signal" .. "/" .. name
