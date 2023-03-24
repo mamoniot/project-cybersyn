@@ -165,4 +165,14 @@ function manager_gui.tick(global)
 	end
 end
 
+---@param i string|uint
+---@param v LuaPlayer
+function manager_gui.reset_player(i, v)
+	local player = game.get_player(i)
+	if player ~= nil then
+		v.refs.manager_window.destroy()
+		v.refs = manager.create(player)
+	end
+end
+
 return manager_gui
