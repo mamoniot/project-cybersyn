@@ -321,7 +321,7 @@ local migrations_table = {
 
 ---@param data ConfigurationChangedData
 function on_config_changed(data)
-	for i, v in pairs(game.players) do
+	for i, v in pairs(global.manager.players) do
 		manager_gui.reset_player(i, v)
 	end
 	global.tick_state = STATE_INIT
