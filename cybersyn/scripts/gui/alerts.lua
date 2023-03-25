@@ -165,7 +165,6 @@ function alerts_tab.build(map_data, player_data)
     refs.alerts_warning_flow.visible = true
     scroll_pane.visible = false
     refs.alerts_content_frame.style = "ltnm_main_warning_frame"
-    refs.delete_all_button.enabled = false
   end
 end
 
