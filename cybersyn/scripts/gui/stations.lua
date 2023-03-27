@@ -56,7 +56,6 @@ end
 
 --- @param map_data MapData
 --- @param player_data PlayerData
---- @return GuiElemDef
 function stations_tab.build(map_data, player_data, query_limit)
 
 	local widths = constants.gui["en"]
@@ -87,7 +86,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 				goto continue
 			end
 		end
-		
+
 		-- move surface comparison up higher in query to short circuit query earlier if surface doesn't match; this can exclude hundreds of stations instantly in SE
 		if search_surface_idx then
 			if search_surface_idx == -1 then
@@ -102,21 +101,21 @@ function stations_tab.build(map_data, player_data, query_limit)
 			if search_network_name ~= station.network_name then
 				goto continue
 			end
-			local train_flag = get_network_flag(station, station.network_name)
+			local train_flag = get_network_mask(station, station.network_name)
 			if not bit32.btest(search_network_mask, train_flag) then
 				goto continue
 			end
 		elseif search_network_mask ~= -1 then
 			if station.network_name == NETWORK_EACH then
-				local masks = station.network_flag--[[@as {}]]
-				for _, network_flag in pairs(masks) do
-					if bit32.btest(search_network_mask, network_flag) then
+				local masks = station.network_mask--[[@as {}]]
+				for _, network_mask in pairs(masks) do
+					if bit32.btest(search_network_mask, network_mask) then
 						goto has_match
 					end
 				end
 				goto continue
 				::has_match::
-			elseif not bit32.btest(search_network_mask, station.network_flag) then
+			elseif not bit32.btest(search_network_mask, station.network_mask) then
 				goto continue
 			end
 		end
@@ -222,10 +221,11 @@ function stations_tab.build(map_data, player_data, query_limit)
 	for i, station_id in pairs(stations_sorted) do
 		--- @type Station
 		local station = stations[station_id]
-        local network_sprite = "utility/close_black"
+		local network_sprite = "utility/close_black"
 		local network_name = station.network_name
-		local network_flag = get_network_flag(station, network_name)
-		if network_name ~= nil then
+		local network_mask = -1;
+		if network_name then
+			network_mask = get_network_mask(station, network_name)
 			network_sprite, _, _ = util.generate_item_references(network_name)
 		end
 		local color = i % 2 == 0 and "dark" or "light"
@@ -242,7 +242,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 			},
 			--templates.status_indicator(widths.stations.status, true), --repurposing status column for network name
 			{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = network_sprite, },
-			{ type = "label", style_mods = { width = widths.stations.network_id, horizontal_align = "center" }, caption = network_flag },
+			{ type = "label", style_mods = { width = widths.stations.network_id, horizontal_align = "center" }, caption = network_mask },
 			templates.small_slot_table(widths.stations, color, "provided_requested"),
 			templates.small_slot_table(widths.stations, color, "shipments"),
 			templates.small_slot_table(widths.stations, color, "control_signals"),
@@ -287,17 +287,17 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
 	local station_comb1 = station.entity_comb1
 	local station_comb2 = station.entity_comb2
 
-    if not station_entity or not station_entity.valid then
-        util.error_flying_text(player, { "message.ltnm-error-station-is-invalid" })
-        return
-    end
+	if not station_entity or not station_entity.valid then
+		util.error_flying_text(player, { "message.ltnm-error-station-is-invalid" })
+		return
+	end
 
-    if e.shift then
+	if e.shift then
 		if station_entity.surface ~= player.surface then
 			util.error_flying_text(player, { "cybersyn-message.error-cross-surface-camera-invalid" })
 		else
 			player.zoom_to_world(station_entity.position, 1, station_entity)
-				
+
 			rendering.draw_circle({
 				color = constants.colors.red.tbl,
 				target = station_entity.position,
@@ -311,7 +311,7 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
 
 			if not player_data.pinning then util.close_manager_window(player, player_data, refs) end
 		end
-    elseif e.control then
+	elseif e.control then
 		if station_comb1 ~= nil and station_comb1.valid then
 			player.opened = station_comb1
 		else
@@ -324,15 +324,15 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
 		else
 			util.error_flying_text(player, { "cybersyn-message.error-station-control-combinator-not-found" })
 		end
-    else
-        player.opened = station_entity
-    end
+	else
+		player.opened = station_entity
+	end
 end
 
 ---@param player LuaPlayer
 ---@param player_data PlayerData
 function stations_tab.handle.on_stations_tab_selected(player, player_data)
-    player_data.selected_tab = "stations_tab"
+	player_data.selected_tab = "stations_tab"
 end
 
 gui.add_handlers(stations_tab.handle, stations_tab.wrapper)

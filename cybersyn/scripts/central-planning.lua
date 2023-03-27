@@ -93,17 +93,17 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 			if item_i > 1 or r_is_each or p_is_each then
 				local f, a
 				if r_is_each then
-					f, a = pairs(r_station.network_flag--[[@as {[string]: int}]])
+					f, a = pairs(r_station.network_mask--[[@as {[string]: int}]])
 					if p_is_each then
 						for network_name, _ in f, a do
 							local item_network_name = network_name..":"..item.name
 							economy.all_r_stations[item_network_name] = nil
 							economy.all_p_stations[item_network_name] = nil
 						end
-						f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
+						f, a = pairs(p_station.network_mask--[[@as {[string]: int}]])
 					end
 				elseif p_is_each then
-					f, a = pairs(p_station.network_flag--[[@as {[string]: int}]])
+					f, a = pairs(p_station.network_mask--[[@as {[string]: int}]])
 				else
 					f, a = once, r_station.network_name
 				end
@@ -350,8 +350,8 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			p_flag = get_network_flag(p_station, network_name)
-			r_flag = get_network_flag(r_station, network_name)
+			p_flag = get_network_mask(p_station, network_name)
+			r_flag = get_network_mask(r_station, network_name)
 			netand = band(p_flag, r_flag)
 			if netand == 0 then
 				goto p_continue
@@ -413,7 +413,7 @@ local function tick_dispatch(map_data, mod_settings)
 			if trains then
 				for train_id, _ in pairs(trains) do
 					local train = map_data.trains[train_id]
-					local train_flag = get_network_flag(train, network_name)
+					local train_flag = get_network_mask(train, network_name)
 					if not btest(netand, train_flag) or train.se_is_being_teleported then
 						goto train_continue
 					end
@@ -551,9 +551,9 @@ local function tick_poll_station(map_data, mod_settings)
 	station.locked_slots = mod_settings.locked_slots
 	local is_each = station.network_name == NETWORK_EACH
 	if is_each then
-		station.network_flag = {}
+		station.network_mask = {}
 	else
-		station.network_flag = mod_settings.network_flag
+		station.network_mask = mod_settings.network_mask
 	end
 	local comb1_signals, comb2_signals = get_signals(station)
 	station.tick_signals = comb1_signals
@@ -594,12 +594,12 @@ local function tick_poll_station(map_data, mod_settings)
 					elseif item_name == LOCKED_SLOTS then
 						station.locked_slots = max(item_count, 0)
 					elseif is_each then
-						station.network_flag[item_name] = item_count
+						station.network_mask[item_name] = item_count
 					end
 					comb1_signals[k] = nil
 				end
 				if item_name == station.network_name then
-					station.network_flag = item_count
+					station.network_mask = item_count
 					comb1_signals[k] = nil
 				end
 			else
@@ -624,7 +624,7 @@ local function tick_poll_station(map_data, mod_settings)
 					is_requesting_nothing = false
 					local f, a
 					if station.network_name == NETWORK_EACH then
-						f, a = pairs(station.network_flag--[[@as {[string]: int}]])
+						f, a = pairs(station.network_mask--[[@as {[string]: int}]])
 					else
 						f, a = once, station.network_name
 					end
@@ -645,7 +645,7 @@ local function tick_poll_station(map_data, mod_settings)
 				if station.is_p and effective_item_count > 0 and item_count > 0 then
 					local f, a
 					if station.network_name == NETWORK_EACH then
-						f, a = pairs(station.network_flag--[[@as {[string]: int}]])
+						f, a = pairs(station.network_mask--[[@as {[string]: int}]])
 					else
 						f, a = once, station.network_name
 					end

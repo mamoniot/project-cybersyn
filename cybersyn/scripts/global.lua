@@ -42,7 +42,7 @@
 ---@field public r_threshold int >= 0 --transient
 ---@field public locked_slots int >= 0 --transient
 ---@field public network_name string?
----@field public network_flag int|{[string]: int} --transient
+---@field public network_mask int|{[string]: int} --transient
 ---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
 ---@field public deliveries {[string]: int}
 ---@field public accepted_layouts {[uint]: true?}
@@ -68,7 +68,7 @@
 ---@field public allows_all_trains true?
 ---@field public priority int
 ---@field public network_name string?
----@field public network_flag int|{[string]: int}
+---@field public network_mask int|{[string]: int}
 
 ---@class Train
 ---@field public entity LuaTrain --should only be invalid if se_is_being_teleported is true
@@ -86,7 +86,7 @@
 ---@field public use_any_depot true?
 ---@field public disable_bypass true?
 ---@field public network_name string? --can only be nil when the train is parked at a depot
----@field public network_flag int|{[string]: int} --transient
+---@field public network_mask int|{[string]: int} --transient
 ---@field public priority int
 ---@field public refueler_id uint?
 ---@field public se_is_being_teleported true? --se only
@@ -114,7 +114,7 @@
 ---@field public r_threshold int
 ---@field public priority int
 ---@field public locked_slots int
----@field public network_flag int
+---@field public network_mask int
 ---@field public warmup_time double
 ---@field public stuck_train_time double
 ---@field public fuel_threshold double
@@ -125,7 +125,7 @@
 ---@field public react_to_train_at_incorrect_station boolean --interface setting
 ---@field public react_to_train_early_to_depot boolean --interface setting
 ---@field public enable_manager boolean
----@field public manager_update_rate int
+---@field public manager_ups double
 
 --if this is uncommented it means there are migrations to write
 

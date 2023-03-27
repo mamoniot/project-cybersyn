@@ -80,7 +80,7 @@ function add_available_train(map_data, train_id, train)
 	if train.network_name then
 		local f, a
 		if train.network_name == NETWORK_EACH then
-			f, a = next, train.network_flag
+			f, a = next, train.network_mask
 		else
 			f, a = once, train.network_name
 		end
@@ -121,7 +121,7 @@ function remove_available_train(map_data, train_id, train)
 		train.is_available = nil
 		local f, a
 		if train.network_name == NETWORK_EACH then
-			f, a = next, train.network_flag
+			f, a = next, train.network_mask
 		else
 			f, a = once, train.network_name
 		end
@@ -195,7 +195,7 @@ local function on_train_arrives_depot(map_data, depot_id, depot, train_entity)
 			--use_any_depot = add_available_train_to_depot,
 			--disable_bypass = add_available_train_to_depot,
 			--network_name = add_available_train_to_depot,
-			--network_flag = add_available_train_to_depot,
+			--network_mask = add_available_train_to_depot,
 			--priority = add_available_train_to_depot,
 		}--[[@as Train]]
 		set_train_layout(map_data, train)
@@ -311,7 +311,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		else
 			local f, a
 			if train.network_name == NETWORK_EACH then
-				f, a = next, train.network_flag
+				f, a = next, train.network_mask
 			else
 				f, a = once, train.network_name
 			end
@@ -328,9 +328,9 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 						else
 							set_refueler_from_comb(map_data, mod_settings, id, refueler)
 
-							local refueler_network_flag = get_network_flag(refueler, network_name)
-							local train_network_flag = get_network_flag(train, network_name)
-							if btest(train_network_flag, refueler_network_flag) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
+							local refueler_network_mask = get_network_mask(refueler, network_name)
+							local train_network_mask = get_network_mask(train, network_name)
+							if btest(train_network_mask, refueler_network_mask) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
 								if refueler.priority >= best_prior then
 									local t = get_any_train_entity(train.entity)
 									local dist = t and get_dist(t, refueler.entity_stop) or INF
