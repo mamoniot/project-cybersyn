@@ -3,6 +3,8 @@ Version: 1.2.14
 Date: 2023-3-14
   Features:
     - Added opt-in WIP trains, inventory, and station manager gui (highly experimental, use at your own risk)
+  Changes:
+    - Improved the recipe derivation logic for the cybernetic combinator, in all modpacks it should now consistently be about as difficult to craft as an arthmetic combinator. Vanilla recipe is unchanged, but several overhaul mods will receive new recipes.
   Bugfixes:
     - Provider override thresholds now correctly override the required train capacity as well; fix contributed by shopt
     - Fixed a rare crash relating to an uninitialized network mask on a new station

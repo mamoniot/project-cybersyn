@@ -1,9 +1,10 @@
 --By Mami
 combinator_recipe = flib.copy_prototype(data.raw["recipe"]["arithmetic-combinator"], COMBINATOR_NAME)
-combinator_recipe.ingredients = {
-	{"copper-cable", 20},
-	{"electronic-circuit", 10},
-}
+--- Recipe is set in data-fixes-final, but in vanilla it should match below
+--combinator_recipe.ingredients = {
+--	{"copper-cable", 20},
+--	{"electronic-circuit", 10},aww
+--}
 combinator_recipe.enabled = false
 combinator_recipe.subgroup = data.raw["recipe"]["train-stop"].subgroup
 

@@ -33,3 +33,4 @@ compat:
 	cargo ships
 	editor extensions (test surface separation)
 	train fuel types for refuelers
+	automatic recipe creation
