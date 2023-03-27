@@ -18,6 +18,7 @@ for k, _ in pairs(recipe) do
 	for i, _ in pairs(recipe) do
 		if recipe[k][i] == "copper-cable" then
 			mult = 4
+			break;
 		end
 	end
 	for i, _ in pairs(recipe) do
