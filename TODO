@@ -1,10 +1,5 @@
-bugs:
-	https://github.com/mamoniot/project-cybersyn/issues/26
-	https://mods.factorio.com/mod/cybersyn/discussion/63afff871c9e44028b2acab8
-	https://mods.factorio.com/mod/cybersyn/discussion/63af6ed2f532e8870d639157
 
 major:
-	debug output
 	add in game guide
 	gui-based system readout:
 		absolute count of unfulfilled requests
