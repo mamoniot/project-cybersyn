@@ -842,7 +842,7 @@ local function grab_all_settings()
 	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
 	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value--[[@as boolean]]
 	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
-	mod_settings.manager_ups = settings.global["cybersyn-manager-updates-per-second"].value--[[@as int]]
+	mod_settings.manager_ups = settings.global["cybersyn-manager-updates-per-second"].value--[[@as double]]
 	mod_settings.manager_enabled = settings.startup["cybersyn-manager-enabled"].value--[[@as boolean]]
 end
 local function register_tick()

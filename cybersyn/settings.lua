@@ -103,11 +103,11 @@ data:extend({
 		default_value = false,
 	},
 	{
-		type = "int-setting",
+		type = "double-setting",
 		name = "cybersyn-manager-updates-per-second",
 		order = "ad",
 		setting_type = "runtime-global",
-		default_value = 30,
+		default_value = 1,
 		minimum_value = 0,
 		maximum_value = 60,
 	},
