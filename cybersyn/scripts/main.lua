@@ -624,7 +624,7 @@ local function on_built(event)
 		update_stop_from_loader(global, entity)
 	elseif entity.type == "pump" then
 		update_stop_from_pump(global, entity)
-	elseif entity.type == "straight-rail" then
+	elseif entity.type == "straight-rail" or entity.type == "curved-rail" then
 		update_stop_from_rail(global, entity)
 	end
 end
@@ -642,7 +642,7 @@ local function on_broken(event)
 		update_stop_from_loader(global, entity, entity)
 	elseif entity.type == "pump" then
 		update_stop_from_pump(global, entity, entity)
-	elseif entity.type == "straight-rail" then
+	elseif entity.type == "straight-rail" or entity.type == "curved-rail" then
 		update_stop_from_rail(global, entity, nil)
 	elseif entity.train then
 		local train_id = entity.train.id
@@ -876,6 +876,7 @@ local filter_built = {
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
+	{filter = "type", type = "curved-rail"},
 	{filter = "type", type = "loader-1x1"},
 }
 local filter_broken = {
@@ -884,6 +885,7 @@ local filter_broken = {
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
+	{filter = "type", type = "curved-rail"},
 	{filter = "type", type = "loader-1x1"},
 	{filter = "rolling-stock"},
 }

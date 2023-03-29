@@ -6,6 +6,10 @@ local ceil = math.ceil
 local min = math.min
 local max = math.max
 local bit_extract = bit32.extract
+local defines_front = defines.rail_direction.front
+local defines_back = defines.rail_direction.back
+local defines_straight = defines.rail_connection_direction.straight
+local search_type = {"straight-rail", "curved-rail"}
 
 
 ---@param layout_pattern (0|1|2|3)[]
@@ -417,7 +421,7 @@ function unset_wagon_combs(map_data, stop)
 	end
 end
 
-
+local type_filter = {"inserter", "pump", "arithmetic-combinator", "loader-1x1"}
 ---@param map_data MapData
 ---@param stop Station|Refueler
 ---@param is_station_or_refueler boolean
@@ -432,10 +436,10 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 		return
 	end
 	local rail_direction_from_stop
-	if stop.entity_stop.connected_rail_direction == defines.rail_direction.front then
-		rail_direction_from_stop = defines.rail_direction.back
+	if stop.entity_stop.connected_rail_direction == defines_front then
+		rail_direction_from_stop = defines_back
 	else
-		rail_direction_from_stop = defines.rail_direction.front
+		rail_direction_from_stop = defines_front
 	end
 	local stop_direction = stop.entity_stop.direction
 	local surface = stop.entity_stop.surface
@@ -446,38 +450,67 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 	local area_delta
 	local is_ver
 	if stop_direction == defines.direction.north then
-		search_area = {left_top = {x = middle_x - reach, y = middle_y}, right_bottom = {x = middle_x + reach, y = middle_y + 6}}
-		area_delta = {x = 0, y = 7}
+		search_area = {{middle_x - reach, middle_y}, {middle_x + reach, middle_y + 6}}
+		area_delta = {0, 7}
 		is_ver = true
 	elseif stop_direction == defines.direction.east then
-		search_area = {left_top = {y = middle_y - reach, x = middle_x - 6}, right_bottom = {y = middle_y + reach, x = middle_x}}
-		area_delta = {x = -7, y = 0}
+		search_area = {{middle_x - 6, middle_y - reach}, {middle_x, middle_y + reach}}
+		area_delta = {-7, 0}
 		is_ver = false
 	elseif stop_direction == defines.direction.south then
-		search_area = {left_top = {x = middle_x - reach, y = middle_y - 6}, right_bottom = {x = middle_x + reach, y = middle_y}}
-		area_delta = {x = 0, y = -7}
+		search_area = {{middle_x - reach, middle_y - 6}, {middle_x + reach, middle_y}}
+		area_delta = {0, -7}
 		is_ver = true
 	elseif stop_direction == defines.direction.west then
-		search_area = {left_top = {y = middle_y - reach, x = middle_x}, right_bottom = {y = middle_y + reach, x = middle_x + 6}}
-		area_delta = {x = 7, y = 0}
+		search_area = {{middle_x, middle_y - reach}, {middle_x + 6, middle_y + reach}}
+		area_delta = {7, 0}
 		is_ver = false
 	else
 		assert(false, "cybersyn: invalid stop direction")
 	end
-	local length = 2
+	local length = 1
+	---@type LuaEntity?
 	local pre_rail = stop_rail
 	local layout_pattern = {0}
-	local type_filter = {"inserter", "pump", "arithmetic-combinator", "loader-1x1"}
 	local wagon_number = 0
 	for i = 1, 112 do
-		local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({rail_direction = rail_direction_from_stop, rail_connection_direction = defines.rail_connection_direction.straight})
-		if not rail or not rail.valid then
-			is_break = true
-			break
+		if pre_rail then
+			local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({rail_direction = rail_direction_from_stop, rail_connection_direction = defines_straight})
+			if not rail or rail_connection_direction ~= defines_straight then
+				-- There is a curved rail or break in the tracks at this point
+				-- We are assuming it's a curved rail, maybe that's a bad assumption
+				-- We stop searching to expand the allow list after we see a curved rail
+				-- We are allowing up to 3 tiles of extra allow list usage on a curved rail
+				length = length + 3
+				pre_rail = nil
+			else
+				pre_rail = rail
+				length = length + 2
+			end
 		end
-		pre_rail = rail
-		length = length + 2
-		if length%7 <= 1 then
+		if length >= 6 or not pre_rail then
+			if not pre_rail then
+				if length <= 0 then
+					-- No point searching nothing
+					-- Once we hit a curve and process the 3 extra tiles we break here
+					-- This is the only breakpoint in this for loop
+					break
+				end
+				-- Minimize the search_area to include only the straight section of track and the 3 tiles of the curved rail
+				local missing_rail_length = 6 - length
+				if missing_rail_length > 0 then
+					if stop_direction == defines.direction.north then
+						search_area[2][2] = search_area[2][2] - missing_rail_length
+					elseif stop_direction == defines.direction.east then
+						search_area[1][1] = search_area[1][1] + missing_rail_length
+					elseif stop_direction == defines.direction.south then
+						search_area[1][2] = search_area[1][2] + missing_rail_length
+					else
+						search_area[2][1] = search_area[2][1] - missing_rail_length
+					end
+				end
+			end
+			length = length - 7
 			wagon_number = wagon_number + 1
 			local supports_cargo = false
 			local supports_fluid = false
@@ -486,7 +519,7 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 				type = type_filter,
 			})
 			for _, entity in pairs(entities) do
-				if entity.valid and entity ~= forbidden_entity then
+				if entity ~= forbidden_entity then
 					if entity.type == "inserter" then
 						if not supports_cargo then
 							local pos = entity.pickup_position
@@ -566,10 +599,6 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 			end
 			search_area = area.move(search_area, area_delta)
 		end
-		if rail_connection_direction ~= defines.rail_connection_direction.straight then
-			is_break = true
-			break
-		end
 	end
 	stop.layout_pattern = layout_pattern
 	if is_station_or_refueler then
@@ -594,46 +623,54 @@ function update_stop_if_auto(map_data, stop, is_station_or_refueler, forbidden_e
 end
 
 ---@param map_data MapData
+---@param entity LuaEntity
+---@param forbidden_entity LuaEntity?
+---@param force boolean?
+local function resolve_update_stop_from_rail(map_data, entity, forbidden_entity, force)
+	local id = entity.unit_number--[[@as uint]]
+	local is_station = true
+	---@type Station|Refueler
+	local stop = map_data.stations[id]
+	if not stop then
+		stop = map_data.refuelers[id]
+		is_station = false
+	end
+	if stop and stop.entity_stop.valid then
+		if force then
+			reset_stop_layout(map_data, stop, is_station, forbidden_entity)
+		elseif not stop.allows_all_trains then
+			reset_stop_layout(map_data, stop, is_station, forbidden_entity)
+		end
+	end
+end
+---@param map_data MapData
 ---@param rail LuaEntity
 ---@param forbidden_entity LuaEntity?
 ---@param force boolean?
 function update_stop_from_rail(map_data, rail, forbidden_entity, force)
 	--NOTE: is this a correct way to figure out the direction?
+	---@type LuaEntity?
+	local rail_front = rail
+	---@type LuaEntity?
+	local rail_back = rail
 	---@type defines.rail_direction
-	local rail_direction = defines.rail_direction.back
-	local entity = rail.get_rail_segment_entity(rail_direction, false)
-	if not entity then
-		rail_direction = defines.rail_direction.front
-		entity = rail.get_rail_segment_entity(rail_direction, false)
-	end
 	for i = 1, 112 do
-		if not entity or not entity.valid then
-			return
-		end
-		if entity.name == "train-stop" then
-			local id = entity.unit_number--[[@as uint]]
-			local is_station = true
-			---@type Station|Refueler
-			local stop = map_data.stations[id]
-			if not stop then
-				stop = map_data.refuelers[id]
-				is_station = false
+		if rail_back then
+			local entity = rail_back.get_rail_segment_entity(defines_back, false)
+			if entity and entity.name == "train-stop" then
+				resolve_update_stop_from_rail(map_data, entity, forbidden_entity, force)
+				return
 			end
-			if stop and stop.entity_stop.valid then
-				if force then
-					reset_stop_layout(map_data, stop, is_station, forbidden_entity)
-				elseif not stop.allows_all_trains then
-					reset_stop_layout(map_data, stop, is_station, forbidden_entity)
-				end
+			rail_back = rail_back.get_connected_rail({rail_direction = defines_back, rail_connection_direction = defines_straight})
+		end
+		if rail_front then
+			local entity = rail_front.get_rail_segment_entity(defines_front, false)
+			if entity and entity.name == "train-stop" then
+				resolve_update_stop_from_rail(map_data, entity, forbidden_entity, force)
+				return
 			end
-			return
+			rail_front = rail_front.get_connected_rail({rail_direction = defines_front, rail_connection_direction = defines_straight})
 		end
-
-		rail = rail.get_connected_rail({rail_direction = rail_direction, rail_connection_direction = defines.rail_connection_direction.straight})--[[@as LuaEntity]]
-		if not rail or not rail.valid then
-			return
-		end
-		entity = rail.get_rail_segment_entity(rail_direction, false)
 	end
 end
 
@@ -650,20 +687,46 @@ end
 ---@param forbidden_entity LuaEntity?
 function update_stop_from_inserter(map_data, inserter, forbidden_entity)
 	local surface = inserter.surface
+	local pos0 = inserter.position
+	local pos1 = inserter.pickup_position
+	local pos2 = inserter.drop_position
+	local has_found = false
 
-	--NOTE: we don't use find_entity solely for miniloader compat
 	local rails = surface.find_entities_filtered({
-		type = "straight-rail",
-		position = inserter.pickup_position,
-		radius = 1,
+		type = search_type,
+		position = pos1,
+	})
+	if rails[1] then
+		update_stop_from_rail(map_data, rails[1], forbidden_entity)
+		has_found = true
+	end
+	rails = surface.find_entities_filtered({
+		type = search_type,
+		position = pos2,
+	})
+	if rails[1] then
+		update_stop_from_rail(map_data, rails[1], forbidden_entity)
+		has_found = true
+	end
+	if has_found then
+		return
+	end
+	-- We need to check secondary positions because of weird modded inserters.
+	-- Mostly because of miniloaders not aligning with the hitbox of a rail by default.
+	pos1.x = pos1.x + 0.2*(pos1.x - pos0.x)
+	pos1.y = pos1.y + 0.2*(pos1.y - pos0.y)
+	pos2.x = pos2.x + 0.2*(pos2.x - pos0.x)
+	pos2.y = pos2.y + 0.2*(pos2.y - pos0.y)
+	rails = surface.find_entities_filtered({
+		type = search_type,
+		position = pos1,
 	})
 	if rails[1] then
 		update_stop_from_rail(map_data, rails[1], forbidden_entity)
 	end
 	rails = surface.find_entities_filtered({
-		type = "straight-rail",
-		position = inserter.drop_position,
-		radius = 1,
+		type = search_type,
+		position = pos2,
 	})
 	if rails[1] then
 		update_stop_from_rail(map_data, rails[1], forbidden_entity)
@@ -681,86 +744,29 @@ function update_stop_from_loader(map_data, loader, forbidden_entity)
 	if loader_type == "input" then --loading train
 		if direction == defines.direction.east then
 			position.x = position.x + 1 -- input and facing east -> move on X axis 1 to the right
-			local rails = surface.find_entities_filtered({
-				type = "straight-rail",
-				position = position,
-				radius = 1,
-			})
-			if rails[1] then
-				update_stop_from_rail(map_data, rails[1], forbidden_entity)
-			end
 		elseif direction == defines.direction.south then
 			position.y = position.y + 1 -- input and facing south -> move on Y axis down 1 unit
-			local rails = surface.find_entities_filtered({
-				type = "straight-rail",
-				position = position,
-				radius = 1,
-			})
-			if rails[1] then
-				update_stop_from_rail(map_data, rails[1], forbidden_entity)
-			end
 		elseif direction == defines.direction.west then
 			position.x = position.x - 1 -- input and facing west -> move on X axis 1 to the left
-			local rails = surface.find_entities_filtered({
-				type = "straight-rail",
-				position = position,
-				radius = 1,
-			})
-			if rails[1] then
-				update_stop_from_rail(map_data, rails[1], forbidden_entity)
-			end
 		elseif direction == defines.direction.north then
 			position.y = position.y - 1 -- input and facing south -> move on Y axis up 1 unit
-			local rails = surface.find_entities_filtered({
-				type = "straight-rail",
-				position = position,
-				radius = 1,
-			})
-			if rails[1] then
-				update_stop_from_rail(map_data, rails[1], forbidden_entity)
-			end
 		end
 	elseif loader_type == "output" then --unloading train
 		if direction == defines.direction.east then
 			position.x = position.x - 1 -- output and facing east -> move on X axis 1 to the left
-			local rails = surface.find_entities_filtered({
-				type = "straight-rail",
-				position = position,
-				radius = 1,
-			})
-			if rails[1] then
-				update_stop_from_rail(map_data, rails[1], forbidden_entity)
-			end
 		elseif direction == defines.direction.south then
 			position.y = position.y - 1 -- output and facing south -> move on Y axis up 1 unit
-			local rails = surface.find_entities_filtered({
-				type = "straight-rail",
-				position = position,
-				radius = 1,
-			})
-			if rails[1] then
-				update_stop_from_rail(map_data, rails[1], forbidden_entity)
-			end
 		elseif direction == defines.direction.west then
 			position.x = position.x + 1 -- output and facing west -> move on X axis 1 to the right
-			local rails = surface.find_entities_filtered({
-				type = "straight-rail",
-				position = position,
-				radius = 1,
-			})
-			if rails[1] then
-				update_stop_from_rail(map_data, rails[1], forbidden_entity)
-			end
 		elseif direction == defines.direction.north then
 			position.y = position.y + 1 -- output and facing south -> move on Y axis down 1 unit
-			local rails = surface.find_entities_filtered({
-				type = "straight-rail",
-				position = position,
-				radius = 1,
-			})
-			if rails[1] then
-				update_stop_from_rail(map_data, rails[1], forbidden_entity)
-			end
 		end
+	end
+	local rails = surface.find_entities_filtered({
+		type = search_type,
+		position = position,
+	})
+	if rails[1] then
+		update_stop_from_rail(map_data, rails[1], forbidden_entity)
 	end
 end
