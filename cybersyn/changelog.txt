@@ -5,7 +5,7 @@ Date: 2023-3-28
     - Added opt-in WIP trains, inventory, and station manager gui (highly experimental, use at your own risk)
   Changes:
     - Improved the recipe derivation logic for the cybernetic combinator, in all modpacks it should now consistently be about as difficult to craft as an arthmetic combinator. Vanilla recipe is unchanged, but several overhaul mods will receive new recipes.
-    - The automatic allow list now consistently looks 3 tiles past the first curve rail it finds along a station for inserters or pumps. Previously it would conditionally look only 1 tile past. This should lead to more intuitive allow list behaviour for stations with trains that park slightly on curved rails.
+    - The automatic allow list now consistently looks 3 tiles down the first curved rail it finds along a station for inserters or pumps. Previously it would conditionally look only 1 tile down. This should lead to more intuitive allow list behaviour for stations with trains that park slightly on curved rails.
   Bugfixes:
     - Provider override thresholds now correctly override the required train capacity as well; fix contributed by shopt
     - Fixed a rare crash relating to an uninitialized network mask on a new station
