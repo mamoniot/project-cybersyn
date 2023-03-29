@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.14
-Date: 2023-3-14
+Date: 2023-3-28
   Features:
     - Added opt-in WIP trains, inventory, and station manager gui (highly experimental, use at your own risk)
   Changes:
@@ -10,6 +10,8 @@ Date: 2023-3-14
     - Fixed a rare crash relating to an uninitialized network mask on a new station
     - Fixed a SE space elevator bug that caused incorrect orders when the provider and requester station had the same name
     - Added an incompatibility error with picker dollies, proper compatibility to come in a later update
+  Translation:
+    - lengua española (Spanish language) contributed by Majestuozzo
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.13
 Date: 2023-2-5
