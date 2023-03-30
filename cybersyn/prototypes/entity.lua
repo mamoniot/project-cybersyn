@@ -13,6 +13,9 @@ combinator_entity.radius_visualisation_specification = {
 }
 combinator_entity.active_energy_usage = "10KW"
 
+if mods["nullius"] then
+	combinator_entity.localised_name = { "entity-name.cybersyn-combinator" }
+end
 
 local COMBINATOR_SPRITE = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
 local COMBINATOR_HR_SPRITE = "__cybersyn__/graphics/combinator/hr-cybernetic-combinator.png"
