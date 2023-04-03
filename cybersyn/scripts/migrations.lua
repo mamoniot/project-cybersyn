@@ -346,21 +346,28 @@ end
 
 ---NOTE: this runs before on_config_changed
 ---It does not have access to game
+---NOTE 2: Everything in this section must be idempotent
 function on_debug_revision_change()
 	local map_data = global
 
 	if debug_revision == 1 then
 		for _, e in pairs(map_data.refuelers) do
-			e.network_mask = e.network_flag
-			e.network_flag = nil
+			if e.network_flag ~= nil then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
 		end
 		for _, e in pairs(map_data.stations) do
-			e.network_mask = e.network_flag
-			e.network_flag = nil
+			if e.network_flag ~= nil then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
 		end
 		for _, e in pairs(map_data.trains) do
-			e.network_mask = e.network_flag
-			e.network_flag = nil
+			if e.network_flag ~= nil then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
 		end
 	end
 end
