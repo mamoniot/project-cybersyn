@@ -47,7 +47,7 @@ end
 local manager_gui = {}
 
 function manager_gui.on_lua_shortcut(e)
-	if e.prototype_name == "cybersyn-toggle-gui" or e.input_name == "cybersyn-toggle-gui" then
+	if e.prototype_name == "cybersyn-toggle-gui" or e.input_name == "cybersyn-toggle-gui" or e.element.name == "manager_window" then
 		manager.wrapper(e, manager.handle.manager_toggle)
 	end
 end

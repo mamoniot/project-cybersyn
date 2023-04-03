@@ -370,6 +370,14 @@ if settings.startup["cybersyn-manager-enabled"].value then
       key_sequence = "CONTROL + T",
       action = "lua",
     },
+    {
+      type = "custom-input",
+      name = "cybersyn-manager-confirm-gui",
+      key_sequence = "",
+      action = "lua",
+      linked_game_control = "confirm-gui"
+    },
+    -- TODO: bind this input to focusing on the station_name box
     --{
     --  type = "custom-input",
     --  name = "ltnm-linked-focus-search",
