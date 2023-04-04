@@ -66,13 +66,9 @@ function inventory_tab.build(map_data, player_data)
 			end
 		end
 		if search_network_name then
-      if search_network_name == (NETWORK_EACH or NETWORK_ANYTHING) then
-				goto has_match
-			end
 			if search_network_name ~= station.network_name then
 				goto continue
 			end
-      ::has_match::
 			local train_flag = get_network_mask(station, station.network_name)
 			if not bit32.btest(search_network_mask, train_flag) then
 				goto continue
