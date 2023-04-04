@@ -30,7 +30,7 @@ function alerts_tab.create(widths)
         style_mods = { right_padding = 4 },
         templates.sort_checkbox(widths, "alerts", "time", true, nil, true),
         templates.sort_checkbox(widths, "alerts", "train_id", false),
-        templates.sort_checkbox(widths, "alerts", "route", false),
+        templates.sort_checkbox(widths, "alerts", "message", false),
         --templates.sort_checkbox(widths, "alerts", "network_id", false),
         --templates.sort_checkbox(widths, "alerts", "type", false),
       },
