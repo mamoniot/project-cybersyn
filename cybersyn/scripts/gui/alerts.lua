@@ -31,8 +31,8 @@ function alerts_tab.create(widths)
         templates.sort_checkbox(widths, "alerts", "time", true, nil, true),
         templates.sort_checkbox(widths, "alerts", "train_id", false),
         templates.sort_checkbox(widths, "alerts", "route", false),
-        templates.sort_checkbox(widths, "alerts", "network_id", false),
-        templates.sort_checkbox(widths, "alerts", "type", false),
+        --templates.sort_checkbox(widths, "alerts", "network_id", false),
+        --templates.sort_checkbox(widths, "alerts", "type", false),
       },
       { name = "manager_alerts_tab_scroll_pane", type = "scroll-pane", style = "ltnm_table_scroll_pane", ref = { "alerts", "scroll_pane" } },
       {
@@ -91,6 +91,11 @@ function alerts_tab.build(map_data, player_data)
       local tick = alert[3]
       local alert_message = alert_table[alert_id]
       local locomotive = util.get_locomotive(train)
+      local train_id = map_data.trains[train.id]
+      --local surface = train.surface
+      if train_id == nil then
+        train_id = train.id
+      end
       -- if
       --   (search_surface == -1 or (alerts_entry.train.surface_index == search_surface))
       --   and bit32.btest(alerts_entry.train.network_id, search_network_id)
@@ -117,7 +122,7 @@ function alerts_tab.build(map_data, player_data)
                   type = "button",
                   style = "ltnm_train_minimap_button",
                   tooltip = { "cybersyn-gui.open-train-gui" },
-                  tags = { train_id = train.id },
+                  tags = { train_id = train_id },
                   handler = alerts_tab.handle.alerts_open_train_gui, --on_click
                 },
               },
@@ -182,16 +187,27 @@ end
 --- @param player_data PlayerData
 function alerts_tab.handle.alerts_open_train_gui(player, player_data, refs, e)
   -- TODO: fix this to work with a LuaTrain entity
-	-- local train_id = e.element.tags.train_id
-	-- --- @type Train
-	-- local train = global.trains[train_id]
-	-- local train_entity = train.entity
+	local train_id = e.element.tags.train_id
+	--- @type Train
+	local train = global.trains[train_id]
+  if train ~= nil then
+    local train_entity = train.entity
 
-  --   if not train_entity or not train_entity.valid then
-  --       util.error_flying_text(gui.player, { "message.ltnm-error-train-is-invalid" })
-  --       return
-  --   end
-	-- train_util.open_gui(player.index, train_entity)
+      if not train_entity or not train_entity.valid then
+          util.error_flying_text(gui.player, { "message.ltnm-error-train-is-invalid" })
+          return
+      end
+    train_util.open_gui(player.index, train_entity)
+  else
+    local force = player.force
+    local trains = force.get_trains()
+    for _, train in pairs(trains) do
+      if train.id == train_id then
+        train_util.open_gui(player.index, train)
+        break
+      end
+    end
+  end
 end
 
 ---@param player LuaPlayer

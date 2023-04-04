@@ -71,7 +71,7 @@ constants.gui = {
     },
     alerts = {
       time = 68,
-      train_id = 60,
+      train_id = 90,
       route = 326,
       network_id = 84,
       type = 230,
