@@ -174,7 +174,7 @@ function inventory_tab.build(map_data, player_data)
         tooltip = { "",
           img_path,
           " [font=default-semibold]",
-          { item_string },
+          item_string,
           "[/font]\n"..format.number(count),
         },
       }
@@ -198,7 +198,7 @@ function inventory_tab.build(map_data, player_data)
         tooltip = { "",
           img_path,
           " [font=default-semibold]",
-          { item_string },
+          item_string,
           "[/font]\n"..format.number(count),
         },
       }
@@ -222,7 +222,7 @@ function inventory_tab.build(map_data, player_data)
         tooltip = { "",
           img_path,
           " [font=default-semibold]",
-          { item_string },
+          item_string,
           "[/font]\n"..format.number(count),
         },
       }
