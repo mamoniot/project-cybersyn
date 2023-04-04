@@ -192,13 +192,12 @@ function trains_tab.build(map_data, player_data, query_limit)
 			local depot = map_data.depots[train.depot_id]
 			local depot_name = depot.entity_stop.valid and depot.entity_stop.backer_name or ""
 			local train_entity = train.entity
-			local locomotive
-			if train_entity.locomotives["front_movers"][1] then
-				locomotive = train_entity.locomotives["front_movers"][1]
-			else
-				locomotive = train_entity.locomotives["back_movers"][1]
+			local locomotive = util.get_locomotive(train_entity)
+
+			local manifest = {}
+			if train.manifest ~= nil then
+				manifest = train.manifest
 			end
-			local manifest = train.manifest
 			local network_sprite = "utility/close_black"
 			local network_name = train.network_name
 			---@type int?
@@ -281,7 +280,7 @@ end
 
 --- @param e GuiEventData
 --- @param player_data PlayerData
-function trains_tab.handle.open_train_gui(player, player_data, refs, e)
+function trains_tab.handle.trains_open_train_gui(player, player_data, refs, e)
 	local train_id = e.element.tags.train_id
 	--- @type Train
 	local train = global.trains[train_id]

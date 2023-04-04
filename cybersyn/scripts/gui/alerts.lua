@@ -1,24 +1,25 @@
-local gui = require("__flib__.gui")
-local misc = require("__flib__.misc")
+local gui = require("__flib__.gui-lite")
+local train_util = require("__flib__.train")
+local format = require("__flib__.format")
 
 local constants = require("constants")
-local util = require("scripts.util")
+local util = require("scripts.gui.util")
 
 local templates = require("templates")
 
 local alerts_tab = {}
 
-function alerts_tab.build(widths)
+function alerts_tab.create(widths)
   return {
     tab = {
+      name = "manager_alerts_tab",
       type = "tab",
       caption = { "cybersyn-gui.alerts" },
       ref = { "alerts", "tab" },
-      actions = {
-        on_click = { gui = "main", action = "change_tab", tab = "alerts" },
-      },
+      handler = alerts_tab.handle.on_alerts_tab_selected,
     },
     content = {
+      name = "alerts_content_frame",
       type = "frame",
       style = "ltnm_main_content_frame",
       direction = "vertical",
@@ -31,20 +32,11 @@ function alerts_tab.build(widths)
         templates.sort_checkbox(widths, "alerts", "train_id", false),
         templates.sort_checkbox(widths, "alerts", "route", false),
         templates.sort_checkbox(widths, "alerts", "network_id", false),
-        templates.sort_checkbox(nil, "alerts", "type", false),
-        {
-          type = "sprite-button",
-          style = "tool_button_red",
-          sprite = "utility/trash",
-          tooltip = { "cybersyn-gui.delete-all-alerts" },
-          ref = { "alerts", "delete_all_button" },
-          actions = {
-            on_click = { gui = "main", action = "delete_all_alerts" },
-          },
-        },
+        templates.sort_checkbox(widths, "alerts", "type", false),
       },
-      { type = "scroll-pane", style = "ltnm_table_scroll_pane", ref = { "alerts", "scroll_pane" } },
+      { name = "manager_alerts_tab_scroll_pane", type = "scroll-pane", style = "ltnm_table_scroll_pane", ref = { "alerts", "scroll_pane" } },
       {
+        name = "alerts_warning_flow",
         type = "flow",
         style = "ltnm_warning_flow",
         visible = false,
@@ -60,168 +52,154 @@ function alerts_tab.build(widths)
   }
 end
 
-function alerts_tab.update(self)
-  local dictionaries = self.player_table.dictionaries
+function alerts_tab.build(map_data, player_data)
 
-  local state = self.state
-  local refs = self.refs.alerts
-  local widths = self.widths
+  local alert_table = {}
+  alert_table[1] = "cybersyn-messages.stuck-train"
+  alert_table[2] = "cybersyn-messages.nonempty-train"
+  alert_table[3] = "cybersyn-messages.depot-broken"
+  alert_table[4] = "cybersyn-messages.station-broken"
+  alert_table[5] = "cybersyn-messages.refueler-broken"
+  alert_table[6] = "cybersyn-messages.train-at-incorrect"
+  alert_table[7] = "cybersyn-messages.cannot-path-between-surfaces"
 
-  local search_query = state.search_query
-  local search_network_id = state.network_id
-  local search_surface = state.surface
+  local refs = player_data.refs
+  local widths = constants.gui["en"]
 
-  local ltn_alerts = state.ltn_data.alerts
-  local alerts_to_delete = global.active_data.alerts_to_delete
+  -- local search_query = player_data.search_query
+  -- local search_item = player_data.search_item
+  -- local search_network_id = player_data.network_id
+  -- local search_surface = player_data.search_surface_idx
 
-  local scroll_pane = refs.scroll_pane
-  local children = scroll_pane.children
+  local alerts = map_data.active_alerts
 
-  local sorts = state.sorts[state.active_tab]
-  local active_sort = sorts._active
-  local sorted_alerts = state.ltn_data.sorted_alerts[active_sort]
-
-  local table_index = 0
-
-  -- False = ascending (arrow down), True = descending (arrow up)
-  local start, finish, step
-  if sorts[active_sort] then
-    start = #sorted_alerts
-    finish = 1
-    step = -1
-  else
-    start = 1
-    finish = #sorted_alerts
-    step = 1
+  local scroll_pane = refs.manager_alerts_tab_scroll_pane
+  if next(scroll_pane.children) ~= nil then
+    refs.manager_alerts_tab_scroll_pane.clear()
   end
 
-  if not global.flags.deleted_all_alerts then
-    for sorted_index = start, finish, step do
-      local alert_id = sorted_alerts[sorted_index]
-      local alerts_entry = ltn_alerts[alert_id]
 
-      if
-        (search_surface == -1 or (alerts_entry.train.surface_index == search_surface))
-        and bit32.btest(alerts_entry.train.network_id, search_network_id)
-        and (#search_query == 0 or string.find(
-          alerts_entry.search_strings[self.player.index] or "",
-          string.lower(search_query)
-        ))
-        and not alerts_to_delete[alert_id]
-      then
-        table_index = table_index + 1
-        local row = children[table_index]
-        local color = table_index % 2 == 0 and "dark" or "light"
-        if not row then
-          row = gui.add(scroll_pane, {
+
+  if alerts then
+    refs.alerts_warning_flow.visible = false
+    scroll_pane.visible = true
+    refs.alerts_content_frame.style = "ltnm_main_content_frame"
+    for i, alert in pairs(alerts) do
+      ---@type LuaTrain
+      local train = alert[1]
+      local alert_id = alert[2]
+      local tick = alert[3]
+      local alert_message = alert_table[alert_id]
+      local locomotive = util.get_locomotive(train)
+      -- if
+      --   (search_surface == -1 or (alerts_entry.train.surface_index == search_surface))
+      --   and bit32.btest(alerts_entry.train.network_id, search_network_id)
+      --   and (#search_query == 0 or string.find(
+      --     alerts_entry.search_strings[self.player.index] or "",
+      --     string.lower(search_query)
+      --   ))
+      -- then
+        local color = i % 2 == 0 and "dark" or "light"
+        gui.add(scroll_pane, {
             type = "frame",
             style = "ltnm_table_row_frame_" .. color,
-            { type = "label", style_mods = { width = widths.alerts.time } },
-            {
-              type = "label",
-              style = "ltnm_clickable_semibold_label",
-              style_mods = { width = widths.alerts.train_id, horizontal_align = "center" },
-              tooltip = { "cybersyn-gui.open-train-gui" },
-            },
-            {
-              type = "flow",
-              style_mods = { vertical_spacing = 0 },
-              direction = "vertical",
-              {
-                type = "label",
-                style = "ltnm_clickable_semibold_label",
-                style_mods = { width = widths.alerts.route },
-                tooltip = constants.open_station_gui_tooltip,
-              },
-              {
-                type = "label",
-                style = "ltnm_clickable_semibold_label",
-                style_mods = { width = widths.alerts.route },
-                tooltip = constants.open_station_gui_tooltip,
-              },
-            },
-            { type = "label", style_mods = { width = widths.alerts.network_id, horizontal_align = "center" } },
-            { type = "label", style_mods = { width = widths.alerts.type } },
+            { type = "label", style_mods = { width = widths.alerts.time }, caption = format.time(tick) },
             {
               type = "frame",
-              name = "contents_frame",
-              style = "ltnm_small_slot_table_frame_" .. color,
-              style_mods = { width = widths.alerts.contents },
-              { type = "table", name = "contents_table", style = "slot_table", column_count = 4 },
+              style = "ltnm_table_inset_frame_" .. color,
+              {
+                type = "minimap",
+                name = "train_minimap",
+                style = "ltnm_train_minimap",
+                style_mods = { width = widths.alerts.train_id, horizontal_align = "center" },
+                { type = "label", style = "ltnm_minimap_label", caption = train.id },
+                {
+                  type = "button",
+                  style = "ltnm_train_minimap_button",
+                  tooltip = { "cybersyn-gui.open-train-gui" },
+                  tags = { train_id = train.id },
+                  handler = alerts_tab.handle.alerts_open_train_gui, --on_click
+                },
+              },
             },
             {
-              type = "sprite-button",
-              style = "tool_button_red",
-              sprite = "utility/trash",
-              tooltip = { "cybersyn-gui.delete-alert" },
+              type = "label", caption = { alert_message }
             },
-          })
+            -- {
+            --   type = "flow",
+            --   style_mods = { vertical_spacing = 0 },
+            --   direction = "vertical",
+            --   {
+            --     type = "label",
+            --     style = "ltnm_clickable_semibold_label",
+            --     style_mods = { width = widths.alerts.route },
+            --     tooltip = constants.open_station_gui_tooltip,
+            --   },
+            --   {
+            --     type = "label",
+            --     style = "ltnm_clickable_semibold_label",
+            --     style_mods = { width = widths.alerts.route },
+            --     tooltip = constants.open_station_gui_tooltip,
+            --   },
+            -- },
+            -- { type = "label", style_mods = { width = widths.alerts.network_id, horizontal_align = "center" } },
+            -- { type = "label", style_mods = { width = widths.alerts.type } },
+            -- {
+            --   type = "frame",
+            --   name = "contents_frame",
+            --   style = "ltnm_small_slot_table_frame_" .. color,
+            --   style_mods = { width = widths.alerts.contents },
+            --   { type = "table", name = "contents_table", style = "slot_table", column_count = 4 },
+            -- },
+          }, refs)
+          refs.train_minimap.entity = locomotive
         end
 
-        gui.update(row, {
-          { elem_mods = { caption = misc.ticks_to_timestring(alerts_entry.time) } },
-          {
-            elem_mods = { caption = alerts_entry.train_id },
-            actions = {
-              on_click = { gui = "main", action = "open_train_gui", train_id = alerts_entry.train_id },
-            },
-          },
-          {
-            {
-              elem_mods = { caption = alerts_entry.train.from },
-              actions = {
-                on_click = { gui = "main", action = "open_station_gui", station_id = alerts_entry.train.from_id },
-              },
-            },
-            {
-              elem_mods = {
-                caption = "[color=" .. constants.colors.caption.str .. "]->[/color]  " .. alerts_entry.train.to,
-              },
-              actions = {
-                on_click = { gui = "main", action = "open_station_gui", station_id = alerts_entry.train.to_id },
-              },
-            },
-          },
-          { elem_mods = { caption = util.signed_int32(alerts_entry.train.network_id) } },
-          {
-            elem_mods = {
-              caption = { "cybersyn-gui.alert-" .. string.gsub(alerts_entry.type, "_", "-") },
-              tooltip = { "cybersyn-gui.alert-" .. string.gsub(alerts_entry.type, "_", "-") .. "-description" },
-            },
-          },
-          {},
-          {
-            actions = {
-              on_click = { gui = "main", action = "delete_alert", alert_id = alert_id },
-            },
-          },
-        })
-
-        util.slot_table_update(row.contents_frame.contents_table, {
-          { color = "green", entries = alerts_entry.planned_shipment or {}, translations = dictionaries.materials },
-          { color = "red", entries = alerts_entry.actual_shipment or {}, translations = dictionaries.materials },
-          { color = "red", entries = alerts_entry.unscheduled_load or {}, translations = dictionaries.materials },
-          { color = "red", entries = alerts_entry.remaining_load or {}, translations = dictionaries.materials },
-        })
-      end
-    end
-  end
-
-  for child_index = table_index + 1, #children do
-    children[child_index].destroy()
-  end
-
-  if table_index == 0 then
-    refs.warning_flow.visible = true
-    scroll_pane.visible = false
-    refs.content_frame.style = "ltnm_main_warning_frame"
-    refs.delete_all_button.enabled = false
+          -- util.slot_table_update(row.contents_frame.contents_table, {
+          --   { color = "green", entries = alerts_entry.planned_shipment or {}, translations = dictionaries.materials },
+          --   { color = "red", entries = alerts_entry.actual_shipment or {}, translations = dictionaries.materials },
+          --   { color = "red", entries = alerts_entry.unscheduled_load or {}, translations = dictionaries.materials },
+          --   { color = "red", entries = alerts_entry.remaining_load or {}, translations = dictionaries.materials },
+          -- })
   else
-    refs.warning_flow.visible = false
-    scroll_pane.visible = true
-    refs.content_frame.style = "ltnm_main_content_frame"
-    refs.delete_all_button.enabled = true
+    refs.alerts_warning_flow.visible = true
+    scroll_pane.visible = false
+    refs.alerts_content_frame.style = "ltnm_main_warning_frame"
   end
 end
+
+alerts_tab.handle = {}
+
+--- @param e {player_index: uint}
+function alerts_tab.wrapper(e, handler)
+	local player = game.get_player(e.player_index)
+	if not player then return end
+	local player_data = global.manager.players[e.player_index]
+	handler(player, player_data, player_data.refs, e)
+end
+
+--- @param e GuiEventData
+--- @param player_data PlayerData
+function alerts_tab.handle.alerts_open_train_gui(player, player_data, refs, e)
+  -- TODO: fix this to work with a LuaTrain entity
+	-- local train_id = e.element.tags.train_id
+	-- --- @type Train
+	-- local train = global.trains[train_id]
+	-- local train_entity = train.entity
+
+  --   if not train_entity or not train_entity.valid then
+  --       util.error_flying_text(gui.player, { "message.ltnm-error-train-is-invalid" })
+  --       return
+  --   end
+	-- train_util.open_gui(player.index, train_entity)
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+function alerts_tab.handle.on_alerts_tab_selected(player, player_data)
+    player_data.selected_tab = "alerts_tab"
+end
+
+gui.add_handlers(alerts_tab.handle, alerts_tab.wrapper)
 
 return alerts_tab

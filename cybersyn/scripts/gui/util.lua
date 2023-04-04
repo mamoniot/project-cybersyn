@@ -256,9 +256,19 @@ function util.build_train_layout_table(map_data)
     layout_string = layout_string.gsub(layout_string, ",", "")
     layouts_table[i] = layout_string
   end
-  return layouts_table
+  return layouts_table  
+end
 
-
+---@param train LuaTrain
+---@return LuaEntity?
+function util.get_locomotive(train)
+  local locomotive
+  if train.locomotives["front_movers"][1] then
+    locomotive = train.locomotives["front_movers"][1]
+  else
+    locomotive = train.locomotives["back_movers"][1]
+  end
+  return locomotive
 end
 
 return util
