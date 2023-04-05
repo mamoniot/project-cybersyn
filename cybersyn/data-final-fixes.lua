@@ -11,8 +11,17 @@ if mods["nullius"] then
 	table.insert(data.raw.technology["nullius-broadcasting-1"].prerequisites, "cybersyn-train-network")
 end
 
--- Reset the combinator recipe back to arithmetic combinator recipe in case a mod has changed it
-local recipe = flib.deep_copy(data.raw["recipe"]["arithmetic-combinator"].ingredients)
+-- compatibility for mods that disable/replace the arithmetic-combinator recipe, e.g. Nullius
+local recipe
+if mods["nullius"] then
+	recipe = flib.deep_copy(data.raw["recipe"]["nullius-arithmetic-circuit"].ingredients)
+-- use this template for additional mod compatibilities if necessary.
+-- elseif mods["modnamehere"] then
+-- 	recipe = flib.deep_copy(data.raw["recipe"]["mod's-arithmetic-combinator-replacement-here"].ingredients)
+else
+	-- Reset the combinator recipe back to arithmetic combinator recipe in case a mod has changed it
+	recipe = flib.deep_copy(data.raw["recipe"]["arithmetic-combinator"].ingredients)
+end
 for k, _ in pairs(recipe) do
 	local mult = 2
 	for i, _ in pairs(recipe) do
