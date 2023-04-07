@@ -57,24 +57,20 @@ end
 function manager_gui.on_player_created(e)
 	local player = game.get_player(e.player_index)
 	if not player then return end
-	if global.manager.players[e.player_index] == nil then
-		local player_data = {
-			search_network_mask = -1,
-			trains_orderings = {},
-			trains_orderings_invert = {},
-			pinning = false,
-			refs = manager.create(player),
-			selected_tab = "stations_tab",
-		}
-		global.manager.players[e.player_index] = player_data
-	else -- if player_data already exists, reset it to defaults, fixes NRE on manager_window already existing
-		global.manager.players[e.player_index].search_network_mask = -1
-		global.manager.players[e.player_index].trains_orderings = {}
-		global.manager.players[e.player_index].trains_orderings_invert = {}
-		global.manager.players[e.player_index].pinning = false
-		global.manager.players[e.player_index].selected_tab = "stations_tab"
-		manager_gui.reset_player(e.player_index, player)
+	local window = player.gui.screen.children["manager_window"]
+	if window ~= nil then
+		window.destroy()
 	end
+	local player_data = {
+		search_network_mask = -1,
+		trains_orderings = {},
+		trains_orderings_invert = {},
+		pinning = false,
+		refs = manager.create(player),
+		selected_tab = "stations_tab",
+	}
+	global.manager.players[e.player_index] = player_data
+
 
 	--manager.update(global, player, player_data)
 	--top_left_button_update(player, player_data)
