@@ -262,11 +262,13 @@ end
 ---@param train LuaTrain
 ---@return LuaEntity?
 function util.get_locomotive(train)
-  local locomotive
-  if train.locomotives["front_movers"][1] then
-    locomotive = train.locomotives["front_movers"][1]
-  else
-    locomotive = train.locomotives["back_movers"][1]
+  local locomotive = nil
+  if train.valid then
+    if train.locomotives["front_movers"][1] then
+      locomotive = train.locomotives["front_movers"][1]
+    else
+      locomotive = train.locomotives["back_movers"][1]
+    end
   end
   return locomotive
 end
