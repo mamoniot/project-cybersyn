@@ -11,6 +11,7 @@ Date: 2023-3-28
     - Fixed a rare crash relating to an uninitialized network mask on a new station
     - Fixed a SE space elevator bug that caused incorrect orders when the provider and requester station had the same name
     - Added an incompatibility error with picker dollies, proper compatibility to come in a later update
+    - Fixed entities not having the correct names in nullius contributed by Sharparam
   Translation:
     - lengua española (Spanish language) contributed by Majestuozzo
 ---------------------------------------------------------------------------------------------------
