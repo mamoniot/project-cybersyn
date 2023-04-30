@@ -3,6 +3,8 @@ local get_distance = require("__flib__.position").distance
 local table_insert = table.insert
 local bit_extract = bit32.extract
 local bit_replace = bit32.replace
+local string_sub = string.sub
+local string_len = string.len
 
 local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
@@ -38,19 +40,14 @@ end
 function se_get_space_elevator_name(cache, surface)
 	---@type LuaEntity?
 	local entity = nil
-	---@type string?
-	local name = nil
-	local cache_idx = 2*surface.index
+	local cache_idx = surface.index
 	if cache.se_get_space_elevator_name then
-		entity = cache.se_get_space_elevator_name[cache_idx - 1]
-		name = cache.se_get_space_elevator_name[cache_idx]
+		entity = cache.se_get_space_elevator_name[cache_idx]
 	else
 		cache.se_get_space_elevator_name = {}
 	end
 
-	if entity and entity.valid then
-		return name
-	else
+	if not entity or not entity.valid then
 		--Chaching failed, default to expensive lookup
 		entity = surface.find_entities_filtered({
 			name = SE_ELEVATOR_STOP_PROTO_NAME,
@@ -59,13 +56,14 @@ function se_get_space_elevator_name(cache, surface)
 		})[1]
 
 		if entity then
-			name = string.sub(entity.backer_name, 1, string.len(entity.backer_name) - SE_ELEVATOR_SUFFIX_LENGTH)
-			cache.se_get_space_elevator_name[cache_idx - 1] = entity
-			cache.se_get_space_elevator_name[cache_idx] = name
-			return name
-		else
-			return nil
+			cache.se_get_space_elevator_name[cache_idx] = entity
 		end
+	end
+
+	if entity and entity.valid then
+		return string_sub(entity.backer_name, 1, string_len(entity.backer_name) - SE_ELEVATOR_SUFFIX_LENGTH)
+	else
+		return nil
 	end
 end
 ---@param cache PerfCache
