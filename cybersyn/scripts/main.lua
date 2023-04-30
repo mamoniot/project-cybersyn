@@ -964,6 +964,7 @@ local function main()
 		script.on_event(defines.events.on_player_removed, manager.on_player_removed)
 		script.on_event(defines.events.on_player_created, manager.on_player_created)
 		script.on_event(defines.events.on_lua_shortcut, manager.on_lua_shortcut)
+		script.on_event(defines.events.on_gui_closed, manager.on_lua_shortcut)
 		script.on_event("cybersyn-toggle-gui", manager.on_lua_shortcut)
 	end
 
