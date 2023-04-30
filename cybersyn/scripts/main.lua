@@ -847,17 +847,26 @@ local function grab_all_settings()
 end
 local function register_tick()
 	script.on_nth_tick(nil)
-	if mod_settings.tps > DELTA then
-		local nth_tick_main = ceil(60/mod_settings.tps)--[[@as uint]]
-		script.on_nth_tick(nth_tick_main, function()
+	--edge case catch to register both main and manager tick if they're scheduled to run on the same ticks
+	if mod_settings.manager_enabled and mod_settings.manager_ups == mod_settings.tps and mod_settings.tps > DELTA then
+		local nth_tick = ceil(60/mod_settings.tps)
+		script.on_nth_tick(nth_tick, function()
 			tick(global, mod_settings)
-		end)
-	end
-	if mod_settings.manager_enabled and mod_settings.manager_ups > DELTA then
-		local nth_tick_manager = ceil(60/mod_settings.manager_ups)--[[@as uint]]
-		script.on_nth_tick(nth_tick_manager, function()
 			manager.tick(global)
 		end)
+	else
+		if mod_settings.tps > DELTA then
+			local nth_tick_main = ceil(60/mod_settings.tps)--[[@as uint]]
+			script.on_nth_tick(nth_tick_main, function()
+				tick(global, mod_settings)
+			end)
+		end
+		if mod_settings.manager_enabled and mod_settings.manager_ups > DELTA then
+			local nth_tick_manager = ceil(60/mod_settings.manager_ups)--[[@as uint]]
+			script.on_nth_tick(nth_tick_manager, function()
+				manager.tick(global)
+			end)
+		end
 	end
 end
 local function on_settings_changed(event)
