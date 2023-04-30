@@ -326,6 +326,8 @@ local migrations_table = {
 function on_config_changed(data)
 	global.tick_state = STATE_INIT
 	global.tick_data = {}
+	global.perf_cache = {}
+
 	flib_migration.on_config_changed(data, migrations_table)
 
 	for i, v in pairs(global.manager.players) do
@@ -349,25 +351,4 @@ end
 ---NOTE 2: Everything in this section must be idempotent
 function on_debug_revision_change()
 	local map_data = global
-
-	if debug_revision == 1 then
-		for _, e in pairs(map_data.refuelers) do
-			if e.network_flag ~= nil then
-				e.network_mask = e.network_flag
-				e.network_flag = nil
-			end
-		end
-		for _, e in pairs(map_data.stations) do
-			if e.network_flag ~= nil then
-				e.network_mask = e.network_flag
-				e.network_flag = nil
-			end
-		end
-		for _, e in pairs(map_data.trains) do
-			if e.network_flag ~= nil then
-				e.network_mask = e.network_flag
-				e.network_flag = nil
-			end
-		end
-	end
 end

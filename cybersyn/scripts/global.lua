@@ -24,6 +24,11 @@
 ---@field public each_refuelers {[uint]: true}
 ---@field public active_alerts {[uint]: {[1]: LuaTrain, [2]: int}}?
 ---@field public manager Manager
+---@field public perf_cache PerfCache -- This gets reset to an empty table on migration change
+
+---@class PerfCache
+---@field public se_get_space_elevator_name {}?
+---@field public se_get_zone_from_surface_index {}?
 
 ---@class Station
 ---@field public entity_stop LuaEntity
@@ -161,6 +166,7 @@ function init_global()
 	global.refuelers = {}
 	global.to_refuelers = {}
 	global.each_refuelers = {}
+	global.perf_cache = {}
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 end
