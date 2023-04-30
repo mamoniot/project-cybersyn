@@ -326,6 +326,8 @@ local migrations_table = {
 function on_config_changed(data)
 	global.tick_state = STATE_INIT
 	global.tick_data = {}
+	global.perf_cache = {}
+
 	flib_migration.on_config_changed(data, migrations_table)
 
 	for i, v in pairs(global.manager.players) do

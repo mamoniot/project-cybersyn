@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.15
+Date: 2023-4-30
+  Bugfixes:
+    - Fixed UPS spikes in Space Exploration related to expensive remote calls into their modding interface.
+---------------------------------------------------------------------------------------------------
 Version: 1.2.14
 Date: 2023-4-30
   Features:

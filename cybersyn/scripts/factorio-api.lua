@@ -33,19 +33,70 @@ function get_dist(entity0, entity1)
 end
 
 
+---@param cache PerfCache
 ---@param surface LuaSurface
-function se_get_space_elevator_name(surface)
-	--TODO: check how expensive the following is and potentially cache it's results
-	local entity = surface.find_entities_filtered({
-		name = SE_ELEVATOR_STOP_PROTO_NAME,
-		type = "train-stop",
-		limit = 1,
-	})[1]
-	if entity and entity.valid then
-		return string.sub(entity.backer_name, 1, string.len(entity.backer_name) - SE_ELEVATOR_SUFFIX_LENGTH)
+function se_get_space_elevator_name(cache, surface)
+	---@type LuaEntity?
+	local entity = nil
+	---@type string?
+	local name = nil
+	local cache_idx = 2*surface.index
+	if cache.se_get_space_elevator_name then
+		entity = cache.se_get_space_elevator_name[cache_idx - 1]
+		name = cache.se_get_space_elevator_name[cache_idx]
+	else
+		cache.se_get_space_elevator_name = {}
 	end
-end
 
+	if entity and entity.valid then
+		return name
+	else
+		--Chaching failed, default to expensive lookup
+		entity = surface.find_entities_filtered({
+			name = SE_ELEVATOR_STOP_PROTO_NAME,
+			type = "train-stop",
+			limit = 1,
+		})[1]
+
+		if entity then
+			name = string.sub(entity.backer_name, 1, string.len(entity.backer_name) - SE_ELEVATOR_SUFFIX_LENGTH)
+			cache.se_get_space_elevator_name[cache_idx - 1] = entity
+			cache.se_get_space_elevator_name[cache_idx] = name
+			return name
+		end
+	end
+
+	return nil
+end
+---@param cache PerfCache
+---@param surface_index uint
+local function se_get_zone_from_surface_index(cache, surface_index)
+	---@type uint?
+	local zone_index = nil
+	---@type uint?
+	local zone_orbit_index = nil
+	local cache_idx = 2*surface_index
+	if cache.se_get_zone_from_surface_index then
+		zone_index = cache.se_get_zone_from_surface_index[cache_idx - 1]--[[@as uint]]
+		zone_orbit_index = cache.se_get_zone_from_surface_index[cache_idx]--[[@as uint]]
+	else
+		cache.se_get_zone_from_surface_index = {}
+	end
+
+	if not zone_index then
+		zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = surface_index})
+
+		if type(zone.index) == "number" and type(zone.orbit_index) == "number" then
+			zone_index = zone.index--[[@as uint]]
+			zone_orbit_index = zone.orbit_index--[[@as uint]]
+			--NOTE: caching these indices could be a problem if SE is not deterministic in choosing them
+			cache.se_get_zone_from_surface_index[cache_idx - 1] = zone_index
+			cache.se_get_zone_from_surface_index[cache_idx] = zone_orbit_index
+		end
+	end
+
+	return zone_index, zone_orbit_index
+end
 
 ---@param train LuaTrain
 ---@return LuaEntity?
@@ -249,12 +300,12 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 	elseif IS_SE_PRESENT then
 		local other_surface_i = (not is_p_on_t and p_surface_i) or (not is_r_on_t and r_surface_i) or d_surface_i
 		if (is_p_on_t or p_surface_i == other_surface_i) and (is_r_on_t or r_surface_i == other_surface_i) and (is_d_on_t or d_surface_i == other_surface_i) then
-			local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})--[[@as {}]]
-			local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = other_surface_i})--[[@as {}]]
-			if t_zone and other_zone then
-				local is_train_in_orbit = other_zone.orbit_index == t_zone.index
-				if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
-					local elevator_name = se_get_space_elevator_name(t_surface)
+			local t_zone_index, t_zone_orbit_index = se_get_zone_from_surface_index(map_data.perf_cache, t_surface_i)
+			local other_zone_index, other_zone_orbit_index = se_get_zone_from_surface_index(map_data.perf_cache, other_surface_i)
+			if t_zone_index and other_zone_index then
+				local is_train_in_orbit = other_zone_orbit_index == t_zone_index
+				if is_train_in_orbit or t_zone_orbit_index == other_zone_index then
+					local elevator_name = se_get_space_elevator_name(map_data.perf_cache, t_surface)
 					if elevator_name then
 						local records = {create_inactivity_order(depot_stop.backer_name)}
 						if t_surface_i == p_surface_i then
@@ -329,28 +380,32 @@ function add_refueler_schedule(map_data, train, stop)
 		train.schedule = schedule
 		return true
 	elseif IS_SE_PRESENT then
-		local t_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = t_surface_i})--[[@as {}]]
-		local other_zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = f_surface_i})--[[@as {}]]
-		local is_train_in_orbit = other_zone.orbit_index == t_zone.index
-		if is_train_in_orbit or t_zone.orbit_index == other_zone.index then
-			local elevator_name = se_get_space_elevator_name(t_surface)
-			local cur_order = schedule.records[i]
-			local is_elevator_in_orders_already = cur_order and cur_order.station == elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)
-			if not is_elevator_in_orders_already then
-				table_insert(schedule.records, i, se_create_elevator_order(elevator_name, is_train_in_orbit))
-			end
-			i = i + 1
-			is_train_in_orbit = not is_train_in_orbit
-			table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
-			i = i + 1
-			if not is_elevator_in_orders_already then
-				table_insert(schedule.records, i, se_create_elevator_order(elevator_name, is_train_in_orbit))
-				i = i + 1
-				is_train_in_orbit = not is_train_in_orbit
-			end
+		local t_zone_index, t_zone_orbit_index = se_get_zone_from_surface_index(map_data.perf_cache, t_surface_i)
+		local other_zone_index, other_zone_orbit_index = se_get_zone_from_surface_index(map_data.perf_cache, f_surface_i)
+		if t_zone_index and other_zone_index then
+			local is_train_in_orbit = other_zone_orbit_index == t_zone_index
+			if is_train_in_orbit or t_zone_orbit_index == other_zone_index then
+				local elevator_name = se_get_space_elevator_name(map_data.perf_cache, t_surface)
+				if elevator_name then
+					local cur_order = schedule.records[i]
+					local is_elevator_in_orders_already = cur_order and cur_order.station == elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)
+					if not is_elevator_in_orders_already then
+						table_insert(schedule.records, i, se_create_elevator_order(elevator_name, is_train_in_orbit))
+					end
+					i = i + 1
+					is_train_in_orbit = not is_train_in_orbit
+					table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
+					i = i + 1
+					if not is_elevator_in_orders_already then
+						table_insert(schedule.records, i, se_create_elevator_order(elevator_name, is_train_in_orbit))
+						i = i + 1
+						is_train_in_orbit = not is_train_in_orbit
+					end
 
-			train.schedule = schedule
-			return true
+					train.schedule = schedule
+					return true
+				end
+			end
 		end
 	end
 	--create an order that probably cannot be fulfilled and alert the player
@@ -358,6 +413,7 @@ function add_refueler_schedule(map_data, train, stop)
 	lock_train(train)
 	train.schedule = schedule
 	send_alert_cannot_path_between_surfaces(map_data, train)
+	return false
 end
 
 
