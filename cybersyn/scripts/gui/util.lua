@@ -35,23 +35,23 @@ end
 
 --- Builds a valid sprite path or returns nil
 --- @param item string
---- @return string, string, string
+--- @return string, string, LocalizedString
 function util.generate_item_references(item)
   local sprite = nil
   local image_path = ""
-  local item_name = ""
+  local item_name
   if game.is_valid_sprite_path("item/" .. item) then
     sprite = "item/" .. item
     image_path = "[img=item." .. item .. "]"
-    item_name = "item-name." .. item
+    item_name = {"?", { "item-name." .. item }, { "entity-name." .. item }, "LocalizedString failure: " .. item }
   elseif game.is_valid_sprite_path("fluid/" .. item) then
     sprite = "fluid/" .. item
     image_path = "[img=fluid." .. item .. "]"
-    item_name = "fluid-name." .. item
+    item_name = {"?", { "fluid-name." .. item }, "LocalizedString failure: " .. item }
   elseif game.is_valid_sprite_path("virtual-signal/" .. item) then
     sprite = "virtual-signal/" .. item
     image_path = "[img=virtual-signal." .. item .. "]"
-    item_name = "virtual-signal." .. item
+    item_name = {"?", { "virtual-signal." .. item }, "LocalizedString failure: " .. item }
   end
   return sprite, image_path, item_name
 end
@@ -78,8 +78,8 @@ function util.slot_table_build_from_manifest(manifest, color)
           number = count,
           tooltip = {
             "",
-          img_path,
-            { item_string },
+            img_path,
+            item_string,
             "\n"..format.number(count),
           },
         }
@@ -121,7 +121,7 @@ function util.slot_table_build_from_station(station)
             tooltip = {
               "",
               img_path,
-              { item_string },
+              item_string,
               "\n"..format.number(count),
             },
             number = count
@@ -158,7 +158,7 @@ function util.slot_table_build_from_deliveries(station)
           tooltip = {
             "",
             img_path,
-            { item_string },
+            item_string,
             "\n"..format.number(count),
           },
           number = count
