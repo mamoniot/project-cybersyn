@@ -624,7 +624,7 @@ local function on_built(event)
 		update_stop_from_loader(global, entity)
 	elseif entity.type == "pump" then
 		update_stop_from_pump(global, entity)
-	elseif entity.type == "straight-rail" then
+	elseif entity.type == "straight-rail" or entity.type == "curved-rail" then
 		update_stop_from_rail(global, entity)
 	end
 end
@@ -642,7 +642,7 @@ local function on_broken(event)
 		update_stop_from_loader(global, entity, entity)
 	elseif entity.type == "pump" then
 		update_stop_from_pump(global, entity, entity)
-	elseif entity.type == "straight-rail" then
+	elseif entity.type == "straight-rail" or entity.type == "curved-rail" then
 		update_stop_from_rail(global, entity, nil)
 	elseif entity.train then
 		local train_id = entity.train.id
@@ -847,17 +847,26 @@ local function grab_all_settings()
 end
 local function register_tick()
 	script.on_nth_tick(nil)
-	if mod_settings.tps > DELTA then
-		local nth_tick_main = ceil(60/mod_settings.tps)--[[@as uint]]
-		script.on_nth_tick(nth_tick_main, function()
+	--edge case catch to register both main and manager tick if they're scheduled to run on the same ticks
+	if mod_settings.manager_enabled and mod_settings.manager_ups == mod_settings.tps and mod_settings.tps > DELTA then
+		local nth_tick = ceil(60/mod_settings.tps)
+		script.on_nth_tick(nth_tick, function()
 			tick(global, mod_settings)
-		end)
-	end
-	if mod_settings.manager_enabled and mod_settings.manager_ups > DELTA then
-		local nth_tick_manager = ceil(60/mod_settings.manager_ups)--[[@as uint]]
-		script.on_nth_tick(nth_tick_manager, function()
 			manager.tick(global)
 		end)
+	else
+		if mod_settings.tps > DELTA then
+			local nth_tick_main = ceil(60/mod_settings.tps)--[[@as uint]]
+			script.on_nth_tick(nth_tick_main, function()
+				tick(global, mod_settings)
+			end)
+		end
+		if mod_settings.manager_enabled and mod_settings.manager_ups > DELTA then
+			local nth_tick_manager = ceil(60/mod_settings.manager_ups)--[[@as uint]]
+			script.on_nth_tick(nth_tick_manager, function()
+				manager.tick(global)
+			end)
+		end
 	end
 end
 local function on_settings_changed(event)
@@ -876,6 +885,7 @@ local filter_built = {
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
+	{filter = "type", type = "curved-rail"},
 	{filter = "type", type = "loader-1x1"},
 }
 local filter_broken = {
@@ -884,6 +894,7 @@ local filter_broken = {
 	{filter = "type", type = "inserter"},
 	{filter = "type", type = "pump"},
 	{filter = "type", type = "straight-rail"},
+	{filter = "type", type = "curved-rail"},
 	{filter = "type", type = "loader-1x1"},
 	{filter = "rolling-stock"},
 }
@@ -953,6 +964,7 @@ local function main()
 		script.on_event(defines.events.on_player_removed, manager.on_player_removed)
 		script.on_event(defines.events.on_player_created, manager.on_player_created)
 		script.on_event(defines.events.on_lua_shortcut, manager.on_lua_shortcut)
+		script.on_event(defines.events.on_gui_closed, manager.on_lua_shortcut)
 		script.on_event("cybersyn-toggle-gui", manager.on_lua_shortcut)
 	end
 

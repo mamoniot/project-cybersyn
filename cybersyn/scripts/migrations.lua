@@ -1,6 +1,8 @@
 --By Mami
 local flib_migration = require("__flib__.migration")
 local manager_gui = require('gui.main')
+local debug_revision = require('info')
+local check_debug_revision
 
 
 local migrations_table = {
@@ -298,7 +300,9 @@ local migrations_table = {
 	---@type MapData
 		local map_data = global
 
-		manager_gui.on_init()
+		map_data.manager = {
+			players = {},
+		}
 		for i, v in pairs(game.players) do
 			manager_gui.on_player_created({player_index = i})
 		end
@@ -318,18 +322,52 @@ local migrations_table = {
 	end,
 }
 --STATUS_R_TO_D = 5
-
 ---@param data ConfigurationChangedData
 function on_config_changed(data)
-	for i, v in pairs(global.manager.players) do
-		manager_gui.reset_player(i, v)
-	end
 	global.tick_state = STATE_INIT
 	global.tick_data = {}
 	flib_migration.on_config_changed(data, migrations_table)
 
+	for i, v in pairs(global.manager.players) do
+		manager_gui.reset_player(i, v)
+	end
+
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if IS_SE_PRESENT and not global.se_tele_old_id then
 		global.se_tele_old_id = {}
+	end
+	if global.debug_revision ~= debug_revision then
+		global.debug_revision = debug_revision
+		if debug_revision then
+			on_debug_revision_change()
+		end
+	end
+end
+
+---NOTE: this runs before on_config_changed
+---It does not have access to game
+---NOTE 2: Everything in this section must be idempotent
+function on_debug_revision_change()
+	local map_data = global
+
+	if debug_revision == 1 then
+		for _, e in pairs(map_data.refuelers) do
+			if e.network_flag ~= nil then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
+		end
+		for _, e in pairs(map_data.stations) do
+			if e.network_flag ~= nil then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
+		end
+		for _, e in pairs(map_data.trains) do
+			if e.network_flag ~= nil then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
+		end
 	end
 end
