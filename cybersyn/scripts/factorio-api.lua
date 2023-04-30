@@ -63,10 +63,10 @@ function se_get_space_elevator_name(cache, surface)
 			cache.se_get_space_elevator_name[cache_idx - 1] = entity
 			cache.se_get_space_elevator_name[cache_idx] = name
 			return name
+		else
+			return nil
 		end
 	end
-
-	return nil
 end
 ---@param cache PerfCache
 ---@param surface_index uint
@@ -78,7 +78,8 @@ local function se_get_zone_from_surface_index(cache, surface_index)
 	local cache_idx = 2*surface_index
 	if cache.se_get_zone_from_surface_index then
 		zone_index = cache.se_get_zone_from_surface_index[cache_idx - 1]--[[@as uint]]
-		zone_orbit_index = cache.se_get_zone_from_surface_index[cache_idx]--[[@as uint]]
+		--zones may not have an orbit_index
+		zone_orbit_index = cache.se_get_zone_from_surface_index[cache_idx]--[[@as uint?]]
 	else
 		cache.se_get_zone_from_surface_index = {}
 	end
@@ -86,9 +87,9 @@ local function se_get_zone_from_surface_index(cache, surface_index)
 	if not zone_index then
 		zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = surface_index})
 
-		if type(zone.index) == "number" and type(zone.orbit_index) == "number" then
+		if zone and type(zone.index) == "number" then
 			zone_index = zone.index--[[@as uint]]
-			zone_orbit_index = zone.orbit_index--[[@as uint]]
+			zone_orbit_index = zone.orbit_index--[[@as uint?]]
 			--NOTE: caching these indices could be a problem if SE is not deterministic in choosing them
 			cache.se_get_zone_from_surface_index[cache_idx - 1] = zone_index
 			cache.se_get_zone_from_surface_index[cache_idx] = zone_orbit_index
