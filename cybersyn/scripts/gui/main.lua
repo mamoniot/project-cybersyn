@@ -50,9 +50,9 @@ function manager_gui.on_lua_shortcut(e)
 	if e.prototype_name == "cybersyn-toggle-gui" or e.input_name == "cybersyn-toggle-gui" or e.element then
 		if e.element then
 			if e.element.name == "manager_window" then
-				manager.wrapper(e, manager.handle.manager_toggle)	
+				manager.wrapper(e, manager.handle.manager_toggle)
 			end
-		else			
+		else
 			manager.wrapper(e, manager.handle.manager_toggle)
 		end
 	end
@@ -147,6 +147,9 @@ end
 
 
 function manager_gui.on_migration()
+	for i, v in pairs(global.manager.players) do
+		manager_gui.reset_player(i, v)
+	end
 	init_items(global.manager)
 end
 

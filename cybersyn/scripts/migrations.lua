@@ -296,28 +296,36 @@ local migrations_table = {
 			end
 		end
 	end,
-	["1.2.14"] = function()
-	---@type MapData
+	["1.2.15"] = function()
+		---@type MapData
 		local map_data = global
 
-		map_data.manager = {
-			players = {},
-		}
-		for i, v in pairs(game.players) do
-			manager_gui.on_player_created({player_index = i})
+		if not global.manager then
+			global.manager = {
+				players = {},
+			}
+			for i, v in pairs(game.players) do
+				manager_gui.on_player_created({player_index = i})
+			end
 		end
 
 		for _, e in pairs(map_data.refuelers) do
-			e.network_mask = e.network_flag
-			e.network_flag = nil
+			if e.network_flag then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
 		end
 		for _, e in pairs(map_data.stations) do
-			e.network_mask = e.network_flag
-			e.network_flag = nil
+			if e.network_flag then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
 		end
 		for _, e in pairs(map_data.trains) do
-			e.network_mask = e.network_flag
-			e.network_flag = nil
+			if e.network_flag then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
 		end
 	end,
 }
@@ -329,10 +337,6 @@ function on_config_changed(data)
 	global.perf_cache = {}
 
 	flib_migration.on_config_changed(data, migrations_table)
-
-	for i, v in pairs(global.manager.players) do
-		manager_gui.reset_player(i, v)
-	end
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if IS_SE_PRESENT and not global.se_tele_old_id then
