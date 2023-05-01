@@ -3,8 +3,9 @@ Version: 1.2.15
 Date: 2023-4-30
   Bugfixes:
     - Fixed UPS spikes in Space Exploration related to expensive remote calls into their modding interface.
-    - Fixed missing cybersyn manager translation key.
     - Added a fix for a crash related to using the beta branch of cybersyn
+    - Fixed missing cybersyn manager translation key.
+    - Improved several tooltips
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.14
 Date: 2023-4-30
