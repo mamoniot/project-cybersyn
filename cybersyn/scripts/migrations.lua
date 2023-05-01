@@ -328,19 +328,6 @@ function on_config_changed(data)
 	global.tick_data = {}
 	global.perf_cache = {}
 
-	if global.manager then
-		for i, v in pairs(global.manager.players) do
-			manager_gui.reset_player(i, v)
-		end
-	else
-		global.manager = {
-			players = {},
-		}
-		for i, v in pairs(game.players) do
-			manager_gui.on_player_created({player_index = i})
-		end
-	end
-
 	flib_migration.on_config_changed(data, migrations_table)
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
