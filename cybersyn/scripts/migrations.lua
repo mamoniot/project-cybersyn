@@ -310,16 +310,22 @@ local migrations_table = {
 		end
 
 		for _, e in pairs(map_data.refuelers) do
-			e.network_mask = e.network_flag
-			e.network_flag = nil
+			if e.network_flag then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
 		end
 		for _, e in pairs(map_data.stations) do
-			e.network_mask = e.network_flag
-			e.network_flag = nil
+			if e.network_flag then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
 		end
 		for _, e in pairs(map_data.trains) do
-			e.network_mask = e.network_flag
-			e.network_flag = nil
+			if e.network_flag then
+				e.network_mask = e.network_flag
+				e.network_flag = nil
+			end
 		end
 	end,
 }
