@@ -296,15 +296,17 @@ local migrations_table = {
 			end
 		end
 	end,
-	["1.2.14"] = function()
+	["1.2.15"] = function()
 		---@type MapData
 		local map_data = global
 
-		map_data.manager = {
-			players = {},
-		}
-		for i, v in pairs(game.players) do
-			manager_gui.on_player_created({player_index = i})
+		if not global.manager then
+			global.manager = {
+				players = {},
+			}
+			for i, v in pairs(game.players) do
+				manager_gui.on_player_created({player_index = i})
+			end
 		end
 
 		for _, e in pairs(map_data.refuelers) do

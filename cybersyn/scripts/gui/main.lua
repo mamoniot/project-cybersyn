@@ -147,14 +147,10 @@ end
 
 
 function manager_gui.on_migration()
-	if global.manager then
-		for i, v in pairs(global.manager.players) do
-			manager_gui.reset_player(i, v)
-		end
-		init_items(global.manager)
-	else
-		manager_gui.on_init()
+	for i, v in pairs(global.manager.players) do
+		manager_gui.reset_player(i, v)
 	end
+	init_items(global.manager)
 end
 
 function manager_gui.on_init()
