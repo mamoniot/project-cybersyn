@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.16
+Date: 2023-5-14
+  Bugfixes:
+    - Fixed Nullius recipe being broken again
+  Translation:
+    - Chinese language update contributed by luaotix
+    - Russian language correction contributed by Eldrinn-Elantey
+    - Korean language contributed by manmen-mi
+---------------------------------------------------------------------------------------------------
 Version: 1.2.15
 Date: 2023-4-30
   Bugfixes:
@@ -12,7 +21,6 @@ Date: 2023-4-30
   Features:
     - Added opt-in WIP trains, inventory, and station manager gui (highly experimental, use at your own risk)
   Changes:
-    - Improved the recipe derivation logic for the cybernetic combinator, in all modpacks it should now consistently be about as difficult to craft as an arthmetic combinator. Vanilla recipe is unchanged, but several overhaul mods will receive new recipes.
     - The automatic allow list now consistently looks 3 tiles down the first curved rail it finds along a station for inserters or pumps. Previously it would conditionally look only 1 tile down. This should lead to more intuitive allow list behaviour for stations with trains that park slightly on curved rails.
   Bugfixes:
     - Provider override thresholds now correctly override the required train capacity as well; fix contributed by shopt

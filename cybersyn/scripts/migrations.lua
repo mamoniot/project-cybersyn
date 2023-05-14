@@ -300,15 +300,6 @@ local migrations_table = {
 		---@type MapData
 		local map_data = global
 
-		if not global.manager then
-			global.manager = {
-				players = {},
-			}
-			for i, v in pairs(game.players) do
-				manager_gui.on_player_created({player_index = i})
-			end
-		end
-
 		for _, e in pairs(map_data.refuelers) do
 			if e.network_flag then
 				e.network_mask = e.network_flag
@@ -328,6 +319,18 @@ local migrations_table = {
 			end
 		end
 	end,
+	["1.2.16"] = function()
+		---@type MapData
+		local map_data = global
+		if not map_data.manager then
+			map_data.manager = {
+				players = {},
+			}
+			for i, v in pairs(game.players) do
+				manager_gui.on_player_created({player_index = i})
+			end
+		end
+	end
 }
 --STATUS_R_TO_D = 5
 ---@param data ConfigurationChangedData
