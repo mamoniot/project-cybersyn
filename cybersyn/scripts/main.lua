@@ -849,7 +849,7 @@ local function register_tick()
 	script.on_nth_tick(nil)
 	--edge case catch to register both main and manager tick if they're scheduled to run on the same ticks
 	if mod_settings.manager_enabled and mod_settings.manager_ups == mod_settings.tps and mod_settings.tps > DELTA then
-		local nth_tick = ceil(60/mod_settings.tps)
+		local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]]
 		script.on_nth_tick(nth_tick, function()
 			tick(global, mod_settings)
 			manager.tick(global)
