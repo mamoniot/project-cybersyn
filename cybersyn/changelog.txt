@@ -3,6 +3,7 @@ Version: 1.2.16
 Date: 2023-5-14
   Bugfixes:
     - Fixed Nullius recipe being broken again
+    - Reran manager migrations to fix some people's worlds that used the beta branch
   Translation:
     - Chinese language update contributed by luaotix
     - Russian language correction contributed by Eldrinn-Elantey
