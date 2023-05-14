@@ -48,7 +48,7 @@ function se_get_space_elevator_name(cache, surface)
 	end
 
 	if not entity or not entity.valid then
-		--Chaching failed, default to expensive lookup
+		--Caching failed, default to expensive lookup
 		entity = surface.find_entities_filtered({
 			name = SE_ELEVATOR_STOP_PROTO_NAME,
 			type = "train-stop",
