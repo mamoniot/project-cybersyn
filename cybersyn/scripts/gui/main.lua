@@ -79,7 +79,7 @@ local function create_player(player_index)
 end
 
 function manager_gui.on_player_created(e)
-	create_player(player_index)
+	create_player(e.player_index)
 end
 
 function manager_gui.on_player_removed(e)
@@ -153,7 +153,7 @@ end
 
 function manager_gui.on_migration()
 	for i, p in pairs(game.players) do
-		if global.manager.players[player_index] == nil then
+		if global.manager.players[i] == nil then
 			create_player(i)
 		end
 	end
