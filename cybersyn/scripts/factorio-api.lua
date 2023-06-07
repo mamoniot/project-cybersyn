@@ -139,6 +139,8 @@ function create_loading_order(stop, manifest, enable_inactive)
 			compare_type = "and",
 			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
 		}
+
+		condition[#condition + 1] = condition_wait_inactive
 	end
 	if enable_inactive then
 		condition[#condition + 1] = condition_wait_inactive
