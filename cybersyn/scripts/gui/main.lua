@@ -51,6 +51,15 @@ function manager_gui.on_lua_shortcut(e)
 		if e.element then
 			if e.element.name == "manager_window" then
 				manager.wrapper(e, manager.handle.manager_toggle)
+			elseif e.element.name == COMBINATOR_NAME and e.name == defines.events.on_gui_closed then
+				-- With the manager enabled, this handler overwrites the combinator's
+				-- on_gui_close handler. Copy the logic to close the combinator's GUI here
+				-- as well.
+				local player = game.get_player(e.player_index)
+				if not player then return end
+				if player.gui.screen[COMBINATOR_NAME] then
+					player.gui.screen[COMBINATOR_NAME].destroy()
+				end
 			end
 		else
 			manager.wrapper(e, manager.handle.manager_toggle)
