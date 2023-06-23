@@ -201,6 +201,9 @@ function gui_opened(comb, player)
 	combinator_update(global, comb, true)
 
 	local rootgui = player.gui.screen
+	if rootgui[COMBINATOR_NAME] then
+		rootgui[COMBINATOR_NAME].destroy()
+	end
 	local selected_index, signal, switch_state, bits = get_comb_gui_settings(comb)
 
 	local _, main_window = flib_gui.add(rootgui, {
