@@ -777,6 +777,17 @@ end
 
 
 ---@param r_stop LuaEntity
+---@param item_name string
+function send_alert_missing_provider(item_name, r_stop)
+	for _, player in pairs(r_stop.force.players) do
+		player.add_custom_alert(
+		r_stop,
+		send_alert_about_missing_train_icon,
+		{"cybersyn-messages.missing-provider", item_name, r_stop.backer_name},
+		true)
+	end
+end
+---@param r_stop LuaEntity
 ---@param p_stop LuaEntity
 function send_alert_missing_train(r_stop, p_stop)
 	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.missing-train")
