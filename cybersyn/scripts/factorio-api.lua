@@ -776,8 +776,8 @@ function send_alert_sounds(train)
 end
 
 
----@param r_stop LuaEntity
 ---@param item_name string
+---@param r_stop LuaEntity
 function send_alert_missing_provider(item_name, r_stop)
 	for _, player in pairs(r_stop.force.players) do
 		player.add_custom_alert(
