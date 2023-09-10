@@ -171,10 +171,11 @@ end
 
 --- @param station Station
 --- @return GuiElemDef[]
-function util.slot_table_build_from_control_signals(station)
+function util.slot_table_build_from_control_signals(station, map_data)
   ---@type GuiElemDef[]
   local children = {}
   local comb1_signals, comb2_signals = get_signals(station)
+
   if comb1_signals then
     for _, v in pairs(comb1_signals) do
       local item = v.signal
@@ -205,6 +206,68 @@ function util.slot_table_build_from_control_signals(station)
       ::continue::
     end
   end
+
+  if comb2_signals then
+    for _, v in pairs(comb2_signals) do
+      local item = v.signal
+      local count = v.count
+      local name = item.name
+      local sprite = ""
+      local color = "default"
+
+      if item.type == "item" or item.type == "fluid" then
+        local sprite, img_path, item_string = util.generate_item_references(name)
+        if sprite ~= nil then
+          local color
+          if count > 0 then
+            color = "green"
+          else
+            color = "blue"
+          end
+        end
+
+        if station.is_stack and item.type == "item" then
+          count = count * get_stack_size(map_data, name)
+        end
+
+        if game.is_valid_sprite_path(sprite) then
+          children[#children + 1] = {
+            type = "sprite-button",
+            enabled = false,
+            style = "ltnm_small_slot_button_" .. color,
+            sprite = sprite,
+            tooltip = {
+              "",
+              img_path,
+              item_string,
+              "\n"..format.number(count),
+            },
+            number = count
+          }
+        end
+
+      elseif item.type == "virtual" then
+        sprite = "virtual-signal" .. "/" .. name
+        if game.is_valid_sprite_path(sprite) then
+          children[#children + 1] = {
+            type = "sprite-button",
+            enabled = false,
+            style = "ltnm_small_slot_button_" .. color,
+            sprite = sprite,
+            tooltip = {
+              "",
+              "[img=virtual-signal." .. name  .. "]",
+              { "virtual-signal-name." .. name },
+              "\n"..format.number(count),
+            },
+            number = count
+          }
+        end
+      end
+      ::continue::
+    end
+  end
+
   return children
 end
 
