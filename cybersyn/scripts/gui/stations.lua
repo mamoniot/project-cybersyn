@@ -250,7 +250,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 
 		gui.add(refs.provided_requested_table, util.slot_table_build_from_station(station))
 		gui.add(refs.shipments_table, util.slot_table_build_from_deliveries(station))
-		gui.add(refs.control_signals_table, util.slot_table_build_from_control_signals(station))
+		gui.add(refs.control_signals_table, util.slot_table_build_from_control_signals(station, map_data))
 
 	end
 
