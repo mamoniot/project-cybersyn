@@ -60,9 +60,10 @@ end
 
 
 
-function manager_gui.on_player_created(e)
-	local player = game.get_player(e.player_index)
+local function create_player(player_index)
+	local player = game.get_player(player_index)
 	if not player then return end
+
 	local player_data = {
 		search_network_mask = -1,
 		trains_orderings = {},
@@ -71,10 +72,14 @@ function manager_gui.on_player_created(e)
 		refs = manager.create(player),
 		selected_tab = "stations_tab",
 	}
-	global.manager.players[e.player_index] = player_data
+	global.manager.players[player_index] = player_data
 
 	--manager.update(global, player, player_data)
 	--top_left_button_update(player, player_data)
+end
+
+function manager_gui.on_player_created(e)
+	create_player(e.player_index)
 end
 
 function manager_gui.on_player_removed(e)
@@ -147,9 +152,16 @@ end
 
 
 function manager_gui.on_migration()
+	for i, p in pairs(game.players) do
+		if global.manager.players[i] == nil then
+			create_player(i)
+		end
+	end
+	
 	for i, v in pairs(global.manager.players) do
 		manager_gui.reset_player(i, v)
 	end
+
 	init_items(global.manager)
 end
 
