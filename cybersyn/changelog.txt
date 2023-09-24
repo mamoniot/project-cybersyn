@@ -1,4 +1,20 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.3.0
+Date: 2023-9-24
+  Features:
+    - Added an alert when no provider is found for an item, indicating a bottleneck in your factory - contributed by FinalFrag
+    - The manager gui now displays control signals - contributed by Shadowvoices
+    - The manager gui now excludes requests that do not exceed the request threshold - contributed by Shadowvoices
+  Bugfixes:
+    - Fixed a crash when clicking on a combinator when the GUI is open - contributed by PeteyPii
+    - Fixed a crash when setting a combinator to depot mode without a network - contributed by download13
+    - Fixed a crash when opening the manager when adding cybersyn to an existing save - contributed by Mjonir
+    - Stations with provider item thresholds can no longer generate empty train orders - contributed by svr8450
+  Translation:
+    - Swedish language added - contributed by Sharparam
+    - Chinese language update - contributed by luaotix
+    - Russian language update - contributed by Eldrinn-Elantey
+---------------------------------------------------------------------------------------------------
 Version: 1.2.16
 Date: 2023-5-14
   Bugfixes:
