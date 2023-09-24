@@ -157,11 +157,17 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 			end
 			local p_effective_item_count = p_station.item_p_counts[item_name]
 			--could be an item that is not present at the station
+			local effective_threshold
 			local override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
 			if override_threshold and p_station.is_stack and item_type == "item" then
 				override_threshold = override_threshold*get_stack_size(map_data, item_name)
 			end
-			if p_effective_item_count and p_effective_item_count >= (override_threshold or r_threshold) then
+			if override_threshold and override_threshold <= r_threshold then
+				effective_threshold = override_threshold
+			else
+				effective_threshold = r_threshold
+			end
+			if p_effective_item_count and p_effective_item_count >= effective_threshold then
 				local item = {name = item_name, type = item_type, count = min(-r_effective_item_count, p_effective_item_count)}
 				if item_name == primary_item_name then
 					manifest[#manifest + 1] = manifest[1]
