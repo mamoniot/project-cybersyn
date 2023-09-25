@@ -353,6 +353,7 @@ interface.add_refueler_schedule = add_refueler_schedule
 --[[alerts]]
 ------------------------------------------------------------------
 
+interface.send_alert_missing_provider = send_alert_missing_provider
 interface.send_alert_missing_train = send_alert_missing_train
 interface.send_alert_unexpected_train = send_alert_unexpected_train
 interface.send_alert_nonempty_train_in_depot = send_alert_nonempty_train_in_depot
