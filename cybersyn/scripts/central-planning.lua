@@ -304,6 +304,12 @@ local function tick_dispatch(map_data, mod_settings)
 				goto continue
 			end
 
+			--don't request when already providing
+			local item_deliveries = station.deliveries[item_name]
+			if item_deliveries and item_deliveries < 0 then
+				goto continue
+			end
+
 			r_station_i = i
 			r_threshold = threshold
 			best_r_prior = prior
@@ -348,7 +354,7 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
-			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist, effective_threshold, slot_threshold
+			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist, effective_threshold, slot_threshold, item_deliveries
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
@@ -480,6 +486,12 @@ local function tick_dispatch(map_data, mod_settings)
 				end
 			end
 			if not best_p_train_id then
+				goto p_continue
+			end
+
+			--don't provide when already requesting
+			item_deliveries = p_station.deliveries[item_name]
+			if item_deliveries and item_deliveries > 0 then
 				goto p_continue
 			end
 
