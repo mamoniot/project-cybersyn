@@ -92,7 +92,7 @@ local function handle_drop_down(e)
 		--prevent the use of the each signal with depots
 		local network = element.parent.parent.bottom.network--[[@as LuaGuiElement]]
 		local signal = network.elem_value--[[@as SignalID]]
-		if signal.name == NETWORK_EACH then
+		if signal and signal.name == NETWORK_EACH then
 			network.elem_value = nil
 			set_comb_network_name(comb, nil)
 		end
