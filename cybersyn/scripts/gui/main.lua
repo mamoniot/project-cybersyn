@@ -147,6 +147,9 @@ end
 
 
 function manager_gui.on_migration()
+    if global.manager == nil do
+        manager_gui.on_init()
+    end
 	for i, v in pairs(global.manager.players) do
 		manager_gui.reset_player(i, v)
 	end
