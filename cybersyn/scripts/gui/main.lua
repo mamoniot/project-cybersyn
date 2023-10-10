@@ -161,6 +161,10 @@ end
 
 
 function manager_gui.on_migration()
+	if not global.manager then
+		manager_gui.on_init()
+	end
+	
 	for i, p in pairs(game.players) do
 		if global.manager.players[i] == nil then
 			create_player(i)
