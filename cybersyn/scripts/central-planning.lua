@@ -498,9 +498,7 @@ local function tick_dispatch(map_data, mod_settings)
 			create_delivery(map_data, r_station_id, p_station_id, best_train_id, manifest)
 			return false
 		else
-			if correctness == 0 then
-				send_alert_missing_provider(item_name, r_station.entity_stop)
-			elseif correctness == 1 then
+			if correctness == 1 then
 				send_alert_missing_train(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
 			elseif correctness == 2 then
 				send_alert_no_train_has_capacity(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
