@@ -381,39 +381,33 @@ function combinator_update(map_data, comb, reset_display)
 	local control = get_comb_control(comb)
 	local params = control.parameters
 	local old_params = map_data.to_comb_params[unit_number]
-	local has_changed = false
-	local station = nil
-	local id = nil
 
-
-	if params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST or params.operation == MODE_PRIMARY_IO then
+	if params.operation == MODE_PRIMARY_IO or params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
 		--the follow is only present to fix combinators that have been copy-pasted by blueprint with the wrong operation
-		local stop = map_data.to_stop[comb.unit_number--[[@as uint]]]
-		local should_reset = reset_display
-		if stop then
-			id = stop.unit_number--[[@as uint]]
-			station = map_data.stations[id]
-			if station and station.entity_comb1 ~= comb then
-				station = nil
-			end
-			if should_reset and station then
-				--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
-				if station.display_state == 0 then
-					params.operation = MODE_PRIMARY_IO
-				elseif station.display_state%2 == 1 then
-					params.operation = MODE_PRIMARY_IO_ACTIVE
-				else
-					params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
+		local reset_params = reset_display
+		if reset_display then
+			local stop = map_data.to_stop[unit_number]
+			if stop then
+				local id = stop.unit_number--[[@as uint]]
+				local station = map_data.stations[id]
+				if station and station.entity_comb1 == comb then
+					if station.display_state == 0 then
+						params.operation = MODE_PRIMARY_IO
+					elseif station.display_state%2 == 1 then
+						params.operation = MODE_PRIMARY_IO_ACTIVE
+					else
+						params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
+					end
+					control.parameters = params
+					reset_params = false
 				end
-				control.parameters = params
-				should_reset = false
 			end
 		end
-		if should_reset then
-			params.operation = MODE_PRIMARY_IO
+		--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
+		params.operation = MODE_PRIMARY_IO
+		if reset_params then
 			control.parameters = params
 		end
-		params.operation = MODE_PRIMARY_IO
 	end
 	if params.operation ~= old_params.operation then
 		--NOTE: This is rather dangerous, we may need to actually implement operation changing
@@ -422,25 +416,25 @@ function combinator_update(map_data, comb, reset_display)
 		interface_raise_combinator_changed(comb, old_params)
 		return
 	end
-	local new_signal = params.first_signal
-	local old_signal = old_params.first_signal
-	local new_network = new_signal and new_signal.name or nil
-	local old_network = old_signal and old_signal.name or nil
-	if new_network ~= old_network then
-		has_changed = true
 
-		local stop = map_data.to_stop[comb.unit_number]
-		if stop and stop.valid then
+	local network_changed = params.first_signal ~= old_params.first_signal
+	if network_changed or params.second_constant ~= old_params.second_constant then
+		local stop = map_data.to_stop[unit_number]
+		if stop then
+			local id = stop.unit_number--[[@as uint]]
+			local station = map_data.stations[id]
 			if station then
-				--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
-				if not map_data.queue_station_update then
-					map_data.queue_station_update = {}
+				if station.entity_comb1 == comb then
+					--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
+					if not map_data.queue_station_update then
+						map_data.queue_station_update = {}
+					end
+					map_data.queue_station_update[id] = true
 				end
-				map_data.queue_station_update[id] = true
 			else
 				local depot = map_data.depots[id]
 				if depot then
-					if depot.entity_comb == comb then
+					if depot.entity_comb == comb and network_changed then
 						local train_id = depot.available_train_id
 						if train_id then
 							local train = map_data.trains[train_id]
@@ -452,32 +446,15 @@ function combinator_update(map_data, comb, reset_display)
 				else
 					local refueler = map_data.refuelers[id]
 					if refueler and refueler.entity_comb == comb then
+						local pre = refueler.allows_all_trains
 						set_refueler_from_comb(map_data, mod_settings, id, refueler)
+						if refueler.allows_all_trains ~= pre then
+							update_stop_if_auto(map_data, refueler, false)
+						end
 					end
 				end
 			end
 		end
-	end
-	if params.second_constant ~= old_params.second_constant then
-		has_changed = true
-		if station then
-			--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
-			if not map_data.queue_station_update then
-				map_data.queue_station_update = {}
-			end
-			map_data.queue_station_update[id] = true
-		else
-			local refueler = map_data.refuelers[id]
-			if refueler then
-				local pre = refueler.allows_all_trains
-				set_refueler_from_comb(map_data, mod_settings, id, refueler)
-				if refueler.allows_all_trains ~= pre then
-					update_stop_if_auto(map_data, refueler, false)
-				end
-			end
-		end
-	end
-	if has_changed then
 		map_data.to_comb_params[unit_number] = params
 		interface_raise_combinator_changed(comb, old_params)
 	end
