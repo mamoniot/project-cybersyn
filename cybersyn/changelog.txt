@@ -10,6 +10,7 @@ Date: 2023-10-10
     - Fixed a crash when setting a combinator to depot mode without a network - contributed by download13 and TheXIFC
     - Stations with provider item thresholds can no longer generate empty train orders - contributed by svr8450
     - Added missing loader entity type to the automatic allow-list - contributed by gillett-hernandez
+    - Fixed a case where combinator changes not being applied for depots and refuelers - contributed by jagoly
     - Fixed a crash when opening the manager when adding cybersyn to an existing save - contributed by Mjonir
     - Fixed a crash when enabling the manager on an existing save - contributed by freyacodes
   Translation:
