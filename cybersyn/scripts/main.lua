@@ -415,11 +415,10 @@ function combinator_update(map_data, comb, reset_display)
 	local type, id, entity = nil, 0, nil
 
 	local op = params.operation
-	local is_mode_primary_io = op == MODE_PRIMARY_IO
 	--handle the combinator's display, if it is part of a station
-	if is_mode_primary_io or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
+	if op == MODE_PRIMARY_IO or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
 		--the follow is only present to fix combinators that have been copy-pasted by blueprint with the wrong operation
-		local params_op_wasnt_set = true
+		local set_control_params = true
 
 		if reset_display then
 			type, id, entity = comb_to_internal_entity(map_data, comb, unit_number)
@@ -433,13 +432,13 @@ function combinator_update(map_data, comb, reset_display)
 				else
 					params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
 				end
-				params_op_wasnt_set = false
+				set_control_params = false
 				control.parameters = params
 			end
 		end
 		--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
-		if params_op_wasnt_set and not is_mode_primary_io then
-			params.operation = MODE_PRIMARY_IO
+		params.operation = MODE_PRIMARY_IO
+		if set_control_params then
 			control.parameters = params
 		end
 	end
