@@ -115,7 +115,7 @@ end
 ---@param map_data MapData
 ---@param stop LuaEntity
 ---@param comb1 LuaEntity
----@param comb2 LuaEntity
+---@param comb2 LuaEntity?
 local function on_station_built(map_data, stop, comb1, comb2)
 	--NOTE: only place where new Station
 	local station = {
@@ -285,10 +285,11 @@ local function on_combinator_built(map_data, comb)
 		control.parameters = params
 	end
 
-	map_data.to_comb[comb.unit_number] = comb
-	map_data.to_comb_params[comb.unit_number] = params
-	map_data.to_output[comb.unit_number] = out
-	map_data.to_stop[comb.unit_number] = stop
+	local unit_number = comb.unit_number--[[@as uint]]
+	map_data.to_comb[unit_number] = comb
+	map_data.to_comb_params[unit_number] = params
+	map_data.to_output[unit_number] = out
+	map_data.to_stop[unit_number] = stop
 
 	if op == MODE_WAGON then
 		if rail then
@@ -328,6 +329,48 @@ local function on_combinator_built(map_data, comb)
 		end
 	end
 end
+
+---@param map_data MapData
+---@param comb LuaEntity
+---@param unit_number uint
+---@return uint, uint, Station|Depot|Refueler|nil, LuaEntity?
+--Returns the internal entity associated with the given combinator, if one exists.
+--`unit_number` must be equal to `comb.unit_number`.
+--Returns 1 if `comb` is `entity_comb1` of a station.
+--Returns 2 if `comb` is `entity_comb2` of a station.
+--Returns 3 if `comb` defines a depot.
+--Returns 4 if `comb` defines a refueler.
+--Returns 0 if `comb` is not a core component of any entity.
+local function comb_to_internal_entity(map_data, comb, unit_number)
+	local stop = map_data.to_stop[unit_number]
+	if stop and stop.valid then
+		local id = stop.unit_number--[[@as uint]]
+		local station = map_data.stations[id]
+		if station then
+			if station.entity_comb1 == comb then
+				return 1, id, station, stop
+			elseif station.entity_comb2 == comb then
+				return 2, id, station, stop
+			end
+		else
+			local depot = map_data.depots[id]
+			if depot then
+				if depot.entity_comb == comb then
+					return 3, id, depot, stop
+				end
+			else
+				local refueler = map_data.refuelers[id]
+				if refueler then
+					if refueler.entity_comb == comb then
+						return 4, id, refueler, stop
+					end
+				end
+			end
+		end
+	end
+	return 0, 0, nil, nil
+end
+
 ---@param map_data MapData
 ---@param comb LuaEntity
 function on_combinator_broken(map_data, comb)
@@ -335,33 +378,20 @@ function on_combinator_broken(map_data, comb)
 	---@type uint
 	local comb_id = comb.unit_number
 	local out = map_data.to_output[comb_id]
-	local stop = map_data.to_stop[comb_id]
 
-	if stop and stop.valid then
-		local id = stop.unit_number--[[@as uint]]
-		local station = map_data.stations[id]
-		if station then
-			if station.entity_comb1 == comb then
-				on_station_broken(map_data, id, station)
-				on_stop_built_or_updated(map_data, stop, comb)
-			elseif station.entity_comb2 == comb then
-				station.entity_comb2 = search_for_station_combinator(map_data, stop, MODE_SECONDARY_IO, comb)
-			end
-		else
-			local depot = map_data.depots[id]
-			if depot then
-				if depot.entity_comb == comb then
-					on_depot_broken(map_data, id, depot)
-					on_stop_built_or_updated(map_data, stop, comb)
-				end
-			else
-				local refueler = map_data.refuelers[id]
-				if refueler and refueler.entity_comb == comb then
-					on_refueler_broken(map_data, id, refueler)
-					on_stop_built_or_updated(map_data, stop, comb)
-				end
-			end
-		end
+	local type, id, entity, stop = comb_to_internal_entity(map_data, comb, comb_id)
+	if type == 1 then
+		on_station_broken(map_data, id, entity--[[@as Station]])
+		on_stop_built_or_updated(map_data, stop--[[@as LuaEntity]], comb)
+	elseif type == 2 then
+		local station = entity--[[@as Station]]
+		station.entity_comb2 = search_for_station_combinator(map_data, stop--[[@as LuaEntity]], MODE_SECONDARY_IO, comb)
+	elseif type == 3 then
+		on_depot_broken(map_data, id, entity--[[@as Depot]])
+		on_stop_built_or_updated(map_data, stop--[[@as LuaEntity]], comb)
+	elseif type == 4 then
+		on_refueler_broken(map_data, id, entity--[[@as Refueler]])
+		on_stop_built_or_updated(map_data, stop--[[@as LuaEntity]], comb)
 	end
 
 	if out and out.valid then
@@ -382,22 +412,19 @@ function combinator_update(map_data, comb, reset_display)
 	local params = control.parameters
 	local old_params = map_data.to_comb_params[unit_number]
 	local has_changed = false
-	local station = nil
-	local id = nil
+	local type, id, entity = nil, 0, nil
 
-
-	if params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST or params.operation == MODE_PRIMARY_IO then
+	local op = params.operation
+	--handle the combinator's display, if it is part of a station
+	if op == MODE_PRIMARY_IO or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
 		--the follow is only present to fix combinators that have been copy-pasted by blueprint with the wrong operation
-		local stop = map_data.to_stop[comb.unit_number--[[@as uint]]]
-		local should_reset = reset_display
-		if stop then
-			id = stop.unit_number--[[@as uint]]
-			station = map_data.stations[id]
-			if station and station.entity_comb1 ~= comb then
-				station = nil
-			end
-			if should_reset and station then
-				--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
+		local set_control_params = true
+
+		if reset_display then
+			type, id, entity = comb_to_internal_entity(map_data, comb, unit_number)
+
+			if type == 1 then
+				local station = entity--[[@as Station]]
 				if station.display_state == 0 then
 					params.operation = MODE_PRIMARY_IO
 				elseif station.display_state%2 == 1 then
@@ -405,16 +432,17 @@ function combinator_update(map_data, comb, reset_display)
 				else
 					params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
 				end
+				set_control_params = false
 				control.parameters = params
-				should_reset = false
 			end
 		end
-		if should_reset then
-			params.operation = MODE_PRIMARY_IO
+		--make sure only MODE_PRIMARY_IO gets stored on map_data.to_comb_params
+		params.operation = MODE_PRIMARY_IO
+		if set_control_params then
 			control.parameters = params
 		end
-		params.operation = MODE_PRIMARY_IO
 	end
+
 	if params.operation ~= old_params.operation then
 		--NOTE: This is rather dangerous, we may need to actually implement operation changing
 		on_combinator_broken(map_data, comb)
@@ -422,6 +450,7 @@ function combinator_update(map_data, comb, reset_display)
 		interface_raise_combinator_changed(comb, old_params)
 		return
 	end
+
 	local new_signal = params.first_signal
 	local old_signal = old_params.first_signal
 	local new_network = new_signal and new_signal.name or nil
@@ -429,54 +458,52 @@ function combinator_update(map_data, comb, reset_display)
 	if new_network ~= old_network then
 		has_changed = true
 
-		local stop = map_data.to_stop[comb.unit_number]
-		if stop and stop.valid then
-			if station then
-				--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
-				if not map_data.queue_station_update then
-					map_data.queue_station_update = {}
-				end
-				map_data.queue_station_update[id] = true
-			else
-				local depot = map_data.depots[id]
-				if depot then
-					if depot.entity_comb == comb then
-						local train_id = depot.available_train_id
-						if train_id then
-							local train = map_data.trains[train_id]
-							remove_available_train(map_data, train_id, train)
-							add_available_train_to_depot(map_data, mod_settings, train_id, train, id, depot)
-							interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
-						end
-					end
-				else
-					local refueler = map_data.refuelers[id]
-					if refueler and refueler.entity_comb == comb then
-						set_refueler_from_comb(map_data, mod_settings, id, refueler)
-					end
-				end
-			end
+		if type == nil then
+			type, id, entity = comb_to_internal_entity(map_data, comb, unit_number)
 		end
-	end
-	if params.second_constant ~= old_params.second_constant then
-		has_changed = true
-		if station then
+		if type == 1 or type == 2 then
 			--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
 			if not map_data.queue_station_update then
 				map_data.queue_station_update = {}
 			end
 			map_data.queue_station_update[id] = true
-		else
-			local refueler = map_data.refuelers[id]
-			if refueler then
-				local pre = refueler.allows_all_trains
-				set_refueler_from_comb(map_data, mod_settings, id, refueler)
-				if refueler.allows_all_trains ~= pre then
-					update_stop_if_auto(map_data, refueler, false)
-				end
+		elseif type == 3 then
+			local depot = entity--[[@as Depot]]
+			local train_id = depot.available_train_id
+			if train_id then
+				local train = map_data.trains[train_id]
+				remove_available_train(map_data, train_id, train)
+				add_available_train_to_depot(map_data, mod_settings, train_id, train, id, depot)
+				interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
+			end
+		elseif type == 4 then
+			set_refueler_from_comb(map_data, mod_settings, id, entity--[[@as Refueler]])
+		end
+	end
+
+	if params.second_constant ~= old_params.second_constant then
+		has_changed = true
+
+		if type == nil then
+			type, id, entity = comb_to_internal_entity(map_data, comb, unit_number)
+		end
+		--depots do not cache any combinator values so we don't have to update them here
+		if type == 1 or type == 2 then
+			--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
+			if not map_data.queue_station_update then
+				map_data.queue_station_update = {}
+			end
+			map_data.queue_station_update[id] = true
+		elseif type == 4 then
+			local refueler = entity--[[@as Refueler]]
+			local pre = refueler.allows_all_trains
+			set_refueler_from_comb(map_data, mod_settings, id, refueler)
+			if refueler.allows_all_trains ~= pre then
+				update_stop_if_auto(map_data, refueler, false)
 			end
 		end
 	end
+
 	if has_changed then
 		map_data.to_comb_params[unit_number] = params
 		interface_raise_combinator_changed(comb, old_params)

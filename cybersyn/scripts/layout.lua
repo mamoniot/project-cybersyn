@@ -215,7 +215,7 @@ function set_p_wagon_combs(map_data, station, train)
 		if carriage.type == "cargo-wagon" then
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
 			if inv then
-				---@type ConstantCombinatorParameters
+				---@type ConstantCombinatorParameters[]
 				local signals = {}
 
 				local inv_filter_i = 1
@@ -421,7 +421,7 @@ function unset_wagon_combs(map_data, stop)
 	end
 end
 
-local type_filter = {"inserter", "pump", "arithmetic-combinator", "loader-1x1"}
+local type_filter = {"inserter", "pump", "arithmetic-combinator", "loader-1x1", "loader"}
 ---@param map_data MapData
 ---@param stop Station|Refueler
 ---@param is_station_or_refueler boolean
@@ -543,7 +543,7 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 								end
 							end
 						end
-					elseif entity.type == "loader-1x1" then
+					elseif entity.type == "loader-1x1" or entity.type == "loader" then
 						if not supports_cargo then
 							local direction = entity.direction
 							if is_ver then
