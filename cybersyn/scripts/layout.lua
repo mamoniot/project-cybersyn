@@ -215,7 +215,7 @@ function set_p_wagon_combs(map_data, station, train)
 		if carriage.type == "cargo-wagon" then
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
 			if inv then
-				---@type ConstantCombinatorParameters
+				---@type ConstantCombinatorParameters[]
 				local signals = {}
 
 				local inv_filter_i = 1

@@ -131,6 +131,7 @@
 ---@field public react_to_train_early_to_depot boolean --interface setting
 ---@field public enable_manager boolean
 ---@field public manager_ups double
+---@field public manager_enabled boolean
 
 --if this is uncommented it means there are migrations to write
 

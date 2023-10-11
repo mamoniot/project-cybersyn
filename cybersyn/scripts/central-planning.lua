@@ -287,6 +287,12 @@ local function tick_dispatch(map_data, mod_settings)
 				goto continue
 			end
 
+			--don't request when already providing
+			local item_deliveries = station.deliveries[item_name]
+			if item_deliveries and item_deliveries < 0 then
+				goto continue
+			end
+
 			local threshold = station.r_threshold
 			local prior = station.priority
 			local item_threshold = station.item_thresholds and station.item_thresholds[item_name] or nil
@@ -300,13 +306,8 @@ local function tick_dispatch(map_data, mod_settings)
 				goto continue
 			end
 
+			--prioritize by last delivery time if priorities are equal
 			if prior == best_r_prior and station.last_delivery_tick > best_timestamp then
-				goto continue
-			end
-
-			--don't request when already providing
-			local item_deliveries = station.deliveries[item_name]
-			if item_deliveries and item_deliveries < 0 then
 				goto continue
 			end
 
@@ -359,6 +360,12 @@ local function tick_dispatch(map_data, mod_settings)
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
 			if not p_station or p_station.deliveries_total >= p_station.trains_limit then
+				goto p_continue
+			end
+
+			--don't provide when already requesting
+			item_deliveries = p_station.deliveries[item_name]
+			if item_deliveries and item_deliveries > 0 then
 				goto p_continue
 			end
 
@@ -489,12 +496,6 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			--don't provide when already requesting
-			item_deliveries = p_station.deliveries[item_name]
-			if item_deliveries and item_deliveries > 0 then
-				goto p_continue
-			end
-
 			p_station_i = j
 			best_train_id = best_p_train_id
 			best_p_prior = p_prior
@@ -510,14 +511,16 @@ local function tick_dispatch(map_data, mod_settings)
 			create_delivery(map_data, r_station_id, p_station_id, best_train_id, manifest)
 			return false
 		else
-			if correctness == 1 then
-				send_alert_missing_train(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
-			elseif correctness == 2 then
-				send_alert_no_train_has_capacity(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
-			elseif correctness == 3 then
-				send_alert_no_train_matches_r_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
-			elseif correctness == 4 then
-				send_alert_no_train_matches_p_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
+			if closest_to_correct_p_station then
+				if correctness == 1 then
+					send_alert_missing_train(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
+				elseif correctness == 2 then
+					send_alert_no_train_has_capacity(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
+				elseif correctness == 3 then
+					send_alert_no_train_matches_r_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
+				elseif correctness == 4 then
+					send_alert_no_train_matches_p_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
+				end
 			end
 			if band(r_station.display_state, 2) == 0 then
 				r_station.display_state = r_station.display_state + 2

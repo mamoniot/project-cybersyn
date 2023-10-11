@@ -115,7 +115,7 @@ end
 ---@param map_data MapData
 ---@param stop LuaEntity
 ---@param comb1 LuaEntity
----@param comb2 LuaEntity
+---@param comb2 LuaEntity?
 local function on_station_built(map_data, stop, comb1, comb2)
 	--NOTE: only place where new Station
 	local station = {
@@ -412,7 +412,7 @@ function combinator_update(map_data, comb, reset_display)
 	local params = control.parameters
 	local old_params = map_data.to_comb_params[unit_number]
 	local has_changed = false
-	local type, id, entity = nil, nil, nil
+	local type, id, entity = nil, 0, nil
 
 	local op = params.operation
 	local is_mode_primary_io = op == MODE_PRIMARY_IO
