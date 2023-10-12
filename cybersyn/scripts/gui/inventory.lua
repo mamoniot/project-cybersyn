@@ -132,10 +132,17 @@ function inventory_tab.build(map_data, player_data)
               inventory_provided[item.name] = inventory_provided[item.name] + count
             end
           else
-            if inventory_requested[item.name] == nil then
-              inventory_requested[item.name] = count
-            else
-              inventory_requested[item.name] = inventory_requested[item.name] + count
+            local r_threshold = station.item_thresholds and station.item_thresholds[item.name] or station.r_threshold
+            if station.is_stack and item_type == "item" then
+              r_threshold = r_threshold*get_stack_size(map_data, item.name)
+            end
+
+            if -count >= r_threshold then
+              if inventory_requested[item.name] == nil then
+                inventory_requested[item.name] = count
+              else
+                inventory_requested[item.name] = inventory_requested[item.name] + count
+              end
             end
           end
         end

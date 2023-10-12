@@ -89,13 +89,6 @@ local function handle_drop_down(e)
 		set_comb_operation(comb, MODE_PRIMARY_IO)
 	elseif element.selected_index == 2 then
 		set_comb_operation(comb, MODE_DEPOT)
-		--prevent the use of the each signal with depots
-		local network = element.parent.parent.bottom.network--[[@as LuaGuiElement]]
-		local signal = network.elem_value--[[@as SignalID]]
-		if signal.name == NETWORK_EACH then
-			network.elem_value = nil
-			set_comb_network_name(comb, nil)
-		end
 	elseif element.selected_index == 3 then
 		set_comb_operation(comb, MODE_REFUELER)
 	elseif element.selected_index == 4 then

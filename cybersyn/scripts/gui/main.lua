@@ -51,6 +51,15 @@ function manager_gui.on_lua_shortcut(e)
 		if e.element then
 			if e.element.name == "manager_window" then
 				manager.wrapper(e, manager.handle.manager_toggle)
+			elseif e.element.name == COMBINATOR_NAME and e.name == defines.events.on_gui_closed then
+				-- With the manager enabled, this handler overwrites the combinator's
+				-- on_gui_close handler. Copy the logic to close the combinator's GUI here
+				-- as well.
+				local player = game.get_player(e.player_index)
+				if not player then return end
+				if player.gui.screen[COMBINATOR_NAME] then
+					player.gui.screen[COMBINATOR_NAME].destroy()
+				end
 			end
 		else
 			manager.wrapper(e, manager.handle.manager_toggle)
@@ -60,9 +69,10 @@ end
 
 
 
-function manager_gui.on_player_created(e)
-	local player = game.get_player(e.player_index)
+local function create_player(player_index)
+	local player = game.get_player(player_index)
 	if not player then return end
+
 	local player_data = {
 		search_network_mask = -1,
 		trains_orderings = {},
@@ -71,10 +81,14 @@ function manager_gui.on_player_created(e)
 		refs = manager.create(player),
 		selected_tab = "stations_tab",
 	}
-	global.manager.players[e.player_index] = player_data
+	global.manager.players[player_index] = player_data
 
 	--manager.update(global, player, player_data)
 	--top_left_button_update(player, player_data)
+end
+
+function manager_gui.on_player_created(e)
+	create_player(e.player_index)
 end
 
 function manager_gui.on_player_removed(e)
@@ -147,9 +161,20 @@ end
 
 
 function manager_gui.on_migration()
+	if not global.manager then
+		manager_gui.on_init()
+	end
+	
+	for i, p in pairs(game.players) do
+		if global.manager.players[i] == nil then
+			create_player(i)
+		end
+	end
+	
 	for i, v in pairs(global.manager.players) do
 		manager_gui.reset_player(i, v)
 	end
+
 	init_items(global.manager)
 end
 

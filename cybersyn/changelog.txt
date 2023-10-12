@@ -1,4 +1,24 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.3.0
+Date: 2023-10-10
+  Features:
+    - Added improved combinator display sprites (further improvements coming) - contributed by jagoly
+    - The manager gui now displays control signals - contributed by Shadowvoices
+    - The manager gui now excludes requests that do not exceed the request threshold - contributed by Shadowvoices
+  Bugfixes:
+    - Fixed a crash when clicking on a combinator when the GUI is open - contributed by PeteyPii
+    - Fixed a crash when setting a combinator to depot mode without a network - contributed by download13 and TheXIFC
+    - Stations with provider item thresholds can no longer generate empty train orders - contributed by svr8450
+    - Added missing loader entity type to the automatic allow-list - contributed by gillett-hernandez
+    - Fixed a case where combinator changes not being applied for depots and refuelers - contributed by jagoly
+    - Fixed provide/request orders for the same item getting generated simultaneously - contributed by jagoly
+    - Fixed a crash when opening the manager when adding cybersyn to an existing save - contributed by Mjonir
+    - Fixed a crash when enabling the manager on an existing save - contributed by freyacodes
+  Translation:
+    - Swedish language added - contributed by Sharparam
+    - Chinese language update - contributed by luaotix
+    - Russian language update - contributed by Eldrinn-Elantey
+---------------------------------------------------------------------------------------------------
 Version: 1.2.16
 Date: 2023-5-14
   Bugfixes:

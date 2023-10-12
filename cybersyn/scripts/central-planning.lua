@@ -157,11 +157,17 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 			end
 			local p_effective_item_count = p_station.item_p_counts[item_name]
 			--could be an item that is not present at the station
+			local effective_threshold
 			local override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
 			if override_threshold and p_station.is_stack and item_type == "item" then
 				override_threshold = override_threshold*get_stack_size(map_data, item_name)
 			end
-			if p_effective_item_count and p_effective_item_count >= (override_threshold or r_threshold) then
+			if override_threshold and override_threshold <= r_threshold then
+				effective_threshold = override_threshold
+			else
+				effective_threshold = r_threshold
+			end
+			if p_effective_item_count and p_effective_item_count >= effective_threshold then
 				local item = {name = item_name, type = item_type, count = min(-r_effective_item_count, p_effective_item_count)}
 				if item_name == primary_item_name then
 					manifest[#manifest + 1] = manifest[1]
@@ -281,6 +287,12 @@ local function tick_dispatch(map_data, mod_settings)
 				goto continue
 			end
 
+			--don't request when already providing
+			local item_deliveries = station.deliveries[item_name]
+			if item_deliveries and item_deliveries < 0 then
+				goto continue
+			end
+
 			local threshold = station.r_threshold
 			local prior = station.priority
 			local item_threshold = station.item_thresholds and station.item_thresholds[item_name] or nil
@@ -294,6 +306,7 @@ local function tick_dispatch(map_data, mod_settings)
 				goto continue
 			end
 
+			--prioritize by last delivery time if priorities are equal
 			if prior == best_r_prior and station.last_delivery_tick > best_timestamp then
 				goto continue
 			end
@@ -342,11 +355,17 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
-			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist, effective_threshold, slot_threshold
+			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist, effective_threshold, slot_threshold, item_deliveries
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
 			if not p_station or p_station.deliveries_total >= p_station.trains_limit then
+				goto p_continue
+			end
+
+			--don't provide when already requesting
+			item_deliveries = p_station.deliveries[item_name]
+			if item_deliveries and item_deliveries > 0 then
 				goto p_continue
 			end
 
@@ -492,14 +511,16 @@ local function tick_dispatch(map_data, mod_settings)
 			create_delivery(map_data, r_station_id, p_station_id, best_train_id, manifest)
 			return false
 		else
-			if correctness == 1 then
-				send_alert_missing_train(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
-			elseif correctness == 2 then
-				send_alert_no_train_has_capacity(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
-			elseif correctness == 3 then
-				send_alert_no_train_matches_r_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
-			elseif correctness == 4 then
-				send_alert_no_train_matches_p_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
+			if closest_to_correct_p_station then
+				if correctness == 1 then
+					send_alert_missing_train(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
+				elseif correctness == 2 then
+					send_alert_no_train_has_capacity(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
+				elseif correctness == 3 then
+					send_alert_no_train_matches_r_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
+				elseif correctness == 4 then
+					send_alert_no_train_matches_p_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
+				end
 			end
 			if band(r_station.display_state, 2) == 0 then
 				r_station.display_state = r_station.display_state + 2
