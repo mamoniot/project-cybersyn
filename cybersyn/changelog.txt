@@ -2,7 +2,7 @@
 Version: 1.3.0
 Date: 2023-10-10
   Features:
-    - Added improved combinator display sprites - contributed by jagoly
+    - Added improved combinator display sprites (further improvements coming) - contributed by jagoly
     - The manager gui now displays control signals - contributed by Shadowvoices
     - The manager gui now excludes requests that do not exceed the request threshold - contributed by Shadowvoices
   Bugfixes:
