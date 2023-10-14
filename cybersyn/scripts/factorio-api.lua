@@ -1,5 +1,7 @@
 --By Mami
-local get_distance = require("__flib__.position").distance
+local flib_position = require("__flib__.position")
+local flib_distance = flib_position.distance
+local flib_distance_squared = flib_position.distance_squared
 local table_insert = table.insert
 local bit_extract = bit32.extract
 local bit_replace = bit32.replace
@@ -29,9 +31,13 @@ end
 ---@param entity0 LuaEntity
 ---@param entity1 LuaEntity
 function get_dist(entity0, entity1)
-	local surface0 = entity0.surface.index
-	local surface1 = entity1.surface.index
-	return (surface0 == surface1 and get_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE)
+	return entity0.surface.index == entity1.surface.index and flib_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE
+end
+---NOTE: does not check .valid
+---@param entity0 LuaEntity
+---@param entity1 LuaEntity
+function get_dist_sq(entity0, entity1)
+	return entity0.surface.index == entity1.surface.index and flib_distance_squared(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE
 end
 
 
@@ -444,10 +450,12 @@ function set_station_from_comb(station)
 	local allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
 	local is_stack = bit_extract(bits, SETTING_IS_STACK) > 0
 	local enable_inactive = bit_extract(bits, SETTING_ENABLE_INACTIVE) > 0
+	local disable_reservation = bit_extract(bits, SETTING_DISABLE_RESERVATION) > 0
 
 	station.allows_all_trains = allows_all_trains
 	station.is_stack = is_stack
 	station.enable_inactive = enable_inactive
+	station.disable_reservation = disable_reservation
 	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
 	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
 

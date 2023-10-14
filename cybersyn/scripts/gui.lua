@@ -56,6 +56,7 @@ local function set_visibility(main_window, selected_index)
 	first_settings.allow_list.visible = uses_allow_list
 	first_settings.is_stack.visible = is_station
 	bottom_flow.enable_inactive.visible = is_station
+	bottom_flow.disable_reservation.visible = is_station
 	top_flow.enable_slot_barring.visible = is_wagon
 	depot_settings.visible = is_depot
 end
@@ -242,6 +243,7 @@ function gui_opened(comb, player)
 							{type="checkbox", name="is_stack", state=setting(bits, SETTING_IS_STACK), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_IS_STACK}, tooltip={"cybersyn-gui.is-stack-tooltip"}, caption={"cybersyn-gui.is-stack-description"}},
 						}},
 						{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, caption={"cybersyn-gui.enable-inactive-description"}},
+						{type="checkbox", name="disable_reservation", state=setting(bits, SETTING_DISABLE_RESERVATION), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_DISABLE_RESERVATION}, tooltip={"cybersyn-gui.disable-reservation-tooltip"}, caption={"cybersyn-gui.disable-reservation-description"}},
 					}}
 				}}
 			}}

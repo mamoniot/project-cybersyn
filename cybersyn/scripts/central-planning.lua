@@ -7,6 +7,7 @@ local INF = math.huge
 local btest = bit32.btest
 local band = bit32.band
 local table_remove = table.remove
+local table_sort = table.sort
 local random = math.random
 
 
@@ -227,7 +228,7 @@ local function tick_dispatch(map_data, mod_settings)
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
 	--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
 	--NOTE: the above isn't even the full story, we can only use one edge per item per tick, which might break the assumptions of the simplex algorithm causing it to give imperfect solutions.
-
+	--local profiler = game.create_profiler()
 	local all_r_stations = map_data.economy.all_r_stations
 	local all_p_stations = map_data.economy.all_p_stations
 	local all_names = map_data.economy.all_names
@@ -242,6 +243,8 @@ local function tick_dispatch(map_data, mod_settings)
 		local size = #all_names
 		if size == 0 then
 			map_data.tick_state = STATE_INIT
+			--profiler.stop()
+			--game.write_file("cybersyn_profile.txt", {"", profiler, ""}, true)
 			return true
 		end
 
@@ -275,261 +278,245 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 		end
 	end
-	while true do
-		local r_station_i = nil
-		local r_threshold = nil
-		local best_r_prior = -INF
-		local best_timestamp = INF
-		for i, id in ipairs(r_stations) do
-			local station = stations[id]
-			--NOTE: the station at r_station_id could have been deleted and reregistered since last poll, this check here prevents it from being processed for a delivery in that case
-			if not station or station.deliveries_total >= station.trains_limit then
-				goto continue
-			end
 
-			--don't request when already providing
-			local item_deliveries = station.deliveries[item_name]
-			if item_deliveries and item_deliveries < 0 then
-				goto continue
-			end
+	local _, _, network_name = string.find(item_network_name, "^(.*):")
+	local is_fluid = item_type == "fluid"
+	local stack_size = not is_fluid and get_stack_size(map_data, item_name) or nil
 
-			local threshold = station.r_threshold
-			local prior = station.priority
-			local item_threshold = station.item_thresholds and station.item_thresholds[item_name] or nil
-			if item_threshold then
-				threshold = item_threshold
-				if station.item_priority then
-					prior = station.item_priority--[[@as int]]
-				end
-			end
-			if prior < best_r_prior then
-				goto continue
-			end
-
-			--prioritize by last delivery time if priorities are equal
-			if prior == best_r_prior and station.last_delivery_tick > best_timestamp then
-				goto continue
-			end
-
-			r_station_i = i
-			r_threshold = threshold
-			best_r_prior = prior
-			best_timestamp = station.last_delivery_tick
-			::continue::
+	local valid_requesters = {}
+	for _, id in ipairs(r_stations) do
+		local station = stations[id]
+		if not station then
+			goto valid_requesters_continue
 		end
-		if not r_station_i then
-			for _, id in ipairs(r_stations) do
-				local station = stations[id]
-				if station and band(station.display_state, 2) == 0 then
-					station.display_state = station.display_state + 2
-					update_display(map_data, station)
-				end
-			end
-			return false
+		local over_limit = station.deliveries_total >= station.trains_limit
+		if over_limit and station.disable_reservation then
+			goto valid_requesters_continue
 		end
-
-		local r_station_id = r_stations[r_station_i]
-		local r_station = stations[r_station_id]
-		---@type string
-		local network_name
-		if r_station.network_name == NETWORK_EACH then
-			_, _, network_name = string.find(item_network_name, "^(.*):")
-		else
-			network_name = r_station.network_name
-		end
-		local trains = map_data.available_trains[network_name]
-		local is_fluid = item_type == "fluid"
-		if not is_fluid and r_station.is_stack then
-			r_threshold = r_threshold*get_stack_size(map_data, item_name)
-		end
-		--no train exists with layout accepted by both provide and request stations
-		local correctness = 0
-		local closest_to_correct_p_station = nil
-
-		---@type uint?
-		local p_station_i = nil
-		local best_train_id = nil
-		local best_p_prior = -INF
-		local best_dist = INF
-		--if no available trains in the network, skip search
-		---@type uint
-		local j = 1
-		while j <= #p_stations do
-			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist, effective_threshold, slot_threshold, item_deliveries
-
-			local p_station_id = p_stations[j]
-			local p_station = stations[p_station_id]
-			if not p_station or p_station.deliveries_total >= p_station.trains_limit then
-				goto p_continue
-			end
-
-			--don't provide when already requesting
-			item_deliveries = p_station.deliveries[item_name]
-			if item_deliveries and item_deliveries > 0 then
-				goto p_continue
-			end
-
-			p_flag = get_network_mask(p_station, network_name)
-			r_flag = get_network_mask(r_station, network_name)
-			netand = band(p_flag, r_flag)
-			if netand == 0 then
-				goto p_continue
-			end
-
-			effective_count = p_station.item_p_counts[item_name]
-			override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
-			if override_threshold and p_station.is_stack and not is_fluid then
-				override_threshold = override_threshold*get_stack_size(map_data, item_name)
-			end
-			if override_threshold and override_threshold <= r_threshold then
-				effective_threshold = override_threshold
-			else
-				effective_threshold = r_threshold
-			end
-
-			if effective_count < effective_threshold then
-				--this p station should have serviced the current r station, lock it so it can't serve any others
-				--this will lock stations even when the r station manages to find a p station, this not a problem because all stations will be unlocked before it could be an issue
-				table_remove(p_stations, j)
-				if band(p_station.display_state, 4) == 0 then
-					p_station.display_state = p_station.display_state + 4
-					update_display(map_data, p_station)
-				end
-				goto p_continue_remove
-			end
-
-			p_prior = p_station.priority
-			if override_threshold and p_station.item_priority then
-				p_prior = p_station.item_priority--[[@as int]]
-			end
-			if p_prior < best_p_prior then
-				goto p_continue
-			end
-
-			best_p_to_r_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and get_dist(p_station.entity_stop, r_station.entity_stop) or INF
-			if p_prior == best_p_prior and best_p_to_r_dist > best_dist then
-				goto p_continue
-			end
-
-			if is_fluid then
-				slot_threshold = effective_threshold
-			else
-				slot_threshold = ceil(effective_threshold/get_stack_size(map_data, item_name))
-			end
-
-			if correctness < 1 then
-				correctness = 1
-				closest_to_correct_p_station = p_station
-			end
-			----------------------------------------------------------------
-			-- check for valid train
-			----------------------------------------------------------------
-			---@type uint?
-			best_p_train_id = nil
-			best_t_prior = -INF
-			best_capacity = 0
-			best_t_to_p_dist = INF
-			if trains then
-				for train_id, _ in pairs(trains) do
-					local train = map_data.trains[train_id]
-					local train_flag = get_network_mask(train, network_name)
-					if not btest(netand, train_flag) or train.se_is_being_teleported then
-						goto train_continue
-					end
-					if correctness < 2 then
-						correctness = 2
-						closest_to_correct_p_station = p_station
-					end
-
-					--check cargo capabilities
-					local capacity = (is_fluid and train.fluid_capacity) or train.item_slot_capacity
-					if capacity < slot_threshold then
-						--no train with high enough capacity is available
-						goto train_continue
-					end
-					if correctness < 3 then
-						correctness = 3
-						closest_to_correct_p_station = p_station
-					end
-
-					--check layout validity for both stations
-					local layout_id = train.layout_id
-					if not (r_station.allows_all_trains or r_station.accepted_layouts[layout_id]) then
-						goto train_continue
-					end
-					if correctness < 4 then
-						correctness = 4
-						closest_to_correct_p_station = p_station
-					end
-
-					if not (p_station.allows_all_trains or p_station.accepted_layouts[layout_id]) then
-						goto train_continue
-					end
-					if correctness < 5 then
-						correctness = 5
-						closest_to_correct_p_station = p_station
-					end
-
-					if train.priority < best_t_prior then
-						goto train_continue
-					end
-
-					if train.priority == best_t_prior and capacity < best_capacity then
-						goto train_continue
-					end
-
-					--check if path is shortest so we prioritize locality
-					local t = get_any_train_entity(train.entity)
-					local t_to_p_dist = t and p_station.entity_stop.valid and (get_dist(t, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority) or INF
-					if capacity == best_capacity and t_to_p_dist > best_t_to_p_dist then
-						goto train_continue
-					end
-
-					best_p_train_id = train_id
-					best_capacity = capacity
-					best_t_prior = train.priority
-					best_t_to_p_dist = t_to_p_dist
-					::train_continue::
-				end
-			end
-			if not best_p_train_id then
-				goto p_continue
-			end
-
-			p_station_i = j
-			best_train_id = best_p_train_id
-			best_p_prior = p_prior
-			best_dist = best_p_to_r_dist
-			::p_continue::
-			j = j + 1
-			::p_continue_remove::
-		end
-
-		if best_train_id then
-			local p_station_id = table_remove(p_stations, p_station_i)
-			local manifest = create_manifest(map_data, r_station_id, p_station_id, best_train_id, item_name)
-			create_delivery(map_data, r_station_id, p_station_id, best_train_id, manifest)
-			return false
-		else
-			if closest_to_correct_p_station then
-				if correctness == 1 then
-					send_alert_missing_train(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
-				elseif correctness == 2 then
-					send_alert_no_train_has_capacity(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
-				elseif correctness == 3 then
-					send_alert_no_train_matches_r_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
-				elseif correctness == 4 then
-					send_alert_no_train_matches_p_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
-				end
-			end
-			if band(r_station.display_state, 2) == 0 then
-				r_station.display_state = r_station.display_state + 2
-				update_display(map_data, r_station)
-			end
-		end
-
-		table_remove(r_stations, r_station_i)
+		valid_requesters[#valid_requesters+1] = {
+			station = station,
+			over_limit = over_limit,
+			priority = station.item_thresholds and station.item_thresholds[item_name] and station.item_priority or station.priority,
+			timestamp = station.last_delivery_tick
+		}
+		::valid_requesters_continue::
 	end
+	table_sort(valid_requesters, function (a, b)
+		if a.priority ~= b.priority then return a.priority > b.priority end
+		--if a.over_limit ~= b.over_limit then return not a.over_limit end
+		return a.timestamp < b.timestamp
+	end )
+
+	local valid_providers = {}
+	for _, id in ipairs(p_stations) do
+		local station = stations[id]
+		if not station then
+			goto valid_providers_continue
+		end
+		local over_limit = station.deliveries_total >= station.trains_limit
+		if over_limit and station.disable_reservation then
+			goto valid_providers_continue
+		end
+		local priority = station.priority
+		local threshold = station.item_thresholds and station.item_thresholds[item_name]
+		if threshold then
+			if station.item_priority then
+				priority = station.item_priority
+			end
+			if not is_fluid and station.is_stack then
+				threshold = threshold * stack_size
+			end
+		end
+		valid_providers[#valid_providers+1] = {
+			station = station,
+			over_limit = over_limit,
+			priority = priority,
+			threshold = threshold,
+			mask = get_network_mask(station, network_name),
+			count = station.item_p_counts[item_name]
+		}
+		::valid_providers_continue::
+	end
+
+	--filled once a provider finds a requester
+	local valid_trains = nil
+
+	for _, r in ipairs(valid_requesters) do
+
+		local r_station = r.station
+		local r_threshold = (r_station.item_thresholds and r_station.item_thresholds[item_name]) or r_station.r_threshold
+		if not is_fluid and r_station.is_stack then r_threshold = r_threshold * stack_size end
+		local r_mask = get_network_mask(r_station, network_name)
+		local r_stop = r_station.entity_stop
+
+		local matching_providers = {}
+		for p_i = #valid_providers, 1, -1 do
+			local p = valid_providers[p_i]
+			if btest(r_mask, p.mask) then
+				local p_threshold = p.threshold
+				if p.count >= (p_threshold and p_threshold < r_threshold and p_threshold or r_threshold) then
+					--overwritten for next requester, only for sorting
+					p.distance = get_dist_sq(r_stop, p.station.entity_stop)
+					matching_providers[#matching_providers+1] = p
+				else
+					--prevent small threshold requesters from starving larger ones
+					table_remove(valid_providers, p_i)
+				end
+			end
+		end
+		table_sort(matching_providers, function (a, b)
+			if a.priority ~= b.priority then return a.priority > b.priority end
+			if a.over_limit ~= b.over_limit then return not a.over_limit end
+			return a.distance < b.distance
+		end )
+
+		local r_over_limit = r.over_limit
+		local r_disable_reservation = r_station.disable_reservation
+		local r_allows_all_trains = r_station.allows_all_trains
+		local r_accepted_layouts = r_station.accepted_layouts
+
+		local reserve_provider = nil
+		local rp_priority = nil
+
+		local best_p_station = nil
+		local problem = 0
+
+		for _, p in ipairs(matching_providers) do
+
+			local p_station = p.station
+			if not r_disable_reservation and not p_station.disable_reservation then
+				if not reserve_provider then
+					reserve_provider = p
+					rp_priority = p.priority
+					if r_over_limit or p.over_limit then
+						goto r_continue
+					end
+				elseif r_over_limit or p.over_limit or rp_priority > p.priority then
+					goto r_continue
+				end
+			elseif r_over_limit or p.over_limit then
+				goto p_continue
+			end
+
+			local p_stop = p_station.entity_stop
+			local p_matching_trains = p.matching_trains
+			if not p_matching_trains then
+				if not valid_trains then
+					valid_trains = {}
+					for id, _ in pairs(map_data.available_trains[network_name] or {}) do
+						local train = map_data.trains[id]
+						local capacity = is_fluid and train.fluid_capacity or train.item_slot_capacity
+						if capacity == 0 or train.se_is_being_teleported then
+							goto valid_trains_continue
+						end
+						local entity = get_any_train_entity(train.entity)
+						if not entity then
+							goto valid_trains_continue
+						end
+						valid_trains[#valid_trains+1] = {
+							train = train,
+							priority = train.priority,
+							capacity = capacity,
+							entity = entity,
+							mask = get_network_mask(train, network_name)
+						}
+						::valid_trains_continue::
+					end
+				end
+				p_matching_trains = {}
+				p.matching_trains = p_matching_trains
+				local p_mask = p.mask
+				local p_allows_all_trains = p_station.allows_all_trains
+				local p_accepted_layouts = p_station.accepted_layouts
+				for _, t in ipairs(valid_trains) do
+					if btest(p_mask, t.mask) and (p_allows_all_trains or p_accepted_layouts[t.train.layout_id]) then
+						--overwritten for next provider, only for sorting
+						t.distance = get_dist_sq(p_stop, t.entity)
+						p_matching_trains[#p_matching_trains+1] = t
+					end
+				end
+				table_sort(p_matching_trains, function (a, b)
+					if a.priority ~= b.priority then return a.priority > b.priority end
+					if a.capacity ~= b.capacity then return a.capacity > b.capacity end
+					return a.distance < b.distance
+				end )
+			end
+
+			if problem < 2 and next(p_matching_trains) == nil then
+				best_p_station = p_station
+				problem = next(valid_trains--[[@as table]]) == nil and 1 or 2
+				goto p_continue
+			end
+
+			local p_threshold = p.threshold
+			local slot_threshold = p_threshold and p_threshold < r_threshold and p_threshold or r_threshold
+			if not is_fluid then
+				slot_threshold = ceil(slot_threshold / stack_size)
+			end
+
+			for _, t in ipairs(p_matching_trains) do
+
+				if not btest(r_mask, t.mask) or not (r_allows_all_trains or r_accepted_layouts[t.train.layout_id]) then
+					if problem < 3 then
+						best_p_station = p_station
+						problem = 3
+					end
+					goto t_continue
+				end
+				if t.capacity < slot_threshold then
+					if problem < 4 then
+						best_p_station = p_station
+						problem = 4
+					end
+					goto t_continue
+				end
+
+				local r_station_id = r_stop.unit_number
+				local p_station_id = p_stop.unit_number
+				local train_id = t.train.entity.id
+
+				local manifest = create_manifest(map_data, r_station_id, p_station_id, train_id, item_name)
+				create_delivery(map_data, r_station_id, p_station_id, train_id, manifest)
+				--profiler.stop()
+				--game.write_file("cybersyn_profile.txt", {"", profiler}, true)
+				do return false end
+
+				::t_continue::
+			end
+
+			::p_continue::
+		end
+
+		::r_continue::
+
+		if band(r_station.display_state, 2) == 0 then
+			r_station.display_state = r_station.display_state + 2
+			update_display(map_data, r_station)
+		end
+
+		if reserve_provider then
+			reserve_provider.count = reserve_provider.count - (reserve_provider.threshold or r_threshold)
+		end
+
+		if best_p_station then
+			if problem == 1 then
+				-- no train on the network with any capacity for this item_type
+				send_alert_missing_train(r_station.entity_stop, best_p_station.entity_stop)
+			elseif problem == 2 then
+				-- no train matches the provider's mask and layout
+				send_alert_no_train_matches_p_layout(r_station.entity_stop, best_p_station.entity_stop)
+			elseif problem == 3 then
+				-- no train matches the requester's mask and layout
+				send_alert_no_train_matches_r_layout(r_station.entity_stop, best_p_station.entity_stop)
+			elseif problem == 4 then
+				-- no train has enough capacity to meet the threshold
+				send_alert_no_train_has_capacity(r_station.entity_stop, best_p_station.entity_stop)
+			end
+		end
+	end
+	--profiler.stop()
+	--game.write_file("cybersyn_profile.txt", {"", profiler}, true)
+	return false
 end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
@@ -814,11 +801,16 @@ function tick_init(map_data, mod_settings)
 	map_data.tick_state = STATE_POLL_STATIONS
 	interface_raise_tick_init()
 end
+-- new_run = true
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 function tick(map_data, mod_settings)
-	map_data.total_ticks = map_data.total_ticks + 1
+	if new_run then
+		game.write_file("cybersyn_profile.txt", "\n", true)
+		new_run = false
+	end
 
+	map_data.total_ticks = map_data.total_ticks + 1
 
 	if map_data.active_alerts then
 		if map_data.total_ticks%(8*mod_settings.tps) < 1 then
