@@ -805,10 +805,10 @@ end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 function tick(map_data, mod_settings)
-	if new_run then
-		game.write_file("cybersyn_profile.txt", "\n", true)
-		new_run = false
-	end
+	-- if new_run then
+	-- 	game.write_file("cybersyn_profile.txt", "\n", true)
+	-- 	new_run = false
+	-- end
 
 	map_data.total_ticks = map_data.total_ticks + 1
 
