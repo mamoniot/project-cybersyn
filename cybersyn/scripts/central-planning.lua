@@ -290,6 +290,11 @@ local function tick_dispatch(map_data, mod_settings)
 			goto valid_requesters_continue
 		end
 		local over_limit = station.deliveries_total >= station.trains_limit
+		--don't request when already providing
+		local item_deliveries = station.deliveries[item_name]
+		if item_deliveries and item_deliveries < 0 then
+			over_limit = true
+		end
 		if over_limit and station.disable_reservation then
 			goto valid_requesters_continue
 		end
@@ -314,6 +319,11 @@ local function tick_dispatch(map_data, mod_settings)
 			goto valid_providers_continue
 		end
 		local over_limit = station.deliveries_total >= station.trains_limit
+		--don't provide when already requesting
+		local item_deliveries = station.deliveries[item_name]
+		if item_deliveries and item_deliveries > 0 then
+			over_limit = true
+		end
 		if over_limit and station.disable_reservation then
 			goto valid_providers_continue
 		end
