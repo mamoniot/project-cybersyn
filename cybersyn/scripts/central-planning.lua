@@ -360,6 +360,11 @@ local function tick_dispatch(map_data, mod_settings)
 					matching_providers[#matching_providers+1] = p
 				else
 					--prevent small threshold requesters from starving larger ones
+					local p_station = p.station
+					if band(p_station.display_state, 4) == 0 then
+						p_station.display_state = p_station.display_state + 4
+						update_display(map_data, p_station)
+					end
 					table_remove(valid_providers, p_i)
 				end
 			end
