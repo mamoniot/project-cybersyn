@@ -448,8 +448,13 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 
 			if problem < 2 and next(p_matching_trains) == nil then
-				best_p_station = p_station
-				problem = next(valid_trains--[[@as table]]) == nil and 1 or 2
+				if next(valid_trains--[[@as table]]) ~= nil then
+					best_p_station = p_station
+					problem = 2
+				elseif problem < 1 then
+					best_p_station = p_station
+					problem = 1
+				end
 				goto p_continue
 			end
 
