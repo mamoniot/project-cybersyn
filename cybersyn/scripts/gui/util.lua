@@ -92,7 +92,7 @@ end
 --- @param station Station
 --- @param color string
 --- @return GuiElemDef[]
-function util.slot_table_build_from_station(station)
+function util.slot_table_build_from_station(station, map_data)
   ---@type GuiElemDef[]
   local children = {}
   local comb1_signals, comb2_signals = get_signals(station)
@@ -104,30 +104,36 @@ function util.slot_table_build_from_station(station)
       end
       local count = v.count
       local name = item.name
-      local sprite, img_path, item_string = util.generate_item_references(name)
-      if sprite ~= nil then
-        local color
-        if count > 0 then
-          color = "green"
-        else
-          color = "red"
-        end
-        if game.is_valid_sprite_path(sprite) then
-          children[#children + 1] = {
-            type = "sprite-button",
-            enabled = false,
-            style = "ltnm_small_slot_button_" .. color,
-            sprite = sprite,
-            tooltip = {
-              "",
-              img_path,
-              item_string,
-              "\n"..format.number(count),
-            },
-            number = count
-          }
-        end
-      end
+	    local r_threshold = station.item_thresholds and station.item_thresholds[item.name] or station.r_threshold
+	    if station.is_stack and item.type == "item" then
+	      r_threshold = r_threshold*get_stack_size(map_data, item.name)
+	    end
+	    if -count >= r_threshold or count >= r_threshold then
+          local sprite, img_path, item_string = util.generate_item_references(name)
+          if sprite ~= nil then
+            local color
+            if count > 0 then
+              color = "green"
+            else
+              color = "red"
+            end
+            if game.is_valid_sprite_path(sprite) then
+              children[#children + 1] = {
+                type = "sprite-button",
+                enabled = false,
+                style = "ltnm_small_slot_button_" .. color,
+                sprite = sprite,
+                tooltip = {
+                  "",
+                  img_path,
+                  item_string,
+                  "\n"..format.number(count),
+                },
+                number = count
+              }
+            end
+          end
+	    end
       ::continue::
     end
   end

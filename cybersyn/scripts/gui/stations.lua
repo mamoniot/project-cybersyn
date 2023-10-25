@@ -248,7 +248,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 			templates.small_slot_table(widths.stations, color, "control_signals"),
 		}, refs)
 
-		gui.add(refs.provided_requested_table, util.slot_table_build_from_station(station))
+		gui.add(refs.provided_requested_table, util.slot_table_build_from_station(station, map_data))
 		gui.add(refs.shipments_table, util.slot_table_build_from_deliveries(station))
 		gui.add(refs.control_signals_table, util.slot_table_build_from_control_signals(station, map_data))
 
