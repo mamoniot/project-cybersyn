@@ -330,6 +330,50 @@ local migrations_table = {
 				manager_gui.on_player_created({player_index = i})
 			end
 		end
+	end,
+	["1.3.1"] = function()
+		---@type MapData
+		local map_data = global
+		if not map_data.dispatch_counter then
+			map_data.dispatch_counter = 0
+		end
+		for _, e in pairs(map_data.stations) do
+			if e.is_warming_up then
+				e.warmup_start_time = e.last_delivery_tick
+				e.is_warming_up = nil
+			end
+			e.last_delivery_tick = nil
+			e.trains_limit = nil
+			e.priority = nil
+			e.item_priority = nil
+			e.r_threshold = nil
+			e.tick_signals = nil
+			e.item_p_counts = nil
+			if not e.surface_index then
+				e.surface_index = e.entity_stop.surface_index
+				e.position = e.entity_stop.position
+				e.unused_trains_limit = 0
+				e.poll_values = {}
+				e.item_thresholds = {}
+				e.item_priorities = {}
+				e.r_item_counts = {}
+				e.r_item_timestamps = {}
+				e.r_combined_p_priorities = {}
+				e.r_pf_trains_totals = {}
+				e.p_item_counts = {}
+				e.p_reserved_counts = {}
+				e.p_pf_trains = {}
+			end
+		end
+		if not map_data.economy.sorted_r_stations then
+			map_data.economy = {
+				sorted_r_stations = {},
+				sorted_p_stations = {},
+				combined_r_priorities = {},
+				items_requested = {},
+				items_to_dispatch = {},
+			}
+		end
 	end
 }
 --STATUS_R_TO_D = 5

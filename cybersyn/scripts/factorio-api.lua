@@ -1,7 +1,4 @@
 --By Mami
-local flib_position = require("__flib__.position")
-local flib_distance = flib_position.distance
-local flib_distance_squared = flib_position.distance_squared
 local table_insert = table.insert
 local bit_extract = bit32.extract
 local bit_replace = bit32.replace
@@ -27,17 +24,16 @@ function item_lt(item_order, item1_name, item2_name)
 end
 
 
----NOTE: does not check .valid
----@param entity0 LuaEntity
----@param entity1 LuaEntity
-function get_dist(entity0, entity1)
-	return entity0.surface.index == entity1.surface.index and flib_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE
-end
----NOTE: does not check .valid
----@param entity0 LuaEntity
----@param entity1 LuaEntity
-function get_dist_sq(entity0, entity1)
-	return entity0.surface.index == entity1.surface.index and flib_distance_squared(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE
+---NOTE: entities need to be valid, but stations do not
+---@param entity1 Station|LuaEntity
+---@param entity2 Station|LuaEntity
+function get_distance_squared(entity1, entity2)
+	if entity1.surface_index ~= entity2.surface_index then
+		return 8000000000000.0
+	end
+	local pos1, pos2 = entity1.position, entity2.position
+	local x, y = pos1.x - pos2.x, pos1.y - pos2.y
+	return x * x + y * y
 end
 
 
@@ -112,11 +108,65 @@ end
 
 ---@param e Station|Refueler|Train
 ---@param network_name string
----@return int
 function get_network_mask(e, network_name)
-	return e.network_name == NETWORK_EACH and (e.network_mask[network_name] or 0) or e.network_mask--[[@as int]]
+    local e_name, e_mask = e.network_name, e.network_mask
+    if e_name == network_name then
+	    return e_mask--[[@as int]]
+	end
+    return e_name == "signal-each" and e_mask[network_name] or 0
 end
 
+---@param e Station|Refueler|Train
+function iterate_network_names(e)
+	if e.network_name ~= "signal-each" then
+		return once, e.network_name
+	end
+	return next, e.network_mask--[[@as table]]
+end
+
+---NOTE: stations are assumed to have already been matched
+---@param r_station Station
+---@param p_station Station
+function iterate_common_network_names(r_station, p_station)
+	if r_station.network_name ~= "signal-each" then
+		return once, r_station.network_name
+	end
+	if p_station.network_name ~= "signal-each" then
+		return once, p_station.network_name
+	end
+	local r_network_mask = r_station.network_mask--[[@as table]]
+	local p_network_mask = p_station.network_mask--[[@as table]]
+	local common_networks = {}
+	for network_name in next, r_network_mask do
+		if p_network_mask[network_name] then
+			common_networks[network_name] = true
+		end
+	end
+	return next, common_networks
+end
+
+---NOTE: stations are assumed to have already been matched
+---@param r_station Station
+---@param p_station Station
+function iterate_all_network_names(r_station, p_station)
+	if r_station.network_name ~= p_station.network_name then
+		if r_station.network_name == "signal-each" then
+			return next, r_station.network_mask--[[@as table]]
+		end
+		return next, p_station.network_mask--[[@as table]]
+	end
+	if r_station.network_name ~= "signal-each" then
+		return once, r_station.network_name
+	end
+	local all_networks = {}
+	for network_name in next, r_station.network_mask--[[@as table]] do
+		all_networks[network_name] = true
+	end
+	for network_name in next, p_station.network_mask--[[@as table]] do
+		all_networks[network_name] = true
+	end
+	return next, all_networks
+end
 
 ------------------------------------------------------------------------------
 --[[train schedules]]--
@@ -701,40 +751,65 @@ function set_combinator_output(map_data, comb, signals)
 	end
 end
 
+---NOTE: does not check .valid
 ---@param station Station
-function get_signals(station)
-	local comb1 = station.entity_comb1
-	local status1 = comb1.status
-	---@type Signal[]?
-	local comb1_signals = nil
-	---@type Signal[]?
-	local comb2_signals = nil
-	if status1 == DEFINES_WORKING or status1 == DEFINES_LOW_POWER then
-		comb1_signals = comb1.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+---@return Signal[]
+function get_comb1_signals(station)
+	local signals = nil
+	local comb = station.entity_comb1
+	local status = comb.status
+	if status == DEFINES_WORKING or status == DEFINES_LOW_POWER then
+		signals = comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
 	end
-	local comb2 = station.entity_comb2
-	if comb2 then
-		local status2 = comb2.status
-		if status2 == DEFINES_WORKING or status2 == DEFINES_LOW_POWER then
-			comb2_signals = comb2.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+	return signals or {}
+end
+
+---NOTE: does not check .valid
+---@param station Station
+---@return Signal[]?
+function get_comb2_signals(station)
+	local signals = nil
+	local comb = station.entity_comb2
+	if comb then
+		local status = comb.status
+		if status == DEFINES_WORKING or status == DEFINES_LOW_POWER then
+			signals = comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
 		end
 	end
-	return comb1_signals, comb2_signals
+	return signals
+end
+
+---@param map_data MapData
+---@param station Station
+---@param manifest Manifest?
+---@param sign int?
+function set_comb1(map_data, station, manifest, sign)
+	local comb = station.entity_comb1
+	if comb.valid then
+		local signals = nil
+		if manifest then ---@cast sign int
+			if mod_settings.invert_sign then sign = -sign end
+			signals = {}
+			for i, item in ipairs(manifest) do
+				signals[i] = {index = i, signal = {name = item.name, type = item.type}, count = sign*item.count}
+			end
+		end
+		set_combinator_output(map_data, comb, signals)
+	end
 end
 
 ---@param map_data MapData
 ---@param station Station
 function set_comb2(map_data, station)
-	local sign = mod_settings.invert_sign and -1 or 1
-	if station.entity_comb2 then
-		local deliveries = station.deliveries
-		local signals = {}
-		for item_name, count in pairs(deliveries) do
-			local i = #signals + 1
-			local is_fluid = game.item_prototypes[item_name] == nil--NOTE: this is expensive
-			signals[i] = {index = i, signal = {type = is_fluid and "fluid" or "item", name = item_name}, count = sign*count}
+	local comb = station.entity_comb2
+	if comb and comb.valid then
+		local sign = mod_settings.invert_sign and -1 or 1
+		local i, signals = 0, {}
+		for item_name, count in pairs(station.deliveries) do
+			i = i + 1
+			signals[i] = {index = i, signal = {name = item_name, type = game.item_prototypes[item_name] and "item" or "fluid"}, count = sign*count}
 		end
-		set_combinator_output(map_data, station.entity_comb2, signals)
+		set_combinator_output(map_data, comb, signals)
 	end
 end
 

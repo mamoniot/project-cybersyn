@@ -4,25 +4,6 @@ local INF = math.huge
 local btest = bit32.btest
 
 ---@param map_data MapData
----@param station Station
----@param manifest Manifest?
----@param sign int?
-local function set_comb1(map_data, station, manifest, sign)
-	local comb = station.entity_comb1
-	if comb.valid then
-		if manifest then
-			local signals = {}
-			for i, item in ipairs(manifest) do
-				signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = sign*item.count}
-			end
-			set_combinator_output(map_data, comb, signals)
-		else
-			set_combinator_output(map_data, comb, nil)
-		end
-	end
-end
-
----@param map_data MapData
 ---@param train_id uint
 ---@param train Train
 function on_failed_delivery(map_data, train_id, train)
@@ -35,7 +16,7 @@ function on_failed_delivery(map_data, train_id, train)
 	if is_p_in_progress then
 		local station = map_data.stations[p_station_id]
 		if station.entity_comb1.valid and (not station.entity_comb2 or station.entity_comb2.valid) then
-			remove_manifest(map_data, station, manifest, 1)
+			remove_manifest(map_data, p_station_id, station, train_id, train, 1)
 			if train.status == STATUS_P then
 				set_comb1(map_data, station, nil)
 				unset_wagon_combs(map_data, station)
@@ -45,7 +26,7 @@ function on_failed_delivery(map_data, train_id, train)
 	if is_r_in_progress then
 		local station = map_data.stations[r_station_id]
 		if station.entity_comb1.valid and (not station.entity_comb2 or station.entity_comb2.valid) then
-			remove_manifest(map_data, station, manifest, -1)
+			remove_manifest(map_data, r_station_id, station, train_id, train, -1)
 			if train.status == STATUS_R then
 				set_comb1(map_data, station, nil)
 				unset_wagon_combs(map_data, station)
@@ -220,12 +201,12 @@ local function on_train_arrives_station(map_data, station, train_id, train)
 	---@type uint
 	if train.status == STATUS_TO_P then
 		train.status = STATUS_P
-		set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and 1 or -1)
+		set_comb1(map_data, station, train.manifest, -1)
 		set_p_wagon_combs(map_data, station, train)
 		interface_raise_train_status_changed(train_id, STATUS_TO_P, STATUS_P)
 	elseif train.status == STATUS_TO_R then
 		train.status = STATUS_R
-		set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and -1 or 1)
+		set_comb1(map_data, station, train.manifest, 1)
 		set_r_wagon_combs(map_data, station, train)
 		interface_raise_train_status_changed(train_id, STATUS_TO_R, STATUS_R)
 	end
@@ -250,8 +231,9 @@ end
 local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 	if train.status == STATUS_P then
 		train.status = STATUS_TO_R
-		local station = map_data.stations[train.p_station_id]
-		remove_manifest(map_data, station, train.manifest, 1)
+		local station_id = train.p_station_id--[[@as uint]]
+		local station = map_data.stations[station_id]
+		remove_manifest(map_data, station_id, station, train_id, train, 1)
 		set_comb1(map_data, station, nil)
 		unset_wagon_combs(map_data, station)
 		if train.has_filtered_wagon then
@@ -269,8 +251,9 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		end
 		interface_raise_train_status_changed(train_id, STATUS_P, STATUS_TO_R)
 	elseif train.status == STATUS_R then
-		local station = map_data.stations[train.r_station_id]
-		remove_manifest(map_data, station, train.manifest, -1)
+		local station_id = train.r_station_id--[[@as uint]]
+		local station = map_data.stations[station_id]
+		remove_manifest(map_data, station_id, station, train_id, train, -1)
 		set_comb1(map_data, station, nil)
 		unset_wagon_combs(map_data, station)
 		--complete delivery
@@ -332,8 +315,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 							local train_network_mask = get_network_mask(train, network_name)
 							if btest(train_network_mask, refueler_network_mask) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
 								if refueler.priority >= best_prior then
-									local t = get_any_train_entity(train.entity)
-									local dist = t and get_dist(t, refueler.entity_stop) or INF
+									local dist = get_distance_squared(train.entity.front_stock--[[@as LuaEntity]], refueler.entity_stop)
 									if refueler.priority > best_prior or dist < best_dist then
 										best_refueler_id = id
 										best_dist = dist

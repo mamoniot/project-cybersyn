@@ -1,9 +1,13 @@
 --By Mami
+
 ---@param v string
 ---@param h string?
+---@return string?
 function once(v, h)
-	return not h and v or nil--[[@as string|nil]]
+	if h then return nil end
+    return v
 end
+
 ---@param t any[]
 ---@return any
 function rnext_consume(t)

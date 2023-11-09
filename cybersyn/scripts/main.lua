@@ -122,15 +122,21 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		entity_stop = stop,
 		entity_comb1 = comb1,
 		entity_comb2 = comb2,
+		surface_index = stop.surface_index,
+		position = stop.position,
 		--is_p = set_station_from_comb,
 		--is_r = set_station_from_comb,
+		--is_stack = set_station_from_comb,
+		--enable_inactive = set_station_from_comb,
 		--allows_all_trains = set_station_from_comb,
+		--disable_reservation = set_station_from_comb,
 		deliveries_total = 0,
-		last_delivery_tick = map_data.total_ticks,
-		trains_limit = math.huge,
-		priority = 0,
-		item_priotity = nil,
-		r_threshold = 0,
+		--last_delivery_tick = map_data.total_ticks,
+		--trains_limit = math.huge,
+		unused_trains_limit = 0,
+		--priority = 0,
+		--item_priotity = nil,
+		--r_threshold = 0,
 		locked_slots = 0,
 		--network_name = set_station_from_comb,
 		network_mask = 0,
@@ -138,11 +144,22 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		deliveries = {},
 		accepted_layouts = {},
 		layout_pattern = nil,
-		tick_signals = nil,
-		item_p_counts = {},
-		item_thresholds = nil,
+		--tick_signals = nil,
+		--item_p_counts = {},
+		--item_thresholds = nil,
 		display_state = 0,
-		is_warming_up = true,
+		--is_warming_up = true,
+		warmup_start_time = map_data.total_ticks,
+		poll_values = {},
+		item_thresholds = {},
+		item_priorities = {},
+		r_item_counts = {},
+		r_item_timestamps = {},
+		r_combined_p_priorities = {},
+		r_pf_trains_totals = {},
+		p_item_counts = {},
+		p_reserved_counts = {},
+		p_pf_trains = {},
 	}
 	local id = stop.unit_number--[[@as uint]]
 
@@ -173,6 +190,14 @@ end
 ---@param station_id uint
 ---@param station Station
 function on_station_broken(map_data, station_id, station)
+	for network_name in iterate_network_names(station) do
+		for item_name, _ in pairs(station.r_item_counts) do
+			requester_remove_from_economy(map_data, station_id, network_name..":"..item_name)
+		end
+		for item_name, _ in pairs(station.p_item_counts) do
+			provider_remove_from_economy(map_data, station_id, network_name..":"..item_name)
+		end
+	end
 	if station.deliveries_total > 0 then
 		--search for trains coming to the destroyed station
 		for train_id, train in pairs(map_data.trains) do

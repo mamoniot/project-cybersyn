@@ -121,10 +121,16 @@ local function handle_network(e)
 	local comb = global.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
-	local signal = element.elem_value--[[@as SignalID]]
-	if signal and (signal.name == "signal-everything" or signal.name == "signal-anything" or signal.name == "signal-each") then
-		signal.name = NETWORK_EACH
-		element.elem_value = signal
+	local signal = element.elem_value--[[@as SignalID?]]
+	if signal then
+		local name = signal.name
+		if name == "signal-everything" or name == "signal-anything" or name == "signal-each" then
+			signal.name = NETWORK_EACH
+			element.elem_value = signal
+		elseif name == REQUEST_THRESHOLD or name == SIGNAL_PRIORITY or name == LOCKED_SLOTS then
+			signal = nil
+			element.elem_value = nil
+		end
 	end
 	set_comb_network_name(comb, signal)
 
