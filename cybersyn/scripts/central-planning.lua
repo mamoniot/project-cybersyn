@@ -61,11 +61,11 @@ local function provider_combine_priority(r_station, p_station, pf_trains, item_n
 		combined_priority = combined_priority + 2^1
 	end
 	if r_station.surface_index == p_station.surface_index then
-	    local r_pos, p_pos = r_station.position, p_station.position
-	    local x, y = r_pos.x - p_pos.x, r_pos.y - p_pos.y
+		local r_pos, p_pos = r_station.position, p_station.position
+		local x, y = r_pos.x - p_pos.x, r_pos.y - p_pos.y
 		--reciprocal of distance so there is no hard limit, instead accuracy just reduces further away
-	    combined_priority = combined_priority + (1.0 / sqrt(x * x + y * y))
-    end
+		combined_priority = combined_priority + (1.0 / sqrt(x * x + y * y))
+	end
 	return combined_priority
 end
 
@@ -739,10 +739,10 @@ local function tick_dispatch(map_data, mod_settings)
 		local train1, train2 = trains[id1], trains[id2]
 		local val1, val2 = train1.priority, train2.priority
 		if val1 == val2 then
-		    val1 = train1[capacity_key]; val2 = train2[capacity_key]
-	    	if val1 == val2 then
-        		val1 = p_train_distance_cache[-id1]; val2 = p_train_distance_cache[-id2]
-    		end
+			val1 = train1[capacity_key]; val2 = train2[capacity_key]
+			if val1 == val2 then
+				val1 = p_train_distance_cache[-id1]; val2 = p_train_distance_cache[-id2]
+			end
 		end
 		return val1 > val2
 	end

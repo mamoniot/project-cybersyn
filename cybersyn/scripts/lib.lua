@@ -5,7 +5,7 @@
 ---@return string?
 function once(v, h)
 	if h then return nil end
-    return v
+	return v
 end
 
 ---@param t any[]

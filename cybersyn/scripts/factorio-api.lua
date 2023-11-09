@@ -109,11 +109,11 @@ end
 ---@param e Station|Refueler|Train
 ---@param network_name string
 function get_network_mask(e, network_name)
-    local e_name, e_mask = e.network_name, e.network_mask
-    if e_name == network_name then
-	    return e_mask--[[@as int]]
+	local e_name, e_mask = e.network_name, e.network_mask
+	if e_name == network_name then
+		return e_mask--[[@as int]]
 	end
-    return e_name == "signal-each" and e_mask[network_name] or 0
+	return e_name == "signal-each" and e_mask[network_name] or 0
 end
 
 ---@param e Station|Refueler|Train
