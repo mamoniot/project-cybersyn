@@ -12,7 +12,7 @@ local table_sort = table.sort
 local random = math.random
 local string_match = string.match
 
-local PROFILING_ENABLED = true
+local PROFILING_ENABLED = nil
 
 local profiler = nil ---@type LuaProfiler?
 local profiler_totals = nil ---@type {["item"|"fluid"|"train"]: uint}
@@ -403,8 +403,9 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, network
 			local stack_size = item_prototypes[item.name].stack_size
 			local free_item_capacity = free_item_slots * stack_size
 			if item.count < free_item_capacity then
-				local slots = ceil(item.count / stack_size)
-				if item.count < slots * stack_size then
+				local slots = item.count / stack_size
+				if item.count % stack_size > 0 then
+					slots = ceil(slots)
 					pf_keys[item.name] = true
 				end
 				free_item_slots = free_item_slots - slots
@@ -504,80 +505,82 @@ local function add_item_to_deliveries(map_data, r_station_id, p_station_id, netw
 					end
 				end
 			end
-			assert(free_capacity > 0, "train has no capacity for this item type")
 
-			if not entry then
-				entry = {name = item_name, type = item_type, count = 0}
-				manifest[#manifest+1] = entry
-			end
-
-			local previous_deficit = remaining_deficit
-
-			if remaining_deficit < free_capacity then
-				entry.count = entry.count + remaining_deficit
-				--check if train now has some capacity only usable by name
-				if not name_ids and not (stack_size and entry.count < ceil(entry.count / stack_size) * stack_size) then
-					name_ids = {train_id}
-					pf_trains[item_name] = name_ids
-					pf_trains_totals[item_name] = (pf_trains_totals[item_name] or 0) + 1
-					name_removed = false
-					pf_keys[item_name] = true
+			--should always have capacity unless locked_slots changed since the train was dispatched
+			if free_capacity > 0 then
+				if not entry then
+					entry = {name = item_name, type = item_type, count = 0}
+					manifest[#manifest+1] = entry
 				end
-				keep_name = true
-				--check if train still has more capacity usable by type
-				if type_ids and stack_size and floor((free_capacity - remaining_deficit) / stack_size) > 0 then
-					keep_type = true
-				end
-				remaining_deficit = 0
-			else
-				entry.count = entry.count + free_capacity
-				remaining_deficit = remaining_deficit - free_capacity
-			end
 
-			local schedule = train.entity.schedule
-			assert(schedule, "train has no schedule")
+				local previous_deficit = remaining_deficit
 
-			local record_index = schedule.current
-			local record ---@type TrainScheduleRecord
-			while true do
-				record = schedule.records[record_index]
-				if not record then
-					error("could not find schedule record for provider")
+				if remaining_deficit < free_capacity then
+					entry.count = entry.count + remaining_deficit
+					--check if train now has some capacity only usable by name
+					if not name_ids and not (stack_size and entry.count < ceil(entry.count / stack_size) * stack_size) then
+						name_ids = {train_id}
+						pf_trains[item_name] = name_ids
+						pf_trains_totals[item_name] = (pf_trains_totals[item_name] or 0) + 1
+						name_removed = false
+						pf_keys[item_name] = true
+					end
+					keep_name = true
+					--check if train still has more capacity usable by type
+					if type_ids and stack_size and floor((free_capacity - remaining_deficit) / stack_size) > 0 then
+						keep_type = true
+					end
+					remaining_deficit = 0
+				else
+					entry.count = entry.count + free_capacity
+					remaining_deficit = remaining_deficit - free_capacity
 				end
-				if record.station == p_station.entity_stop.backer_name then
-					break
-				end
-				record_index = record_index + 1
-			end
 
-			local condition_index = 1
-			local condition ---@type CircuitCondition?
-			while true do
-				local wait_condition = record.wait_conditions[condition_index]
-				if not wait_condition then
-					condition = nil
-					break
-				end
-				condition = wait_condition.condition
-				if not condition or condition.first_signal.name == item_name then
-					break
-				end
-				condition_index = condition_index + 1
-			end
+				local schedule = train.entity.schedule
+				assert(schedule, "train has no schedule")
 
-			local difference = previous_deficit - remaining_deficit
-			if condition then
-				condition.constant = condition.constant + difference
-			else
-				table_insert(record.wait_conditions, condition_index, {
-					type = item_type.."_count", compare_type = "and",
-					condition = {comparator = "≥", first_signal = {name = item_name, type = item_type}, constant = difference}
-				})
-			end
-			train.entity.schedule = schedule
+				local record_index = schedule.current
+				local record ---@type TrainScheduleRecord
+				while true do
+					record = schedule.records[record_index]
+					if not record then
+						error("could not find schedule record for provider")
+					end
+					if record.station == p_station.entity_stop.backer_name then
+						break
+					end
+					record_index = record_index + 1
+				end
 
-			if train.status == STATUS_P then
-				set_comb1(map_data, p_station, manifest, -1)
+				local condition_index = 1
+				local condition ---@type CircuitCondition?
+				while true do
+					local wait_condition = record.wait_conditions[condition_index]
+					if not wait_condition then
+						condition = nil
+						break
+					end
+					condition = wait_condition.condition
+					if not condition or condition.first_signal.name == item_name then
+						break
+					end
+					condition_index = condition_index + 1
+				end
+
+				local difference = previous_deficit - remaining_deficit
+				if condition then
+					condition.constant = condition.constant + difference
+				else
+					table_insert(record.wait_conditions, condition_index, {
+						type = item_type.."_count", compare_type = "and",
+						condition = {comparator = "≥", first_signal = {name = item_name, type = item_type}, constant = difference}
+					})
+				end
+				train.entity.schedule = schedule
+
+				if train.status == STATUS_P then
+					set_comb1(map_data, p_station, manifest, -1)
+				end
 			end
 		end
 
@@ -630,7 +633,7 @@ local function add_item_to_deliveries(map_data, r_station_id, p_station_id, netw
 
 	local difference = original_deficit - remaining_deficit
 	if difference == 0 then
-		return --all trains were invalid
+		return --all trains became invalid or had extra slots locked
 	end
 
 	--only update the timestamp for additions at least as large as the threshold
