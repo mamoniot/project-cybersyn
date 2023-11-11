@@ -275,8 +275,8 @@ function interface.remove_manifest_from_station_deliveries(station_id, train_id,
 	local station = global.stations[station_id]
 	local train = global.trains[train_id]
 	assert(station and train and train.manifest)
-	if sign == 1 then assert(train.r_station_id == station_id) end
-	if sign == -1 then assert(train.p_station_id == station_id) end
+	if sign == -1 then assert(train.r_station_id == station_id) end
+	if sign == 1 then assert(train.p_station_id == station_id) end
 	return remove_manifest(global, station_id, station, train_id, train, sign)
 end
 ---@param r_station_id uint
