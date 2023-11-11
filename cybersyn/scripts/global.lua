@@ -43,24 +43,17 @@
 ---@field public enable_inactive true?
 ---@field public allows_all_trains true?
 ---@field public disable_reservation true?
----@field public deliveries_total int
----@field public unused_trains_limit int --transient
------@field public priority int --transient
------@field public item_priority int? --transient
------@field public r_threshold int >= 0 --transient
----@field public locked_slots int >= 0 --transient
+---@field public deliveries_total int --total >= 0
+---@field public unused_trains_limit int --(trains_limit - deliveries_total)
+---@field public locked_slots int --slots >= 0
 ---@field public network_name string?
----@field public network_mask int|{[string]: int} --transient
----@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
----@field public deliveries {[string]: int}
+---@field public network_mask int|{[string]: int} --network_mask|{network_name: network_mask}
+---@field public wagon_combs {[int]: LuaEntity}? --NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
 ---@field public accepted_layouts {[uint]: true?}
 ---@field public layout_pattern (0|1|2|3)[]?
------@field public tick_signals {[uint]: Signal}? --transient
------@field public item_p_counts {[string]: int} --transient
------@field public item_thresholds {[string]: int}? --transient
 ---@field public display_state int
------@field public is_warming_up true?
----@field public warmup_start_time int?
+---@field public warmup_start_time uint?
+---@field public deliveries {[string]: int} --{item_name: deliveries ~= 0}
 ---@field public poll_values {[string]: -1|1} --{network_item: request|provide}
 ---@field public item_thresholds {[string]: int} --{item_name: threshold > 0}
 ---@field public item_priorities {[string]: int} --{item_name: priority}
@@ -105,7 +98,7 @@
 ---@field public depot_id uint
 ---@field public use_any_depot true?
 ---@field public disable_bypass true?
----@field public network_name string? --can only be nil when the train is parked at a depot
+---@field public network_name string? --can only be nil if the train is parked at a depot with no network
 ---@field public network_mask int|{[string]: int} --transient
 ---@field public priority int
 ---@field public refueler_id uint?

@@ -268,30 +268,55 @@ function interface.write_global(value, ...)
 	return true
 end
 
----@param station_id Station
----@param manifest Manifest
+---@param station_id uint
+---@param train_id uint
 ---@param sign -1|1
-function interface.remove_manifest_from_station_deliveries(station_id, manifest, sign)
+function interface.remove_manifest_from_station_deliveries(station_id, train_id, sign)
 	local station = global.stations[station_id]
-	assert(station)
-	return remove_manifest(global, station, manifest, sign)
+	local train = global.trains[train_id]
+	assert(station and train and train.manifest)
+	if sign == -1 then assert(train.p_station_id == station_id) end
+	if sign == 1 then assert(train.r_station_id == station_id) end
+	return remove_manifest(global, station_id, station, train_id, train, sign)
 end
 ---@param r_station_id uint
 ---@param p_station_id uint
 ---@param train_id uint
-function interface.create_manifest(r_station_id, p_station_id, train_id)
+---@param network_name string
+---@param primary_item_name string
+function interface.create_manifest(r_station_id, p_station_id, train_id, network_name, primary_item_name)
+	local r_station = global.stations[r_station_id]
+	assert(r_station and r_station.r_item_counts[primary_item_name])
+	local p_station = global.stations[p_station_id]
+	assert(p_station and p_station.p_item_counts[primary_item_name])
+	local train = global.trains[train_id]
+	assert(train and train.is_available)
+	for r_network in iterate_network_names(r_station) do
+		if r_network == network_name then
+			for p_network in iterate_network_names(p_station) do
+				if p_network == network_name then
+					for t_network in iterate_network_names(train) do
+						if t_network == network_name then
+							return create_manifest(global, r_station_id, p_station_id, train_id, network_name, primary_item_name)
+						end
+					end
+					error("train not on network")
+				end
+			end
+			error("provider not on network")
+		end
+	end
+	error("requester not on network")
+end
+---@param r_station_id uint
+---@param p_station_id uint
+---@param train_id uint
+---@param manifest Manifest
+---@param pf_keys {[string]: true}?
+function interface.create_delivery(r_station_id, p_station_id, train_id, manifest, pf_keys)
 	local train = global.trains[train_id]
 	assert(global.stations[r_station_id] and global.stations[p_station_id] and train and train.is_available)
-	return create_manifest(global, r_station_id, p_station_id, train_id)
-end
----@param r_station_id uint
----@param p_station_id uint
----@param train_id uint
----@param manifest Manifest
-function interface.create_delivery(r_station_id, p_station_id, train_id, manifest)
-	local train = global.trains[train_id]
-	assert(global.stations[r_station_id] and global.stations[p_station_id] and train and train.is_available and manifest)
-	return create_delivery(global, r_station_id, p_station_id, train_id, manifest)
+	return create_delivery(global, r_station_id, p_station_id, train_id, manifest, pf_keys)
 end
 ---@param train_id uint
 function interface.fail_delivery(train_id)

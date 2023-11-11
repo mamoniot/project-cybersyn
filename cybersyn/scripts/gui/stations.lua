@@ -57,7 +57,6 @@ end
 --- @param map_data MapData
 --- @param player_data PlayerData
 function stations_tab.build(map_data, player_data, query_limit)
-
 	local widths = constants.gui["en"]
 	local refs = player_data.refs
 
@@ -72,14 +71,11 @@ function stations_tab.build(map_data, player_data, query_limit)
 	local stations_sorted = {}
 	local to_sorted_manifest = {}
 
-	local i = 0
 	for id, station in pairs(stations) do
 		local entity = station.entity_stop
-		if not entity.valid then
+		if not entity.valid or not station.network_name then
 			goto continue
 		end
-
-
 
 		if search_query then
 			if not string.match(entity.backer_name, search_query) then
@@ -87,66 +83,39 @@ function stations_tab.build(map_data, player_data, query_limit)
 			end
 		end
 
-		-- move surface comparison up higher in query to short circuit query earlier if surface doesn't match; this can exclude hundreds of stations instantly in SE
 		if search_surface_idx then
-			if search_surface_idx == -1 then
-				goto has_match
-			elseif entity.surface.index ~= search_surface_idx then
+			if station.surface_index ~= search_surface_idx then
 				goto continue
 			end
-			::has_match::
 		end
 
 		if search_network_name then
-			if search_network_name ~= station.network_name then
-				goto continue
-			end
-			local train_flag = get_network_mask(station, station.network_name)
-			if not bit32.btest(search_network_mask, train_flag) then
+			if not bit32.btest(get_network_mask(station, search_network_name), search_network_mask) then
 				goto continue
 			end
 		elseif search_network_mask ~= -1 then
 			if station.network_name == NETWORK_EACH then
-				local masks = station.network_mask--[[@as {}]]
-				for _, network_mask in pairs(masks) do
-					if bit32.btest(search_network_mask, network_mask) then
+				for _, network_mask in pairs(station.network_mask--[[@as table]]) do
+					if bit32.btest(network_mask, search_network_mask) then
 						goto has_match
 					end
 				end
 				goto continue
-				::has_match::
-			elseif not bit32.btest(search_network_mask, station.network_mask) then
+			elseif not bit32.btest(station.network_mask, search_network_mask) then
 				goto continue
 			end
-		end
-
-
-		if search_item then
-			if station.deliveries then
-				for item_name, _ in pairs(station.deliveries) do
-					if item_name == search_item then
-						goto has_match
-					end
-				end
-			end
-			local comb1_signals, _ = get_signals(station)
-			if comb1_signals then
-				for _, signal_ID in pairs(comb1_signals) do
-					local item = signal_ID.signal.name
-					if item then
-						if item == search_item then
-							goto has_match
-						end
-					end
-				end
-			end
-			goto continue
 			::has_match::
 		end
 
-		stations_sorted[#stations_sorted + 1] = id
-		i = i + 1
-		if query_limit ~= -1 and i >= query_limit then
+		if search_item then
+			if not (station.p_item_counts[search_item] or station.r_item_counts[search_item] or station.deliveries[search_item]) then
+				goto continue
+			end
+		end
+
+		local num_stations = #stations_sorted + 1
+		stations_sorted[num_stations] = id
+		if query_limit ~= -1 and num_stations >= query_limit then
 			break
 		end
 		::continue::
@@ -218,16 +187,11 @@ function stations_tab.build(map_data, player_data, query_limit)
 		refs.manager_stations_tab_scroll_pane.clear()
 	end
 
-	for i, station_id in pairs(stations_sorted) do
-		--- @type Station
+	for i, station_id in ipairs(stations_sorted) do
 		local station = stations[station_id]
-		local network_sprite = "utility/close_black"
-		local network_name = station.network_name
-		local network_mask = -1;
-		if network_name then
-			network_mask = get_network_mask(station, network_name)
-			network_sprite, _, _ = util.generate_item_references(network_name)
-		end
+		local network_name = station.network_name--[[@as string]]
+		local network_mask = get_network_mask(station, search_network_name or network_name)
+		local network_sprite = util.generate_item_references(network_name) or "utility/close_black"
 		local color = i % 2 == 0 and "dark" or "light"
 		gui.add(scroll_pane, {
 			type = "frame",
@@ -250,8 +214,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 
 		gui.add(refs.provided_requested_table, util.slot_table_build_from_station(station))
 		gui.add(refs.shipments_table, util.slot_table_build_from_deliveries(station))
-		gui.add(refs.control_signals_table, util.slot_table_build_from_control_signals(station, map_data))
-
+		gui.add(refs.control_signals_table, util.slot_table_build_from_control_signals(station))
 	end
 
 	if #stations_sorted == 0 then
