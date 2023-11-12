@@ -40,25 +40,27 @@ end
 local function set_visibility(main_window, selected_index)
 	local is_station = selected_index == 1
 	local is_depot = selected_index == 2
+	local is_refueler = selected_index == 3
 	local is_wagon = selected_index == 5
-	local uses_network = is_station or is_depot or selected_index == 3
-	local uses_allow_list = is_station or selected_index == 3
+	local has_settings = is_station or is_depot or is_refueler
 
 	local vflow = main_window.frame.vflow--[[@as LuaGuiElement]]
 	local top_flow = vflow.top--[[@as LuaGuiElement]]
 	local bottom_flow = vflow.bottom--[[@as LuaGuiElement]]
-	local first_settings = bottom_flow.first--[[@as LuaGuiElement]]
-	local depot_settings = bottom_flow.depot--[[@as LuaGuiElement]]
+	local left_flow = bottom_flow.left--[[@as LuaGuiElement]]
+	local right_flow = bottom_flow.right--[[@as LuaGuiElement]]
 
+	vflow.separator.visible = has_settings
+	vflow.network_label.visible = has_settings
 	top_flow.is_pr_switch.visible = is_station
-	vflow.network_label.visible = uses_network
-	bottom_flow.network.visible = uses_network
-	first_settings.allow_list.visible = uses_allow_list
-	first_settings.is_stack.visible = is_station
-	bottom_flow.enable_inactive.visible = is_station
-	bottom_flow.disable_reservation.visible = is_station
 	top_flow.enable_slot_barring.visible = is_wagon
-	depot_settings.visible = is_depot
+	bottom_flow.network.visible = has_settings
+	left_flow.allow_list.visible = is_station or is_refueler
+	left_flow.is_stack.visible = is_station
+	left_flow.use_same_depot.visible = is_depot
+	left_flow.depot_bypass.visible = is_depot
+	right_flow.enable_inactive.visible = is_station
+	right_flow.disable_reservation.visible = is_station
 end
 
 
@@ -235,21 +237,21 @@ function gui_opened(comb, player)
 						{type="switch", name="is_pr_switch", allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, handler=handle_pr_switch, tags={id=comb.unit_number}},
 						{type="checkbox", name="enable_slot_barring", state=setting(bits, SETTING_ENABLE_SLOT_BARRING), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_SLOT_BARRING}, tooltip={"cybersyn-gui.enable-slot-barring-tooltip"}, caption={"cybersyn-gui.enable-slot-barring-description"}},
 					}},
-					---choose-elem-button
-					{type="line", style_mods={top_padding=10}},
+					---network and settings
+					{type="line", name="separator", style_mods={top_padding=8}},
 					{type="label", name="network_label", style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
-					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="top"}, children={
+					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="center"}, children={
 						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, handler=handle_network, tags={id=comb.unit_number}},
-						{type="flow", name="depot", direction="vertical", style_mods={horizontal_align="left"}, children={
+						{type="flow", name="left", direction="vertical", style_mods={horizontal_align="left", right_margin=8}, children={
+							{type="checkbox", name="allow_list", state=setting_flip(bits, SETTING_DISABLE_ALLOW_LIST), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_DISABLE_ALLOW_LIST}, tooltip={"cybersyn-gui.allow-list-tooltip"}, caption={"cybersyn-gui.allow-list-description"}},
+							{type="checkbox", name="is_stack", state=setting(bits, SETTING_IS_STACK), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_IS_STACK}, tooltip={"cybersyn-gui.is-stack-tooltip"}, caption={"cybersyn-gui.is-stack-description"}},
 							{type="checkbox", name="use_same_depot", state=setting_flip(bits, SETTING_USE_ANY_DEPOT), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_USE_ANY_DEPOT}, tooltip={"cybersyn-gui.use-same-depot-tooltip"}, caption={"cybersyn-gui.use-same-depot-description"}},
 							{type="checkbox", name="depot_bypass", state=setting_flip(bits, SETTING_DISABLE_DEPOT_BYPASS), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_DISABLE_DEPOT_BYPASS}, tooltip={"cybersyn-gui.depot-bypass-tooltip"}, caption={"cybersyn-gui.depot-bypass-description"}},
 						}},
-						{type="flow", name="first", direction="vertical", style_mods={horizontal_align="left", right_margin=8}, children={
-							{type="checkbox", name="allow_list", state=setting_flip(bits, SETTING_DISABLE_ALLOW_LIST), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_DISABLE_ALLOW_LIST}, tooltip={"cybersyn-gui.allow-list-tooltip"}, caption={"cybersyn-gui.allow-list-description"}},
-							{type="checkbox", name="is_stack", state=setting(bits, SETTING_IS_STACK), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_IS_STACK}, tooltip={"cybersyn-gui.is-stack-tooltip"}, caption={"cybersyn-gui.is-stack-description"}},
-						}},
-						{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, caption={"cybersyn-gui.enable-inactive-description"}},
-						{type="checkbox", name="disable_reservation", state=setting(bits, SETTING_DISABLE_RESERVATION), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_DISABLE_RESERVATION}, tooltip={"cybersyn-gui.disable-reservation-tooltip"}, caption={"cybersyn-gui.disable-reservation-description"}},
+						{type="flow", name="right", direction="vertical", style_mods={horizontal_align="left"}, children={
+							{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, caption={"cybersyn-gui.enable-inactive-description"}},
+							{type="checkbox", name="disable_reservation", state=setting(bits, SETTING_DISABLE_RESERVATION), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_DISABLE_RESERVATION}, tooltip={"cybersyn-gui.disable-reservation-tooltip"}, caption={"cybersyn-gui.disable-reservation-description"}},
+						}}
 					}}
 				}}
 			}}
