@@ -12,34 +12,34 @@ local table_sort = table.sort
 local random = math.random
 local string_match = string.match
 
-local PROFILING_ENABLED = nil
+-- local PROFILING_ENABLED = nil
 
-local profiler = nil ---@type LuaProfiler?
-local profiler_totals = nil ---@type {["item"|"fluid"|"train"]: uint}
-local profiler_output_path = nil ---@type string
+-- local profiler = nil ---@type LuaProfiler?
+-- local profiler_totals = nil ---@type {["item"|"fluid"|"train"]: uint}
+-- local profiler_output_path = nil ---@type string
 
-local function profiler_reset(output_path)
-	if profiler then
-		profiler_output_path = output_path
-		profiler.reset()
-	end
-end
+-- local function profiler_reset(output_path)
+-- 	if profiler then
+-- 		profiler_output_path = output_path
+-- 		profiler.reset()
+-- 	end
+-- end
 
-local function profiler_write()
-	if profiler then
-		profiler.stop()
-		game.write_file(profiler_output_path, {"", profiler}, true)
-		if global.tick_state == STATE_DISPATCH then
-			game.write_file("cybersyn_totals.csv", string.format("items, %u\nfluids, %u\ntrains, %u", profiler_totals.item, profiler_totals.fluid, profiler_totals.train), false)
-		end
-	end
-end
+-- local function profiler_write()
+-- 	if profiler then
+-- 		profiler.stop()
+-- 		game.write_file(profiler_output_path, {"", profiler}, true)
+-- 		if global.tick_state == STATE_DISPATCH then
+-- 			game.write_file("cybersyn_totals.csv", string.format("items, %u\nfluids, %u\ntrains, %u", profiler_totals.item, profiler_totals.fluid, profiler_totals.train), false)
+-- 		end
+-- 	end
+-- end
 
-local function profiler_update_total(key, count)
-	if profiler then
-		profiler_totals[key] = profiler_totals[key] + count
-	end
-end
+-- local function profiler_update_total(key, count)
+-- 	if profiler then
+-- 		profiler_totals[key] = profiler_totals[key] + count
+-- 	end
+-- end
 
 ---@param r_station Station
 ---@param item_name string
@@ -286,17 +286,16 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 			r_deliveries[item_name] = (r_deliveries[item_name] or 0) + item_count
 			p_deliveries[item_name] = (p_deliveries[item_name] or 0) - item_count
 
-			-- assert(r_station.r_item_counts[item_name] + item_count <= 0)
-			-- assert(p_station.p_item_counts[item_name] - item_count >= 0)
+			assert(r_station.r_item_counts[item_name] + r_deliveries[item_name] <= 0 and p_station.p_item_counts[item_name] + p_deliveries[item_name] >= 0)
 
 			--prevent dispatches and delivery additions for these items until their stations are re-polled
 			for network_name in f, a do
 				economy.items_requested[network_name..":"..item_name] = 0
 			end
 
-			profiler_update_total(item.type, item_count)
+			-- profiler_update_total(item.type, item_count)
 		end
-		profiler_update_total("train", 1)
+		-- profiler_update_total("train", 1)
 
 		local at_limit_changed = p_station.unused_trains_limit == 0
 		if pf_keys then
@@ -346,22 +345,26 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, network
 	local train = map_data.trains[train_id]
 
 	local item_prototypes = game.item_prototypes
-	local r_item_counts = r_station.r_item_counts
-	local p_item_counts = p_station.p_item_counts
+	local r_item_counts, r_deliveries = r_station.r_item_counts, r_station.deliveries
+	local p_item_counts, p_deliveries = p_station.p_item_counts, p_station.deliveries
 	local p_reserved_counts = p_station.p_reserved_counts
 
 	local manifest = {} ---@type Manifest
 
 	for item_name, r_item_count in pairs(r_item_counts) do
-		local network_item = network_name..":"..item_name
-		local p_item_count = p_reserved_counts[network_item] or p_item_counts[item_name]
-		if p_item_count and p_item_count > 0 then
-			local item = {name = item_name, type = item_prototypes[item_name] and "item" or "fluid", count = min(-r_item_count, p_item_count)}
-			if item_name == primary_item_name then
-				manifest[#manifest+1] = manifest[1]
-				manifest[1] = item
-			elseif not map_data.economy.items_requested[network_item] then
-				manifest[#manifest+1] = item
+		local p_item_count = p_item_counts[item_name]
+		if p_item_count then
+			local network_item = network_name..":"..item_name
+			p_item_count = p_reserved_counts[network_item] or (p_item_count + (p_deliveries[item_name] or 0))
+			if p_item_count > 0 then
+				r_item_count = r_item_count + (r_deliveries[item_name] or 0)
+				local item = {name = item_name, type = item_prototypes[item_name] and "item" or "fluid", count = min(-r_item_count, p_item_count)}
+				if item_name == primary_item_name then
+					manifest[#manifest+1] = manifest[1]
+					manifest[1] = item
+				elseif not map_data.economy.items_requested[network_item] then
+					manifest[#manifest+1] = item
+				end
 			end
 		end
 	end
@@ -453,9 +456,12 @@ local function add_item_to_deliveries(map_data, r_station_id, p_station_id, netw
 		item_type = "fluid"
 	end
 
-	local r_item_counts, p_item_counts = r_station.r_item_counts, p_station.p_item_counts
+	local r_deliveries, p_deliveries = r_station.deliveries, p_station.deliveries
 
-	local original_deficit = min(-r_item_counts[item_name], p_station.p_reserved_counts[network_name..":"..item_name] or p_item_counts[item_name])
+	local r_item_count = r_station.r_item_counts[item_name] + (r_deliveries[item_name] or 0)
+	local p_item_count = p_station.p_reserved_counts[network_name..":"..item_name] or (p_station.p_item_counts[item_name] + (p_deliveries[item_name] or 0))
+
+	local original_deficit = min(-r_item_count, p_item_count)
 	assert(original_deficit > 0, "no items requested, or no items available")
 
 	local pf_trains = p_station.p_pf_trains[r_station_id]
@@ -611,9 +617,10 @@ local function add_item_to_deliveries(map_data, r_station_id, p_station_id, netw
 	until remaining_deficit == 0
 
 	if type_removed then
+		local r_item_counts = r_station.r_item_counts
 		local r_combined_p_priorities = r_station.r_combined_p_priorities
 		local f, a = iterate_common_network_names(r_station, p_station)
-		for other_name, _ in pairs(p_item_counts) do
+		for other_name, _ in pairs(p_station.p_item_counts) do
 			if r_item_counts[other_name] and not pf_trains[other_name] then
 				local other_type = item_prototypes[other_name] and "item" or "fluid"
 				if other_type == item_type then
@@ -645,13 +652,12 @@ local function add_item_to_deliveries(map_data, r_station_id, p_station_id, netw
 		end
 	end
 
-	r_station.deliveries[item_name] = (r_station.deliveries[item_name] or 0) + difference
-	p_station.deliveries[item_name] = (p_station.deliveries[item_name] or 0) - difference
+	r_deliveries[item_name] = (r_deliveries[item_name] or 0) + difference
+	p_deliveries[item_name] = (p_deliveries[item_name] or 0) - difference
 
-	-- assert(r_station.r_item_counts[item_name] + difference <= 0)
-	-- assert(p_station.p_item_counts[item_name] - difference >= 0)
+	assert(r_item_count + difference <= 0 and p_item_count - difference >= 0)
 
-	profiler_update_total(item_type, difference)
+	-- profiler_update_total(item_type, difference)
 
 	--prevent dispatches and delivery additions for these items until their stations are re-polled
 	for other_network in iterate_all_network_names(r_station, p_station) do
@@ -669,7 +675,7 @@ local function tick_dispatch(map_data, mod_settings)
 	--psuedo-randomize what item (and what station) to check first so if trains available is low they choose orders psuedo-randomly
 	--NOTE: this is an approximation algorithm for solving the assignment problem (bipartite graph weighted matching), the true solution would be to implement the simplex algorithm but I strongly believe most factorio players would prefer run-time efficiency over perfect train routing logic
 	--NOTE: the above isn't even the full story, we can only use one edge per item per tick, which might break the assumptions of the simplex algorithm causing it to give imperfect solutions.
-	profiler_reset("cybersyn_tick_dispatch.csv")
+	-- profiler_reset("cybersyn_tick_dispatch.csv")
 
 	local economy = map_data.economy
 	local stations = map_data.stations
@@ -682,7 +688,7 @@ local function tick_dispatch(map_data, mod_settings)
 		local size = #items_to_dispatch
 		if size == 0 then
 			map_data.tick_state = STATE_INIT
-			profiler_write()
+			-- profiler_write()
 			return true
 		end
 
@@ -705,7 +711,7 @@ local function tick_dispatch(map_data, mod_settings)
 				local item_name = string_match(network_item, ":(.*)")
 				for _, station_id in ipairs(r_stations) do
 					local station = stations[station_id]
-					if -station.r_item_counts[item_name] >= station.item_thresholds[item_name] and not btest(station.display_state, 2) then
+					if -station.r_item_counts[item_name] - (station.deliveries[item_name] or 0) >= station.item_thresholds[item_name] and not btest(station.display_state, 2) then
 						station.display_state = station.display_state + 2
 						update_display(map_data, station)
 					end
@@ -758,7 +764,7 @@ local function tick_dispatch(map_data, mod_settings)
 		--extra block so goto can jump over local declarations
 		do
 			local r_threshold = r_station.item_thresholds[item_name]
-			local r_below_threshold = -r_station.r_item_counts[item_name] < r_threshold
+			local r_below_threshold = -r_station.r_item_counts[item_name] - (r_station.deliveries[item_name] or 0) < r_threshold
 
 			if r_below_threshold then
 				local pf_trains_totals = r_station.r_pf_trains_totals
@@ -792,7 +798,7 @@ local function tick_dispatch(map_data, mod_settings)
 
 				local p_item_count = p_station.p_reserved_counts[network_item]
 				if not p_item_count then
-					p_item_count = p_station.p_item_counts[item_name]
+					p_item_count = p_station.p_item_counts[item_name] + (p_station.deliveries[item_name] or 0)
 				elseif p_item_count == 0 then
 					--this provider was completely reserved by another requester
 					goto p_continue
@@ -826,7 +832,7 @@ local function tick_dispatch(map_data, mod_settings)
 				local pf_trains = p_station.p_pf_trains[r_station_id]
 				if pf_trains and (pf_trains[item_name] or pf_trains[item_type]) then
 					add_item_to_deliveries(map_data, r_station_id, p_station_id, network_name, item_name)
-					profiler_write()
+					-- profiler_write()
 					return false
 				end
 
@@ -922,7 +928,7 @@ local function tick_dispatch(map_data, mod_settings)
 
 					local manifest, pf_keys = create_manifest(map_data, r_station_id, p_station_id, train_id, network_name, item_name)
 					create_delivery(map_data, r_station_id, p_station_id, train_id, manifest, pf_keys)
-					profiler_write()
+					-- profiler_write()
 					do return false end
 
 					::t_continue::
@@ -976,13 +982,13 @@ local function tick_dispatch(map_data, mod_settings)
 	if add_item_r_station_id then ---@cast add_item_p_station_id uint
 		stations[add_item_p_station_id].p_reserved_counts[network_item] = add_item_count
 		add_item_to_deliveries(map_data, add_item_r_station_id, add_item_p_station_id, network_name, item_name)
-		profiler_write()
+		-- profiler_write()
 		return false
 	end
 
 	--allow adding as a secondary item to dispatches processed after this one
 	economy.items_requested[network_item] = nil
-	profiler_write()
+	-- profiler_write()
 	return false
 end
 
@@ -1103,7 +1109,7 @@ end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 local function tick_poll_station(map_data, mod_settings)
-	profiler_reset("cybersyn_tick_poll_station.csv")
+	-- profiler_reset("cybersyn_tick_poll_station.csv")
 
 	local tick_data = map_data.tick_data
 	local economy = map_data.economy
@@ -1116,7 +1122,7 @@ local function tick_poll_station(map_data, mod_settings)
 		if tick_data.i > #map_data.active_station_ids then
 			tick_data.i = nil
 			map_data.tick_state = STATE_DISPATCH
-			profiler_write()
+			-- profiler_write()
 			return true
 		end
 		station_id = map_data.active_station_ids[tick_data.i]
@@ -1134,7 +1140,7 @@ local function tick_poll_station(map_data, mod_settings)
 
 	if not station.entity_stop.valid or not station.entity_comb1.valid or (station.entity_comb2 and not station.entity_comb2.valid) then
 		on_station_broken(map_data, station_id, station)
-		profiler_write()
+		-- profiler_write()
 		return false
 	end
 
@@ -1208,8 +1214,9 @@ local function tick_poll_station(map_data, mod_settings)
 
 	for _, v in pairs(comb1_signals) do
 		local item_name, item_type, item_count = v.signal.name--[[@as string]], v.signal.type, v.count
-		local deliveries = station.deliveries[item_name] or 0
-		item_count = item_count + deliveries
+
+		local item_deliveries = station.deliveries[item_name] or 0
+		local item_count_with_deliveries = item_count + item_deliveries
 
 		local item_threshold = comb2_thresholds and comb2_thresholds[item_name]
 		local item_priority = item_threshold and comb2_priority or comb1_priority
@@ -1217,7 +1224,7 @@ local function tick_poll_station(map_data, mod_settings)
 		local old_item_priority = item_priorities[item_name]
 		item_priorities[item_name] = item_priority
 
-		if station.is_r and deliveries >= 0 and item_count < 0 then
+		if station.is_r and item_deliveries >= 0 and item_count_with_deliveries < 0 then
 			r_item_counts[item_name] = item_count
 			if not item_threshold then
 				item_threshold = comb1_threshold
@@ -1241,14 +1248,14 @@ local function tick_poll_station(map_data, mod_settings)
 				elseif old_item_priority ~= item_priority then
 					economy.combined_r_priorities[network_item][station_id] = requester_combine_priority(station, item_name)
 				end
-				if not economy.items_requested[network_item] and (-item_count >= item_threshold or station.r_pf_trains_totals[item_name] or station.r_pf_trains_totals[item_type]) then
+				if not economy.items_requested[network_item] and (-item_count_with_deliveries >= item_threshold or station.r_pf_trains_totals[item_name] or station.r_pf_trains_totals[item_type]) then
 					economy.items_requested[network_item] = 1
 					economy.items_to_dispatch[#economy.items_to_dispatch+1] = network_item
 				end
 				poll_values[network_item] = -1
 			end
 			is_requesting_nothing = false
-		elseif station.is_p and deliveries <= 0 and item_count > 0 then
+		elseif station.is_p and item_deliveries <= 0 and item_count_with_deliveries > 0 then
 			p_item_counts[item_name] = item_count
 			if item_threshold then
 				if item_prototypes_if_stack and item_type == "item" then
@@ -1318,7 +1325,7 @@ local function tick_poll_station(map_data, mod_settings)
 		end
 	end
 
-	profiler_write()
+	-- profiler_write()
 	return false
 end
 
@@ -1435,12 +1442,12 @@ end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 function tick(map_data, mod_settings)
-	if PROFILING_ENABLED and not profiler then
-		game.write_file("cybersyn_tick_poll_station.csv", "\n", true)
-		game.write_file("cybersyn_tick_dispatch.csv", "\n", true)
-		profiler = game.create_profiler(true)
-		profiler_totals = {item = 0, fluid = 0, train = 0}
-	end
+	-- if PROFILING_ENABLED and not profiler then
+	-- 	game.write_file("cybersyn_tick_poll_station.csv", "\n", true)
+	-- 	game.write_file("cybersyn_tick_dispatch.csv", "\n", true)
+	-- 	profiler = game.create_profiler(true)
+	-- 	profiler_totals = {item = 0, fluid = 0, train = 0}
+	-- end
 
 	map_data.total_ticks = map_data.total_ticks + 1
 
