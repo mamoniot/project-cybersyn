@@ -954,10 +954,10 @@ local function tick_dispatch(map_data, mod_settings)
 					send_alert_missing_train(r_station.entity_stop, best_p_station.entity_stop)
 				elseif problem == 2 then
 					--no train matches the provider's mask and layout
-					send_alert_no_train_matches_p_layout(r_station.entity_stop, best_p_station.entity_stop)
+					send_alert_no_train_matches_provider(r_station.entity_stop, best_p_station.entity_stop)
 				elseif problem == 3 then
 					--no train matches the requester's mask and layout
-					send_alert_no_train_matches_r_layout(r_station.entity_stop, best_p_station.entity_stop)
+					send_alert_no_train_matches_requester(r_station.entity_stop, best_p_station.entity_stop)
 				elseif problem == 4 then
 					--no train has enough capacity to meet the threshold
 					send_alert_no_train_has_capacity(r_station.entity_stop, best_p_station.entity_stop)

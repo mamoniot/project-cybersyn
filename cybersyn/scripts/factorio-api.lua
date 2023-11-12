@@ -866,18 +866,18 @@ function send_alert_missing_train(r_stop, p_stop)
 end
 ---@param r_stop LuaEntity
 ---@param p_stop LuaEntity
+function send_alert_no_train_matches_provider(r_stop, p_stop)
+	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-matches-provider")
+end
+---@param r_stop LuaEntity
+---@param p_stop LuaEntity
+function send_alert_no_train_matches_requester(r_stop, p_stop)
+	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-matches-requester")
+end
+---@param r_stop LuaEntity
+---@param p_stop LuaEntity
 function send_alert_no_train_has_capacity(r_stop, p_stop)
 	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-has-capacity")
-end
----@param r_stop LuaEntity
----@param p_stop LuaEntity
-function send_alert_no_train_matches_r_layout(r_stop, p_stop)
-	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-matches-r-layout")
-end
----@param r_stop LuaEntity
----@param p_stop LuaEntity
-function send_alert_no_train_matches_p_layout(r_stop, p_stop)
-	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-matches-p-layout")
 end
 
 
