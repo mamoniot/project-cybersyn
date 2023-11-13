@@ -239,19 +239,6 @@ local function on_combinator_built(map_data, comb)
 			{pos_x + 2, pos_y + 1.5}
 		}
 	end
-	local stop = nil
-	local rail = nil
-	local entities = comb.surface.find_entities_filtered({area = search_area, name = {"train-stop", "straight-rail"}})
-	for _, cur_entity in pairs(entities) do
-		if cur_entity.valid then
-			if cur_entity.name == "train-stop" then
-				--NOTE: if there are multiple stops we take the later one
-				stop = cur_entity
-			elseif cur_entity.type == "straight-rail" then
-				rail = cur_entity
-			end
-		end
-	end
 
 	local out = comb.surface.create_entity({
 		name = COMBINATOR_OUT_NAME,
@@ -289,42 +276,57 @@ local function on_combinator_built(map_data, comb)
 	map_data.to_comb[unit_number] = comb
 	map_data.to_comb_params[unit_number] = params
 	map_data.to_output[unit_number] = out
-	map_data.to_stop[unit_number] = stop
 
 	if op == MODE_WAGON then
+		local rail = nil
+		for _, entity in pairs(comb.surface.find_entities_filtered({area = search_area, type = "straight-rail"})) do
+			if entity.valid then
+				rail = entity
+			end
+		end
+		map_data.to_stop[unit_number] = nil
 		if rail then
 			update_stop_from_rail(map_data, rail, nil, true)
 		end
-	elseif stop then
-		local id = stop.unit_number--[[@as uint]]
-		local station = map_data.stations[id]
-		local depot = map_data.depots[id]
-		local refueler = map_data.refuelers[id]
-		if op == MODE_DEPOT then
-			if refueler then
-				on_refueler_broken(map_data, id, refueler)
+	else
+		local stop = nil
+		for _, entity in pairs(comb.surface.find_entities_filtered({area = search_area, name = "train-stop"})) do
+			if entity.valid then
+				stop = entity
 			end
-			if not station and not depot then
-				on_depot_built(map_data, stop, comb)
-			end
-		elseif op == MODE_REFUELER then
-			if not station and not depot and not refueler then
-				on_refueler_built(map_data, stop, comb)
-			end
-		elseif op == MODE_SECONDARY_IO then
-			if station and not station.entity_comb2 then
-				station.entity_comb2 = comb
-			end
-		elseif op == MODE_PRIMARY_IO then
-			if refueler then
-				on_refueler_broken(map_data, id, refueler)
-			end
-			if depot then
-				on_depot_broken(map_data, id, depot)
-			end
-			if not station then
-				local comb2 = search_for_station_combinator(map_data, stop, MODE_SECONDARY_IO, comb)
-				on_station_built(map_data, stop, comb, comb2)
+		end
+		map_data.to_stop[unit_number] = stop
+		if stop then
+			local id = stop.unit_number--[[@as uint]]
+			local station = map_data.stations[id]
+			local depot = map_data.depots[id]
+			local refueler = map_data.refuelers[id]
+			if op == MODE_DEPOT then
+				if refueler then
+					on_refueler_broken(map_data, id, refueler)
+				end
+				if not station and not depot then
+					on_depot_built(map_data, stop, comb)
+				end
+			elseif op == MODE_REFUELER then
+				if not station and not depot and not refueler then
+					on_refueler_built(map_data, stop, comb)
+				end
+			elseif op == MODE_SECONDARY_IO then
+				if station and not station.entity_comb2 then
+					station.entity_comb2 = comb
+				end
+			elseif op == MODE_PRIMARY_IO then
+				if refueler then
+					on_refueler_broken(map_data, id, refueler)
+				end
+				if depot then
+					on_depot_broken(map_data, id, depot)
+				end
+				if not station then
+					local comb2 = search_for_station_combinator(map_data, stop, MODE_SECONDARY_IO, comb)
+					on_station_built(map_data, stop, comb, comb2)
+				end
 			end
 		end
 	end
@@ -691,9 +693,8 @@ end
 local function on_surface_removed(event)
 	local surface = game.surfaces[event.surface_index]
 	if surface then
-		local train_stops = surface.find_entities_filtered({type = "train-stop"})
-		for _, entity in pairs(train_stops) do
-			if entity.valid and entity.name == "train-stop" then
+		for _, entity in pairs(surface.find_entities_filtered({name = "train-stop"})) do
+			if entity.valid then
 				on_stop_broken(global, entity)
 			end
 		end
