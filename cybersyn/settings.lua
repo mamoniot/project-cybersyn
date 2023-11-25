@@ -126,7 +126,42 @@ data:extend({
 		default_value = -1,
 		minimum_value = -1,
 		maximum_value = 2147483647,
-	}
+	},
+	{
+		type = "string-setting",
+		name = "cybersyn-vanity-idle-station-name-pattern",
+		order = "vanity a",
+		setting_type = "runtime-global",
+		default_value = "Station @ %L",
+	},
+	{
+		type = "string-setting",
+		name = "cybersyn-vanity-r-station-name-pattern",
+		order = "vanity b",
+		setting_type = "runtime-global",
+		default_value = "%R Requester @ %L",
+	},
+	{
+		type = "string-setting",
+		name = "cybersyn-vanity-p-station-name-pattern",
+		order = "vanity c",
+		setting_type = "runtime-global",
+		default_value = "%P Provider @ %L",
+	},
+	{
+		type = "string-setting",
+		name = "cybersyn-vanity-rp-station-name-pattern",
+		order = "vanity d",
+		setting_type = "runtime-global",
+		default_value = "%R Requester / %P Provider @ %L",
+	},
+	{
+		type = "bool-setting",
+		name = "cybersyn-vanity-names-respect-thresholds",
+		order = "vanity e",
+		setting_type = "runtime-global",
+		default_value = false,
+	},
   --{
   --  type = "bool-setting",
   --  name = "cybersyn-disable-top-left-button",

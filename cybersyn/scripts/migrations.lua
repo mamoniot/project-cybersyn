@@ -358,4 +358,25 @@ end
 ---NOTE 2: Everything in this section must be idempotent
 function on_debug_revision_change()
 	local map_data = global
+
+	for id, comb in pairs(map_data.to_comb) do
+		if comb.valid then
+			local control = get_comb_control(comb)
+			local params = control.parameters
+			local params_old = map_data.to_comb_params[id]
+			local bits = params.second_constant or 0
+			local bits_old = params_old.second_constant or 0
+
+			bits = bit32.replace(bits, 1, SETTING_ENABLE_AUTO_RENAME)--[[@as int]]
+			bits_old = bit32.replace(bits_old, 1, SETTING_ENABLE_AUTO_RENAME)--[[@as int]]
+			params.second_constant = bits
+			params_old.second_constant = bits_old
+
+			control.parameters = params
+			map_data.to_comb_params[id] = params_old
+		end
+	end
+	for _, station in pairs(map_data.stations) do
+		set_station_from_comb(station)
+	end
 end

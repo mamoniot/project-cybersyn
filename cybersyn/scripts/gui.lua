@@ -48,6 +48,7 @@ local function set_visibility(main_window, selected_index)
 	local top_flow = vflow.top--[[@as LuaGuiElement]]
 	local bottom_flow = vflow.bottom--[[@as LuaGuiElement]]
 	local first_settings = bottom_flow.first--[[@as LuaGuiElement]]
+	local second_settings = bottom_flow.second--[[@as LuaGuiElement]]
 	local depot_settings = bottom_flow.depot--[[@as LuaGuiElement]]
 
 	top_flow.is_pr_switch.visible = is_station
@@ -55,7 +56,8 @@ local function set_visibility(main_window, selected_index)
 	bottom_flow.network.visible = uses_network
 	first_settings.allow_list.visible = uses_allow_list
 	first_settings.is_stack.visible = is_station
-	bottom_flow.enable_inactive.visible = is_station
+	second_settings.enable_inactive.visible = is_station
+	second_settings.auto_rename.visible = is_station
 	top_flow.enable_slot_barring.visible = is_wagon
 	depot_settings.visible = is_depot
 end
@@ -241,7 +243,10 @@ function gui_opened(comb, player)
 							{type="checkbox", name="allow_list", state=setting_flip(bits, SETTING_DISABLE_ALLOW_LIST), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_DISABLE_ALLOW_LIST}, tooltip={"cybersyn-gui.allow-list-tooltip"}, caption={"cybersyn-gui.allow-list-description"}},
 							{type="checkbox", name="is_stack", state=setting(bits, SETTING_IS_STACK), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_IS_STACK}, tooltip={"cybersyn-gui.is-stack-tooltip"}, caption={"cybersyn-gui.is-stack-description"}},
 						}},
-						{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, caption={"cybersyn-gui.enable-inactive-description"}},
+						{type="flow", name="second", direction="vertical", style_mods={horizontal_align="left", right_margin=8}, children={
+							{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, caption={"cybersyn-gui.enable-inactive-description"}},
+							{type="checkbox", name="auto_rename", state=setting(bits, SETTING_ENABLE_AUTO_RENAME), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_AUTO_RENAME}, tooltip={"cybersyn-gui.enable-auto-rename-tooltip"}, caption={"cybersyn-gui.enable-auto-rename-description"}},
+						}},
 					}}
 				}}
 			}}
