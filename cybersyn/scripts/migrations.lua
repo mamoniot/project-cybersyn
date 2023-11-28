@@ -367,8 +367,8 @@ function on_debug_revision_change()
 			local bits = params.second_constant or 0
 			local bits_old = params_old.second_constant or 0
 
-			bits = bit32.replace(bits, 1, SETTING_ENABLE_AUTO_RENAME)--[[@as int]]
-			bits_old = bit32.replace(bits_old, 1, SETTING_ENABLE_AUTO_RENAME)--[[@as int]]
+			bits = bit32.replace(bits, 1, SETTING_ENABLE_AUTO_NAME)--[[@as int]]
+			bits_old = bit32.replace(bits_old, 1, SETTING_ENABLE_AUTO_NAME)--[[@as int]]
 			params.second_constant = bits
 			params_old.second_constant = bits_old
 

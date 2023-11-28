@@ -125,6 +125,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		--is_p = set_station_from_comb,
 		--is_r = set_station_from_comb,
 		--allows_all_trains = set_station_from_comb,
+		--enable_auto_name = set_station_from_comb,
 		deliveries_total = 0,
 		last_delivery_tick = map_data.total_ticks,
 		trains_limit = math.huge,
@@ -871,13 +872,9 @@ local function grab_all_settings()
 	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
 	mod_settings.manager_ups = settings.global["cybersyn-manager-updates-per-second"].value--[[@as double]]
 	mod_settings.manager_enabled = settings.startup["cybersyn-manager-enabled"].value--[[@as boolean]]
-	mod_settings.vanity_settings = {
-		idle_station_name_pattern = settings.global["cybersyn-vanity-idle-station-name-pattern"].value,--[[@as string]]
-		r_station_name_pattern = settings.global["cybersyn-vanity-r-station-name-pattern"].value,--[[@as string]]
-		p_station_name_pattern = settings.global["cybersyn-vanity-p-station-name-pattern"].value,--[[@as string]]
-		rp_station_name_pattern = settings.global["cybersyn-vanity-rp-station-name-pattern"].value,--[[@as string]]
-		names_respect_thresholds = settings.global["cybersyn-vanity-names-respect-thresholds"].value,--[[@as boolean]]
-	}
+	mod_settings.auto_name_pattern_r = settings.global["cybersyn-auto-name-pattern-r"].value--[[@as string]]
+	mod_settings.auto_name_pattern_p = settings.global["cybersyn-auto-name-pattern-p"].value--[[@as string]]
+	mod_settings.auto_name_pattern_rp = settings.global["cybersyn-auto-name-pattern-rp"].value--[[@as string]]
 end
 local function register_tick()
 	script.on_nth_tick(nil)
