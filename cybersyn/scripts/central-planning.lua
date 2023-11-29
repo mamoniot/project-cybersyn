@@ -565,7 +565,7 @@ local function group_signals(station)
 		if a.signal.type == b.signal.type then
 			return a.signal.name--[[@as string]] < b.signal.name--[[@as string]]
 		end
-		return a.signal.type > b.signal.type --can only be "item" or "fluid"
+		return a.signal.type > b.signal.type --sort "item" before "fluid"
 	end
 
 	table_sort(r_signals, signal_compare)
@@ -605,6 +605,8 @@ local function set_station_automatic_name(station, mod_settings)
 			match = tostring(station.entity_stop.position.x)
 		elseif match == "%Y" then
 			match = tostring(station.entity_stop.position.y)
+		elseif match == "%%" then
+			match = "%"
 		end
 		--if the match doesn't match any known sequence, just return it unchanged
 		return match
