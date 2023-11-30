@@ -533,29 +533,13 @@ local function tick_dispatch(map_data, mod_settings)
 end
 
 ---@param station Station
----@return Signal[], Signal[]
-local function group_signals(station)
-	--TODO: use r_item_names/p_item_names from https://github.com/mamoniot/project-cybersyn/pull/135
-	local signals = station.entity_comb1.get_merged_signals(defines.circuit_connector_id.combinator_input)
-
-	local r_signals = {} ---@type Signal[]
-	local p_signals = {} ---@type Signal[]
-
-	if not signals then
-		return r_signals, p_signals
-	end
-
-	for _, v in ipairs(signals) do
+---@param signals Signal[]
+local function set_station_automatic_name(station, signals)
+	local signals_sorted = {} ---@type Signal[]
+	for _, v in pairs(signals) do
+		--TODO: with https://github.com/mamoniot/project-cybersyn/pull/135, these signals will have already been removed
 		if v.signal.name and v.signal.type ~= "virtual" then
-			if v.count < 0 then
-				if station.is_r then
-					r_signals[#r_signals+1] = v
-				end
-			else -- v.count > 0
-				if station.is_p then
-					p_signals[#p_signals+1] = v
-				end
-			end
+			signals_sorted[#signals_sorted+1] = v
 		end
 	end
 
@@ -567,17 +551,7 @@ local function group_signals(station)
 		end
 		return a.signal.type > b.signal.type --sort "item" before "fluid"
 	end
-
-	table_sort(r_signals, signal_compare)
-	table_sort(p_signals, signal_compare)
-
-	return r_signals, p_signals
-end
-
----@param station Station
----@param mod_settings CybersynModSettings
-local function set_station_automatic_name(station, mod_settings)
-	local r_signals, p_signals = group_signals(station)
+	table_sort(signals_sorted, signal_compare)
 
 	---@param match string
 	local function replacer(match)
@@ -593,12 +567,21 @@ local function set_station_automatic_name(station, mod_settings)
 			end
 		elseif match == "%R" then
 			match = ""
-			for _, v in ipairs(r_signals) do
-				match = match.."["..v.signal.type.."="..v.signal.name--[[@as string]].."]"
+			for _, v in ipairs(signals_sorted) do
+				if v.count < 0 then
+					match = match.."["..v.signal.type.."="..v.signal.name--[[@as string]].."]"
+				end
 			end
 		elseif match == "%P" then
 			match = ""
-			for _, v in ipairs(p_signals) do
+			for _, v in ipairs(signals_sorted) do
+				if v.count > 0 then
+					match = match.."["..v.signal.type.."="..v.signal.name--[[@as string]].."]"
+				end
+			end
+		elseif match == "%A" then
+			match = ""
+			for _, v in ipairs(signals_sorted) do
 				match = match.."["..v.signal.type.."="..v.signal.name--[[@as string]].."]"
 			end
 		elseif match == "%X" then
@@ -800,7 +783,9 @@ local function tick_poll_station(map_data, mod_settings)
 	-- a different station also named 'foo' to 'bar', it should not affect the train's schedule because we aren't
 	-- renaming that last 'foo' station and the train isn't on the way to the station we renamed.
 	if station.deliveries_total == 0 and station.enable_auto_name then
-		set_station_automatic_name(station, mod_settings)
+		--TODO: with https://github.com/mamoniot/project-cybersyn/pull/135, we can just use comb1_signals
+		local signals = station.entity_comb1.get_merged_signals(defines.circuit_connector_id.combinator_input) or {}
+		set_station_automatic_name(station, signals)
 	end
 	return false
 end
