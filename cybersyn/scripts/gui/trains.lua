@@ -63,60 +63,50 @@ function trains_tab.build(map_data, player_data, query_limit)
 
 	local layouts_table = util.build_train_layout_table(map_data)
 
-	local i = 0
 	for id, train in pairs(trains) do
-		if not train.entity.valid then
+		if not train.entity.valid or not train.network_name then
 			goto continue
 		end
-		if search_network_name then
-			if search_network_name ~= train.network_name then
+
+		if search_surface_idx then
+			if train.entity.front_stock--[[@as LuaEntity]].surface_index ~= search_surface_idx then
 				goto continue
 			end
-			local train_flag = get_network_mask(train, search_network_name)
-			if not bit32.btest(search_network_mask, train_flag) then
+		end
+
+		if search_network_name then
+			if not bit32.btest(get_network_mask(train, search_network_name), search_network_mask) then
 				goto continue
 			end
 		elseif search_network_mask ~= -1 then
 			if train.network_name == NETWORK_EACH then
-				local masks = train.network_mask--[[@as {}]]
-				for _, network_mask in pairs(masks) do
-					if bit32.btest(search_network_mask, network_mask) then
+				for _, network_mask in pairs(train.network_mask--[[@as table]]) do
+					if bit32.btest(network_mask, search_network_mask) then
 						goto has_match
 					end
 				end
 				goto continue
-				::has_match::
-			elseif not bit32.btest(search_network_mask, train.network_mask) then
+			elseif not bit32.btest(train.network_mask, search_network_mask) then
 				goto continue
 			end
-		end
-
-		if search_surface_idx then
-			local entity = get_any_train_entity(train.entity)
-			if not entity then
-				goto continue
-			end
-			if entity.surface.index ~= search_surface_idx then
-				goto continue
-			end
+			::has_match::
 		end
 
 		if search_item then
-			if not train.manifest then
-				goto continue
-			end
-			for i, v in ipairs(train.manifest) do
-				if v.name == search_item then
-					goto has_match
+			if train.manifest then
+				for _, item in ipairs(train.manifest) do
+					if item.name == search_item then
+						goto has_match
+					end
 				end
 			end
 			goto continue
 			::has_match::
 		end
 
-		trains_sorted[#trains_sorted + 1] = id
-		i = i + 1
-		if query_limit ~= -1 and i >= query_limit then
+		local num_trains = #trains_sorted + 1
+		trains_sorted[num_trains] = id
+		if query_limit ~= -1 and num_trains >= query_limit then
 			break
 		end
 		::continue::
@@ -192,25 +182,11 @@ function trains_tab.build(map_data, player_data, query_limit)
 			local depot = map_data.depots[train.depot_id]
 			local depot_name = depot.entity_stop.valid and depot.entity_stop.backer_name or ""
 			local train_entity = train.entity
-			local locomotive
-			if train_entity.locomotives["front_movers"][1] then
-				locomotive = train_entity.locomotives["front_movers"][1]
-			else
-				locomotive = train_entity.locomotives["back_movers"][1]
-			end
+			local locomotive = train_entity.locomotives["front_movers"][1] or train_entity.locomotives["back_movers"][1]
 			local manifest = train.manifest
-			local network_sprite = "utility/close_black"
-			local network_name = train.network_name
-			---@type int?
-			local network_id = nil
-			if network_name then
-				if network_name == NETWORK_EACH then
-					network_id = train.network_mask[search_network_name]--[[@as int?]]
-				else
-					network_id = train.network_mask--[[@as int]]
-				end
-				network_sprite, _, _ = util.generate_item_references(network_name)
-			end
+			local network_name = train.network_name--[[@as string]]
+			local network_mask = get_network_mask(train, search_network_name or network_name)
+			local network_sprite = util.generate_item_references(network_name) or "utility/close_black"
 			local color = idx % 2 == 0 and "dark" or "light"
 			gui.add(scroll_pane, {
 				type = "frame",
@@ -222,7 +198,6 @@ function trains_tab.build(map_data, player_data, query_limit)
 						type = "minimap",
 						name = "train_minimap",
 						style = "ltnm_train_minimap",
-
 						{ type = "label", style = "ltnm_minimap_label", caption = train_id },
 						{
 							type = "button",
@@ -237,7 +212,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 					type = "frame",
 					style = "ltnm_table_row_frame_" .. color,
 					style_mods = { width = widths.trains.status },
-					{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = network_sprite, number = network_id },
+					{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = network_sprite, number = network_mask },
 				},
 				{
 					type = "label",
@@ -264,7 +239,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 				},
 			}, refs)
 			refs.train_minimap.entity = locomotive
-			gui.add(refs.shipment_table, util.slot_table_build_from_manifest(manifest, "default"))
+			gui.add(refs.shipment_table, util.slot_table_build_from_manifest(manifest, train.status))
 		end
 	end
 end

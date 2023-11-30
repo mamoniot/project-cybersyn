@@ -122,27 +122,35 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		entity_stop = stop,
 		entity_comb1 = comb1,
 		entity_comb2 = comb2,
+		surface_index = stop.surface_index,
+		position = stop.position,
 		--is_p = set_station_from_comb,
 		--is_r = set_station_from_comb,
+		--is_stack = set_station_from_comb,
+		--enable_inactive = set_station_from_comb,
 		--allows_all_trains = set_station_from_comb,
+		--disable_reservation = set_station_from_comb,
 		deliveries_total = 0,
-		last_delivery_tick = map_data.total_ticks,
-		trains_limit = math.huge,
-		priority = 0,
-		item_priotity = nil,
-		r_threshold = 0,
+		unused_trains_limit = 0,
 		locked_slots = 0,
 		--network_name = set_station_from_comb,
 		network_mask = 0,
 		wagon_combs = nil,
-		deliveries = {},
 		accepted_layouts = {},
 		layout_pattern = nil,
-		tick_signals = nil,
-		item_p_counts = {},
-		item_thresholds = nil,
 		display_state = 0,
-		is_warming_up = true,
+		warmup_start_time = map_data.total_ticks,
+		deliveries = {},
+		poll_values = {},
+		item_thresholds = {},
+		item_priorities = {},
+		r_item_counts = {},
+		r_item_timestamps = {},
+		r_combined_p_priorities = {},
+		r_pf_trains_totals = {},
+		p_item_counts = {},
+		p_reserved_counts = {},
+		p_pf_trains = {},
 	}
 	local id = stop.unit_number--[[@as uint]]
 
@@ -173,6 +181,14 @@ end
 ---@param station_id uint
 ---@param station Station
 function on_station_broken(map_data, station_id, station)
+	for network_name in iterate_network_names(station) do
+		for item_name, _ in pairs(station.r_item_counts) do
+			requester_remove_from_economy(map_data, station_id, network_name..":"..item_name)
+		end
+		for item_name, _ in pairs(station.p_item_counts) do
+			provider_remove_from_economy(map_data, station_id, network_name..":"..item_name)
+		end
+	end
 	if station.deliveries_total > 0 then
 		--search for trains coming to the destroyed station
 		for train_id, train in pairs(map_data.trains) do
@@ -777,13 +793,7 @@ local function setup_se_compat()
 		if not train then return end
 
 		if train.is_available then
-			local f, a
-			if train.network_name == NETWORK_EACH then
-				f, a = next, train.network_mask
-			else
-				f, a = once, train.network_name
-			end
-			for network_name in f, a do
+			for network_name in iterate_network_names(train) do
 				local network = map_data.available_trains[network_name]
 				if network then
 					network[new_id] = true
@@ -810,9 +820,19 @@ local function setup_se_compat()
 			train.se_awaiting_rename = nil
 		end
 
+		if train.pf_keys then
+			local r_station_id = train.r_station_id--[[@as uint]]
+			local p_station_id = train.p_station_id--[[@as uint]]
+			for _, ids in pairs(map_data.stations[p_station_id].p_pf_trains[r_station_id]) do
+				for index = 1, #ids do
+					if ids[index] == old_id then ids[index] = new_id end
+				end
+			end
+		end
+
 		local schedule = train_entity.schedule
 		if schedule then
-			--this code relies on train chedules being in this specific order to work
+			--this code relies on train schedules being in this specific order to work
 			local start = schedule.current
 			--check depot
 			if not train.use_any_depot then

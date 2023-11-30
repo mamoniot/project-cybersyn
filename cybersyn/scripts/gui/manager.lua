@@ -285,12 +285,12 @@ end
 function manager.handle.manager_update_network_name(player, player_data, refs, e)
 	local element = e.element
 	if not element then return end
-	local signal = element.elem_value
-	if signal then
-		player_data.search_network_name = signal.name
-	else
-		player_data.search_network_name = nil
+	local name = element.elem_value and element.elem_value.name
+	if name == "signal-everything" or name == "signal-anything" or name == "signal-each" then
+		name = nil
+		element.elem_value = nil
 	end
+	player_data.search_network_name = name
 end
 --- @param player LuaPlayer
 --- @param player_data PlayerData
