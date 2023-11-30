@@ -1182,22 +1182,20 @@ local function tick_poll_station(map_data, mod_settings)
 		if item_name then
 			if item_name == station.network_name then
 				station.network_mask = item_count
-				comb1_signals[k] = nil
-			elseif item_type == "virtual" then
-				if item_name == REQUEST_THRESHOLD then
-					comb1_threshold = abs(item_count)
-				elseif item_name == SIGNAL_PRIORITY then
-					comb1_priority = item_count
-				elseif item_name == LOCKED_SLOTS then
-					station.locked_slots = max(item_count, 0)
-				elseif is_network_each then
-					station.network_mask[item_name] = item_count
-				end
-				comb1_signals[k] = nil
+			elseif item_type ~= "virtual" then
+				goto keep_signal
+			elseif item_name == REQUEST_THRESHOLD then
+				comb1_threshold = abs(item_count)
+			elseif item_name == SIGNAL_PRIORITY then
+				comb1_priority = item_count
+			elseif item_name == LOCKED_SLOTS then
+				station.locked_slots = max(item_count, 0)
+			elseif is_network_each then
+				station.network_mask[item_name] = item_count
 			end
-		else
-			comb1_signals[k] = nil
 		end
+		comb1_signals[k] = nil
+		::keep_signal::
 	end
 
 	local poll_values, item_thresholds, r_item_counts, p_item_counts = {}, {}, {}, {}
