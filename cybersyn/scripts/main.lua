@@ -793,13 +793,7 @@ local function setup_se_compat()
 		if not train then return end
 
 		if train.is_available then
-			local f, a
-			if train.network_name == NETWORK_EACH then
-				f, a = next, train.network_mask
-			else
-				f, a = once, train.network_name
-			end
-			for network_name in f, a do
+			for network_name in iterate_network_names(train) do
 				local network = map_data.available_trains[network_name]
 				if network then
 					network[new_id] = true
@@ -826,9 +820,19 @@ local function setup_se_compat()
 			train.se_awaiting_rename = nil
 		end
 
+		if train.pf_keys then
+			local r_station_id = train.r_station_id--[[@as uint]]
+			local p_station_id = train.p_station_id--[[@as uint]]
+			for _, ids in pairs(map_data.stations[p_station_id].p_pf_trains[r_station_id]) do
+				for index = 1, #ids do
+					if ids[index] == old_id then ids[index] = new_id end
+				end
+			end
+		end
+
 		local schedule = train_entity.schedule
 		if schedule then
-			--this code relies on train chedules being in this specific order to work
+			--this code relies on train schedules being in this specific order to work
 			local start = schedule.current
 			--check depot
 			if not train.use_any_depot then

@@ -2,8 +2,6 @@
 local flib_migration = require("__flib__.migration")
 local manager_gui = require('gui.main')
 local debug_revision = require('info')
-local check_debug_revision
-
 
 local migrations_table = {
 	["1.0.6"] = function()
@@ -334,6 +332,7 @@ local migrations_table = {
 	["1.3.1"] = function()
 		---@type MapData
 		local map_data = global
+		map_data.se_tele_old_id = nil --removed in 1.2.0, but was still around due to an oversight
 		if not map_data.dispatch_counter then
 			map_data.dispatch_counter = 0
 		end
@@ -376,7 +375,7 @@ local migrations_table = {
 		end
 	end
 }
---STATUS_R_TO_D = 5
+
 ---@param data ConfigurationChangedData
 function on_config_changed(data)
 	global.tick_state = STATE_INIT
@@ -385,10 +384,6 @@ function on_config_changed(data)
 
 	flib_migration.on_config_changed(data, migrations_table)
 
-	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
-	if IS_SE_PRESENT and not global.se_tele_old_id then
-		global.se_tele_old_id = {}
-	end
 	if global.debug_revision ~= debug_revision then
 		global.debug_revision = debug_revision
 		if debug_revision then
@@ -397,9 +392,7 @@ function on_config_changed(data)
 	end
 end
 
----NOTE: this runs before on_config_changed
----It does not have access to game
----NOTE 2: Everything in this section must be idempotent
+---NOTE: Everything in this section must be idempotent
 function on_debug_revision_change()
 	local map_data = global
 end
