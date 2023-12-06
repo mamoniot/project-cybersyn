@@ -57,7 +57,7 @@ local function set_visibility(main_window, selected_index)
 	first_settings.allow_list.visible = uses_allow_list
 	first_settings.is_stack.visible = is_station
 	second_settings.enable_inactive.visible = is_station
-	second_settings.auto_rename.visible = is_station
+	second_settings.enable_auto_name.visible = is_station
 	top_flow.enable_slot_barring.visible = is_wagon
 	depot_settings.visible = is_depot
 end
@@ -245,7 +245,7 @@ function gui_opened(comb, player)
 						}},
 						{type="flow", name="second", direction="vertical", style_mods={horizontal_align="left", right_margin=8}, children={
 							{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, caption={"cybersyn-gui.enable-inactive-description"}},
-							{type="checkbox", name="auto_rename", state=setting(bits, SETTING_ENABLE_AUTO_RENAME), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_AUTO_RENAME}, tooltip={"cybersyn-gui.enable-auto-rename-tooltip"}, caption={"cybersyn-gui.enable-auto-rename-description"}},
+							{type="checkbox", name="enable_auto_name", state=setting(bits, SETTING_ENABLE_AUTO_NAME), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_AUTO_NAME}, tooltip={"cybersyn-gui.enable-auto-name-tooltip"}, caption={"cybersyn-gui.enable-auto-name-description"}},
 						}},
 					}}
 				}}
