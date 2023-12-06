@@ -6,9 +6,9 @@ local ceil = math.ceil
 local INF = math.huge
 local btest = bit32.btest
 local band = bit32.band
+local table_sort = table.sort
 local table_remove = table.remove
 local random = math.random
-
 
 ---@param map_data MapData
 ---@param station Station
@@ -531,6 +531,82 @@ local function tick_dispatch(map_data, mod_settings)
 		table_remove(r_stations, r_station_i)
 	end
 end
+
+---@param station Station
+---@param signals Signal[]
+local function set_station_automatic_name(station, signals)
+	local signals_sorted = {} ---@type Signal[]
+	for _, v in pairs(signals) do
+		--TODO: with https://github.com/mamoniot/project-cybersyn/pull/135, these signals will have already been removed
+		if v.signal.name and v.signal.type ~= "virtual" then
+			signals_sorted[#signals_sorted+1] = v
+		end
+	end
+
+	---@param a Signal
+	---@param b Signal
+	local function signal_compare(a, b)
+		if a.signal.type == b.signal.type then
+			return a.signal.name--[[@as string]] < b.signal.name--[[@as string]]
+		end
+		return a.signal.type > b.signal.type --sort "item" before "fluid"
+	end
+	table_sort(signals_sorted, signal_compare)
+
+	---@param match string
+	local function replacer(match)
+		if match == "%N" then
+			--automatic naming only happens for stations with a network
+			network_name = station.network_name--[[@as string]]
+			if game.virtual_signal_prototypes[network_name] then
+				match = "[virtual-signal="..network_name.."]"
+			elseif game.item_prototypes[network_name] then
+				match = "[item="..network_name.."]"
+			elseif game.fluid_prototypes[network_name] then
+				match = "[fluid="..network_name.."]"
+			end
+		elseif match == "%R" then
+			match = ""
+			for _, v in ipairs(signals_sorted) do
+				if v.count < 0 then
+					match = match.."["..v.signal.type.."="..v.signal.name--[[@as string]].."]"
+				end
+			end
+		elseif match == "%P" then
+			match = ""
+			for _, v in ipairs(signals_sorted) do
+				if v.count > 0 then
+					match = match.."["..v.signal.type.."="..v.signal.name--[[@as string]].."]"
+				end
+			end
+		elseif match == "%A" then
+			match = ""
+			for _, v in ipairs(signals_sorted) do
+				match = match.."["..v.signal.type.."="..v.signal.name--[[@as string]].."]"
+			end
+		elseif match == "%X" then
+			match = tostring(station.entity_stop.position.x)
+		elseif match == "%Y" then
+			match = tostring(station.entity_stop.position.y)
+		elseif match == "%%" then
+			match = "%"
+		end
+		--if the match doesn't match any known sequence, just return it unchanged
+		return match
+	end
+
+	local pattern ---@type string
+	if not station.is_p then
+		pattern = mod_settings.auto_name_pattern_r
+	elseif not station.is_r then
+		pattern = mod_settings.auto_name_pattern_p
+	else
+		pattern = mod_settings.auto_name_pattern_rp
+	end
+
+	station.entity_stop.backer_name = string.gsub(pattern, "%%.", replacer)
+end
+
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 local function tick_poll_station(map_data, mod_settings)
@@ -701,6 +777,15 @@ local function tick_poll_station(map_data, mod_settings)
 		elseif band(station.display_state, 4) > 0 then
 			station.display_state = station.display_state + 4
 		end
+	end
+	-- If any deliveries are active, updating the station name can lead to unrelated trains' schedules having
+	-- their pickup/dropoff destinations being messed with. If some train is going to a station 'foo' and we rename
+	-- a different station also named 'foo' to 'bar', it should not affect the train's schedule because we aren't
+	-- renaming that last 'foo' station and the train isn't on the way to the station we renamed.
+	if station.deliveries_total == 0 and station.enable_auto_name then
+		--TODO: with https://github.com/mamoniot/project-cybersyn/pull/135, we can just use comb1_signals
+		local signals = station.entity_comb1.get_merged_signals(defines.circuit_connector_id.combinator_input) or {}
+		set_station_automatic_name(station, signals)
 	end
 	return false
 end

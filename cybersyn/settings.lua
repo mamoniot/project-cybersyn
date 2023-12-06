@@ -126,7 +126,28 @@ data:extend({
 		default_value = -1,
 		minimum_value = -1,
 		maximum_value = 2147483647,
-	}
+	},
+	{
+		type = "string-setting",
+		name = "cybersyn-auto-name-pattern-r",
+		order = "ea",
+		setting_type = "runtime-global",
+		default_value = "%N / [virtual-signal=signal-red] %R / %X, %Y",
+	},
+	{
+		type = "string-setting",
+		name = "cybersyn-auto-name-pattern-p",
+		order = "eb",
+		setting_type = "runtime-global",
+		default_value = "%N / [virtual-signal=signal-green] %P / %X, %Y",
+	},
+	{
+		type = "string-setting",
+		name = "cybersyn-auto-name-pattern-rp",
+		order = "ec",
+		setting_type = "runtime-global",
+		default_value = "%N / [virtual-signal=signal-red] %R / [virtual-signal=signal-green] %P / %X, %Y",
+	},
   --{
   --  type = "bool-setting",
   --  name = "cybersyn-disable-top-left-button",

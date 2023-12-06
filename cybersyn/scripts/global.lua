@@ -39,6 +39,7 @@
 ---@field public is_stack true?
 ---@field public enable_inactive true?
 ---@field public allows_all_trains true?
+---@field public enable_auto_name true?
 ---@field public deliveries_total int
 ---@field public last_delivery_tick int
 ---@field public trains_limit int --transient
@@ -132,6 +133,9 @@
 ---@field public enable_manager boolean
 ---@field public manager_ups double
 ---@field public manager_enabled boolean
+---@field public auto_name_pattern_r string
+---@field public auto_name_pattern_p string
+---@field public auto_name_pattern_rp string
 
 --if this is uncommented it means there are migrations to write
 
