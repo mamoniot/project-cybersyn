@@ -163,7 +163,7 @@ end
 
 ---@param stop LuaEntity
 function create_direct_to_station_order(stop)
-	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction, wait_conditions = condition_direct_to_station}
+	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction, wait_conditions = condition_direct_to_station, temporary = true}
 end
 
 ---@param train LuaTrain
