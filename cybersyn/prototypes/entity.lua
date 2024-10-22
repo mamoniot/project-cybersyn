@@ -11,7 +11,7 @@ combinator_entity.radius_visualisation_specification = {
 	--offset = {0, .5},
 	distance = 1.5,
 }
-combinator_entity.active_energy_usage = "10KW"
+combinator_entity.active_energy_usage = "10kW"
 
 if mods["nullius"] then
 	combinator_entity.localised_name = { "entity-name.cybersyn-combinator" }
@@ -227,7 +227,7 @@ combinator_out_entity.next_upgrade = nil
 combinator_out_entity.minable = nil
 combinator_out_entity.selection_box = nil
 combinator_out_entity.collision_box = nil
-combinator_out_entity.collision_mask = {}
+combinator_out_entity.collision_mask = { layers = {} }
 combinator_out_entity.item_slot_count = 500
 combinator_out_entity.circuit_wire_max_distance = 3
 combinator_out_entity.flags = {"not-blueprintable", "not-deconstructable", "placeable-off-grid"}
