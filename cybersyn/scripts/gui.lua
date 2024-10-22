@@ -202,7 +202,7 @@ function gui_opened(comb, player)
 			{type="flow", name="titlebar", children={
 				{type="label", style="frame_title", caption={"cybersyn-gui.combinator-title"}, elem_mods={ignored_by_interaction=true}},
 				{type="empty-widget", style="flib_titlebar_drag_handle", elem_mods={ignored_by_interaction=true}},
-				{type="sprite-button", style="frame_action_button", mouse_button_filter={"left"}, sprite="utility/close_white", hovered_sprite="utility/close_black", name=COMBINATOR_NAME, handler=handle_close, tags={id=comb.unit_number}}
+				{type="sprite-button", style="frame_action_button", mouse_button_filter={"left"}, sprite="utility/close", hovered_sprite="utility/close", name=COMBINATOR_NAME, handler=handle_close, tags={id=comb.unit_number}}
 			}},
 			{type="frame", name="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12, bottom_padding=9}, children={
 				{type="flow", name="vflow", direction="vertical", style_mods={horizontal_align="left"}, children={
@@ -216,7 +216,7 @@ function gui_opened(comb, player)
 						{type="entity-preview", name="preview", style="wide_entity_button"},
 					}},
 					--drop down
-					{type="label", style="heading_3_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=8}},
+					{type="label", style="heading_2_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=8}},
 					{type="flow", name="top", direction="horizontal", style_mods={vertical_align="center"}, children={
 						{type="drop-down", style_mods={top_padding=3, right_margin=8}, handler=handle_drop_down, tags={id=comb.unit_number}, selected_index=selected_index, items={
 							{"cybersyn-gui.comb1"},
@@ -230,7 +230,7 @@ function gui_opened(comb, player)
 					}},
 					---choose-elem-button
 					{type="line", style_mods={top_padding=10}},
-					{type="label", name="network_label", style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
+					{type="label", name="network_label", style="heading_2_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
 					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="top"}, children={
 						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, handler=handle_network, tags={id=comb.unit_number}},
 						{type="flow", name="depot", direction="vertical", style_mods={horizontal_align="left"}, children={

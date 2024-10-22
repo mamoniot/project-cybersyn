@@ -261,7 +261,7 @@ local function on_combinator_built(map_data, comb)
 	assert(out, "cybersyn: could not spawn combinator controller")
 	local wireConnectorRed = comb.get_wire_connector(defines.wire_connector_id.circuit_red, true)
 	local wireConnectorGreen = comb.get_wire_connector(defines.wire_connector_id.circuit_green, true)
-	
+
 	wireConnectorRed.connect_to(out.get_wire_connector(defines.wire_connector_id.circuit_red, true))
 	wireConnectorGreen.connect_to(out.get_wire_connector(defines.wire_connector_id.circuit_green, true))
 
