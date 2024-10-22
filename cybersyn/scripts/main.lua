@@ -259,11 +259,13 @@ local function on_combinator_built(map_data, comb)
 		force = comb.force
 	})
 	assert(out, "cybersyn: could not spawn combinator controller")
-	local wireConnectorRed = comb.get_wire_connector(defines.wire_connector_id.circuit_red, true)
-	local wireConnectorGreen = comb.get_wire_connector(defines.wire_connector_id.circuit_green, true)
+	local comb_red = comb.get_wire_connector(defines.wire_connector_id.combinator_output_red, true)
+	local out_red = out.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+	out_red.connect_to(comb_red, false, defines.wire_origin.script)
 
-	wireConnectorRed.connect_to(out.get_wire_connector(defines.wire_connector_id.circuit_red, true))
-	wireConnectorGreen.connect_to(out.get_wire_connector(defines.wire_connector_id.circuit_green, true))
+	local comb_green = comb.get_wire_connector(defines.wire_connector_id.combinator_output_green, true)
+	local out_green = out.get_wire_connector(defines.wire_connector_id.circuit_green, true)
+	out_green.connect_to(comb_green, false, defines.wire_origin.script)
 
 	local control = get_comb_control(comb)
 	local params = control.parameters
