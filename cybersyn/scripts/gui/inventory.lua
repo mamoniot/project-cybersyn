@@ -173,7 +173,7 @@ function inventory_tab.build(map_data, player_data)
   for item, count in pairs(inventory_provided) do
     i = i + 1
     local sprite, img_path, item_string = util.generate_item_references(item)
-    if game.is_valid_sprite_path(sprite) then
+    if helpers.is_valid_sprite_path(sprite) then
       provided_children[#provided_children+1] = {
         type = "sprite-button",
         style = "flib_slot_button_green",
@@ -197,7 +197,7 @@ function inventory_tab.build(map_data, player_data)
   for item, count in pairs(inventory_requested) do
     i = i + 1
     local sprite, img_path, item_string = util.generate_item_references(item)
-    if game.is_valid_sprite_path(sprite) then
+    if helpers.is_valid_sprite_path(sprite) then
       requested_children[#requested_children+1] = {
         type = "sprite-button",
         style = "flib_slot_button_red",
@@ -221,7 +221,7 @@ function inventory_tab.build(map_data, player_data)
   for item, count in pairs(inventory_in_transit) do
     i = i + 1
     local sprite, img_path, item_string = util.generate_item_references(item)
-    if game.is_valid_sprite_path(sprite) then
+    if helpers.is_valid_sprite_path(sprite) then
       in_transit_children[#in_transit_children+1] = {
         type = "sprite-button",
         style = "flib_slot_button_blue",

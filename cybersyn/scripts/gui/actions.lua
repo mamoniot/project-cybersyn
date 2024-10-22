@@ -9,10 +9,10 @@ local actions = {}
 local function toggle_fab(elem, sprite, state)
   if state then
     elem.style = "flib_selected_frame_action_button"
-    elem.sprite = sprite .. "_black"
+    elem.sprite = sprite .. ""
   else
     elem.style = "frame_action_button"
-    elem.sprite = sprite .. "_white"
+    elem.sprite = sprite .. ""
   end
 end
 
