@@ -283,6 +283,13 @@ styles.ltnm_main_warning_frame = {
 
 -- LABEL STYLES
 
+--I am unsure what this was supposed to be in 1.1
+local default_orange_color = {
+  r = 255,
+  g = 128,
+  b = 0
+}
+
 local hovered_label_color = {
   r = 0.5 * (1 + default_orange_color.r),
   g = 0.5 * (1 + default_orange_color.g),
