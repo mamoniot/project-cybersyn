@@ -147,10 +147,10 @@ end
 ---@param stop LuaEntity
 ---@param train LuaTrain
 local function get_train_direction(stop, train)
-	local back_rail = train.back_rail
+	local back_end = train.get_rail_end(defines.rail_direction.back)
 
-	if back_rail then
-		local back_pos = back_rail.position
+	if back_end and back_end.rail then
+		local back_pos = back_end.rail.position
 		local stop_pos = stop.position
 		if abs(back_pos.x - stop_pos.x) < 3 and abs(back_pos.y - stop_pos.y) < 3 then
 			return true
