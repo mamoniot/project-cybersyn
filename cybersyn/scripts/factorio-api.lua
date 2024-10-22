@@ -8,7 +8,7 @@ local string_len = string.len
 
 local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
-local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
+--local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 
 
 ---@param map_data MapData
@@ -486,7 +486,7 @@ function set_train_from_comb(mod_settings, train, comb)
 		train.network_mask = mod_settings.network_mask
 	end
 	train.priority = mod_settings.priority
-	local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
+	local signals = comb.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 	if signals then
 		for k, v in pairs(signals) do
 			local item_name = v.signal.name
@@ -534,7 +534,7 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 		refueler.network_mask = mod_settings.network_mask
 	end
 
-	local signals = refueler.entity_comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+	local signals = refueler.entity_comb.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 	if signals then
 		for k, v in pairs(signals) do
 			local item_name = v.signal.name
@@ -702,13 +702,13 @@ function get_signals(station)
 	---@type Signal[]?
 	local comb2_signals = nil
 	if status1 == DEFINES_WORKING or status1 == DEFINES_LOW_POWER then
-		comb1_signals = comb1.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+		comb1_signals = comb1.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 	end
 	local comb2 = station.entity_comb2
 	if comb2 then
 		local status2 = comb2.status
 		if status2 == DEFINES_WORKING or status2 == DEFINES_LOW_POWER then
-			comb2_signals = comb2.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+			comb2_signals = comb2.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 		end
 	end
 	return comb1_signals, comb2_signals
