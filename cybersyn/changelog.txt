@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.2
+  Changes:
+    - Refactored quality handling
+    - Initial update of the LTN GUI for 2.0
+---------------------------------------------------------------------------------------------------
 Version: 2.0.1
   Bugfixes:
     - Migrate the get_rail_segment_entity function call that no longer exists in 2.0
