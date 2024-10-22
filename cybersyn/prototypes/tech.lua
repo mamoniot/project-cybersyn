@@ -13,7 +13,7 @@ cybersyn_tech = flib.copy_prototype(data.raw["technology"]["automated-rail-trans
 cybersyn_tech.icon = "__cybersyn__/graphics/icons/tech.png"
 cybersyn_tech.icon_size = 256
 cybersyn_tech.prerequisites = {
-	"rail-signals",
+	"automated-rail-transportation",
 	"circuit-network",
 }
 cybersyn_tech.effects = {
