@@ -588,6 +588,7 @@ local function tick_poll_station(map_data, mod_settings)
 				local item_name = v.signal.name
 				local item_count = v.count
 				local item_type = v.signal.type
+				-- FIXME handle v.signal.quality
 				if item_name then
 					if item_type == "virtual" then
 						if item_name == SIGNAL_PRIORITY then
@@ -605,6 +606,7 @@ local function tick_poll_station(map_data, mod_settings)
 			local item_name = v.signal.name
 			local item_count = v.count
 			local item_type = v.signal.type
+			-- FIXME handle v.signal.quality
 			if item_name then
 				if item_type == "virtual" then
 					if item_name == SIGNAL_PRIORITY then

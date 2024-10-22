@@ -102,6 +102,7 @@
 ---@class ManifestEntry
 ---@field public type string
 ---@field public name string
+---@field public quality string
 ---@field public count int
 
 ---@class Economy
