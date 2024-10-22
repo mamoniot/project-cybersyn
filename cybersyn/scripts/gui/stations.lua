@@ -133,6 +133,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 			if comb1_signals then
 				for _, signal_ID in pairs(comb1_signals) do
 					local item = signal_ID.signal.name
+					-- FIXME handle signal_ID.signal.quality
 					if item then
 						if item == search_item then
 							goto has_match
