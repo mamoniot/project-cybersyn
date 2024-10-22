@@ -1,5 +1,5 @@
 --By Mami
-local flib_gui = require("__flib__.gui-lite")
+local flib_gui = require("__flib__.gui")
 
 local RED = "utility/status_not_working"
 local GREEN = "utility/status_working"

@@ -1,5 +1,5 @@
 local train_util = require("__flib__.train")
-local gui = require("__flib__.gui-lite")
+local gui = require("__flib__.gui")
 
 local constants = require("constants")
 local util = require("scripts.gui.util")
