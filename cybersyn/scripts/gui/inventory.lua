@@ -100,6 +100,7 @@ function inventory_tab.build(map_data, player_data)
 			if comb1_signals then
 				for _, signal_ID in pairs(comb1_signals) do
 					local item = signal_ID.signal.name
+          -- FIXME handle signal_ID.signal.quality
 					if item then
 						if item == search_item then
 							goto has_match
@@ -136,6 +137,7 @@ function inventory_tab.build(map_data, player_data)
             if station.is_stack and item_type == "item" then
               r_threshold = r_threshold*get_stack_size(map_data, item.name)
             end
+            -- FIXME handle v.signal.quality
 
             if -count >= r_threshold then
               if inventory_requested[item.name] == nil then

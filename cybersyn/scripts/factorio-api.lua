@@ -689,40 +689,8 @@ end
 function set_combinator_output(map_data, comb, signals)
 	local out = map_data.to_output[comb.unit_number]
 	if out.valid then
-		--out.get_or_create_control_behavior().parameters = signals
-		local constBehaviour = out.get_or_create_control_behavior()
-
-		if constBehaviour.sections == nil or constBehaviour.sections_count == 0 then
-			constBehaviour.add_section()
-		end
-
-		if constBehaviour.sections and constBehaviour.sections_count > 0 then
-			if constBehaviour.sections_count > 1 then
-				--only the default section, messy but whatever
-				local i = 1
-				for _,v in pairs(constBehaviour.sections) do
-					if i ~= 1 then
-						constBehaviour.removeSection(i)
-					end
-					i = i + 1
-				end
-			end
-
-			local primarySection = constBehaviour.get_section(1)
-			local filters = {}
-			if signals ~= nil then
-				for _,v in pairs(signals) do
-					local filt = {
-						type = v.signal.type,
-						name = v.signal.name,
-						quality = nil,
-						comparator = nil
-					}
-					table.insert(filters, filt)
-				end
-			end
-			primarySection.filters = filters
-		end
+		-- out is a non-interactable, invisible combinator whiche means players cannot change the number of sections
+		out.get_or_create_control_behavior().get_section(1).filters = signals or {}
 	end
 end
 
@@ -757,7 +725,8 @@ function set_comb2(map_data, station)
 		for item_name, count in pairs(deliveries) do
 			local i = #signals + 1
 			local is_fluid = prototypes.item[item_name] == nil--NOTE: this is expensive
-			signals[i] = {index = i, signal = {type = is_fluid and "fluid" or "item", name = item_name}, count = sign*count}
+			-- FIXME: the circuit network can only carry exact qualities, so deliveries must provide each quality separately
+			signals[i] = {value = {type = is_fluid and "fluid" or "item", name = item_name, quality = "normal", comparator = "="}, min = sign*count} -- constant combinator cannot have quality = nil (any)
 		end
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end

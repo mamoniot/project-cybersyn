@@ -228,7 +228,8 @@ function set_p_wagon_combs(map_data, station, train)
 						local count_to_fill = min(item_slots_capacity*stack_size, item_count)
 						local slots_to_fill = ceil(count_to_fill/stack_size)
 
-						signals[i] = {index = i, signal = {type = item.type, name = item.name}, count = sign*count_to_fill}
+						-- FIXME: quality any for now, should match the delivery
+						signals[i] = {value = {type = item.type, name = item.name}, min = sign*count_to_fill}
 						item_count = item_count - count_to_fill
 						item_slots_capacity = item_slots_capacity - slots_to_fill
 						if comb then
@@ -323,7 +324,8 @@ function set_r_wagon_combs(map_data, station, train)
 					local stack = inv[stack_i]
 					if stack.valid_for_read then
 						local i = #signals + 1
-						signals[i] = {index = i, signal = {type = "item", name = stack.name}, count = sign*stack.count}
+						-- FIXME item stacks have quality
+						signals[i] = {value = {type = "item", name = stack.name, quality = "normal", comparator = "="}, min = sign*stack.count}
 					end
 				end
 				set_combinator_output(map_data, comb, signals)
@@ -334,7 +336,8 @@ function set_r_wagon_combs(map_data, station, train)
 			local inv = carriage.get_fluid_contents()
 			for fluid_name, count in pairs(inv) do
 				local i = #signals + 1
-				signals[i] = {index = i, signal = {type = "fluid", name = fluid_name}, count = sign*floor(count)}
+				-- FIXME ? pump conditions can have quality (but why? fluids can only be produced at normal quality and pump filters ignore quality)
+				signals[i] = {value = {type = "fluid", name = fluid_name, quality = "normal", comparator = "="}, min = sign*floor(count)}
 			end
 			set_combinator_output(map_data, comb, signals)
 		end
@@ -388,10 +391,12 @@ function set_refueler_combs(map_data, refueler, train)
 				if stack.valid_for_read then
 					if comb then
 						local i = #wagon_signals + 1
-						wagon_signals[i] = {index = i, signal = {type = "item", name = stack.name}, count = stack.count}
+						-- FIXME fuel items can have quality which improves acceleration and top speed (but not fuel value)
+						wagon_signals[i] = {value = {type = "item", name = stack.name, quality = "normal", comparator = "="}, min = stack.count}
 					end
 					local j = #signals + 1
-					signals[j] = {index = j, signal = {type = "item", name = stack.name}, count = stack.count}
+					-- FIXME fuel items can have quality which improves acceleration and top speed (but not fuel value)
+					signals[j] = {value = {type = "item", name = stack.name, quality = "normal", comparator = "="}, min = stack.count}
 				end
 			end
 			if comb then
@@ -650,27 +655,12 @@ end
 function update_stop_from_rail(map_data, rail, forbidden_entity, force)
 	--NOTE: is this a correct way to figure out the direction?
 	---@type LuaEntity?
-	local rail_front = rail
-	---@type LuaEntity?
-	local rail_back = rail
-	---@type defines.rail_direction
-	for i = 1, 112 do
-		if rail_back then
-			local entity = rail_back.get_rail_segment_signal(defines_back, false)
-			if entity and entity.name == "train-stop" then
-				resolve_update_stop_from_rail(map_data, entity, forbidden_entity, force)
-				return
-			end
-			rail_back = rail_back.get_connected_rail({rail_direction = defines_back, rail_connection_direction = defines_straight})
-		end
-		if rail_front then
-			local entity = rail_front.get_rail_segment_signal(defines_front, false)
-			if entity and entity.name == "train-stop" then
-				resolve_update_stop_from_rail(map_data, entity, forbidden_entity, force)
-				return
-			end
-			rail_front = rail_front.get_connected_rail({rail_direction = defines_front, rail_connection_direction = defines_straight})
-		end
+	local stop = rail.get_rail_segment_stop(defines_front)
+	if not stop then
+		stop = rail.get_rail_segment_stop(defines_back)
+	end
+	if stop then
+		resolve_update_stop_from_rail(map_data, stop, forbidden_entity, force)
 	end
 end
 

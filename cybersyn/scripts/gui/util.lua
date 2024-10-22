@@ -104,6 +104,7 @@ function util.slot_table_build_from_station(station)
       end
       local count = v.count
       local name = item.name
+      -- FIXME handle item.quality
       local sprite, img_path, item_string = util.generate_item_references(name)
       if sprite ~= nil then
         local color
@@ -181,6 +182,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
       local item = v.signal
       local count = v.count
       local name = item.name
+      -- FIXME handle item.quality
       local sprite = ""
       local color = "default"
       if item.type ~= "virtual" then
