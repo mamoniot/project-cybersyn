@@ -1,5 +1,5 @@
 --By Mami
-local flib_gui = require("__flib__.gui-lite")
+local flib_gui = require("__flib__.gui")
 
 local RED = "utility/status_not_working"
 local GREEN = "utility/status_working"
@@ -65,7 +65,7 @@ end
 local function handle_close(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 	local player = game.get_player(e.player_index)
 	if not player then return end
@@ -80,7 +80,7 @@ end
 local function handle_drop_down(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
 	set_visibility(element.parent.parent.parent.parent, element.selected_index)
@@ -99,25 +99,25 @@ local function handle_drop_down(e)
 		return
 	end
 
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 ---@param e EventData.on_gui_switch_state_changed
 local function handle_pr_switch(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
 	local is_pr_state = (element.switch_state == "none" and 0) or (element.switch_state == "left" and 1) or 2
 	set_comb_is_pr_state(comb, is_pr_state)
 
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 ---@param e EventData.on_gui_elem_changed
 local function handle_network(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
 	local signal = element.elem_value--[[@as SignalID]]
@@ -127,29 +127,29 @@ local function handle_network(e)
 	end
 	set_comb_network_name(comb, signal)
 
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 ---@param e EventData.on_gui_checked_state_changed
 local function handle_setting(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
 	set_comb_setting(comb, element.tags.bit--[[@as int]], element.state)
 
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 ---@param e EventData.on_gui_checked_state_changed
 local function handle_setting_flip(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
 	set_comb_setting(comb, element.tags.bit--[[@as int]], not element.state)
 
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 
 local function on_gui_opened(event)
@@ -191,7 +191,7 @@ end
 ---@param comb LuaEntity
 ---@param player LuaPlayer
 function gui_opened(comb, player)
-	combinator_update(global, comb, true)
+	combinator_update(storage, comb, true)
 
 	local rootgui = player.gui.screen
 	local selected_index, signal, switch_state, bits = get_comb_gui_settings(comb)
@@ -202,12 +202,12 @@ function gui_opened(comb, player)
 			{type="flow", name="titlebar", children={
 				{type="label", style="frame_title", caption={"cybersyn-gui.combinator-title"}, elem_mods={ignored_by_interaction=true}},
 				{type="empty-widget", style="flib_titlebar_drag_handle", elem_mods={ignored_by_interaction=true}},
-				{type="sprite-button", style="frame_action_button", mouse_button_filter={"left"}, sprite="utility/close_white", hovered_sprite="utility/close_black", name=COMBINATOR_NAME, handler=handle_close, tags={id=comb.unit_number}}
+				{type="sprite-button", style="frame_action_button", mouse_button_filter={"left"}, sprite="utility/close", hovered_sprite="utility/close", name=COMBINATOR_NAME, handler=handle_close, tags={id=comb.unit_number}}
 			}},
 			{type="frame", name="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12, bottom_padding=9}, children={
 				{type="flow", name="vflow", direction="vertical", style_mods={horizontal_align="left"}, children={
 					--status
-					{type="flow", style="status_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
+					{type="flow", style="flib_titlebar_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
 						{type="sprite", sprite=STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", style_mods={stretch_image_to_widget_size=true}},
 						{type="label", caption={STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT}}
 					}},
@@ -216,7 +216,7 @@ function gui_opened(comb, player)
 						{type="entity-preview", name="preview", style="wide_entity_button"},
 					}},
 					--drop down
-					{type="label", style="heading_3_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=8}},
+					{type="label", style="heading_2_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=8}},
 					{type="flow", name="top", direction="horizontal", style_mods={vertical_align="center"}, children={
 						{type="drop-down", style_mods={top_padding=3, right_margin=8}, handler=handle_drop_down, tags={id=comb.unit_number}, selected_index=selected_index, items={
 							{"cybersyn-gui.comb1"},
@@ -230,7 +230,7 @@ function gui_opened(comb, player)
 					}},
 					---choose-elem-button
 					{type="line", style_mods={top_padding=10}},
-					{type="label", name="network_label", style="heading_3_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
+					{type="label", name="network_label", style="heading_2_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
 					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="top"}, children={
 						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, handler=handle_network, tags={id=comb.unit_number}},
 						{type="flow", name="depot", direction="vertical", style_mods={horizontal_align="left"}, children={

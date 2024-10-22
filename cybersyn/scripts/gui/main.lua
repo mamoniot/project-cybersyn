@@ -1,4 +1,4 @@
-local gui = require("__flib__.gui-lite")
+local gui = require("__flib__.gui")
 local mod_gui = require("__core__.lualib.mod-gui")
 
 local manager = require("scripts.gui.manager")
@@ -81,9 +81,9 @@ local function create_player(player_index)
 		refs = manager.create(player),
 		selected_tab = "stations_tab",
 	}
-	global.manager.players[player_index] = player_data
+	storage.manager.players[player_index] = player_data
 
-	--manager.update(global, player, player_data)
+	--manager.update(storage, player, player_data)
 	--top_left_button_update(player, player_data)
 end
 
@@ -92,7 +92,7 @@ function manager_gui.on_player_created(e)
 end
 
 function manager_gui.on_player_removed(e)
-	global.manager.players[e.player_index] = nil
+	storage.manager.players[e.player_index] = nil
 end
 
 --script.on_event(defines.events.on_player_joined_game, function(e)
@@ -107,14 +107,14 @@ function manager_gui.on_runtime_mod_setting_changed(e)
 		local player = game.get_player(e.player_index)
 		if not player then return end
 
-		local player_data = global.manager.players[e.player_index]
+		local player_data = storage.manager.players[e.player_index]
 		player_data.disable_top_left_button = player.mod_settings["cybersyn-disable-top-left-button"].value
 		top_left_button_update(player, player_data)
 	end
 end
 
 commands.add_command("cybersyn_rebuild_manager_windows", nil, function(command)
-	local manager_data = global.manager
+	local manager_data = storage.manager
 	if manager_data then
 
 		---@param v PlayerData
@@ -135,7 +135,7 @@ local function init_items(manager)
 	manager.item_order = item_order
 	local i = 1
 
-	for _, protos in pairs{game.item_prototypes, game.fluid_prototypes} do
+	for _, protos in pairs{prototypes.item, game.fluid_prototypes} do
 		--- @type (LuaItemPrototype|LuaFluidPrototype)[]
 		local all_items = {}
 		for _, proto in pairs(protos) do
@@ -161,39 +161,39 @@ end
 
 
 function manager_gui.on_migration()
-	if not global.manager then
+	if not storage.manager then
 		manager_gui.on_init()
 	end
 	
 	for i, p in pairs(game.players) do
-		if global.manager.players[i] == nil then
+		if storage.manager.players[i] == nil then
 			create_player(i)
 		end
 	end
 	
-	for i, v in pairs(global.manager.players) do
+	for i, v in pairs(storage.manager.players) do
 		manager_gui.reset_player(i, v)
 	end
 
-	init_items(global.manager)
+	init_items(storage.manager)
 end
 
 function manager_gui.on_init()
-	global.manager = {
+	storage.manager = {
 		players = {},
 	}
-	init_items(global.manager)
+	init_items(storage.manager)
 end
 --gui.handle_events()
 
 ---@param global cybersyn.global
-function manager_gui.tick(global)
-	local manager_data = global.manager
+function manager_gui.tick(storage)
+	local manager_data = storage.manager
 	if manager_data then
 		for i, v in pairs(manager_data.players) do
 			if v.is_manager_open then
 				local query_limit = settings.get_player_settings(i)["cybersyn-manager-result-limit"].value
-				manager.update(global, v, query_limit)
+				manager.update(storage, v, query_limit)
 			end
 		end
 	end

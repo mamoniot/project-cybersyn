@@ -224,7 +224,9 @@ styles.ltnm_table_inset_frame_dark = {
 
 styles.ltnm_table_row_frame_light = {
   type = "frame_style",
-  parent = "statistics_table_item_frame",
+  --parent = "statistics_table_item_frame",
+  --this is likely incorrect, unsure what the 2.0 equivalent is
+  parent = "neutral_message_frame",
   top_padding = 8,
   bottom_padding = 8,
   left_padding = 8,
@@ -282,6 +284,13 @@ styles.ltnm_main_warning_frame = {
 }
 
 -- LABEL STYLES
+
+--I am unsure what this was supposed to be in 1.1
+local default_orange_color = {
+  r = 255,
+  g = 128,
+  b = 0
+}
 
 local hovered_label_color = {
   r = 0.5 * (1 + default_orange_color.r),

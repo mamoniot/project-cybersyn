@@ -1,4 +1,4 @@
-local gui = require("__flib__.gui-lite")
+local gui = require("__flib__.gui")
 local format = require("__flib__.format")
 
 local util = {}

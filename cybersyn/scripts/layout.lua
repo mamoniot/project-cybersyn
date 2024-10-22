@@ -65,18 +65,18 @@ function remove_train(map_data, train_id, train)
 	remove_available_train(map_data, train_id, train)
 
 	local layout_id = train.layout_id
-	local count = global.layout_train_count[layout_id]
+	local count = storage.layout_train_count[layout_id]
 	if count <= 1 then
-		global.layout_train_count[layout_id] = nil
-		global.layouts[layout_id] = nil
-		for _, stop in pairs(global.stations) do
+		storage.layout_train_count[layout_id] = nil
+		storage.layouts[layout_id] = nil
+		for _, stop in pairs(storage.stations) do
 			stop.accepted_layouts[layout_id] = nil
 		end
-		for _, stop in pairs(global.refuelers) do
+		for _, stop in pairs(storage.refuelers) do
 			stop.accepted_layouts[layout_id] = nil
 		end
 	else
-		global.layout_train_count[layout_id] = count - 1
+		storage.layout_train_count[layout_id] = count - 1
 	end
 
 	map_data.trains[train_id] = nil
@@ -378,7 +378,7 @@ function set_refueler_combs(map_data, refueler, train)
 					else
 						name = a.name
 					end
-					if game.item_prototypes[name] then
+					if prototypes.item[name] then
 						wagon_signals[1] = {index = 1, signal = {type = "item", name = a.name}, count = 1}
 					end
 				end

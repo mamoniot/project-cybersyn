@@ -142,32 +142,32 @@ mod_settings = {}
 IS_SE_PRESENT = nil
 
 function init_global()
-	global.total_ticks = 0
-	global.tick_state = STATE_INIT
-	global.tick_data = {}
-	global.economy = {
+	storage.total_ticks = 0
+	storage.tick_state = STATE_INIT
+	storage.tick_data = {}
+	storage.economy = {
 		all_r_stations = {},
 		all_p_stations = {},
 		all_names = {},
 	}
-	global.to_comb = {}
-	global.to_comb_params = {}
-	global.to_output = {}
-	global.to_stop = {}
-	global.stations = {}
-	global.active_station_ids = {}
-	global.warmup_station_ids = {}
-	global.warmup_station_cycles = {}
-	global.depots = {}
-	global.trains = {}
-	global.available_trains = {}
-	global.layouts = {}
-	global.layout_train_count = {}
-	global.layout_top_id = 1
-	global.refuelers = {}
-	global.to_refuelers = {}
-	global.each_refuelers = {}
-	global.perf_cache = {}
+	storage.to_comb = {}
+	storage.to_comb_params = {}
+	storage.to_output = {}
+	storage.to_stop = {}
+	storage.stations = {}
+	storage.active_station_ids = {}
+	storage.warmup_station_ids = {}
+	storage.warmup_station_cycles = {}
+	storage.depots = {}
+	storage.trains = {}
+	storage.available_trains = {}
+	storage.layouts = {}
+	storage.layout_train_count = {}
+	storage.layout_top_id = 1
+	storage.refuelers = {}
+	storage.to_refuelers = {}
+	storage.each_refuelers = {}
+	storage.perf_cache = {}
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 end

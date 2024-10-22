@@ -95,7 +95,7 @@ function history_tab.update(self)
     step = 1
   end
 
-  if not global.flags.deleted_history then
+  if not storage.flags.deleted_history then
     for sorted_index = start, finish, step do
       local history_id = sorted_history[sorted_index]
       local history_entry = ltn_history[history_id]

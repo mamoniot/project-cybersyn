@@ -259,16 +259,11 @@ local function on_combinator_built(map_data, comb)
 		force = comb.force
 	})
 	assert(out, "cybersyn: could not spawn combinator controller")
-	comb.connect_neighbour({
-		target_entity = out,
-		source_circuit_id = defines.circuit_connector_id.combinator_output,
-		wire = defines.wire_type.green,
-	})
-	comb.connect_neighbour({
-		target_entity = out,
-		source_circuit_id = defines.circuit_connector_id.combinator_output,
-		wire = defines.wire_type.red,
-	})
+	local wireConnectorRed = comb.get_wire_connector(defines.wire_connector_id.circuit_red, true)
+	local wireConnectorGreen = comb.get_wire_connector(defines.wire_connector_id.circuit_green, true)
+
+	wireConnectorRed.connect_to(out.get_wire_connector(defines.wire_connector_id.circuit_red, true))
+	wireConnectorGreen.connect_to(out.get_wire_connector(defines.wire_connector_id.circuit_green, true))
 
 	local control = get_comb_control(comb)
 	local params = control.parameters
@@ -642,17 +637,17 @@ local function on_built(event)
 	if not entity or not entity.valid then return end
 
 	if entity.name == "train-stop" then
-		on_stop_built_or_updated(global, entity)
+		on_stop_built_or_updated(storage, entity)
 	elseif entity.name == COMBINATOR_NAME then
-		on_combinator_built(global, entity)
+		on_combinator_built(storage, entity)
 	elseif entity.type == "inserter" then
-		update_stop_from_inserter(global, entity)
+		update_stop_from_inserter(storage, entity)
 	elseif entity.type == "loader-1x1" then
-		update_stop_from_loader(global, entity)
+		update_stop_from_loader(storage, entity)
 	elseif entity.type == "pump" then
-		update_stop_from_pump(global, entity)
+		update_stop_from_pump(storage, entity)
 	elseif entity.type == "straight-rail" or entity.type == "curved-rail" then
-		update_stop_from_rail(global, entity)
+		update_stop_from_rail(storage, entity)
 	end
 end
 local function on_broken(event)
@@ -660,22 +655,22 @@ local function on_broken(event)
 	if not entity or not entity.valid then return end
 
 	if entity.name == "train-stop" then
-		on_stop_broken(global, entity)
+		on_stop_broken(storage, entity)
 	elseif entity.name == COMBINATOR_NAME then
-		on_combinator_broken(global, entity)
+		on_combinator_broken(storage, entity)
 	elseif entity.type == "inserter" then
-		update_stop_from_inserter(global, entity, entity)
+		update_stop_from_inserter(storage, entity, entity)
 	elseif entity.type == "loader-1x1" then
-		update_stop_from_loader(global, entity, entity)
+		update_stop_from_loader(storage, entity, entity)
 	elseif entity.type == "pump" then
-		update_stop_from_pump(global, entity, entity)
+		update_stop_from_pump(storage, entity, entity)
 	elseif entity.type == "straight-rail" or entity.type == "curved-rail" then
-		update_stop_from_rail(global, entity, nil)
+		update_stop_from_rail(storage, entity, nil)
 	elseif entity.train then
 		local train_id = entity.train.id
-		local train = global.trains[train_id]
+		local train = storage.trains[train_id]
 		if train then
-			on_train_broken(global, train_id, train)
+			on_train_broken(storage, train_id, train)
 		end
 	end
 end
@@ -684,7 +679,7 @@ local function on_rotate(event)
 	if not entity or not entity.valid then return end
 
 	if entity.type == "inserter" then
-		update_stop_from_inserter(global, entity)
+		update_stop_from_inserter(storage, entity)
 	end
 end
 
@@ -694,7 +689,7 @@ local function on_surface_removed(event)
 		local train_stops = surface.find_entities_filtered({type = "train-stop"})
 		for _, entity in pairs(train_stops) do
 			if entity.valid and entity.name == "train-stop" then
-				on_stop_broken(global, entity)
+				on_stop_broken(storage, entity)
 			end
 		end
 	end
@@ -706,13 +701,13 @@ local function on_paste(event)
 	if not entity or not entity.valid then return end
 
 	if entity.name == COMBINATOR_NAME then
-		combinator_update(global, entity, true)
+		combinator_update(storage, entity, true)
 	end
 end
 
 local function on_rename(event)
 	if event.entity.name == "train-stop" then
-		on_stop_rename(global, event.entity, event.old_name)
+		on_stop_rename(storage, event.entity, event.old_name)
 	end
 end
 
@@ -753,7 +748,7 @@ local function setup_se_compat()
 	---@param event {}
 	script.on_event(se_on_train_teleport_started_event, function(event)
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		local old_id = event.old_train_id_1
 
 		local train = map_data.trains[old_id]
@@ -765,7 +760,7 @@ local function setup_se_compat()
 	---@param event {}
 	script.on_event(se_on_train_teleport_finished_event, function(event)
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		---@type LuaTrain
 		local train_entity = event.train
 		---@type uint
@@ -878,20 +873,20 @@ local function register_tick()
 	if mod_settings.manager_enabled and mod_settings.manager_ups == mod_settings.tps and mod_settings.tps > DELTA then
 		local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]]
 		script.on_nth_tick(nth_tick, function()
-			tick(global, mod_settings)
-			manager.tick(global)
+			tick(storage, mod_settings)
+			manager.tick(storage)
 		end)
 	else
 		if mod_settings.tps > DELTA then
 			local nth_tick_main = ceil(60/mod_settings.tps)--[[@as uint]]
 			script.on_nth_tick(nth_tick_main, function()
-				tick(global, mod_settings)
+				tick(storage, mod_settings)
 			end)
 		end
 		if mod_settings.manager_enabled and mod_settings.manager_ups > DELTA then
 			local nth_tick_manager = ceil(60/mod_settings.manager_ups)--[[@as uint]]
 			script.on_nth_tick(nth_tick_manager, function()
-				manager.tick(global)
+				manager.tick(storage)
 			end)
 		end
 	end

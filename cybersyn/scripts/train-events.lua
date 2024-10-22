@@ -404,15 +404,15 @@ end
 function on_train_built(event)
 	local train_e = event.train
 	if event.old_train_id_1 then
-		on_train_modified(global, event.old_train_id_1)
+		on_train_modified(storage, event.old_train_id_1)
 	end
 	if event.old_train_id_2 then
-		on_train_modified(global, event.old_train_id_2)
+		on_train_modified(storage, event.old_train_id_2)
 	end
 end
 function on_train_changed(event)
 	---@type MapData
-	local map_data = global
+	local map_data = storage
 	local train_e = event.train--[[@as LuaTrain]]
 	if not train_e.valid then return end
 	local train_id = train_e.id

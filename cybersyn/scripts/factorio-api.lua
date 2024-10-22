@@ -8,13 +8,13 @@ local string_len = string.len
 
 local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
-local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
+--local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 
 
 ---@param map_data MapData
 ---@param item_name string
 function get_stack_size(map_data, item_name)
-	return game.item_prototypes[item_name].stack_size
+	return prototypes.item[item_name].stack_size
 end
 
 ---@param item_order table<string, int>
@@ -486,7 +486,7 @@ function set_train_from_comb(mod_settings, train, comb)
 		train.network_mask = mod_settings.network_mask
 	end
 	train.priority = mod_settings.priority
-	local signals = comb.get_merged_signals(defines.circuit_connector_id.combinator_input)
+	local signals = comb.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 	if signals then
 		for k, v in pairs(signals) do
 			local item_name = v.signal.name
@@ -534,7 +534,7 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 		refueler.network_mask = mod_settings.network_mask
 	end
 
-	local signals = refueler.entity_comb.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+	local signals = refueler.entity_comb.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 	if signals then
 		for k, v in pairs(signals) do
 			local item_name = v.signal.name
@@ -689,7 +689,40 @@ end
 function set_combinator_output(map_data, comb, signals)
 	local out = map_data.to_output[comb.unit_number]
 	if out.valid then
-		out.get_or_create_control_behavior().parameters = signals
+		--out.get_or_create_control_behavior().parameters = signals
+		local constBehaviour = out.get_or_create_control_behavior()
+
+		if constBehaviour.sections == nil or constBehaviour.sections_count == 0 then
+			constBehaviour.add_section()
+		end
+
+		if constBehaviour.sections and constBehaviour.sections_count > 0 then
+			if constBehaviour.sections_count > 1 then
+				--only the default section, messy but whatever
+				local i = 1
+				for _,v in pairs(constBehaviour.sections) do
+					if i ~= 1 then
+						constBehaviour.removeSection(i)
+					end
+					i = i + 1
+				end
+			end
+
+			local primarySection = constBehaviour.get_section(1)
+			local filters = {}
+			if signals ~= nil then
+				for _,v in pairs(signals) do
+					local filt = {
+						type = v.signal.type,
+						name = v.signal.name,
+						quality = nil,
+						comparator = nil
+					}
+					table.insert(filters, filt)
+				end
+			end
+			primarySection.filters = filters
+		end
 	end
 end
 
@@ -702,13 +735,13 @@ function get_signals(station)
 	---@type Signal[]?
 	local comb2_signals = nil
 	if status1 == DEFINES_WORKING or status1 == DEFINES_LOW_POWER then
-		comb1_signals = comb1.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+		comb1_signals = comb1.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 	end
 	local comb2 = station.entity_comb2
 	if comb2 then
 		local status2 = comb2.status
 		if status2 == DEFINES_WORKING or status2 == DEFINES_LOW_POWER then
-			comb2_signals = comb2.get_merged_signals(DEFINES_COMBINATOR_INPUT)
+			comb2_signals = comb2.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 		end
 	end
 	return comb1_signals, comb2_signals
@@ -723,7 +756,7 @@ function set_comb2(map_data, station)
 		local signals = {}
 		for item_name, count in pairs(deliveries) do
 			local i = #signals + 1
-			local is_fluid = game.item_prototypes[item_name] == nil--NOTE: this is expensive
+			local is_fluid = prototypes.item[item_name] == nil--NOTE: this is expensive
 			signals[i] = {index = i, signal = {type = is_fluid and "fluid" or "item", name = item_name}, count = sign*count}
 		end
 		set_combinator_output(map_data, station.entity_comb2, signals)
