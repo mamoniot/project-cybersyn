@@ -275,7 +275,7 @@ trains_tab.handle = {}
 function trains_tab.wrapper(e, handler)
 	local player = game.get_player(e.player_index)
 	if not player then return end
-	local player_data = global.manager.players[e.player_index]
+	local player_data = storage.manager.players[e.player_index]
 	handler(player, player_data, player_data.refs, e)
 end
 
@@ -284,7 +284,7 @@ end
 function trains_tab.handle.open_train_gui(player, player_data, refs, e)
 	local train_id = e.element.tags.train_id
 	--- @type Train
-	local train = global.trains[train_id]
+	local train = storage.trains[train_id]
 	local train_entity = train.entity
 
 	if not train_entity or not train_entity.valid then

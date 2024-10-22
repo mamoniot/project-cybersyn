@@ -8,7 +8,7 @@ local check_debug_revision
 local migrations_table = {
 	["1.0.6"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		for k, v in pairs(map_data.available_trains) do
 			for id, _ in pairs(v) do
 				local train = map_data.trains[id]
@@ -24,7 +24,7 @@ local migrations_table = {
 	end,
 	["1.0.7"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		map_data.available_trains = {}
 		for id, v in pairs(map_data.trains) do
 			v.parked_at_depot_id = v.depot_id
@@ -46,7 +46,7 @@ local migrations_table = {
 	end,
 	["1.0.8"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		for id, station in pairs(map_data.stations) do
 			local params = get_comb_params(station.entity_comb1)
 			if params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
@@ -62,7 +62,7 @@ local migrations_table = {
 	end,
 	["1.1.0"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		map_data.refuelers = {}
 		map_data.to_refuelers = {}
 		for id, station in pairs(map_data.stations) do
@@ -87,13 +87,13 @@ local migrations_table = {
 	end,
 	["1.1.2"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		map_data.refuelers = map_data.refuelers or {}
 		map_data.to_refuelers = map_data.to_refuelers or {}
 	end,
 	["1.1.3"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		for k, v in pairs(map_data.refuelers) do
 			if not v.entity_comb.valid or not v.entity_stop.valid then
 				map_data.refuelers[k] = nil
@@ -102,7 +102,7 @@ local migrations_table = {
 	end,
 	["1.2.0"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 
 		map_data.each_refuelers = {}
 		map_data.se_tele_old_id = nil
@@ -158,7 +158,7 @@ local migrations_table = {
 	end,
 	["1.2.2"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		local setting = settings.global["cybersyn-invert-sign"]
 		setting.value = true
 		settings.global["cybersyn-invert-sign"] = setting
@@ -211,18 +211,18 @@ local migrations_table = {
 					send_alert_depot_of_train_broken(map_data, train.entity)
 				end
 				local layout_id = train.layout_id
-				local count = global.layout_train_count[layout_id]
+				local count = storage.layout_train_count[layout_id]
 				if count <= 1 then
-					global.layout_train_count[layout_id] = nil
-					global.layouts[layout_id] = nil
-					for _, stop in pairs(global.stations) do
+					storage.layout_train_count[layout_id] = nil
+					storage.layouts[layout_id] = nil
+					for _, stop in pairs(storage.stations) do
 						stop.accepted_layouts[layout_id] = nil
 					end
-					for _, stop in pairs(global.refuelers) do
+					for _, stop in pairs(storage.refuelers) do
 						stop.accepted_layouts[layout_id] = nil
 					end
 				else
-					global.layout_train_count[layout_id] = count - 1
+					storage.layout_train_count[layout_id] = count - 1
 				end
 				map_data.trains[train_id] = nil
 			end
@@ -237,14 +237,14 @@ local migrations_table = {
 	end,
 	["1.2.3"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		for _, station in pairs(map_data.stations) do
 			set_station_from_comb(station)
 		end
 	end,
 	["1.2.5"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		local setting = settings.global["cybersyn-invert-sign"]
 		setting.value = true
 		settings.global["cybersyn-invert-sign"] = setting
@@ -272,7 +272,7 @@ local migrations_table = {
 	end,
 	["1.2.10"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		map_data.warmup_station_cycles = {}
 
 		local is_registered = {}
@@ -298,7 +298,7 @@ local migrations_table = {
 	end,
 	["1.2.15"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 
 		for _, e in pairs(map_data.refuelers) do
 			if e.network_flag then
@@ -321,7 +321,7 @@ local migrations_table = {
 	end,
 	["1.2.16"] = function()
 		---@type MapData
-		local map_data = global
+		local map_data = storage
 		if not map_data.manager then
 			map_data.manager = {
 				players = {},
@@ -335,18 +335,18 @@ local migrations_table = {
 --STATUS_R_TO_D = 5
 ---@param data ConfigurationChangedData
 function on_config_changed(data)
-	global.tick_state = STATE_INIT
-	global.tick_data = {}
-	global.perf_cache = {}
+	storage.tick_state = STATE_INIT
+	storage.tick_data = {}
+	storage.perf_cache = {}
 
 	flib_migration.on_config_changed(data, migrations_table)
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
-	if IS_SE_PRESENT and not global.se_tele_old_id then
-		global.se_tele_old_id = {}
+	if IS_SE_PRESENT and not storage.se_tele_old_id then
+		storage.se_tele_old_id = {}
 	end
-	if global.debug_revision ~= debug_revision then
-		global.debug_revision = debug_revision
+	if storage.debug_revision ~= debug_revision then
+		storage.debug_revision = debug_revision
 		if debug_revision then
 			on_debug_revision_change()
 		end
@@ -357,5 +357,5 @@ end
 ---It does not have access to game
 ---NOTE 2: Everything in this section must be idempotent
 function on_debug_revision_change()
-	local map_data = global
+	local map_data = storage
 end

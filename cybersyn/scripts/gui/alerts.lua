@@ -72,7 +72,7 @@ function alerts_tab.update(self)
   local search_surface = state.surface
 
   local ltn_alerts = state.ltn_data.alerts
-  local alerts_to_delete = global.active_data.alerts_to_delete
+  local alerts_to_delete = storage.active_data.alerts_to_delete
 
   local scroll_pane = refs.scroll_pane
   local children = scroll_pane.children
@@ -95,7 +95,7 @@ function alerts_tab.update(self)
     step = 1
   end
 
-  if not global.flags.deleted_all_alerts then
+  if not storage.flags.deleted_all_alerts then
     for sorted_index = start, finish, step do
       local alert_id = sorted_alerts[sorted_index]
       local alerts_entry = ltn_alerts[alert_id]

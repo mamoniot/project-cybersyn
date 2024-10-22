@@ -272,7 +272,7 @@ stations_tab.handle = {}
 function stations_tab.wrapper(e, handler)
 	local player = game.get_player(e.player_index)
 	if not player then return end
-	local player_data = global.manager.players[e.player_index]
+	local player_data = storage.manager.players[e.player_index]
 	handler(player, player_data, player_data.refs, e)
 end
 
@@ -282,7 +282,7 @@ end
 function stations_tab.handle.open_station_gui(player, player_data, refs, e)
 	local station_id = e.element.tags.station_id
 	--- @type Station
-	local station = global.stations[station_id]
+	local station = storage.stations[station_id]
 	local station_entity = station.entity_stop
 	local station_comb1 = station.entity_comb1
 	local station_comb2 = station.entity_comb2

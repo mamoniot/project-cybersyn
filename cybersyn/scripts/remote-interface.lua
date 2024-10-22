@@ -127,9 +127,9 @@ end
 ---@param ... string|int
 function interface.read_global(...)
 	--this can read anything off of cybersyn's map_data
-	--so interface.read_global("trains", 31415, "manifest") == global.trains[31415].manifest (or nil if train 31415 does not exist)
-	--the second return value is how many parameters could be processed before a nil value was encountered (in the above example it's useful for telling apart global.trains[31415] == nil vs global.trains[31415].manifest == nil)
-	local base = global
+	--so interface.read_global("trains", 31415, "manifest") == storage.trains[31415].manifest (or nil if train 31415 does not exist)
+	--the second return value is how many parameters could be processed before a nil value was encountered (in the above example it's useful for telling apart storage.trains[31415] == nil vs storage.trains[31415].manifest == nil)
+	local base = storage
 	local depth = 0
 	for i, v in ipairs({...}) do
 		depth = i
@@ -140,19 +140,19 @@ function interface.read_global(...)
 end
 ---@param id uint
 function interface.get_station(id)
-	return global.stations[id]
+	return storage.stations[id]
 end
 ---@param id uint
 function interface.get_depot(id)
-	return global.depots[id]
+	return storage.depots[id]
 end
 ---@param id uint
 function interface.get_refueler(id)
-	return global.refuelers[id]
+	return storage.refuelers[id]
 end
 ---@param id uint
 function interface.get_train(id)
-	return global.trains[id]
+	return storage.trains[id]
 end
 ---@param train_entity LuaTrain
 function interface.get_train_id_from_luatrain(train_entity)
@@ -164,7 +164,7 @@ function interface.get_id_from_stop(stop)
 end
 ---@param comb LuaEntity
 function interface.get_id_from_comb(comb)
-	local stop = global.to_stop[comb.unit_number]
+	local stop = storage.to_stop[comb.unit_number]
 	if stop then
 		return stop.unit_number
 	end
@@ -179,7 +179,7 @@ end
 ---@param key string
 ---@param value any
 function interface.write_setting(key, value)
-	--be careful that the value you write is of the correct type specified in global.lua
+	--be careful that the value you write is of the correct type specified in storage.lua
 	--these settings are not saved and have to be set on load and on init
 	mod_settings[key] = value
 end
@@ -187,28 +187,28 @@ end
 
 ---@param comb LuaEntity
 function interface.combinator_update(comb)
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 
 ---@param train_id uint
 function interface.update_train_layout(train_id)
-	local train = global.trains[train_id]
+	local train = storage.trains[train_id]
 	assert(train)
 	local old_layout_id = train.layout_id
-	local count = global.layout_train_count[old_layout_id]
+	local count = storage.layout_train_count[old_layout_id]
 	if count <= 1 then
-		global.layout_train_count[old_layout_id] = nil
-		global.layouts[old_layout_id] = nil
-		for _, stop in pairs(global.stations) do
+		storage.layout_train_count[old_layout_id] = nil
+		storage.layouts[old_layout_id] = nil
+		for _, stop in pairs(storage.stations) do
 			stop.accepted_layouts[old_layout_id] = nil
 		end
-		for _, stop in pairs(global.refuelers) do
+		for _, stop in pairs(storage.refuelers) do
 			stop.accepted_layouts[old_layout_id] = nil
 		end
 	else
-		global.layout_train_count[old_layout_id] = count - 1
+		storage.layout_train_count[old_layout_id] = count - 1
 	end
-	set_train_layout(global, train)
+	set_train_layout(storage, train)
 end
 ---@param layout_pattern (0|1|2|3)[]
 ---@param layout (0|1|2)[]
@@ -226,40 +226,40 @@ end
 function interface.reset_stop_layout(stop_id, forbidden_entity, force_update)
 	local is_station = true
 	---@type Refueler|Station
-	local stop = global.stations[stop_id]
+	local stop = storage.stations[stop_id]
 	if not stop then
 		is_station = false
-		stop = global.refuelers[stop_id]
+		stop = storage.refuelers[stop_id]
 	end
 	assert(stop)
 	if force_update or not stop.allows_all_trains then
-		reset_stop_layout(global, stop, is_station, forbidden_entity)
+		reset_stop_layout(storage, stop, is_station, forbidden_entity)
 	end
 end
 ---@param rail LuaEntity
 ---@param forbidden_entity LuaEntity?
 ---@param force_update boolean?
 function interface.update_stop_from_rail(rail, forbidden_entity, force_update)
-	update_stop_from_rail(global, rail, forbidden_entity, force_update)
+	update_stop_from_rail(storage, rail, forbidden_entity, force_update)
 end
 
 
 ------------------------------------------------------------------
 --[[unsafe API]]
 ------------------------------------------------------------------
---NOTE: The following functions can cause serious longterm damage to someone's world if they are given bad parameters. Please refer to global.lua for type information. Use caution.
+--NOTE: The following functions can cause serious longterm damage to someone's world if they are given bad parameters. Please refer to storage.lua for type information. Use caution.
 --If there is any useful function missing from this API I'd be happy to add it. Join the Cybersyn discord to request it be added.
 
 ---@param value any
 ---@param ... string|int
 function interface.write_global(value, ...)
 	--this can write anything into cybersyn's map_data, please be very careful with anything you write, it can cause permanent damage
-	--so interface.write_global(nil, "trains", 31415, "manifest") will cause global.trains[31415].manifest = nil (or return false if train 31415 does not exist)
+	--so interface.write_global(nil, "trains", 31415, "manifest") will cause storage.trains[31415].manifest = nil (or return false if train 31415 does not exist)
 	local params = {...}
 	local size = #params
 	local key = params[size]
 	assert(key ~= nil)
-	local base = global
+	local base = storage
 	for i = 1, size - 1 do
 		base = base[params[i]]
 		if not base then return false end
@@ -272,38 +272,38 @@ end
 ---@param manifest Manifest
 ---@param sign -1|1
 function interface.remove_manifest_from_station_deliveries(station_id, manifest, sign)
-	local station = global.stations[station_id]
+	local station = storage.stations[station_id]
 	assert(station)
-	return remove_manifest(global, station, manifest, sign)
+	return remove_manifest(storage, station, manifest, sign)
 end
 ---@param r_station_id uint
 ---@param p_station_id uint
 ---@param train_id uint
 function interface.create_manifest(r_station_id, p_station_id, train_id)
-	local train = global.trains[train_id]
-	assert(global.stations[r_station_id] and global.stations[p_station_id] and train and train.is_available)
-	return create_manifest(global, r_station_id, p_station_id, train_id)
+	local train = storage.trains[train_id]
+	assert(storage.stations[r_station_id] and storage.stations[p_station_id] and train and train.is_available)
+	return create_manifest(storage, r_station_id, p_station_id, train_id)
 end
 ---@param r_station_id uint
 ---@param p_station_id uint
 ---@param train_id uint
 ---@param manifest Manifest
 function interface.create_delivery(r_station_id, p_station_id, train_id, manifest)
-	local train = global.trains[train_id]
-	assert(global.stations[r_station_id] and global.stations[p_station_id] and train and train.is_available and manifest)
-	return create_delivery(global, r_station_id, p_station_id, train_id, manifest)
+	local train = storage.trains[train_id]
+	assert(storage.stations[r_station_id] and storage.stations[p_station_id] and train and train.is_available and manifest)
+	return create_delivery(storage, r_station_id, p_station_id, train_id, manifest)
 end
 ---@param train_id uint
 function interface.fail_delivery(train_id)
-	local train = global.trains[train_id]
+	local train = storage.trains[train_id]
 	assert(train)
-	return on_failed_delivery(global, train_id, train)
+	return on_failed_delivery(storage, train_id, train)
 end
 ---@param train_id uint
 function interface.remove_train(train_id)
-	local train = global.trains[train_id]
+	local train = storage.trains[train_id]
 	assert(train)
-	return remove_train(global, train_id, train)
+	return remove_train(storage, train_id, train)
 end
 
 ---@param train_id uint
@@ -311,26 +311,26 @@ function interface.add_available_train(train_id)
 	--This function marks a train as available but not in a depot so it can do depot bypass, be sure the train has no active deliveries before calling this
 	--available trains can be chosen by the dispatcher to be rescheduled and dispatched for a new delivery
 	--when this train parks at a depot add_available_train_to_depot will be called on it automatically
-	local train = global.trains[train_id]
+	local train = storage.trains[train_id]
 	assert(train)
-	add_available_train(global, train_id, train)
+	add_available_train(storage, train_id, train)
 end
 ---@param depot_id uint
 ---@param train_id uint
 function interface.add_available_train_to_depot(train_id, depot_id)
 	--This function marks a train as available and in a depot, be sure the train has no active deliveries before calling this
 	--available trains can be chosen by the dispatcher to be rescheduled and dispatched for a new delivery
-	local train = global.trains[train_id]
-	local depot = global.depots[depot_id]
+	local train = storage.trains[train_id]
+	local depot = storage.depots[depot_id]
 	assert(train and depot)
-	return add_available_train_to_depot(global, mod_settings, train_id, train, depot_id, depot)
+	return add_available_train_to_depot(storage, mod_settings, train_id, train, depot_id, depot)
 end
 ---@param train_id uint
 function interface.remove_available_train(train_id)
 	--this function removes a train from the available trains list so it cannot be rescheduled and dispatched. if the train was not already available nothing will happen
-	local train = global.trains[train_id]
+	local train = storage.trains[train_id]
 	assert(train)
-	return remove_available_train(global, train_id, train)
+	return remove_available_train(storage, train_id, train)
 end
 
 ------------------------------------------------------------------

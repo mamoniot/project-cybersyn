@@ -65,7 +65,7 @@ end
 local function handle_close(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 	local player = game.get_player(e.player_index)
 	if not player then return end
@@ -80,7 +80,7 @@ end
 local function handle_drop_down(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
 	set_visibility(element.parent.parent.parent.parent, element.selected_index)
@@ -99,25 +99,25 @@ local function handle_drop_down(e)
 		return
 	end
 
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 ---@param e EventData.on_gui_switch_state_changed
 local function handle_pr_switch(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
 	local is_pr_state = (element.switch_state == "none" and 0) or (element.switch_state == "left" and 1) or 2
 	set_comb_is_pr_state(comb, is_pr_state)
 
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 ---@param e EventData.on_gui_elem_changed
 local function handle_network(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
 	local signal = element.elem_value--[[@as SignalID]]
@@ -127,29 +127,29 @@ local function handle_network(e)
 	end
 	set_comb_network_name(comb, signal)
 
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 ---@param e EventData.on_gui_checked_state_changed
 local function handle_setting(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
 	set_comb_setting(comb, element.tags.bit--[[@as int]], element.state)
 
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 ---@param e EventData.on_gui_checked_state_changed
 local function handle_setting_flip(e)
 	local element = e.element
 	if not element then return end
-	local comb = global.to_comb[element.tags.id]
+	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
 	set_comb_setting(comb, element.tags.bit--[[@as int]], not element.state)
 
-	combinator_update(global, comb)
+	combinator_update(storage, comb)
 end
 
 local function on_gui_opened(event)
@@ -191,7 +191,7 @@ end
 ---@param comb LuaEntity
 ---@param player LuaPlayer
 function gui_opened(comb, player)
-	combinator_update(global, comb, true)
+	combinator_update(storage, comb, true)
 
 	local rootgui = player.gui.screen
 	local selected_index, signal, switch_state, bits = get_comb_gui_settings(comb)

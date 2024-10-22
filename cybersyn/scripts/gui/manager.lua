@@ -172,7 +172,7 @@ manager.handle = {}
 function manager.wrapper(e, handler)
 	local player = game.get_player(e.player_index)
 	if not player then return end
-	local player_data = global.manager.players[e.player_index]
+	local player_data = storage.manager.players[e.player_index]
 	handler(player, player_data, player_data.refs, e)
 end
 

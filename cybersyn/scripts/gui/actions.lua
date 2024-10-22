@@ -171,17 +171,17 @@ function actions.change_surface(Gui, _, e)
 end
 
 function actions.clear_history(Gui)
-  global.flags.deleted_history = true
+  storage.flags.deleted_history = true
   Gui:schedule_update()
 end
 
 function actions.delete_alert(Gui, msg)
-  global.active_data.alerts_to_delete[msg.alert_id] = true
+  storage.active_data.alerts_to_delete[msg.alert_id] = true
   Gui:schedule_update()
 end
 
 function actions.delete_all_alerts(Gui)
-  global.flags.deleted_all_alerts = true
+  storage.flags.deleted_all_alerts = true
   Gui:schedule_update()
 end
 
