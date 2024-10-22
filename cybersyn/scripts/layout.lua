@@ -656,7 +656,7 @@ function update_stop_from_rail(map_data, rail, forbidden_entity, force)
 	---@type defines.rail_direction
 	for i = 1, 112 do
 		if rail_back then
-			local entity = rail_back.get_rail_segment_entity(defines_back, false)
+			local entity = rail_back.get_rail_segment_signal(defines_back, false)
 			if entity and entity.name == "train-stop" then
 				resolve_update_stop_from_rail(map_data, entity, forbidden_entity, force)
 				return
@@ -664,7 +664,7 @@ function update_stop_from_rail(map_data, rail, forbidden_entity, force)
 			rail_back = rail_back.get_connected_rail({rail_direction = defines_back, rail_connection_direction = defines_straight})
 		end
 		if rail_front then
-			local entity = rail_front.get_rail_segment_entity(defines_front, false)
+			local entity = rail_front.get_rail_segment_signal(defines_front, false)
 			if entity and entity.name == "train-stop" then
 				resolve_update_stop_from_rail(map_data, entity, forbidden_entity, force)
 				return
