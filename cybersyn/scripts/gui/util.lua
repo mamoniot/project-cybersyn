@@ -40,15 +40,15 @@ function util.generate_item_references(item)
   local sprite = nil
   local image_path = ""
   local item_name
-  if game.is_valid_sprite_path("item/" .. item) then
+  if helpers.is_valid_sprite_path("item/" .. item) then
     sprite = "item/" .. item
     image_path = "[img=item." .. item .. "]"
     item_name = {"?", { "item-name." .. item }, { "entity-name." .. item }, "LocalizedString failure: " .. item }
-  elseif game.is_valid_sprite_path("fluid/" .. item) then
+  elseif helpers.is_valid_sprite_path("fluid/" .. item) then
     sprite = "fluid/" .. item
     image_path = "[img=fluid." .. item .. "]"
     item_name = {"?", { "fluid-name." .. item }, "LocalizedString failure: " .. item }
-  elseif game.is_valid_sprite_path("virtual-signal/" .. item) then
+  elseif helpers.is_valid_sprite_path("virtual-signal/" .. item) then
     sprite = "virtual-signal/" .. item
     image_path = "[img=virtual-signal." .. item .. "]"
     item_name = {"?", { "virtual-signal." .. item }, "LocalizedString failure: " .. item }
@@ -69,7 +69,7 @@ function util.slot_table_build_from_manifest(manifest, color)
       local name = item.name
       local count = item.count
       local sprite, img_path, item_string = util.generate_item_references(name)
-      if game.is_valid_sprite_path(sprite) then
+      if helpers.is_valid_sprite_path(sprite) then
         children[#children + 1] = {
           type = "sprite-button",
           enabled = false,
@@ -112,7 +112,7 @@ function util.slot_table_build_from_station(station)
         else
           color = "red"
         end
-        if game.is_valid_sprite_path(sprite) then
+        if helpers.is_valid_sprite_path(sprite) then
           children[#children + 1] = {
             type = "sprite-button",
             enabled = false,
@@ -149,7 +149,7 @@ function util.slot_table_build_from_deliveries(station)
       else
         color = "blue"
       end
-      if game.is_valid_sprite_path(sprite) then
+      if helpers.is_valid_sprite_path(sprite) then
         children[#children + 1] = {
           type = "sprite-button",
           enabled = false,
@@ -188,7 +188,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
       else
         sprite = "virtual-signal" .. "/" .. name
       end
-      if game.is_valid_sprite_path(sprite) then
+      if helpers.is_valid_sprite_path(sprite) then
         children[#children + 1] = {
           type = "sprite-button",
           enabled = false,
@@ -230,7 +230,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
           count = count * get_stack_size(map_data, name)
         end
 
-        if game.is_valid_sprite_path(sprite) then
+        if helpers.is_valid_sprite_path(sprite) then
           children[#children + 1] = {
             type = "sprite-button",
             enabled = false,
@@ -248,7 +248,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
 
       elseif item.type == "virtual" then
         sprite = "virtual-signal" .. "/" .. name
-        if game.is_valid_sprite_path(sprite) then
+        if helpers.is_valid_sprite_path(sprite) then
           children[#children + 1] = {
             type = "sprite-button",
             enabled = false,

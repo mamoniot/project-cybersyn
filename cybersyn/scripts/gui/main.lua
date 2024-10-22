@@ -135,7 +135,7 @@ local function init_items(manager)
 	manager.item_order = item_order
 	local i = 1
 
-	for _, protos in pairs{prototypes.item, game.fluid_prototypes} do
+	for _, protos in pairs{prototypes.item, prototypes.fluid} do
 		--- @type (LuaItemPrototype|LuaFluidPrototype)[]
 		local all_items = {}
 		for _, proto in pairs(protos) do
