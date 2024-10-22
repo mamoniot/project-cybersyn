@@ -378,7 +378,7 @@ function set_refueler_combs(map_data, refueler, train)
 					else
 						name = a.name
 					end
-					if game.item_prototypes[name] then
+					if prototypes.item[name] then
 						wagon_signals[1] = {index = 1, signal = {type = "item", name = a.name}, count = 1}
 					end
 				end
