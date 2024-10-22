@@ -689,7 +689,40 @@ end
 function set_combinator_output(map_data, comb, signals)
 	local out = map_data.to_output[comb.unit_number]
 	if out.valid then
-		out.get_or_create_control_behavior().parameters = signals
+		--out.get_or_create_control_behavior().parameters = signals
+		local constBehaviour = out.get_or_create_control_behavior()
+
+		if constBehaviour.sections == nil or constBehaviour.sections_count == 0 then
+			constBehaviour.add_section()
+		end
+
+		if constBehaviour.sections and constBehaviour.sections_count > 0 then
+			if constBehaviour.sections_count > 1 then
+				--only the default section, messy but whatever
+				local i = 1
+				for _,v in pairs(constBehaviour.sections) do
+					if i ~= 1 then
+						constBehaviour.removeSection(i)
+					end
+					i = i + 1
+				end
+			end
+
+			local primarySection = constBehaviour.get_section(1)
+			local filters = {}
+			if signals ~= nil then
+				for _,v in pairs(signals) do
+					local filt = {
+						type = v.signal.type,
+						name = v.signal.name,
+						quality = nil,
+						comparator = nil
+					}
+					table.insert(filters, filt)
+				end
+			end
+			primarySection.filters = filters
+		end
 	end
 end
 
