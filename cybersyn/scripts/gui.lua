@@ -207,7 +207,7 @@ function gui_opened(comb, player)
 			{type="frame", name="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12, bottom_padding=9}, children={
 				{type="flow", name="vflow", direction="vertical", style_mods={horizontal_align="left"}, children={
 					--status
-					{type="flow", style="status_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
+					{type="flow", style="flib_titlebar_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
 						{type="sprite", sprite=STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", style_mods={stretch_image_to_widget_size=true}},
 						{type="label", caption={STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT}}
 					}},
