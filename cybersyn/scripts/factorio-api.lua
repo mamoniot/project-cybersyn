@@ -490,7 +490,7 @@ function set_train_from_comb(mod_settings, train, comb)
 	if signals then
 		for k, v in pairs(signals) do
 			local item_name = v.signal.name
-			local item_type = v.signal.type
+			local item_type = v.signal.type or "item"
 			local item_count = v.count
 			if item_name then
 				if item_type == "virtual" then
@@ -538,7 +538,7 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 	if signals then
 		for k, v in pairs(signals) do
 			local item_name = v.signal.name
-			local item_type = v.signal.type
+			local item_type = v.signal.type or "item"
 			local item_count = v.count
 			if item_name then
 				if item_type == "virtual" then
