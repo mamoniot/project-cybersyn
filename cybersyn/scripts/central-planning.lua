@@ -9,6 +9,36 @@ local band = bit32.band
 local table_remove = table.remove
 local random = math.random
 
+local HASH_STRING = "CS_QUALITY_SEP"
+
+---@param name string The name of the item
+---@param quality string The name of the quality of the item or nil if it is common
+---@return string
+function hash_item(name, quality)
+	if quality == nil then
+		return name
+	else
+		return name .. HASH_STRING .. quality
+	end
+end
+
+---@param sig SignalId
+---@return string
+function hash_signal(sig)
+	return hash_item(sig.name, sig.quality)
+end
+
+---@param hash string
+---@return SignalId
+function unhash_signal(hash)
+	local index = string.find(hash, HASH_STRING)
+
+	if index == nil then
+		return { name = hash }
+	else
+		return { name = string.sub(hash, 1, index - 1), quality = string.sub(hash, index + string.len(HASH_STRING), string.len(hash))}
+	end
+end
 
 ---@param map_data MapData
 ---@param station Station
@@ -96,7 +126,7 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 					f, a = pairs(r_station.network_mask--[[@as {[string]: int}]])
 					if p_is_each then
 						for network_name, _ in f, a do
-							local item_network_name = network_name..":"..item.name
+							local item_network_name = network_name .. ":" .. hash_item(item.name, item.quality)
 							economy.all_r_stations[item_network_name] = nil
 							economy.all_p_stations[item_network_name] = nil
 						end
@@ -110,7 +140,7 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 				--prevent deliveries from being processed for these items until their stations are re-polled
 				--if we don't wait until they are repolled a duplicate delivery might be generated for stations that share inventories
 				for network_name, _ in f, a do
-					local item_network_name = network_name..":"..item.name
+					local item_network_name = network_name .. ":" .. hash_item(item.name, item.quality)
 					economy.all_r_stations[item_network_name] = nil
 					economy.all_p_stations[item_network_name] = nil
 				end
@@ -149,16 +179,17 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 		local item_name = v.signal.name
 		local item_type = v.signal.type
 		local r_item_count = v.count
-		local r_effective_item_count = r_item_count + (r_station.deliveries[item_name] or 0)
+		local r_effective_item_count = r_item_count + (r_station.deliveries[item_hash] or 0)
 		if r_effective_item_count < 0 and r_item_count < 0 then
-			local r_threshold = r_station.item_thresholds and r_station.item_thresholds[item_name] or r_station.r_threshold
+			local r_threshold = r_station.item_thresholds and r_station.item_thresholds[item_hash] or
+				r_station.r_threshold
 			if r_station.is_stack and item_type == "item" then
 				r_threshold = r_threshold*get_stack_size(map_data, item_name)
 			end
-			local p_effective_item_count = p_station.item_p_counts[item_name]
+			local p_effective_item_count = p_station.item_p_counts[item_hash]
 			--could be an item that is not present at the station
 			local effective_threshold
-			local override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
+			local override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_hash]
 			if override_threshold and p_station.is_stack and item_type == "item" then
 				override_threshold = override_threshold*get_stack_size(map_data, item_name)
 			end
@@ -168,7 +199,13 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 				effective_threshold = r_threshold
 			end
 			if p_effective_item_count and p_effective_item_count >= effective_threshold then
-				local item = {name = item_name, type = item_type, count = min(-r_effective_item_count, p_effective_item_count)}
+				local item = {
+					name = item_name,
+					type = item_type,
+					quality = v.signal.quality,
+					count = min(-r_effective_item_count,
+						p_effective_item_count)
+				}
 				if item_name == primary_item_name then
 					manifest[#manifest + 1] = manifest[1]
 					manifest[1] = item
@@ -236,6 +273,7 @@ local function tick_dispatch(map_data, mod_settings)
 	local r_stations
 	local p_stations
 	local item_name
+	local item_hash
 	local item_type
 	local item_network_name
 	while true do
@@ -261,7 +299,8 @@ local function tick_dispatch(map_data, mod_settings)
 		p_stations = all_p_stations[item_network_name]
 		if r_stations then
 			if p_stations then
-				item_name = signal.name--[[@as string]]
+				item_name = v.signal.name --[[@as string]]
+				item_hash = hash_signal(v.signal) --[[@as string]]
 				item_type = signal.type
 				break
 			else
@@ -288,18 +327,18 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 
 			--don't request when already providing
-			local item_deliveries = station.deliveries[item_name]
+			local item_deliveries = station.deliveries[item_hash]
 			if item_deliveries and item_deliveries < 0 then
 				goto continue
 			end
 
 			local threshold = station.r_threshold
 			local prior = station.priority
-			local item_threshold = station.item_thresholds and station.item_thresholds[item_name] or nil
+			local item_threshold = station.item_thresholds and station.item_thresholds[item_hash] or nil
 			if item_threshold then
 				threshold = item_threshold
 				if station.item_priority then
-					prior = station.item_priority--[[@as int]]
+					prior = station.item_priority --[[@as int]]
 				end
 			end
 			if prior < best_r_prior then
@@ -364,7 +403,7 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 
 			--don't provide when already requesting
-			item_deliveries = p_station.deliveries[item_name]
+			item_deliveries = p_station.deliveries[item_hash]
 			if item_deliveries and item_deliveries > 0 then
 				goto p_continue
 			end
@@ -376,8 +415,8 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			effective_count = p_station.item_p_counts[item_name]
-			override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_name]
+			effective_count = p_station.item_p_counts[item_hash]
+			override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_hash]
 			if override_threshold and p_station.is_stack and not is_fluid then
 				override_threshold = override_threshold*get_stack_size(map_data, item_name)
 			end
@@ -586,6 +625,7 @@ local function tick_poll_station(map_data, mod_settings)
 			station.item_thresholds = {}
 			for k, v in pairs(comb2_signals) do
 				local item_name = v.signal.name
+				local item_hash = hash_signal(v.signal)
 				local item_count = v.count
 				local item_type = v.signal.type
 				-- FIXME handle v.signal.quality
@@ -595,7 +635,7 @@ local function tick_poll_station(map_data, mod_settings)
 							station.item_priority = item_count
 						end
 					else
-						station.item_thresholds[item_name] = abs(item_count)
+						station.item_thresholds[item_hash] = abs(item_count)
 					end
 				end
 			end
@@ -604,6 +644,7 @@ local function tick_poll_station(map_data, mod_settings)
 		end
 		for k, v in pairs(comb1_signals) do
 			local item_name = v.signal.name
+			local item_hash = hash_signal(v.signal)
 			local item_count = v.count
 			local item_type = v.signal.type
 			-- FIXME handle v.signal.quality
@@ -632,13 +673,14 @@ local function tick_poll_station(map_data, mod_settings)
 		for k, v in pairs(comb1_signals) do
 			---@type string
 			local item_name = v.signal.name
+			local item_hash = hash_signal(v.signal)
 			local item_type = v.signal.type
 			local item_count = v.count
-			local effective_item_count = item_count + (station.deliveries[item_name] or 0)
+			local effective_item_count = item_count + (station.deliveries[item_hash] or 0)
 
 			local is_not_requesting = true
 			if station.is_r then
-				local r_threshold = station.item_thresholds and station.item_thresholds[item_name] or station.r_threshold
+				local r_threshold = station.item_thresholds and station.item_thresholds[item_hash] or station.r_threshold
 				if station.is_stack and item_type == "item" then
 					r_threshold = r_threshold*get_stack_size(map_data, item_name)
 				end
@@ -652,13 +694,13 @@ local function tick_poll_station(map_data, mod_settings)
 						f, a = once, station.network_name
 					end
 					for network_name, _ in f, a do
-						local item_network_name = network_name..":"..item_name
+						local item_network_name = network_name .. ":" .. item_hash -- FIXME: item_name or item_hash?
 						local stations = all_r_stations[item_network_name]
 						if stations == nil then
 							stations = {}
 							all_r_stations[item_network_name] = stations
-							all_names[#all_names + 1] = item_network_name
-							all_names[#all_names + 1] = v.signal
+							all_names[#all_names + 1] = item_network_name	
+							all_names[#all_names + 1] = v.signal    -- FIXME: This is sus. Why is the same element immediately overwritten?
 						end
 						stations[#stations + 1] = station_id
 					end
@@ -673,14 +715,14 @@ local function tick_poll_station(map_data, mod_settings)
 						f, a = once, station.network_name
 					end
 					for network_name, _ in f, a do
-						local item_network_name = network_name..":"..item_name
+						local item_network_name = network_name .. ":" .. item_hash -- FIXME: item_name or item_hash?
 						local stations = all_p_stations[item_network_name]
 						if stations == nil then
 							stations = {}
 							all_p_stations[item_network_name] = stations
 						end
 						stations[#stations + 1] = station_id
-						station.item_p_counts[item_name] = effective_item_count
+						station.item_p_counts[item_hash] = effective_item_count
 					end
 				else
 					comb1_signals[k] = nil
