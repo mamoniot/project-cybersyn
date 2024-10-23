@@ -147,7 +147,7 @@ end
 ---@param stop LuaEntity
 ---@param train LuaTrain
 local function get_train_direction(stop, train)
-	local back_rail = train.back_end.rail
+	local back_rail = train.back_rail
 
 	if back_rail then
 		local back_pos = back_rail.position
