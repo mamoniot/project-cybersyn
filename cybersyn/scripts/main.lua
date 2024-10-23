@@ -31,7 +31,9 @@ function on_depot_broken(map_data, depot_id, depot)
 			if train.use_any_depot then
 				local e = get_any_train_entity(train.entity)
 				if e then
-					local stops = e.force.get_train_stops({name = depot.entity_stop.backer_name, surface = e.surface})
+					--local stops = e.force.get_train_stops({name = depot.entity_stop.backer_name, surface = e.surface})
+					local stops = game.train_manager.get_train_stops({station_name = depot.entity_stop.backer_name, force = e.force})
+					--game.print(serpent.block(stops))
 					for stop in rnext_consume, stops do
 						local new_depot_id = stop.unit_number
 						if new_depot_id ~= depot_id and map_data.depots[new_depot_id] then
