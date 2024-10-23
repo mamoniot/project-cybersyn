@@ -177,7 +177,7 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 	for k, v in pairs(r_station.tick_signals) do
 		---@type string
 		local item_name = v.signal.name
-		local item_type = v.signal.type
+		local item_type = v.signal.type or "item"
 		local r_item_count = v.count
 		local r_effective_item_count = r_item_count + (r_station.deliveries[item_hash] or 0)
 		if r_effective_item_count < 0 and r_item_count < 0 then
@@ -301,7 +301,7 @@ local function tick_dispatch(map_data, mod_settings)
 			if p_stations then
 				item_name = signal.name --[[@as string]]
 				item_hash = hash_signal(signal) --[[@as string]]
-				item_type = signal.type
+				item_type = signal.type or "item"
 				break
 			else
 				for i, id in ipairs(r_stations) do
@@ -627,7 +627,7 @@ local function tick_poll_station(map_data, mod_settings)
 				local item_name = v.signal.name
 				local item_hash = hash_signal(v.signal)
 				local item_count = v.count
-				local item_type = v.signal.type
+				local item_type = v.signal.type or "item"
 				-- FIXME handle v.signal.quality
 				if item_name then
 					if item_type == "virtual" then
@@ -646,7 +646,7 @@ local function tick_poll_station(map_data, mod_settings)
 			local item_name = v.signal.name
 			local item_hash = hash_signal(v.signal)
 			local item_count = v.count
-			local item_type = v.signal.type
+			local item_type = v.signal.type or "item"
 			-- FIXME handle v.signal.quality
 			if item_name then
 				if item_type == "virtual" then
@@ -674,7 +674,7 @@ local function tick_poll_station(map_data, mod_settings)
 			---@type string
 			local item_name = v.signal.name
 			local item_hash = hash_signal(v.signal)
-			local item_type = v.signal.type
+			local item_type = v.signal.type or "item"
 			local item_count = v.count
 			local effective_item_count = item_count + (station.deliveries[item_hash] or 0)
 
