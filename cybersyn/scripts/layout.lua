@@ -147,10 +147,10 @@ end
 ---@param stop LuaEntity
 ---@param train LuaTrain
 local function get_train_direction(stop, train)
-	local back_rail = train.back_rail
+	local back_end = train.get_rail_end(defines.rail_direction.back)
 
-	if back_rail then
-		local back_pos = back_rail.position
+	if back_end and back_end.rail then
+		local back_pos = back_end.rail.position
 		local stop_pos = stop.position
 		if abs(back_pos.x - stop_pos.x) < 3 and abs(back_pos.y - stop_pos.y) < 3 then
 			return true
@@ -185,7 +185,7 @@ function set_p_wagon_combs(map_data, station, train)
 
 		local to_be_used_item_slots = 0
 		for i, item in ipairs(train.manifest) do
-			if item.type == "item" then
+			if not item.type or item.type == "item" then
 				to_be_used_item_slots = to_be_used_item_slots + ceil(item.count/get_stack_size(map_data, item.name))
 			end
 		end
@@ -195,6 +195,7 @@ function set_p_wagon_combs(map_data, station, train)
 	local item_i = 1
 	local item = manifest[item_i]
 	local item_count = item.count
+	local item_qual = item.quality or "normal"
 	local fluid_i = 1
 	local fluid = manifest[fluid_i]
 	local fluid_count = fluid.count
@@ -222,19 +223,18 @@ function set_p_wagon_combs(map_data, station, train)
 				local item_slots_capacity = max(ceil((#inv - locked_slots)*percent_slots_to_use_per_wagon), 1)
 				while item_slots_capacity > 0 and item_i <= #manifest do
 					local do_inc
-					if item.type == "item" then
+					if not item.type or item.type == "item" then
 						local stack_size = get_stack_size(map_data, item.name)
 						local i = #signals + 1
 						local count_to_fill = min(item_slots_capacity*stack_size, item_count)
 						local slots_to_fill = ceil(count_to_fill/stack_size)
 
-						-- FIXME: quality any for now, should match the delivery
-						signals[i] = {value = {type = item.type, name = item.name}, min = sign*count_to_fill}
+						signals[i] = {value = {type = item.type, name = item.name, quality = item_qual, comparator = "="}, min = sign*count_to_fill}
 						item_count = item_count - count_to_fill
 						item_slots_capacity = item_slots_capacity - slots_to_fill
 						if comb then
 							for j = 1, slots_to_fill do
-								inv.set_filter(inv_filter_i, item.name)
+								inv.set_filter(inv_filter_i, {name = item.name, quality = item_qual, comparator = "="})
 								inv_filter_i = inv_filter_i + 1
 							end
 							train.has_filtered_wagon = true
@@ -248,6 +248,7 @@ function set_p_wagon_combs(map_data, station, train)
 						if item_i <= #manifest then
 							item = manifest[item_i]
 							item_count = item.count
+							item_qual = item.quality or "normal"
 						else
 							break
 						end
@@ -382,7 +383,7 @@ function set_refueler_combs(map_data, refueler, train)
 						name = a.name
 					end
 					if prototypes.item[name] then
-						wagon_signals[1] = {index = 1, signal = {type = "item", name = a.name}, count = 1}
+						wagon_signals[1] = {value = {type = "item", name = a.name, quality = "normal", comparator = "="}, min = 1}
 					end
 				end
 			end

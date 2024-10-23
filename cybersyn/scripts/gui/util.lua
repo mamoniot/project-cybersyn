@@ -217,7 +217,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
       local sprite = ""
       local color = "default"
 
-      if item.type == "item" or item.type == "fluid" then
+      if not item.type or item.type == "item" or item.type == "fluid" then
         local sprite, img_path, item_string = util.generate_item_references(name)
         if sprite ~= nil then
           local color
@@ -228,7 +228,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
           end
         end
 
-        if station.is_stack and item.type == "item" then
+        if station.is_stack and (not item.type or item.type == "item") then
           count = count * get_stack_size(map_data, name)
         end
 
