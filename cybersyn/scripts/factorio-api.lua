@@ -137,7 +137,7 @@ function create_loading_order(stop, manifest, enable_inactive)
 		condition[#condition + 1] = {
 			type = cond_type,
 			compare_type = "and",
-			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name}, constant = item.count}
+			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name, quality = item.quality}, constant = item.count}
 		}
 	end
 	if enable_inactive then
@@ -722,11 +722,11 @@ function set_comb2(map_data, station)
 	if station.entity_comb2 then
 		local deliveries = station.deliveries
 		local signals = {}
-		for item_name, count in pairs(deliveries) do
+		for item_hash, count in pairs(deliveries) do
+			local item_name, item_quality = unhash_signal(item_hash)
 			local i = #signals + 1
 			local is_fluid = prototypes.item[item_name] == nil--NOTE: this is expensive
-			-- FIXME: the circuit network can only carry exact qualities, so deliveries must provide each quality separately
-			signals[i] = {value = {type = is_fluid and "fluid" or "item", name = item_name, quality = "normal", comparator = "="}, min = sign*count} -- constant combinator cannot have quality = nil (any)
+			signals[i] = {value = {type = is_fluid and "fluid" or "item", name = item_name, item_quality or "normal", comparator = "="}, min = sign*count} -- constant combinator cannot have quality = nil (any)
 		end
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end

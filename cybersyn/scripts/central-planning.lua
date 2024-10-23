@@ -22,22 +22,23 @@ function hash_item(name, quality)
 	end
 end
 
----@param sig SignalId
+---@param sig SignalID
 ---@return string
 function hash_signal(sig)
 	return hash_item(sig.name, sig.quality)
 end
 
 ---@param hash string
----@return SignalId
+---@return string name, string? quality
 function unhash_signal(hash)
 	local index = string.find(hash, HASH_STRING)
-
-	if index == nil then
-		return { name = hash }
-	else
-		return { name = string.sub(hash, 1, index - 1), quality = string.sub(hash, index + string.len(HASH_STRING), string.len(hash))}
+	if not index then
+		return hash, nil
 	end
+
+	local name = string.sub(hash, 1, index - 1)
+	local quality = string.sub(hash, index + string.len(HASH_STRING), string.len(hash))
+	return name, quality
 end
 
 ---@param map_data MapData
@@ -47,9 +48,10 @@ end
 function remove_manifest(map_data, station, manifest, sign)
 	local deliveries = station.deliveries
 	for i, item in ipairs(manifest) do
-		deliveries[item.name] = deliveries[item.name] + sign*item.count
-		if deliveries[item.name] == 0 then
-			deliveries[item.name] = nil
+		local item_hash = hash_item(item.name, item.quality)
+		deliveries[item_hash] = deliveries[item_hash] + sign*item.count
+		if deliveries[item_hash] == 0 then
+			deliveries[item_hash] = nil
 		end
 	end
 	set_comb2(map_data, station)
@@ -117,8 +119,10 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 		for item_i, item in ipairs(manifest) do
 			assert(item.count > 0, "main.lua error, transfer amount was not positive")
 
-			r_station.deliveries[item.name] = (r_station.deliveries[item.name] or 0) + item.count
-			p_station.deliveries[item.name] = (p_station.deliveries[item.name] or 0) - item.count
+			local item_hash = hash_item(item.name, item.quality)
+
+			r_station.deliveries[item_hash] = (r_station.deliveries[item_hash] or 0) + item.count
+			p_station.deliveries[item_hash] = (p_station.deliveries[item_hash] or 0) - item.count
 
 			if item_i > 1 or r_is_each or p_is_each then
 				local f, a
@@ -126,7 +130,7 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 					f, a = pairs(r_station.network_mask--[[@as {[string]: int}]])
 					if p_is_each then
 						for network_name, _ in f, a do
-							local item_network_name = network_name .. ":" .. hash_item(item.name, item.quality)
+							local item_network_name = network_name .. ":" .. item_hash
 							economy.all_r_stations[item_network_name] = nil
 							economy.all_p_stations[item_network_name] = nil
 						end
@@ -140,7 +144,7 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 				--prevent deliveries from being processed for these items until their stations are re-polled
 				--if we don't wait until they are repolled a duplicate delivery might be generated for stations that share inventories
 				for network_name, _ in f, a do
-					local item_network_name = network_name .. ":" .. hash_item(item.name, item.quality)
+					local item_network_name = network_name .. ":" .. item_hash
 					economy.all_r_stations[item_network_name] = nil
 					economy.all_p_stations[item_network_name] = nil
 				end
@@ -178,6 +182,7 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 		---@type string
 		local item_name = v.signal.name
 		local item_type = v.signal.type or "item"
+		local item_hash = hash_signal(v.signal)
 		local r_item_count = v.count
 		local r_effective_item_count = r_item_count + (r_station.deliveries[item_hash] or 0)
 		if r_effective_item_count < 0 and r_item_count < 0 then
@@ -628,7 +633,6 @@ local function tick_poll_station(map_data, mod_settings)
 				local item_hash = hash_signal(v.signal)
 				local item_count = v.count
 				local item_type = v.signal.type or "item"
-				-- FIXME handle v.signal.quality
 				if item_name then
 					if item_type == "virtual" then
 						if item_name == SIGNAL_PRIORITY then
@@ -700,7 +704,7 @@ local function tick_poll_station(map_data, mod_settings)
 							stations = {}
 							all_r_stations[item_network_name] = stations
 							all_names[#all_names + 1] = item_network_name	
-							all_names[#all_names + 1] = v.signal    -- FIXME: This is sus. Why is the same element immediately overwritten?
+							all_names[#all_names + 1] = v.signal
 						end
 						stations[#stations + 1] = station_id
 					end
