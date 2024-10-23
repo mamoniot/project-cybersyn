@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.3
+  Features:
+    - Added allow-list rescan button and display the allow-list numeric representation on the combinator UI
+  Bugfixes:
+    - Fixed wagon-control combinator
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Version: 2.0.2
   Changes:
     - Refactored quality handling
