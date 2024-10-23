@@ -325,7 +325,7 @@ function set_r_wagon_combs(map_data, station, train)
 					local stack = inv[stack_i]
 					if stack.valid_for_read then
 						local i = #signals + 1
-						signals[i] = {value = {type = "item", name = stack.name, stack.quality or "normal", comparator = "="}, min = sign*stack.count}
+						signals[i] = {value = {type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "="}, min = sign*stack.count}
 					end
 				end
 				set_combinator_output(map_data, comb, signals)
