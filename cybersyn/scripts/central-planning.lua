@@ -299,8 +299,8 @@ local function tick_dispatch(map_data, mod_settings)
 		p_stations = all_p_stations[item_network_name]
 		if r_stations then
 			if p_stations then
-				item_name = v.signal.name --[[@as string]]
-				item_hash = hash_signal(v.signal) --[[@as string]]
+				item_name = signal.name --[[@as string]]
+				item_hash = hash_signal(signal) --[[@as string]]
 				item_type = signal.type
 				break
 			else
