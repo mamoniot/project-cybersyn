@@ -15,7 +15,7 @@ local HASH_STRING = "CS_QUALITY_SEP"
 ---@param quality string The name of the quality of the item or nil if it is common
 ---@return string
 function hash_item(name, quality)
-	if quality == nil then
+	if quality == nil or quality == "normal" then
 		return name
 	else
 		return name .. HASH_STRING .. quality
