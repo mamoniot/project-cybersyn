@@ -1,4 +1,8 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.5
+  Bugfixes:
+    - Fixed crash when combinator not being attached to a station attempting to calculate layout
+---------------------------------------------------------------------------------------------------
 Version: 2.0.4
   Bugfixes:
     - Fixed error while running event cybersyn::on_pre_player_mined_item (ID 11)
@@ -8,7 +12,7 @@ Version: 2.0.3
     - Added allow-list rescan button and display the allow-list numeric representation on the combinator UI
   Bugfixes:
     - Fixed wagon-control combinator
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------
 Version: 2.0.2
   Changes:
     - Refactored quality handling
