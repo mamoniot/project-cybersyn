@@ -9,7 +9,7 @@ local band = bit32.band
 local table_remove = table.remove
 local random = math.random
 
-local HASH_STRING = "CS_QUALITY_SEP"
+local HASH_STRING = "|"
 
 ---@param name string The name of the item
 ---@param quality string The name of the quality of the item or nil if it is common
