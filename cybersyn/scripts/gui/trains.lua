@@ -165,7 +165,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 					local primary_item1 = train1.manifest[1]
 					local primary_item2 = train2.manifest[1]
 					if primary_item1.name ~= primary_item2.name then
-						return invert ~= (primary_item1.type == primary_item2.type and primary_item1.name < primary_item2.name or primary_item1.type == "item")
+						return invert ~= (primary_item1.type == primary_item2.type and primary_item1.name < primary_item2.name or (not primary_item1.type or primary_item1.type == "item"))
 					elseif primary_item1.count ~= primary_item2.count then
 						return invert ~= (primary_item1.count < primary_item2.count)
 					end

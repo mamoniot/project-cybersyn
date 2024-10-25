@@ -325,8 +325,7 @@ function set_r_wagon_combs(map_data, station, train)
 					local stack = inv[stack_i]
 					if stack.valid_for_read then
 						local i = #signals + 1
-						-- FIXME item stacks have quality
-						signals[i] = {value = {type = "item", name = stack.name, quality = "normal", comparator = "="}, min = sign*stack.count}
+						signals[i] = {value = {type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "="}, min = sign*stack.count}
 					end
 				end
 				set_combinator_output(map_data, comb, signals)
@@ -392,12 +391,10 @@ function set_refueler_combs(map_data, refueler, train)
 				if stack.valid_for_read then
 					if comb then
 						local i = #wagon_signals + 1
-						-- FIXME fuel items can have quality which improves acceleration and top speed (but not fuel value)
-						wagon_signals[i] = {value = {type = "item", name = stack.name, quality = "normal", comparator = "="}, min = stack.count}
+						wagon_signals[i] = {value = {type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "="}, min = stack.count}
 					end
 					local j = #signals + 1
-					-- FIXME fuel items can have quality which improves acceleration and top speed (but not fuel value)
-					signals[j] = {value = {type = "item", name = stack.name, quality = "normal", comparator = "="}, min = stack.count}
+					signals[j] = {value = {type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "="}, min = stack.count}
 				end
 			end
 			if comb then

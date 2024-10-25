@@ -195,12 +195,12 @@ function stations_tab.build(map_data, player_data, query_limit)
 				else
 					local first_item = nil
 					local first_direction = nil
-					for item_name in dual_pairs(station1.deliveries, station2.deliveries) do
-						if not first_item or item_lt(map_data.manager, item_name, first_item) then
-							local count1 = station1.deliveries[item_name] or 0
-							local count2 = station2.deliveries[item_name] or 0
+					for item_hash in dual_pairs(station1.deliveries, station2.deliveries) do
+						if not first_item or item_lt(map_data.manager, item_hash, first_item) then
+							local count1 = station1.deliveries[item_hash] or 0
+							local count2 = station2.deliveries[item_hash] or 0
 							if count1 ~= count2 then
-								first_item = item_name
+								first_item = item_hash
 								first_direction = count1 < count2
 							end
 						end
