@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.6
+  Changes:
+    - support for Space Age Quality
+  Bugfixes:
+    - Fix close button for combinator
+---------------------------------------------------------------------------------------------------
 Version: 2.0.5
   Bugfixes:
     - Fixed crash when combinator not being attached to a station attempting to calculate layout
