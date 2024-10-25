@@ -196,6 +196,17 @@ function update_allow_list_section(player_index, comb_unit_number)
 	end
 end
 
+---@param e EventData.on_gui_click
+local function handle_refresh_allow(e)
+    -- < function interface.reset_stop_layout(stop_id, forbidden_entity, force_update)
+    local combId = e.element.tags.id
+    local stop = storage.to_stop[combId]
+    if stop == nil then return end
+    local stopId = stop.unit_number
+    remote.call("cybersyn", "reset_stop_layout", stopId, nil, true)
+    update_allow_list_section(e.player_index, combId)
+end
+
 local function on_gui_opened(event)
 	local entity = event.entity
 	if not entity or not entity.valid or entity.name ~= COMBINATOR_NAME then return end
@@ -221,6 +232,7 @@ end
 function register_gui_actions()
 	flib_gui.add_handlers({
 		["comb_close"] = handle_close,
+		["comb_refresh_allow"] = handle_refresh_allow,
 		["comb_drop_down"] = handle_drop_down,
 		["comb_pr_switch"] = handle_pr_switch,
 		["comb_network"] = handle_network,
@@ -299,7 +311,7 @@ function gui_opened(comb, player)
 					{type="flow", name="bottom-allowlist", direction="vertical", style_mods={vertical_align="top"}, visible=showLayout, children={
 						{type="label", name="allow_list_label_title", style="heading_2_label", caption={"cybersyn-gui.allow-list-preview"}, tooltip={"cybersyn-gui.allow-list-preview-tooltip"}, style_mods={top_padding=8}},
 						{type="label", name="allow_list_label", caption=layoutText, style_mods={top_padding=8}},
-						{type="button", name="allow_list_refresh", tags={id=comb.unit_number}, tooltip={"cybersyn-gui.allow-list-refresh-tooltip"}, caption={"cybersyn-gui.allow-list-refresh-description"}},
+						{type="button", name="allow_list_refresh", tags={id=comb.unit_number}, tooltip={"cybersyn-gui.allow-list-refresh-tooltip"}, caption={"cybersyn-gui.allow-list-refresh-description"}, handler=handle_refresh_allow},
 					}}
 				}}
 			}}
