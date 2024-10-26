@@ -413,6 +413,11 @@ function combinator_update(map_data, comb, reset_display)
 	local has_changed = false
 	local type, id, entity = nil, 0, nil
 
+	if (old_params == nil ) then
+		--should be generated after this tick, but in case it persists it is better to let the player know to replace it
+		game.print("cybersyn combinator lacking internal data @ " .. comb.gps_tag)
+	end
+
 	local op = params.operation
 	--handle the combinator's display, if it is part of a station
 	if op == MODE_PRIMARY_IO or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
@@ -442,7 +447,7 @@ function combinator_update(map_data, comb, reset_display)
 		end
 	end
 
-	if params.operation ~= old_params.operation then
+	if old_params ~= nil and params.operation ~= old_params.operation then
 		--NOTE: This is rather dangerous, we may need to actually implement operation changing
 		on_combinator_broken(map_data, comb)
 		on_combinator_built(map_data, comb)
@@ -451,7 +456,7 @@ function combinator_update(map_data, comb, reset_display)
 	end
 
 	local new_signal = params.first_signal
-	local old_signal = old_params.first_signal
+	local old_signal = old_params ~= nil and old_params.first_signal
 	local new_network = new_signal and new_signal.name or nil
 	local old_network = old_signal and old_signal.name or nil
 	if new_network ~= old_network then
@@ -480,7 +485,7 @@ function combinator_update(map_data, comb, reset_display)
 		end
 	end
 
-	if params.second_constant ~= old_params.second_constant then
+	if old_params ~= nil and params.second_constant ~= old_params.second_constant then
 		has_changed = true
 
 		if type == nil then
@@ -505,7 +510,9 @@ function combinator_update(map_data, comb, reset_display)
 
 	if has_changed then
 		map_data.to_comb_params[unit_number] = params
-		interface_raise_combinator_changed(comb, old_params)
+		if old_params ~= nil then
+			interface_raise_combinator_changed(comb, old_params)
+		end
 	end
 end
 
