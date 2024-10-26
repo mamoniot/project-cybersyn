@@ -742,7 +742,6 @@ end
 ---@param icon {}
 ---@param message string
 local function send_alert_for_train(train, icon, message)
-	if train.valid ~= true then return end --if train is invalid, don't try to send an alert or it can cause a reported crash
 	local loco = train.front_stock or train.back_stock
 	if loco then
 		for _, player in pairs(loco.force.players) do
