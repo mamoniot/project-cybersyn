@@ -175,6 +175,10 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 	local p_station = map_data.stations[p_station_id]
 	local train = map_data.trains[train_id]
 
+	if not train or not train.valid then
+		return {} -- train migrated to Factorio 2.0, create_delivery already produces an alert
+	end
+
 	---@type Manifest
 	local manifest = {}
 
@@ -762,6 +766,12 @@ function tick_poll_entities(map_data, mod_settings)
 			local train_id, train = next(map_data.trains, tick_data.last_train)
 			tick_data.last_train = train_id
 			if train then
+				if (not train.entity or not train.entity.valid) then
+					game.print("Cybersyn: Lost track of invalid train after migration. You need to check for lost trains manually. You might get a few of these messages.")
+					map_data.trains[train_id] = nil
+					return
+				end
+
 				if train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
 					if mod_settings.stuck_train_alert_enabled then
 						send_alert_stuck_train(map_data, train.entity)
