@@ -69,7 +69,7 @@ function util.slot_table_build_from_manifest(manifest, color)
       local name = item.name
       local count = item.count
       local sprite, img_path, item_string = util.generate_item_references(name)
-      if helpers.is_valid_sprite_path(sprite) then
+      if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
         children[#children + 1] = {
           type = "sprite-button",
           enabled = false,
@@ -113,7 +113,7 @@ function util.slot_table_build_from_station(station)
         else
           color = "red"
         end
-        if helpers.is_valid_sprite_path(sprite) then
+        if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
           children[#children + 1] = {
             type = "sprite-button",
             enabled = false,
@@ -150,7 +150,7 @@ function util.slot_table_build_from_deliveries(station)
       else
         color = "blue"
       end
-      if helpers.is_valid_sprite_path(sprite) then
+      if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
         children[#children + 1] = {
           type = "sprite-button",
           enabled = false,
@@ -190,7 +190,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
       else
         sprite = "virtual-signal" .. "/" .. name
       end
-      if helpers.is_valid_sprite_path(sprite) then
+      if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
         children[#children + 1] = {
           type = "sprite-button",
           enabled = false,
@@ -232,7 +232,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
           count = count * get_stack_size(map_data, name)
         end
 
-        if helpers.is_valid_sprite_path(sprite) then
+        if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
           children[#children + 1] = {
             type = "sprite-button",
             enabled = false,
@@ -250,7 +250,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
 
       elseif item.type == "virtual" then
         sprite = "virtual-signal" .. "/" .. name
-        if helpers.is_valid_sprite_path(sprite) then
+        if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
           children[#children + 1] = {
             type = "sprite-button",
             enabled = false,
