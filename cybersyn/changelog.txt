@@ -1,5 +1,12 @@
 ---------------------------------------------------------------------------------------------------
 Version: 2.0.6
+  Bugfixes:
+    - fix crash when cybersyn combinator is missing internal data during update
+    - fix for 2.0 migration can produce invalid LuaTrains
+  Translation:
+    - Russian language update
+---------------------------------------------------------------------------------------------------
+Version: 2.0.6
   Changes:
     - support for Space Age Quality
   Bugfixes:
