@@ -67,7 +67,7 @@ data:extend({
 		order = "be",
 		setting_type = "runtime-global",
 		default_value = .5,
-		minimum_value = 0,
+		minimum_value = -1,
 		maximum_value = 1,
 	},
 	{
