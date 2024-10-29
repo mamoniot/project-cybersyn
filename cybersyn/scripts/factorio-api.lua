@@ -683,13 +683,14 @@ function set_comb_operation(comb, op)
 end
 
 
----@param map_data MapData
----@param comb LuaEntity
----@param signals ConstantCombinatorParameters[]?
+--- Set the output signals of a Cybersyn combinator.
+---@param map_data MapData Cybersyn stored data.
+---@param comb LuaEntity Factorio combinator entity.
+---@param signals LogisticFilter[]?
 function set_combinator_output(map_data, comb, signals)
 	local out = map_data.to_output[comb.unit_number]
 	if out.valid then
-		-- out is a non-interactable, invisible combinator whiche means players cannot change the number of sections
+		-- out is a non-interactable, invisible combinator which means players cannot change the number of sections
 		out.get_or_create_control_behavior().get_section(1).filters = signals or {}
 	end
 end
@@ -715,18 +716,28 @@ function get_signals(station)
 	return comb1_signals, comb2_signals
 end
 
+--- Update the station control combinator at the given station if it exists.
 ---@param map_data MapData
 ---@param station Station
 function set_comb2(map_data, station)
 	local sign = mod_settings.invert_sign and -1 or 1
 	if station.entity_comb2 then
 		local deliveries = station.deliveries
+		---@type LogisticFilter[]
 		local signals = {}
 		for item_hash, count in pairs(deliveries) do
 			local item_name, item_quality = unhash_signal(item_hash)
 			local i = #signals + 1
 			local is_fluid = prototypes.item[item_name] == nil--NOTE: this is expensive
-			signals[i] = {value = {type = is_fluid and "fluid" or "item", name = item_name, item_quality or "normal", comparator = "="}, min = sign*count} -- constant combinator cannot have quality = nil (any)
+			signals[i] = {
+				value = {
+					type = is_fluid and "fluid" or "item",
+					name = item_name,
+					quality = item_quality or "normal",
+					comparator = "="
+				},
+				min = sign*count
+			} -- constant combinator cannot have quality = nil (any)
 		end
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end
