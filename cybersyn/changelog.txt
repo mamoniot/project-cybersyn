@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.8
+  Bugfixes:
+    - Fix missing station control combinator output
+    - Fix bug producing empty manifest
+    - Fix duplicate version entry in changelog
+---------------------------------------------------------------------------------------------------
 Version: 2.0.6
   Changes:
     - support for Space Age Quality
