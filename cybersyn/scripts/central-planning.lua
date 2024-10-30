@@ -524,6 +524,11 @@ local function tick_dispatch(map_data, mod_settings)
 			if trains then
 				for train_id, _ in pairs(trains) do
 					local train = map_data.trains[train_id]
+					if not train then
+						-- removed train needs cleanup in available_trains
+						trains[train_id] = nil
+						goto train_continue
+					end
 
 					-- Check if train is on same Cybersyn network.
 					local train_flag = get_network_mask(train, network_name)
