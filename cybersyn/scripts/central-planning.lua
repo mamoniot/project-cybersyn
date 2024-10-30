@@ -175,7 +175,7 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 	local p_station = map_data.stations[p_station_id]
 	local train = map_data.trains[train_id]
 
-	if not train or not train.valid then
+	if not train or not train.entity or not train.entity.valid then
 		return {} -- train migrated to Factorio 2.0, create_delivery already produces an alert
 	end
 
