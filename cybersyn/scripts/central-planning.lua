@@ -307,8 +307,8 @@ local function tick_dispatch(map_data, mod_settings)
 	local item_hash
 	local item_type
 	local item_network_name
-	---@type string
-	local r_station_surface_name
+	---@type LuaSurface
+	local r_station_surface
 
 	-- Locate an `item_network_name` in the `Economy` that has both requesters and providers on network.
 	while true do
@@ -394,7 +394,7 @@ local function tick_dispatch(map_data, mod_settings)
 				goto continue
 			end
 
-			r_station_surface_name = station.entity_stop.surface.name
+			r_station_surface = station.entity_stop.surface
 			r_station_i = i
 			r_threshold = threshold
 			best_r_prior = prior
@@ -529,7 +529,7 @@ local function tick_dispatch(map_data, mod_settings)
 					if not train_stock then goto train_continue end
 
 					-- If surface matching is on, verify train stock is on same surface as stations.
-					if mod_settings.surface_matching and (train_stock.surface.name ~= r_station_surface_name) then
+					if mod_settings.surface_matching and (train_stock.surface ~= r_station_surface) then
 						goto train_continue
 					end
 
