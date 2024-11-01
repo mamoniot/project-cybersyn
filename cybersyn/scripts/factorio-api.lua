@@ -97,6 +97,8 @@ local function se_get_zone_from_surface_index(cache, surface_index)
 	return zone_index, zone_orbit_index
 end
 
+---Get a rolling stock entity associated to the train. Attempts to get
+---the front stock if possible.
 ---@param train LuaTrain
 ---@return LuaEntity?
 function get_any_train_entity(train)

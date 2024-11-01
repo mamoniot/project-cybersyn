@@ -20,7 +20,7 @@
 ---@field public layout_train_count {[uint]: int}
 ---@field public tick_state uint
 ---@field public tick_data {}
----@field public economy Economy
+---@field public economy Cybersyn.Economy An indexed cache of all the items on the Cybersyn network. It is updated in `tick_poll_station` and then used in `tick_dispatch` to match providers to requesters. (could contain invalid stations or stations with modified settings from when they were first appended)
 ---@field public each_refuelers {[uint]: true}
 ---@field public active_alerts {[uint]: {[1]: LuaTrain, [2]: int}}?
 ---@field public manager Manager
@@ -105,11 +105,12 @@
 ---@field public quality string
 ---@field public count int
 
----@class Economy
----could contain invalid stations or stations with modified settings from when they were first appended
----@field public all_r_stations {[string]: uint[]} --{["network_name:item_name"]: station_id}
----@field public all_p_stations {[string]: uint[]} --{["network_name:item_name"]: station_id}
----@field public all_names (string|SignalID)[]
+---@alias Cybersyn.Economy.ItemNetworkName string A stringified tuple of the form `network_hash:(surface_name:)item_hash` for matching specific items between providers and requesters. (The surface name is provided only when surface matching is enabled.)
+
+---@class Cybersyn.Economy
+---@field public all_r_stations {[Cybersyn.Economy.ItemNetworkName]: uint[]} Maps item network names to lists of requester station IDs wanting matching items.
+---@field public all_p_stations {[Cybersyn.Economy.ItemNetworkName]: uint[]} Maps item network names to lists of provider station IDs having matching items.
+---@field public all_names (Cybersyn.Economy.ItemNetworkName|SignalID)[] A flattened list of pairs. Each pair is of the form `[item_network_name, item_signal]` where `item_signal` is the signal for the named item. The dispatch logic iterates over these pairs to brute-force match providers to requesters.
 
 --NOTE: any setting labeled as an "interface setting" can only be changed through the remote-interface, these settings are not save and have to be set at initialization
 --As a modder using the remote-interface, you may override any of these settings, including user settings. They will have to be overriden at initialization and whenever a user tries to change one.
@@ -133,6 +134,7 @@
 ---@field public enable_manager boolean
 ---@field public manager_ups double
 ---@field public manager_enabled boolean
+---@field public surface_matching boolean If enabled, trains will only be routed to stations on the same surface as the train.
 
 --if this is uncommented it means there are migrations to write
 

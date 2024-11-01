@@ -126,7 +126,7 @@ data:extend({
 		default_value = -1,
 		minimum_value = -1,
 		maximum_value = 2147483647,
-	}
+	},
   --{
   --  type = "bool-setting",
   --  name = "cybersyn-disable-top-left-button",
@@ -143,4 +143,11 @@ data:extend({
   --  default_value = 50,
   --  order = "eb",
   --},
+	{
+		type = "bool-setting",
+		name = "cybersyn-surface-matching",
+		order = "aa",
+		setting_type = "runtime-global",
+		default_value = false,
+	},
 })

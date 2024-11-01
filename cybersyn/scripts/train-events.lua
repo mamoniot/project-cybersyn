@@ -309,6 +309,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 				return
 			end
 		else
+			-- Train needs refueled. Locate matching refueler.
 			local f, a
 			if train.network_name == NETWORK_EACH then
 				f, a = next, train.network_mask
@@ -330,7 +331,13 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 
 							local refueler_network_mask = get_network_mask(refueler, network_name)
 							local train_network_mask = get_network_mask(train, network_name)
-							if btest(train_network_mask, refueler_network_mask) and (refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and refueler.trains_total < refueler.entity_stop.trains_limit then
+							-- Verify refueler compatibility with train.
+							if
+								btest(train_network_mask, refueler_network_mask) and
+								(refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and
+								refueler.trains_total < refueler.entity_stop.trains_limit and
+								(mod_settings.surface_matching and get_any_train_entity(train.entity).surface.name == refueler.entity_stop.surface.name)
+							then
 								if refueler.priority >= best_prior then
 									local t = get_any_train_entity(train.entity)
 									local dist = t and get_dist(t, refueler.entity_stop) or INF

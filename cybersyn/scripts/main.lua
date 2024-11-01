@@ -877,7 +877,9 @@ local function grab_all_settings()
 	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
 	mod_settings.manager_ups = settings.global["cybersyn-manager-updates-per-second"].value--[[@as double]]
 	mod_settings.manager_enabled = settings.startup["cybersyn-manager-enabled"].value--[[@as boolean]]
+	mod_settings.surface_matching = settings.global["cybersyn-surface-matching"].value--[[@as boolean]]
 end
+
 local function register_tick()
 	script.on_nth_tick(nil)
 	--edge case catch to register both main and manager tick if they're scheduled to run on the same ticks
