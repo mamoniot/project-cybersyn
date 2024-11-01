@@ -61,6 +61,7 @@ end
 ---The entities may be either train stops or rolling stock of trains.
 ---@param e1 LuaEntity?
 ---@param e2 LuaEntity?
+---@return boolean
 function is_train_routable(e1, e2)
 	if (not e1) or (not e2) then return false end
 	--(NOTE: currently does not support train teleportation/space elevators)
