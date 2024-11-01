@@ -42,17 +42,11 @@ function unhash_signal(hash)
 end
 
 ---Generate a `Cybersyn.Economy.ItemNetworkName` value.
----@param mod_settings CybersynModSettings
----@param surface_name string The surface where the station is.
 ---@param network_name string Name of the virutal signal prototype identifying the station's network.
 ---@param item_hash string
 ---@return Cybersyn.Economy.ItemNetworkName
-local function create_item_network_name(mod_settings, surface_name, network_name, item_hash)
-	if mod_settings.surface_matching then
-		return network_name .. ":" .. surface_name .. ":" .. item_hash
-	else
-		return network_name .. ":" .. item_hash
-	end
+local function create_item_network_name(network_name, item_hash)
+	return network_name .. ":" .. item_hash
 end
 
 ---Extract the network name from an `Cybersyn.Economy.ItemNetworkName` value.
@@ -61,6 +55,16 @@ end
 local function get_network_name_from_item_network_name(item_network_name)
 	local _, _, network_name = string.find(item_network_name, "^(.-):")
 	return network_name
+end
+
+---Determine if the two given entities could have a train routed between them.
+---The entities may be either train stops or rolling stock of trains.
+---@param e1 LuaEntity?
+---@param e2 LuaEntity?
+function is_train_routable(e1, e2)
+	if (not e1) or (not e2) then return false end
+	--(NOTE: currently does not support train teleportation/space elevators)
+	return (e1.surface == e2.surface)
 end
 
 ---@param map_data MapData
@@ -307,8 +311,6 @@ local function tick_dispatch(map_data, mod_settings)
 	local item_hash
 	local item_type
 	local item_network_name
-	---@type LuaSurface
-	local r_station_surface
 
 	-- Locate an `item_network_name` in the `Economy` that has both requesters and providers on network.
 	while true do
@@ -394,7 +396,6 @@ local function tick_dispatch(map_data, mod_settings)
 				goto continue
 			end
 
-			r_station_surface = station.entity_stop.surface
 			r_station_i = i
 			r_threshold = threshold
 			best_r_prior = prior
@@ -458,6 +459,11 @@ local function tick_dispatch(map_data, mod_settings)
 			r_flag = get_network_mask(r_station, network_name)
 			netand = band(p_flag, r_flag)
 			if netand == 0 then
+				goto p_continue
+			end
+
+			-- Verify provider->requester routability. (NOTE: also check validity because station was just pulled from cache.)
+			if (not p_station.entity_stop.valid) or (not is_train_routable(p_station.entity_stop, r_station.entity_stop)) then
 				goto p_continue
 			end
 
@@ -528,8 +534,8 @@ local function tick_dispatch(map_data, mod_settings)
 					local train_stock = get_any_train_entity(train.entity)
 					if not train_stock then goto train_continue end
 
-					-- If surface matching is on, verify train stock is on same surface as stations.
-					if mod_settings.surface_matching and (train_stock.surface ~= r_station_surface) then
+					-- Verify train is routable to requester.
+					if not is_train_routable(train_stock, r_station.entity_stop) then
 						goto train_continue
 					end
 
@@ -637,8 +643,6 @@ local function tick_poll_station(map_data, mod_settings)
 
 	local station_id
 	local station
-	---@type string
-	local station_surface_name
 	while true do--choose a station
 		tick_data.i = (tick_data.i or 0) + 1
 		if tick_data.i > #map_data.active_station_ids then
@@ -660,7 +664,6 @@ local function tick_poll_station(map_data, mod_settings)
 	end
 	if station.entity_stop.valid and station.entity_comb1.valid and (not station.entity_comb2 or station.entity_comb2.valid) then
 		station.trains_limit = station.entity_stop.trains_limit
-		station_surface_name = station.entity_stop.surface.name
 	else
 		on_station_broken(map_data, station_id, station)
 		return false
@@ -756,7 +759,7 @@ local function tick_poll_station(map_data, mod_settings)
 					end
 					for network_name, _ in f, a do
 						-- `item_hash` used here since matching algorithm should only match same quality.
-						local item_network_name = create_item_network_name(mod_settings, station_surface_name, network_name, item_hash)
+						local item_network_name = create_item_network_name(network_name, item_hash)
 						local stations = all_r_stations[item_network_name]
 						if stations == nil then
 							stations = {}
@@ -778,7 +781,7 @@ local function tick_poll_station(map_data, mod_settings)
 					end
 					for network_name, _ in f, a do
 						-- `item_hash` used here since matching algorithm should only match same quality.
-						local item_network_name = create_item_network_name(mod_settings, station_surface_name, network_name, item_hash)
+						local item_network_name = create_item_network_name(network_name, item_hash)
 						local stations = all_p_stations[item_network_name]
 						if stations == nil then
 							stations = {}

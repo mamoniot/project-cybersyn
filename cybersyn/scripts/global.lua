@@ -134,7 +134,6 @@
 ---@field public enable_manager boolean
 ---@field public manager_ups double
 ---@field public manager_enabled boolean
----@field public surface_matching boolean If enabled, trains will only be routed to stations on the same surface as the train.
 
 --if this is uncommented it means there are migrations to write
 
