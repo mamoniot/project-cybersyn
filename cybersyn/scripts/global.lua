@@ -105,7 +105,7 @@
 ---@field public quality string
 ---@field public count int
 
----@alias Cybersyn.Economy.ItemNetworkName string A stringified tuple of the form `network_hash:(surface_name:)item_hash` for matching specific items between providers and requesters. (The surface name is provided only when surface matching is enabled.)
+---@alias Cybersyn.Economy.ItemNetworkName string A stringified tuple of the form `network_hash:item_hash` for matching specific items between providers and requesters.
 
 ---@class Cybersyn.Economy
 ---@field public all_r_stations {[Cybersyn.Economy.ItemNetworkName]: uint[]} Maps item network names to lists of requester station IDs wanting matching items.
