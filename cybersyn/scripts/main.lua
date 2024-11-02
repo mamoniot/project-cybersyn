@@ -654,6 +654,7 @@ local function on_built(event)
 	elseif entity.type == "inserter" then
 		update_stop_from_inserter(storage, entity)
 	elseif entity.type == "loader-1x1" then
+		-- NOTE: only 1x1 loaders supported here.
 		update_stop_from_loader(storage, entity)
 	elseif entity.type == "pump" then
 		update_stop_from_pump(storage, entity)
@@ -672,6 +673,7 @@ local function on_broken(event)
 	elseif entity.type == "inserter" then
 		update_stop_from_inserter(storage, entity, entity)
 	elseif entity.type == "loader-1x1" then
+		-- NOTE: only 1x1 loaders supported here.
 		update_stop_from_loader(storage, entity, entity)
 	elseif entity.type == "pump" then
 		update_stop_from_pump(storage, entity, entity)
