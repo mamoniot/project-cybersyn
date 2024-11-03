@@ -546,11 +546,34 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 								end
 							end
 						end
-					elseif entity.type == "loader-1x1" or entity.type == "loader" then
+					elseif entity.type == "loader-1x1" then
+						if not supports_cargo then
+							local pos = entity.position
+							local direction = entity.direction
+							local is_there
+							if is_ver then
+								is_there = middle_x - 1.5 <= pos.x and pos.x <= middle_x + 1.5
+							else
+								is_there = middle_y - 1.5 <= pos.y and pos.y <= middle_y + 1.5
+							end
+							if is_there then
+								if is_ver then
+									if direction == defines.direction.east or direction == defines.direction.west then
+										supports_cargo = true
+									end
+								elseif direction == defines.direction.north or direction == defines.direction.south then
+									supports_cargo = true
+								end
+							end
+						end
+					elseif entity.type == "loader" then
+						-- TODO: entities of type `loader` are 1x2 loaders. This code
+						-- existed in 1.1, but 1x2 loaders are not fully supported elsewhere
+						-- in the code. 1x2 loader support is a TODO.
 						if not supports_cargo then
 							local direction = entity.direction
 							if is_ver then
-								if direction == defines.direction.east or defines.direction.west then
+								if direction == defines.direction.east or direction == defines.direction.west then
 									supports_cargo = true
 								end
 							elseif direction == defines.direction.north or direction == defines.direction.south then
@@ -728,31 +751,23 @@ function update_stop_from_loader(map_data, loader, forbidden_entity)
 	local direction = loader.direction
 	local loader_type = loader.loader_type
 	local position = loader.position
-	--check input/output direction and loader position, and case position and modify x or y by +/- 1 for search
-	if loader_type == "input" then --loading train
-		if direction == defines.direction.east then
-			position.x = position.x + 1 -- input and facing east -> move on X axis 1 to the right
-		elseif direction == defines.direction.south then
-			position.y = position.y + 1 -- input and facing south -> move on Y axis down 1 unit
-		elseif direction == defines.direction.west then
-			position.x = position.x - 1 -- input and facing west -> move on X axis 1 to the left
-		elseif direction == defines.direction.north then
-			position.y = position.y - 1 -- input and facing south -> move on Y axis up 1 unit
-		end
-	elseif loader_type == "output" then --unloading train
-		if direction == defines.direction.east then
-			position.x = position.x - 1 -- output and facing east -> move on X axis 1 to the left
-		elseif direction == defines.direction.south then
-			position.y = position.y - 1 -- output and facing south -> move on Y axis up 1 unit
-		elseif direction == defines.direction.west then
-			position.x = position.x + 1 -- output and facing west -> move on X axis 1 to the right
-		elseif direction == defines.direction.north then
-			position.y = position.y + 1 -- output and facing south -> move on Y axis down 1 unit
-		end
+
+	-- loader mods can often change the input/output of a loader after it's built
+	-- in order to have it "stick" to nearby loadable objects. therefore
+	-- we cannot rely on the `loader_type` here. we need to trigger a stop update
+	-- any time the loader is within 1 block of a track.
+	local area = area.ensure_explicit(area.from_position(position))
+	if direction == defines.direction.east or direction == defines.direction.west then
+		area.left_top.x = area.left_top.x - 1
+		area.right_bottom.x = area.right_bottom.x + 1
+	else
+		area.left_top.y = area.left_top.y - 1
+		area.right_bottom.y = area.right_bottom.y + 1
 	end
+
 	local rails = surface.find_entities_filtered({
 		type = search_type,
-		position = position,
+		area = area,
 	})
 	if rails[1] then
 		update_stop_from_rail(map_data, rails[1], forbidden_entity)
