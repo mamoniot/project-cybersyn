@@ -674,6 +674,16 @@ local function tick_poll_station(map_data, mod_settings)
 					station.network_mask = item_count
 					comb1_signals[k] = nil
 				end
+				-- After cherry picking all the control signals for the station,
+				-- we can now filter out non-item, non-fluid signals as they don't
+				-- represent deliverable objects.
+				if item_type ~= "item" and item_type ~= "fluid" then
+					-- TODO: just ignoring the signals to fix the crash for now.
+					-- It might be nice to attach a warning to the station telling
+					-- the user they mistakenly requested a recipe/asteroid/etc.
+					-- instead of an item.
+					comb1_signals[k] = nil
+				end
 			else
 				comb1_signals[k] = nil
 			end
