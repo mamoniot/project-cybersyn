@@ -41,6 +41,33 @@ function unhash_signal(hash)
 	return name, quality
 end
 
+---Generate a `Cybersyn.Economy.ItemNetworkName` value.
+---@param network_name string Name of the virutal signal prototype identifying the station's network.
+---@param item_hash string
+---@return Cybersyn.Economy.ItemNetworkName
+local function create_item_network_name(network_name, item_hash)
+	return network_name .. ":" .. item_hash
+end
+
+---Extract the network name from an `Cybersyn.Economy.ItemNetworkName` value.
+---@param item_network_name Cybersyn.Economy.ItemNetworkName
+---@return string
+local function get_network_name_from_item_network_name(item_network_name)
+	local _, _, network_name = string.find(item_network_name, "^(.-):")
+	return network_name
+end
+
+---Determine if the two given entities could have a train routed between them.
+---The entities may be either train stops or rolling stock of trains.
+---@param e1 LuaEntity?
+---@param e2 LuaEntity?
+---@return boolean
+function is_train_routable(e1, e2)
+	if (not e1) or (not e2) then return false end
+	--(NOTE: currently does not support train teleportation/space elevators)
+	return (e1.surface == e2.surface)
+end
+
 ---@param map_data MapData
 ---@param station Station
 ---@param manifest Manifest
@@ -285,6 +312,8 @@ local function tick_dispatch(map_data, mod_settings)
 	local item_hash
 	local item_type
 	local item_network_name
+
+	-- Locate an `item_network_name` in the `Economy` that has both requesters and providers on network.
 	while true do
 		local size = #all_names
 		if size == 0 then
@@ -295,7 +324,7 @@ local function tick_dispatch(map_data, mod_settings)
 		--randomizing the ordering should only matter if we run out of available trains
 		local name_i = size <= 2 and 2 or 2*random(size/2)
 
-		item_network_name = all_names[name_i - 1]--[[@as string]]
+		item_network_name = all_names[name_i - 1]--[[@as Cybersyn.Economy.ItemNetworkName]]
 		local signal = all_names[name_i]--[[@as SignalID]]
 
 		--swap remove
@@ -304,6 +333,7 @@ local function tick_dispatch(map_data, mod_settings)
 		all_names[size] = nil
 		all_names[size - 1] = nil
 
+		-- Attempt to locate all possible matched pairs of requesters and providers for the given `item_network_name`.
 		r_stations = all_r_stations[item_network_name]
 		p_stations = all_p_stations[item_network_name]
 		if r_stations then
@@ -313,6 +343,7 @@ local function tick_dispatch(map_data, mod_settings)
 				item_type = signal.type or "item"
 				break
 			else
+				-- No matching pairs; update combinator display for all requesters to FAILED_REQUEST state.
 				for i, id in ipairs(r_stations) do
 					local station = stations[id]
 					if station and band(station.display_state, 2) == 0 then
@@ -323,7 +354,9 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 		end
 	end
+
 	while true do
+		-- Locate the best matching requester amongst the possible requesters matching the `item_network_name`.
 		local r_station_i = nil
 		local r_threshold = nil
 		local best_r_prior = -INF
@@ -332,6 +365,11 @@ local function tick_dispatch(map_data, mod_settings)
 			local station = stations[id]
 			--NOTE: the station at r_station_id could have been deleted and reregistered since last poll, this check here prevents it from being processed for a delivery in that case
 			if not station or station.deliveries_total >= station.trains_limit then
+				goto continue
+			end
+
+			-- Verify station validity
+			if (not station.entity_stop) or (not station.entity_stop.valid) then
 				goto continue
 			end
 
@@ -365,6 +403,7 @@ local function tick_dispatch(map_data, mod_settings)
 			best_timestamp = station.last_delivery_tick
 			::continue::
 		end
+		-- No matching requester found; set all candidate request combinators to FAILED_REQUEST display state.
 		if not r_station_i then
 			for _, id in ipairs(r_stations) do
 				local station = stations[id]
@@ -381,9 +420,9 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type string
 		local network_name
 		if r_station.network_name == NETWORK_EACH then
-			_, _, network_name = string.find(item_network_name, "^(.*):")
+			network_name = get_network_name_from_item_network_name(item_network_name)
 		else
-			network_name = r_station.network_name
+			network_name = r_station.network_name --[[@as string]]
 		end
 		local trains = map_data.available_trains[network_name]
 		local is_fluid = item_type == "fluid"
@@ -421,6 +460,11 @@ local function tick_dispatch(map_data, mod_settings)
 			r_flag = get_network_mask(r_station, network_name)
 			netand = band(p_flag, r_flag)
 			if netand == 0 then
+				goto p_continue
+			end
+
+			-- Verify provider->requester routability. (NOTE: also check validity because station was just pulled from cache.)
+			if (not p_station.entity_stop.valid) or (not is_train_routable(p_station.entity_stop, r_station.entity_stop)) then
 				goto p_continue
 			end
 
@@ -480,10 +524,22 @@ local function tick_dispatch(map_data, mod_settings)
 			if trains then
 				for train_id, _ in pairs(trains) do
 					local train = map_data.trains[train_id]
+
+					-- Check if train is on same Cybersyn network.
 					local train_flag = get_network_mask(train, network_name)
 					if not btest(netand, train_flag) or train.se_is_being_teleported then
 						goto train_continue
 					end
+
+					-- Obtain a reference to the rolling stock of the train.
+					local train_stock = get_any_train_entity(train.entity)
+					if not train_stock then goto train_continue end
+
+					-- Verify train is routable to requester.
+					if not is_train_routable(train_stock, r_station.entity_stop) then
+						goto train_continue
+					end
+
 					if correctness < 2 then
 						correctness = 2
 						closest_to_correct_p_station = p_station
@@ -527,8 +583,7 @@ local function tick_dispatch(map_data, mod_settings)
 					end
 
 					--check if path is shortest so we prioritize locality
-					local t = get_any_train_entity(train.entity)
-					local t_to_p_dist = t and p_station.entity_stop.valid and (get_dist(t, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority) or INF
+					local t_to_p_dist = train_stock and p_station.entity_stop.valid and (get_dist(train_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority) or INF
 					if capacity == best_capacity and t_to_p_dist > best_t_to_p_dist then
 						goto train_continue
 					end
@@ -650,12 +705,12 @@ local function tick_poll_station(map_data, mod_settings)
 		else
 			station.item_thresholds = nil
 		end
+		-- Process and remove station combinator input signals corresponding to station metadata.
 		for k, v in pairs(comb1_signals) do
 			local item_name = v.signal.name
-			local item_hash = hash_signal(v.signal)
 			local item_count = v.count
 			local item_type = v.signal.type or "item"
-			-- FIXME handle v.signal.quality
+			-- No need to consider quality in this loop, as the only signals handled here are setting networks and thresholds.
 			if item_name then
 				if item_type == "virtual" then
 					if item_name == SIGNAL_PRIORITY then
@@ -688,6 +743,7 @@ local function tick_poll_station(map_data, mod_settings)
 				comb1_signals[k] = nil
 			end
 		end
+		-- Process remaining station combinator inputs, which will correspond to items requested/provided
 		for k, v in pairs(comb1_signals) do
 			---@type string
 			local item_name = v.signal.name
@@ -696,6 +752,7 @@ local function tick_poll_station(map_data, mod_settings)
 			local item_count = v.count
 			local effective_item_count = item_count + (station.deliveries[item_hash] or 0)
 
+			-- For each item in the combinator input, check if we should provide or request the given item. Requesting takes priority.
 			local is_not_requesting = true
 			if station.is_r then
 				local r_threshold = station.item_thresholds and station.item_thresholds[item_hash] or station.r_threshold
@@ -712,7 +769,8 @@ local function tick_poll_station(map_data, mod_settings)
 						f, a = once, station.network_name
 					end
 					for network_name, _ in f, a do
-						local item_network_name = network_name .. ":" .. item_hash -- FIXME: item_name or item_hash?
+						-- `item_hash` used here since matching algorithm should only match same quality.
+						local item_network_name = create_item_network_name(network_name, item_hash)
 						local stations = all_r_stations[item_network_name]
 						if stations == nil then
 							stations = {}
@@ -733,7 +791,8 @@ local function tick_poll_station(map_data, mod_settings)
 						f, a = once, station.network_name
 					end
 					for network_name, _ in f, a do
-						local item_network_name = network_name .. ":" .. item_hash -- FIXME: item_name or item_hash?
+						-- `item_hash` used here since matching algorithm should only match same quality.
+						local item_network_name = create_item_network_name(network_name, item_hash)
 						local stations = all_p_stations[item_network_name]
 						if stations == nil then
 							stations = {}
@@ -748,6 +807,7 @@ local function tick_poll_station(map_data, mod_settings)
 			end
 		end
 	end
+	-- Update the graphic of the station combinator based on the result of polling the station.
 	if station.display_state > 1 then
 		if is_requesting_nothing and band(station.display_state, 2) > 0 then
 			station.display_state = station.display_state - 2
