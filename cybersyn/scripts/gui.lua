@@ -14,16 +14,19 @@ STATUS_SPRITES[defines.entity_status.disabled_by_control_behavior] = RED
 STATUS_SPRITES[defines.entity_status.disabled_by_script] = RED
 STATUS_SPRITES[defines.entity_status.marked_for_deconstruction] = RED
 local STATUS_SPRITES_DEFAULT = RED
+local STATUS_SPRITES_GHOST = YELLOW
 
 local STATUS_NAMES = {}
 STATUS_NAMES[defines.entity_status.working] = "entity-status.working"
 STATUS_NAMES[defines.entity_status.normal] = "entity-status.normal"
+STATUS_NAMES[defines.entity_status.ghost] = "entity-status.ghost"
 STATUS_NAMES[defines.entity_status.no_power] = "entity-status.no-power"
 STATUS_NAMES[defines.entity_status.low_power] = "entity-status.low-power"
 STATUS_NAMES[defines.entity_status.disabled_by_control_behavior] = "entity-status.disabled"
 STATUS_NAMES[defines.entity_status.disabled_by_script] = "entity-status.disabled-by-script"
 STATUS_NAMES[defines.entity_status.marked_for_deconstruction] = "entity-status.marked-for-deconstruction"
 STATUS_NAMES_DEFAULT = "entity-status.disabled"
+STATUS_NAMES_GHOST = "entity-status.ghost"
 
 
 local bit_extract = bit32.extract
@@ -73,7 +76,9 @@ local function handle_close(e)
 
 	if rootgui[COMBINATOR_NAME] then
 		rootgui[COMBINATOR_NAME].destroy()
-		player.play_sound({path = COMBINATOR_CLOSE_SOUND})
+		if comb.name ~= "entity-ghost" then
+			player.play_sound({path = COMBINATOR_CLOSE_SOUND})
+		end
 	end
 end
 ---@param e EventData.on_gui_selection_state_changed
@@ -209,7 +214,9 @@ end
 
 local function on_gui_opened(event)
 	local entity = event.entity
-	if not entity or not entity.valid or entity.name ~= COMBINATOR_NAME then return end
+	if not entity or not entity.valid then return end
+	local name = entity.name == "entity-ghost" and entity.ghost_name or entity.name
+	if name ~= COMBINATOR_NAME then return end
 	local player = game.get_player(event.player_index)
 	if not player then return end
 
@@ -217,14 +224,19 @@ local function on_gui_opened(event)
 end
 
 local function on_gui_closed(event)
-	if not event.element or event.element.name ~= COMBINATOR_NAME then return end
+	local element = event.element
+	if not element or element.name ~= COMBINATOR_NAME then return end
+	local entity = event.entity or element.tags.unit_number and storage.to_comb[element.tags.unit_number]
+	local is_ghost = entity and entity.name == "entity-ghost"
 	local player = game.get_player(event.player_index)
 	if not player then return end
 	local rootgui = player.gui.screen
 
 	if rootgui[COMBINATOR_NAME] then
 		rootgui[COMBINATOR_NAME].destroy()
-		player.play_sound({path = COMBINATOR_CLOSE_SOUND})
+		if not is_ghost then
+			player.play_sound({path = COMBINATOR_CLOSE_SOUND})
+		end
 	end
 end
 
@@ -260,6 +272,8 @@ function gui_opened(comb, player)
 		layoutText = generate_stop_layout(comb.unit_number)
 	end
 
+	local is_ghost = comb.name == "entity-ghost"
+
 	local _, main_window = flib_gui.add(rootgui, {
 		{type="frame", direction="vertical", name=COMBINATOR_NAME, children={
 			--title bar
@@ -272,8 +286,8 @@ function gui_opened(comb, player)
 				{type="flow", name="vflow", direction="vertical", style_mods={horizontal_align="left"}, children={
 					--status
 					{type="flow", style="flib_titlebar_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
-						{type="sprite", sprite=STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", style_mods={stretch_image_to_widget_size=true}},
-						{type="label", caption={STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT}}
+						{type="sprite", sprite=is_ghost and STATUS_SPRITES_GHOST or STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", style_mods={stretch_image_to_widget_size=true}},
+						{type="label", caption={is_ghost and STATUS_NAMES_GHOST or STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT}}
 					}},
 					--preview
 					{type="frame", name="preview_frame", style="deep_frame_in_shallow_frame", style_mods={minimal_width=0, horizontally_stretchable=true, padding=0}, children={
@@ -311,7 +325,7 @@ function gui_opened(comb, player)
 					{type="flow", name="bottom-allowlist", direction="vertical", style_mods={vertical_align="top"}, visible=showLayout, children={
 						{type="label", name="allow_list_label_title", style="heading_2_label", caption={"cybersyn-gui.allow-list-preview"}, tooltip={"cybersyn-gui.allow-list-preview-tooltip"}, style_mods={top_padding=8}},
 						{type="label", name="allow_list_label", caption=layoutText, style_mods={top_padding=8}},
-						{type="button", name="allow_list_refresh", tags={id=comb.unit_number}, tooltip={"cybersyn-gui.allow-list-refresh-tooltip"}, caption={"cybersyn-gui.allow-list-refresh-description"}, handler=handle_refresh_allow},
+						{type="button", name="allow_list_refresh", tags={id=comb.unit_number}, tooltip={"cybersyn-gui.allow-list-refresh-tooltip"}, caption={"cybersyn-gui.allow-list-refresh-description"}, enabled = not is_ghost, handler=handle_refresh_allow},
 					}}
 				}}
 			}}
@@ -321,6 +335,8 @@ function gui_opened(comb, player)
 	main_window.frame.vflow.preview_frame.preview.entity = comb
 	main_window.titlebar.drag_target = main_window
 	main_window.force_auto_center()
+
+	main_window.tags = { unit_number = comb.unit_number }
 
 	set_visibility(main_window, selected_index)
 	player.opened = main_window
