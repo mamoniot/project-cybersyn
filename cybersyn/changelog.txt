@@ -1,4 +1,14 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.9
+  Changes:
+    - Global surface matching - Cybersyn will now by default keep different surfaces separetly regardless of network signal (this will require compatibility patch once SE gets 2.0 support)
+    - Update blueprint book to use new 2.0 rails
+    - Compatibility with some electric train mods
+  Bugfixes:
+    - Fix detection of loader-1x1 along tracks
+    - Fix crash on non-item/fluid combinator inputs
+    - Removed trains need cleanup in available_trains
+---------------------------------------------------------------------------------------------------
 Version: 2.0.8
   Bugfixes:
     - Fix missing station control combinator output
