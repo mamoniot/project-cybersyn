@@ -121,7 +121,7 @@ end
 
 local condition_wait_inactive = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
 local condition_only_inactive = {condition_wait_inactive}
-local condition_unloading_order = {{type = "empty", compare_type = "and"}}
+local condition_unloading_order = {{type = "empty", compare_type = "and"}, condition_wait_inactive}
 local condition_direct_to_station = {{type = "time", compare_type = "and", ticks = 1}}
 ---@param stop LuaEntity
 ---@param manifest Manifest
