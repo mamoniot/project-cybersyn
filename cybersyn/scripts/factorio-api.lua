@@ -121,7 +121,8 @@ end
 
 local condition_wait_inactive = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
 local condition_only_inactive = {condition_wait_inactive}
-local condition_unloading_order = {{type = "empty", compare_type = "and"}, condition_wait_inactive}
+local condition_unloading_order = {{type = "empty", compare_type = "and"}}
+local condition_unloading_inactive_order = {{type = "empty", compare_type = "and"}, condition_wait_inactive}
 local condition_direct_to_station = {{type = "time", compare_type = "and", ticks = 1}}
 ---@param stop LuaEntity
 ---@param manifest Manifest
@@ -152,7 +153,14 @@ end
 ---@param enable_inactive boolean
 function create_unloading_order(stop, enable_inactive)
 	if enable_inactive then
-		return {station = stop.backer_name, wait_conditions = condition_only_inactive}
+		if mod_settings.allow_cargo_in_depot then
+			-- This implements the behavior specified in the documentation for
+			-- allow_cargo_in_depot. When enabled, trains only wait for inactivity
+			-- when unloading at requesters.
+			return {station = stop.backer_name, wait_conditions = condition_only_inactive}
+		else
+			return {station = stop.backer_name, wait_conditions = condition_unloading_inactive_order}
+		end
 	else
 		return {station = stop.backer_name, wait_conditions = condition_unloading_order}
 	end
