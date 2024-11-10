@@ -766,6 +766,23 @@ local function send_alert_for_train(train, icon, message)
 		end
 	end
 end
+
+--- Send an alert about a particular train station.
+---@param station LuaEntity Must be a train stop.
+---@param icon {}
+---@param message string
+local function send_alert_for_station(station, icon, message)
+	for _, player in pairs(station.force.players) do
+		player.add_custom_alert(
+		station,
+		icon,
+		{message},
+		true)
+		player.play_sound({path = ALERT_SOUND})
+	end
+end
+
+
 local send_alert_about_missing_train_icon = {name = MISSING_TRAIN_NAME, type = "fluid"}
 ---@param r_stop LuaEntity
 ---@param p_stop LuaEntity
@@ -872,6 +889,13 @@ function send_alert_cannot_path_between_surfaces(map_data, train)
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = {train, 7, map_data.total_ticks}
+end
+
+--- Alert user when a Cybersyn train arrives at a station with non-default
+--- vanilla priority. This usually means a missed delivery.
+---@param station LuaEntity Must be a train stop.
+function send_alert_arrived_station_non_default_priority(station)
+	send_alert_for_station(station, send_lost_train_alert_icon, "cybersyn-messages.arrived-station-non-default-priority")
 end
 
 ---@param train LuaTrain

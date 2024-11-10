@@ -441,6 +441,7 @@ function on_train_changed(event)
 	if train_e.state == defines.train_state.wait_station then
 		local stop = train_e.station
 		if stop and stop.valid and stop.name == "train-stop" then
+			-- Arrived at explicitly named stop
 			local id = stop.unit_number--[[@as uint]]
 			local depot = map_data.depots[id]
 			if depot then
@@ -450,7 +451,20 @@ function on_train_changed(event)
 					on_depot_broken(map_data, id, depot)
 				end
 			end
+
+			-- Check for invalid usage of priority
+			if stop.train_stop_priority ~= 50 then
+				-- If train under control of Cybersyn arrives at non default priority station, alert user.
+				local train = map_data.trains[train_id]
+				if train then
+					send_alert_arrived_station_non_default_priority(stop)
+				end
+			end
 		else
+			-- Arrived at stop specified by coordinates. This event fires
+			-- slightly before the train arrives at the real target stop.
+			-- NOTE: if Factorio API ever allows sending trains to particular
+			-- stops, this will have to be changed.
 			local train = map_data.trains[train_id]
 			if train then
 				local schedule = train_e.schedule
