@@ -1,5 +1,6 @@
 --By Mami
 require("scripts.constants")
+require("scripts.commands")
 require("scripts.global")
 require("scripts.lib")
 require("scripts.factorio-api")
