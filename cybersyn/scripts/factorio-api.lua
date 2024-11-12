@@ -894,8 +894,8 @@ end
 --- Alert user when a Cybersyn train arrives at a station with non-default
 --- vanilla priority. This usually means a missed delivery.
 ---@param station LuaEntity Must be a train stop.
-function send_alert_arrived_station_non_default_priority(station)
-	send_alert_for_station(station, send_lost_train_alert_icon, "cybersyn-messages.arrived-station-non-default-priority")
+function send_alert_station_non_default_priority(station)
+	send_alert_for_station(station, send_lost_train_alert_icon, "cybersyn-messages.station-non-default-priority")
 end
 
 ---@param train LuaTrain

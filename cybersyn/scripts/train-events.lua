@@ -457,7 +457,7 @@ function on_train_changed(event)
 				-- If train under control of Cybersyn arrives at non default priority station, alert user.
 				local train = map_data.trains[train_id]
 				if train then
-					send_alert_arrived_station_non_default_priority(stop)
+					send_alert_station_non_default_priority(stop)
 				end
 			end
 		else
@@ -503,6 +503,18 @@ function on_train_changed(event)
 		if path and path.total_distance > 4 then
 			local train = map_data.trains[train_id]
 			if train then
+				-- Check if train has been misdirected along a long rail path due to
+				-- the priority of the station at the end.
+				local last_rail = path.rails[#path.rails]
+				local to_stop = (last_rail and last_rail.valid) and (last_rail.get_rail_segment_stop(defines.rail_direction.front) or last_rail.get_rail_segment_stop(defines.rail_direction.back))
+				if to_stop and to_stop.train_stop_priority ~= 50 then
+					send_alert_station_non_default_priority(to_stop)
+					-- Fallthrough: still executing normal cybersyn behavior here even
+					-- though it will probably cause a wrong delivery. (This may be
+					-- a case where we want to lock the train or give it an invalid
+					-- schedule as is done elsewhere in the code.)
+				end
+				
 				on_train_leaves_stop(map_data, mod_settings, train_id, train)
 			end
 		end
