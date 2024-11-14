@@ -72,7 +72,7 @@ function util.slot_table_build_from_manifest(manifest, color)
       if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
         children[#children + 1] = {
           type = "sprite-button",
-          enabled = false,
+          enabled = true,
           style = "ltnm_small_slot_button_" .. color,
           sprite = sprite,
           number = count,
@@ -116,7 +116,7 @@ function util.slot_table_build_from_station(station)
         if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
           children[#children + 1] = {
             type = "sprite-button",
-            enabled = false,
+            enabled = true,
             style = "ltnm_small_slot_button_" .. color,
             sprite = sprite,
             tooltip = {
@@ -153,7 +153,7 @@ function util.slot_table_build_from_deliveries(station)
       if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
         children[#children + 1] = {
           type = "sprite-button",
-          enabled = false,
+          enabled = true,
           style = "ltnm_small_slot_button_" .. color,
           sprite = sprite,
           tooltip = {
@@ -193,7 +193,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
       if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
         children[#children + 1] = {
           type = "sprite-button",
-          enabled = false,
+          enabled = true,
           style = "ltnm_small_slot_button_" .. color,
           sprite = sprite,
           tooltip = {
@@ -235,7 +235,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
         if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
           children[#children + 1] = {
             type = "sprite-button",
-            enabled = false,
+            enabled = true,
             style = "ltnm_small_slot_button_" .. color,
             sprite = sprite,
             tooltip = {
@@ -253,7 +253,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
         if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
           children[#children + 1] = {
             type = "sprite-button",
-            enabled = false,
+            enabled = true,
             style = "ltnm_small_slot_button_" .. color,
             sprite = sprite,
             tooltip = {
