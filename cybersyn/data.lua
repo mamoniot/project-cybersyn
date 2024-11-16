@@ -6,6 +6,7 @@ require('prototypes.item')
 require('prototypes.tech')
 require('prototypes.entity')
 require('prototypes.signal')
+require('prototypes.sprite')
 require('prototypes.misc')
 
 require('prototypes.gui-style')
@@ -20,6 +21,7 @@ data:extend({
 	priority_signal,
 	r_threshold_signal,
 	locked_slots_signal,
+	both_wagon_sprite,
 	missing_train_icon,
 	lost_train_icon,
 	nonempty_train_icon,

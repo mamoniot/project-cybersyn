@@ -147,6 +147,117 @@ local function handle_setting(e)
 
 	combinator_update(storage, comb)
 end
+
+---@param combId integer
+---@return string
+local function generate_stop_layout_text(combId)
+	local targetStop = storage.to_stop[combId]
+	local stopLayout = nil
+	if targetStop ~= nil then
+		local station = storage.stations[targetStop.unit_number]
+		local refueler = storage.refuelers[targetStop.unit_number]
+		if station ~= nil then
+			stopLayout = station.layout_pattern
+		elseif refueler ~= nil then
+			stopLayout = refueler.layout_pattern
+		end
+	end
+
+	return serpent.line(stopLayout)
+end
+
+local LAYOUT_ITEM_MAP = {
+	[0] = "item/locomotive",
+	[1] = "item/cargo-wagon",
+	[2] = "item/fluid-wagon",
+	[3] = "cybersyn-both-wagon",
+	unknown = "utility/questionmark"
+}
+
+---@param combId integer
+---@return table[]
+local function generate_stop_layout_items(combId)
+	local targetStop = storage.to_stop[combId]
+	local stopLayout = nil
+	if targetStop ~= nil then
+		local station = storage.stations[targetStop.unit_number]
+		local refueler = storage.refuelers[targetStop.unit_number]
+		if station ~= nil then
+			stopLayout = station.layout_pattern
+		elseif refueler ~= nil then
+			stopLayout = refueler.layout_pattern
+		end
+	end
+
+	if not stopLayout then
+		return {
+			{
+				type = "sprite",
+				sprite = "utility/rail_path_not_possible",
+				style_mods = { size = 32 },
+				resize_to_sprite = false
+			}
+		}
+	end
+
+	local items = {}
+
+	local last_i = 1
+	for i, type in pairs(stopLayout) do
+		if type ~= 0 and type ~= 1 and type ~= 2 and type ~= 3 then
+			type = "unknown"
+		end
+		if i - last_i > 1 then
+			for _ = 1, i - last_i - 1 do
+				table.insert(items, {
+					type = "sprite",
+					sprite = LAYOUT_ITEM_MAP[0],
+					style_mods = { size = 32 },
+					resize_to_sprite = false,
+					ignored_by_interaction = true
+				})
+			end
+		end
+		table.insert(items, {
+			type = "sprite",
+			sprite = LAYOUT_ITEM_MAP[type],
+			style_mods = { size = 32 },
+			resize_to_sprite = false,
+			ignored_by_interaction = true
+		})
+		last_i = i
+	end
+
+	return items
+end
+
+local function get_allow_list_section(player_index)
+	local player = game.get_player(player_index)
+	if player.opened.name == "cybersyn-comnator" then
+		return player.opened.frame.vflow.bottom_allowlist
+	end
+end
+
+local function update_allow_list_section(player_index, comb_unit_number)
+	local layoutSection = get_allow_list_section(player_index)
+	if not layoutSection then return end
+	local selected_index, signal, switch_state, bits = get_comb_gui_settings(storage.to_comb[comb_unit_number])
+	--only for Station (1) and Refueler (3)
+	if ((selected_index == 1 or selected_index == 3) and setting_flip(bits, SETTING_DISABLE_ALLOW_LIST)) then
+		layoutSection.visible = true
+		-- layoutSection.allow_list_label.caption = generate_stop_layout(comb_unit_number)
+		local flow = layoutSection.allow_list_items
+		flow.clear()
+		local items = generate_stop_layout_items(comb_unit_number)
+		for _, item in pairs(items) do
+			flib_gui.add(flow, item)
+		end
+		flow.tooltip = generate_stop_layout_text(comb_unit_number)
+	else
+		layoutSection.visible = false
+	end
+end
+
 ---@param e EventData.on_gui_checked_state_changed
 local function handle_setting_flip(e)
 	local element = e.element
@@ -159,46 +270,6 @@ local function handle_setting_flip(e)
 	combinator_update(storage, comb)
 
 	update_allow_list_section(e.player_index, comb.unit_number)
-end
-
-local function generate_stop_layout(combId)
-	local targetStop = storage.to_stop[combId]
-	local stopLayout = ""
-	if targetStop ~= nil then
-		local station = storage.stations[targetStop.unit_number]
-		local refueler = storage.refuelers[targetStop.unit_number]
-		if station ~= nil then
-			stopLayout = station.layout_pattern
-		elseif refueler ~= nil then
-			stopLayout = refueler.layout_pattern
-		end
-	end
-
-	--TODO: improve readability
-	return serpent.line(stopLayout)
-end
-
-function get_allow_list_section(player_index)
-	local player = game.get_player(player_index)
-	if player.opened.name == "cybersyn-combinator" then
-		--this WILL crash if the order of elements in the UI is modified
-		--TODO: make this dynamic based on property names? or store a ref to the layout preview section?
-		return player.opened.children[2].children[1].children[8]
-	end
-end
-
-function update_allow_list_section(player_index, comb_unit_number)
-	local layoutSection = get_allow_list_section(player_index)
-	if layoutSection ~= nil then
-		local selected_index, signal, switch_state, bits = get_comb_gui_settings(storage.to_comb[comb_unit_number])
-		--only for Station (1) and Refueler (3)
-		if ((selected_index == 1 or selected_index == 3) and setting_flip(bits, SETTING_DISABLE_ALLOW_LIST)) then
-			layoutSection.visible = true
-			layoutSection.children[2].caption = generate_stop_layout(comb_unit_number)
-		else
-			layoutSection.visible = false
-		end
-	end
 end
 
 ---@param e EventData.on_gui_click
@@ -267,11 +338,13 @@ function gui_opened(comb, player)
 	local selected_index, signal, switch_state, bits = get_comb_gui_settings(comb)
 
 	local showLayout = false
-	local layoutText = ""
+	local layoutItems = {}
+	local layoutTooltip = nil
 	--only for Station (1) and Refueler (3)
 	if ((selected_index == 1 or selected_index == 3) and setting_flip(bits, SETTING_DISABLE_ALLOW_LIST)) then
 		showLayout = true
-		layoutText = generate_stop_layout(comb.unit_number)
+		layoutItems = generate_stop_layout_items(comb.unit_number)
+		layoutTooltip = generate_stop_layout_text(comb.unit_number)
 	end
 
 	local is_ghost = comb.name == "entity-ghost"
@@ -324,9 +397,9 @@ function gui_opened(comb, player)
 						{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, caption={"cybersyn-gui.enable-inactive-description"}},
 					}},
 					--preview allow list
-					{type="flow", name="bottom-allowlist", direction="vertical", style_mods={vertical_align="top"}, visible=showLayout, children={
-						{type="label", name="allow_list_label_title", style="heading_2_label", caption={"cybersyn-gui.allow-list-preview"}, tooltip={"cybersyn-gui.allow-list-preview-tooltip"}, style_mods={top_padding=8}},
-						{type="label", name="allow_list_label", caption=layoutText, style_mods={top_padding=8}},
+					{type="flow", name="bottom_allowlist", direction="vertical", style_mods={vertical_align="top"}, visible=showLayout, children={
+						{type="label", name="allow_list_heading", style="heading_2_label", caption={"cybersyn-gui.allow-list-preview"}, tooltip={"cybersyn-gui.allow-list-preview-tooltip"}, style_mods={top_padding=8}},
+						{type="flow", name="allow_list_items", direction = "horizontal", tooltip = layoutTooltip, children = layoutItems},
 						{type="button", name="allow_list_refresh", tags={id=comb.unit_number}, tooltip={"cybersyn-gui.allow-list-refresh-tooltip"}, caption={"cybersyn-gui.allow-list-refresh-description"}, enabled = not is_ghost, handler=handle_refresh_allow},
 					}}
 				}}
