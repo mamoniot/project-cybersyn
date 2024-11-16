@@ -267,6 +267,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 				end
 			end
 		end
+		color_train_by_stop(train, map_data.stations[train.r_station_id].entity_stop)
 		interface_raise_train_status_changed(train_id, STATUS_P, STATUS_TO_R)
 	elseif train.status == STATUS_R then
 		local station = map_data.stations[train.r_station_id]
@@ -305,6 +306,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 			if not train.disable_bypass then
 				train.status = STATUS_TO_D_BYPASS
 				add_available_train(map_data, train_id, train)
+				color_train_by_stop(train, map_data.depots[train.depot_id].entity_stop)
 				interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_D_BYPASS)
 				return
 			end
@@ -356,6 +358,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 							train.status = STATUS_TO_F
 							train.refueler_id = best_refueler_id
 							refueler.trains_total = refueler.trains_total + 1
+							color_train_by_stop(train, map_data.refuelers[train.refueler_id].entity_stop)
 							interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_F)
 							return
 						end
@@ -365,6 +368,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		end
 		--the train has not qualified for depot bypass nor refueling
 		train.status = STATUS_TO_D
+		color_train_by_stop(train, map_data.depots[train.depot_id].entity_stop)
 		interface_raise_train_status_changed(train_id, STATUS_R, STATUS_TO_D)
 	elseif train.status == STATUS_F then
 		local refueler = map_data.refuelers[train.refueler_id]
@@ -380,6 +384,7 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		else
 			train.status = STATUS_TO_D
 		end
+		color_train_by_stop(train, map_data.depots[train.depot_id].entity_stop)
 		interface_raise_train_status_changed(train_id, STATUS_F, train.status)
 	elseif train.status == STATUS_D then
 		--The train is leaving the depot without a manifest, the player likely intervened
