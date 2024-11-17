@@ -212,6 +212,7 @@ local function handle_refresh_allow(e)
     update_allow_list_section(e.player_index, combId)
 end
 
+---@param event EventData.on_gui_opened
 local function on_gui_opened(event)
 	local entity = event.entity
 	if not entity or not entity.valid then return end
@@ -223,6 +224,7 @@ local function on_gui_opened(event)
 	gui_opened(entity, player)
 end
 
+---@param event EventData.on_gui_closed
 local function on_gui_closed(event)
 	local element = event.element
 	if not element or element.name ~= COMBINATOR_NAME then return end
