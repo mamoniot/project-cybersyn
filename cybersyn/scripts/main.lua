@@ -264,6 +264,10 @@ local function on_combinator_built(map_data, comb, tags)
 	local pos_x = comb.position.x
 	local pos_y = comb.position.y
 
+	if tags and tags.ghost_unit_number then
+		gui_entity_destroyed(tags.ghost_unit_number --[[@as integer]], true)
+	end
+
 	local search_area
 	if comb.direction == defines.direction.north or comb.direction == defines.direction.south then
 		search_area = {
@@ -433,6 +437,8 @@ end
 function on_combinator_ghost_broken(map_data, comb)
 	---@type uint
 	local comb_id = comb.unit_number
+
+	gui_entity_destroyed(comb_id, true)
 
 	map_data.to_comb[comb_id] = nil
 	map_data.to_comb_params[comb_id] = nil
