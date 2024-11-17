@@ -73,6 +73,7 @@ function util.slot_table_build_from_manifest(manifest, color)
         children[#children + 1] = {
           type = "sprite-button",
           enabled = true,
+          ignored_by_interaction = true,
           style = "ltnm_small_slot_button_" .. color,
           sprite = sprite,
           number = count,
@@ -117,6 +118,7 @@ function util.slot_table_build_from_station(station)
           children[#children + 1] = {
             type = "sprite-button",
             enabled = true,
+            ignored_by_interaction = true,
             style = "ltnm_small_slot_button_" .. color,
             sprite = sprite,
             tooltip = {
@@ -154,6 +156,7 @@ function util.slot_table_build_from_deliveries(station)
         children[#children + 1] = {
           type = "sprite-button",
           enabled = true,
+          ignored_by_interaction = true,
           style = "ltnm_small_slot_button_" .. color,
           sprite = sprite,
           tooltip = {
@@ -194,6 +197,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
         children[#children + 1] = {
           type = "sprite-button",
           enabled = true,
+          ignored_by_interaction = true,
           style = "ltnm_small_slot_button_" .. color,
           sprite = sprite,
           tooltip = {
@@ -236,6 +240,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
           children[#children + 1] = {
             type = "sprite-button",
             enabled = true,
+            ignored_by_interaction = true,
             style = "ltnm_small_slot_button_" .. color,
             sprite = sprite,
             tooltip = {
@@ -254,6 +259,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
           children[#children + 1] = {
             type = "sprite-button",
             enabled = true,
+            ignored_by_interaction = true,
             style = "ltnm_small_slot_button_" .. color,
             sprite = sprite,
             tooltip = {
