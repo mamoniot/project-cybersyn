@@ -408,6 +408,9 @@ function on_combinator_broken(map_data, comb)
 	--NOTE: we do not check for wagon manifest combinators and update their stations, it is assumed they will be lazy deleted later
 	---@type uint
 	local comb_id = comb.unit_number
+
+	gui_entity_destroyed(comb_id, false)
+
 	local out = map_data.to_output[comb_id]
 
 	local type, id, entity, stop = comb_to_internal_entity(map_data, comb, comb_id)
