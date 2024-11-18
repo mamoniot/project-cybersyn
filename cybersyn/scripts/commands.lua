@@ -82,9 +82,11 @@ local function find_problems(report)
 			if type ~= MODE_DEPOT and depots[ts.backer_name] then
 				report(ts, {"cybersyn-problems.name-overlap-with-depot"})
 			end
-			if type ~= MODE_REFUELER and refuelers[ts.backer_name] then
-				report(ts, {"cybersyn-problems.name-overlap-with-refueler"})
-			end
+
+			-- TODO decide if this is actually a problem
+			-- if type ~= MODE_REFUELER and refuelers[ts.backer_name] then
+			--	report(ts, {"cybersyn-problems.name-overlap-with-refueler"})
+			-- end
 		end
 	end
 end
