@@ -2,7 +2,8 @@
 --- @param stop LuaEntity
 --- @param message LocalisedString
 local function report_print(stop, message)
-	local stop_info = string.format("[train-stop=%d] [gps=%d,%d,%s]", stop.unit_number, stop.position.x, stop.position.y, stop.surface.name)
+	-- local stop_info = string.format("[train-stop=%d] [gps=%d,%d,%s]", stop.unit_number, stop.position.x, stop.position.y, stop.surface.name)
+	local stop_info = string.format("[train-stop=%d]", stop.unit_number)
 	game.print({"cybersyn-problems.message-wrapper", stop_info, message})
 end
 
