@@ -177,6 +177,18 @@ local LAYOUT_ITEM_MAP = {
 ---@param combId integer
 ---@return table[]
 local function generate_stop_layout_items(combId)
+	if storage.to_comb[combId] and storage.to_comb[combId].name == "entity-ghost" then
+		return {
+			{
+				type ="sprite",
+				sprite = "entity/entity-ghost",
+				style_mods = { size = 32 },
+				resize_to_sprite = false,
+				ignored_by_interaction = true
+			}
+		}
+	end
+
 	local targetStop = storage.to_stop[combId]
 	local stopLayout = nil
 	if targetStop ~= nil then
