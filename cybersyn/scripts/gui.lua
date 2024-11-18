@@ -195,7 +195,8 @@ local function generate_stop_layout_items(combId)
 				type = "sprite",
 				sprite = "utility/rail_path_not_possible",
 				style_mods = { size = 32 },
-				resize_to_sprite = false
+				resize_to_sprite = false,
+				ignored_by_interaction = true
 			}
 		}
 	end
