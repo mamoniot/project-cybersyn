@@ -2,9 +2,12 @@
 --- @param stop LuaEntity
 --- @param message LocalisedString
 local function report_print(stop, message)
-	-- local stop_info = string.format("[train-stop=%d] [gps=%d,%d,%s]", stop.unit_number, stop.position.x, stop.position.y, stop.surface.name)
-	local stop_info = string.format("[train-stop=%d]", stop.unit_number)
-	game.print({"cybersyn-problems.message-wrapper", stop_info, message})
+	if stop and stop.valid then
+		local stop_info = string.format("[train-stop=%d]", stop.unit_number)
+		game.print({"cybersyn-problems.message-wrapper", stop_info, message})
+	else
+		game.print(message)
+	end
 end
 
 local function report_noop(stop, message)
@@ -67,7 +70,14 @@ end
 
 --- @param report function(LuaEntity, LocalisedString)
 local function find_problems(report)
-	local types, stations, depots, refuelers = check_single_stations_and_collect_data(report)
+	local problem_counter = 0
+
+	local counting_report = function(stop, message)
+		problem_counter = problem_counter + 1
+		report(stop, message)
+	end
+
+	local types, stations, depots, refuelers = check_single_stations_and_collect_data(counting_report)
 
 	-- global checks 
 	for _,s in pairs(game.surfaces) do
@@ -75,12 +85,12 @@ local function find_problems(report)
 			-- priority is only problematic when a station is named the same as a Cybersyn requester/provider
 			local name = ts.backer_name
 			if ts.train_stop_priority ~= 50 and (stations[name] or depots[name] or refuelers[name]) then
-				report(ts, {"cybersyn-problems.non-default-priority"})
+				counting_report(ts, {"cybersyn-problems.non-default-priority"})
 			end
 
 			local type = types[ts.unit_number]
 			if type ~= MODE_DEPOT and depots[ts.backer_name] then
-				report(ts, {"cybersyn-problems.name-overlap-with-depot"})
+				counting_report(ts, {"cybersyn-problems.name-overlap-with-depot"})
 			end
 
 			-- TODO decide if this is actually a problem
@@ -88,6 +98,10 @@ local function find_problems(report)
 			--	report(ts, {"cybersyn-problems.name-overlap-with-refueler"})
 			-- end
 		end
+	end
+
+	if problem_counter == 0 then
+		report(nil, {"cybersyn-problems.no-problems-found"})
 	end
 end
 
