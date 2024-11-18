@@ -242,7 +242,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 				tags = { station_id = station_id }
 			},
 			--templates.status_indicator(widths.stations.status, true), --repurposing status column for network name
-			{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = network_sprite, },
+			{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = true, ignored_by_interaction = true, sprite = network_sprite, },
 			{ type = "label", style_mods = { width = widths.stations.network_id, horizontal_align = "center" }, caption = network_mask },
 			templates.small_slot_table(widths.stations, color, "provided_requested"),
 			templates.small_slot_table(widths.stations, color, "shipments"),

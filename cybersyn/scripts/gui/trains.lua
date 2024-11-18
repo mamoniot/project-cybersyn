@@ -237,7 +237,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 					type = "frame",
 					style = "ltnm_table_row_frame_" .. color,
 					style_mods = { width = widths.trains.status },
-					{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = false, sprite = network_sprite, number = network_id },
+					{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = true, ignored_by_interaction = true, sprite = network_sprite, number = network_id },
 				},
 				{
 					type = "label",

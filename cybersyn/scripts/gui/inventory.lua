@@ -177,7 +177,8 @@ function inventory_tab.build(map_data, player_data)
       provided_children[#provided_children+1] = {
         type = "sprite-button",
         style = "flib_slot_button_green",
-        enabled = false,
+        enabled = true,
+        ignored_by_interaction = true,
         sprite = sprite,
         number = count,
         tooltip = { "",
@@ -201,7 +202,8 @@ function inventory_tab.build(map_data, player_data)
       requested_children[#requested_children+1] = {
         type = "sprite-button",
         style = "flib_slot_button_red",
-        enabled = false,
+        enabled = true,
+        ignored_by_interaction = true,
         sprite = sprite,
         number = count,
         tooltip = { "",
@@ -225,7 +227,8 @@ function inventory_tab.build(map_data, player_data)
       in_transit_children[#in_transit_children+1] = {
         type = "sprite-button",
         style = "flib_slot_button_blue",
-        enabled = false,
+        enabled = true,
+        ignored_by_interaction = true,
         sprite = sprite,
         number = count,
         tooltip = { "",
