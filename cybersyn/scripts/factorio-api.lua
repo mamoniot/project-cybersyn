@@ -114,6 +114,24 @@ function get_network_mask(e, network_name)
 end
 
 
+--- Sets colors of all locomotives of the train to the color of the given station.
+--- Respects the copy_color_from_train_stop user setting.
+---@param train LuaTrain
+---@param station LuaEntity
+function color_train_by_stop(train, station)
+	for _, locomotive in ipairs(train.locomotives.front_movers) do
+		if locomotive.copy_color_from_train_stop then
+			locomotive.color = station.color
+		end
+	end
+	for _, locomotive in ipairs(train.locomotives.back_movers) do
+		if locomotive.copy_color_from_train_stop then
+			locomotive.color = station.color
+		end
+	end
+end
+
+
 ------------------------------------------------------------------------------
 --[[train schedules]]--
 ------------------------------------------------------------------------------

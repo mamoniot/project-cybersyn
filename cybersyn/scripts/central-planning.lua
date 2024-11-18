@@ -185,6 +185,7 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 		r_station.display_state = 1
 		update_display(map_data, r_station)
 
+		color_train_by_stop(train.entity, p_station.entity_stop)
 		interface_raise_train_status_changed(train_id, old_status, STATUS_TO_P)
 	else
 		interface_raise_train_dispatch_failed(train_id)
