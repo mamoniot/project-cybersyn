@@ -3,3 +3,6 @@
 .vscode/settings.json
 .vscode/factorio/*
 .idea
+
+# Krita autosave files
+*-autosave.kra
