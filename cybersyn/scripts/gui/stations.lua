@@ -294,10 +294,7 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
 	end
 
 	if e.shift then
-		if station_entity.surface ~= player.surface then
-			util.error_flying_text(player, { "cybersyn-message.error-cross-surface-camera-invalid" })
-		else
-			player.zoom_to_world(station_entity.position, 1, station_entity)
+			player.centered_on = station_entity
 
 			rendering.draw_circle({
 				color = constants.colors.red.tbl,
@@ -311,7 +308,6 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
 			})
 
 			if not player_data.pinning then util.close_manager_window(player, player_data, refs) end
-		end
 	elseif e.control then
 		if station_comb1 ~= nil and station_comb1.valid then
 			player.opened = station_comb1
