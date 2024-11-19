@@ -219,7 +219,7 @@ end
 
 local function get_allow_list_section(player_index)
 	local player = game.get_player(player_index)
-	if player.opened.name == "cybersyn-comnator" then
+	if player.opened.name == COMBINATOR_NAME then
 		return player.opened.frame.vflow.bottom_allowlist
 	end
 end
