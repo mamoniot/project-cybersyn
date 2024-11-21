@@ -32,9 +32,18 @@ priority_signal = {
 	subgroup = "cybersyn-signal",
 	order = "c"
 }
-inactivity_signal = {
+inactivity_signal_load = {
 	type = "virtual-signal",
-	name = SIGNAL_INACTIVITY_TIME,
+	name = INACTIVITY_TIME_LOAD,
+	icon = "__cybersyn__/graphics/icons/request-threshold.png",
+	icon_size = 64,
+	icon_mipmaps = 4,
+	subgroup = "cybersyn-signal",
+	order = "c"
+}
+inactivity_signal_unload = {
+	type = "virtual-signal",
+	name = INACTIVITY_TIME_UNLOAD,
 	icon = "__cybersyn__/graphics/icons/request-threshold.png",
 	icon_size = 64,
 	icon_mipmaps = 4,

@@ -30,14 +30,18 @@
 ---@field public se_get_space_elevator_name {}?
 ---@field public se_get_zone_from_surface_index {}?
 
----@class Station
+---@class ScheduleSettings
+---@field public enable_inactive true?
+---@field public inactivity_time_load int? >= 0 --transient
+---@field public inactivity_time_unload int? >= 0 --transient
+
+---@class Station: ScheduleSettings
 ---@field public entity_stop LuaEntity
 ---@field public entity_comb1 LuaEntity
 ---@field public entity_comb2 LuaEntity?
 ---@field public is_p true?
 ---@field public is_r true?
 ---@field public is_stack true?
----@field public enable_inactive true?
 ---@field public allows_all_trains true?
 ---@field public deliveries_total int
 ---@field public last_delivery_tick int
@@ -46,7 +50,6 @@
 ---@field public item_priority int? --transient
 ---@field public r_threshold int >= 0 --transient
 ---@field public locked_slots int >= 0 --transient
----@field public inactivity_time int? >= 0 --transient
 ---@field public network_name string?
 ---@field public network_mask int|{[string]: int} --transient
 ---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found
