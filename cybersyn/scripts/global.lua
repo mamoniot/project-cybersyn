@@ -46,6 +46,7 @@
 ---@field public item_priority int? --transient
 ---@field public r_threshold int >= 0 --transient
 ---@field public locked_slots int >= 0 --transient
+---@field public inactivity_time int? >= 0 --transient
 ---@field public network_name string?
 ---@field public network_mask int|{[string]: int} --transient
 ---@field public wagon_combs {[int]: LuaEntity}?--NOTE: allowed to be invalid entities or combinators with the wrong operation, these must be checked and lazy deleted when found

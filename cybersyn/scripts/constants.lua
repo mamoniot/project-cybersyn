@@ -7,6 +7,7 @@ NONEMPTY_TRAIN_NAME = "cybersyn-nonempty-train"
 SIGNAL_PRIORITY = "cybersyn-priority"
 REQUEST_THRESHOLD = "cybersyn-request-threshold"
 LOCKED_SLOTS = "cybersyn-locked-slots"
+SIGNAL_INACTIVITY_TIME = "cybersyn-inactivity-time"
 
 COMBINATOR_NAME = "cybersyn-combinator"
 COMBINATOR_OUT_NAME = "cybersyn-combinator-output"

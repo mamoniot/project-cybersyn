@@ -19,6 +19,7 @@ data:extend({
 	cybersyn_tech,
 	subgroup_signal,
 	priority_signal,
+	inactivity_signal,
 	r_threshold_signal,
 	locked_slots_signal,
 	both_wagon_sprite,

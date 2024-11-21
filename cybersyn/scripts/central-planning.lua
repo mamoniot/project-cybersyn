@@ -126,7 +126,13 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 	local is_at_depot = remove_available_train(map_data, train_id, train)
 	--NOTE: we assume that the train is not being teleported at this time
 	--NOTE: set_manifest_schedule is allowed to cancel the delivery at the last second if applying the schedule to the train makes it lost and is_at_depot == false
-	if set_manifest_schedule(map_data, train.entity, depot.entity_stop, not train.use_any_depot, p_station.entity_stop, p_station.enable_inactive, r_station.entity_stop, r_station.enable_inactive, manifest, is_at_depot) then
+	if set_manifest_schedule(
+		map_data, train.entity,
+		depot.entity_stop, not train.use_any_depot,
+		p_station.entity_stop, p_station.enable_inactive, p_station.inactivity_time,
+		r_station.entity_stop, r_station.enable_inactive, r_station.inactivity_time,
+		manifest, is_at_depot)
+	then
 		local old_status = train.status
 		train.status = STATUS_TO_P
 		train.p_station_id = p_station_id
@@ -677,6 +683,7 @@ local function tick_poll_station(map_data, mod_settings)
 	station.r_threshold = mod_settings.r_threshold
 	station.priority = mod_settings.priority
 	station.item_priority = nil
+	station.inactivity_time = nil
 	station.locked_slots = mod_settings.locked_slots
 	local is_each = station.network_name == NETWORK_EACH
 	if is_each then
@@ -725,6 +732,8 @@ local function tick_poll_station(map_data, mod_settings)
 						station.r_threshold = abs(item_count)
 					elseif item_name == LOCKED_SLOTS then
 						station.locked_slots = max(item_count, 0)
+					elseif item_name == SIGNAL_INACTIVITY_TIME then
+						station.inactivity_time = item_count > 0 and item_count*60 or nil -- convert to ticks
 					elseif is_each then
 						station.network_mask[item_name] = item_count
 					end
