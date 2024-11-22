@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.11
+  Changes:
+  - Expand the problem detection command (/cybersyn-find-priorities becomes /cybersyn-find-problems with additional inspections)
+  - Add support for ghost combinators
+  - Color all locomotives of a train by next stop if set by user
+  - Implement graphical allow list display
+  Bugfixes:
+    - Fix crash when station is shift-clicked in manager
+    - Fix colors of icons in manager
+  Translation:
+    - Translated in French
+---------------------------------------------------------------------------------------------------
 Version: 2.0.10
   Changes:
     - Cybersyn will now detect if a train is redirected to different station due to vanilla priority and will show a warning message
