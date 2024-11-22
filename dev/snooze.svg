@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="64"
+   height="64"
+   viewBox="0 0 64 64"
+   version="1.1"
+   id="svg5"
+   xml:space="preserve"
+   inkscape:version="1.2.2 (732a01da63, 2022-12-09)"
+   sodipodi:docname="snooze.svg"
+   inkscape:export-filename="snooze_1.png"
+   inkscape:export-xdpi="12"
+   inkscape:export-ydpi="12"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><sodipodi:namedview
+     id="namedview7"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="px"
+     showgrid="false"
+     inkscape:zoom="11.346854"
+     inkscape:cx="42.346539"
+     inkscape:cy="32.652222"
+     inkscape:window-width="2020"
+     inkscape:window-height="1270"
+     inkscape:window-x="1773"
+     inkscape:window-y="35"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg5" /><defs
+     id="defs2" /><g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     style="display:inline"
+     transform="matrix(1.149274,0,0,1.149274,-4.8017713,-3.9257078)"><g
+       style="fill:#000000"
+       id="g2513"
+       transform="matrix(1.797327,0,0,1.797327,10.604973,9.1923756)"><path
+         d="m 12,4 c -4.879,0 -9,4.121 -9,9 0,4.879 4.121,9 9,9 4.879,0 9,-4.121 9,-9 0,-4.879 -4.121,-9 -9,-9 z m 0,16 C 8.206,20 5,16.794 5,13 5,9.206 8.206,6 12,6 c 3.794,0 7,3.206 7,7 0,3.794 -3.206,7 -7,7 z m 8.292,-13.292 -3.01,-3 1.412,-1.417 3.01,3 z M 6.698,3.707 3.708,6.706 2.29,5.294 l 2.99,-3 z"
+         id="path2501" /><path
+         d="M 14.832,10.555 A 1,1 0 0 0 14,9 H 9 v 2 h 3.132 L 9.168,15.445 A 1,1 0 0 0 10,17 h 5 v -2 h -3.132 z"
+         id="path2503" /></g></g></svg>

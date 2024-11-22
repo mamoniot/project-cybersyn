@@ -35,18 +35,20 @@ priority_signal = {
 inactivity_signal_load = {
 	type = "virtual-signal",
 	name = INACTIVITY_TIME_LOAD,
-	icon = "__cybersyn__/graphics/icons/request-threshold.png",
-	icon_size = 64,
-	icon_mipmaps = 4,
+	icons = {
+		{ icon = "__base__/graphics/icons/signal/signal_red.png", },
+		{ icon = "__cybersyn__/graphics/icons/clock-activity.png" },
+	},
 	subgroup = "cybersyn-signal",
-	order = "c"
+	order = "d"
 }
 inactivity_signal_unload = {
 	type = "virtual-signal",
 	name = INACTIVITY_TIME_UNLOAD,
-	icon = "__cybersyn__/graphics/icons/request-threshold.png",
-	icon_size = 64,
-	icon_mipmaps = 4,
+	icons = {
+		{ icon = "__base__/graphics/icons/signal/signal_blue.png", },
+		{ icon = "__cybersyn__/graphics/icons/clock-activity.png" },
+	},
 	subgroup = "cybersyn-signal",
-	order = "c"
+	order = "e"
 }
