@@ -1,16 +1,63 @@
+--- @param entity LuaEntity
+local function gps_text(entity)
+	local pos = entity.position
+	return string.format("[gps=%f,%f,%s]", pos.x, pos.y, entity.surface.name)
+end
 
---- @param stop LuaEntity
+--- @param entity LuaEntity
 --- @param message LocalisedString
-local function report_print(stop, message)
-	if stop and stop.valid then
-		local stop_info = string.format("[train-stop=%d]", stop.unit_number)
-		game.print({"cybersyn-problems.message-wrapper", stop_info, message})
+local function report_print(entity, message)
+	local location_info = nil
+
+	if entity and entity.valid then
+		if entity.name == "train-stop" then
+			location_info = string.format("[train-stop=%d]", entity.unit_number)
+		else
+			location_info = {"", gps_text(entity), " ", entity.localised_name}
+		end
+	end
+
+	if location_info then
+		game.print({"", location_info, " ", message})
 	else
 		game.print(message)
 	end
 end
 
 local function report_noop(stop, message)
+end
+
+local NORTH = defines.direction.north
+local SOUTH = defines.direction.south
+
+---@param comb LuaEntity
+local function combinator_search_area(comb)
+	local pos = comb.position
+	local dir = comb.direction
+
+	-- see on_combinator_built
+	if dir == NORTH or dir == SOUTH then
+		return {
+			{pos.x - 1.5, pos.y - 2},
+			{pos.x + 1.5, pos.y + 2}
+		}
+	else
+		return {
+			{pos.x - 2, pos.y - 1.5},
+			{pos.x + 2, pos.y + 1.5}
+		}
+	end
+end
+
+---@param station LuaEntity
+local function station_search_area(station)
+	local pos = station.position
+
+	-- see search_for_station_combinator
+	return  {
+		{pos.x - 2, pos.y - 2},
+		{pos.x + 2, pos.y + 2}
+	}
 end
 
 --- Find the names of all Cybersyn stations in the game.
@@ -33,7 +80,7 @@ local function check_single_stations_and_collect_data(report)
 			local depot  = nil
 			local refuel = nil
 
-			for _,c in pairs(s.find_entities_filtered {name="cybersyn-combinator", position=ts.position, radius=3}) do
+			for _,c in pairs(s.find_entities_filtered {name="cybersyn-combinator", area=station_search_area(ts)}) do
 				local op = c.get_control_behavior()
 				op = op and op.parameters.operation
 
@@ -97,6 +144,18 @@ local function find_problems(report)
 			-- if type ~= MODE_REFUELER and refuelers[ts.backer_name] then
 			--	report(ts, {"cybersyn-problems.name-overlap-with-refueler"})
 			-- end
+		end
+	end
+
+	for _,s in pairs(game.surfaces) do
+		for _,c in pairs(s.find_entities_filtered {name="cybersyn-combinator"}) do
+			if not next(s.find_entities_filtered {name="train-stop", area=combinator_search_area(c), limit=1}) then
+				local op = c.get_control_behavior()
+				op = op and op.parameters.operation
+				if op ~= MODE_WAGON then
+					report(c, {"cybersyn-problems.derelict-combinator"})
+				end
+			end
 		end
 	end
 
