@@ -404,12 +404,15 @@ end
 
 ---@param map_data MapData
 ---@param comb LuaEntity
-function on_combinator_broken(map_data, comb)
+---@param skip_gui_events boolean?
+function on_combinator_broken(map_data, comb, skip_gui_events)
 	--NOTE: we do not check for wagon manifest combinators and update their stations, it is assumed they will be lazy deleted later
 	---@type uint
 	local comb_id = comb.unit_number
 
-	gui_entity_destroyed(comb_id, false)
+	if not skip_gui_events then
+		gui_entity_destroyed(comb_id, false)
+	end
 
 	local out = map_data.to_output[comb_id]
 
@@ -437,11 +440,16 @@ function on_combinator_broken(map_data, comb)
 	map_data.to_comb_params[comb_id] = nil
 end
 
-function on_combinator_ghost_broken(map_data, comb)
+---@param map_data MapData
+---@param comb LuaEntity
+---@param skip_gui_events boolean?
+function on_combinator_ghost_broken(map_data, comb, skip_gui_events)
 	---@type uint
 	local comb_id = comb.unit_number
 
-	gui_entity_destroyed(comb_id, true)
+	if not skip_gui_events then
+		gui_entity_destroyed(comb_id, true)
+	end
 
 	map_data.to_comb[comb_id] = nil
 	map_data.to_comb_params[comb_id] = nil
@@ -496,10 +504,10 @@ function combinator_update(map_data, comb, reset_display)
 	if old_params ~= nil and params.operation ~= old_params.operation then
 		--NOTE: This is rather dangerous, we may need to actually implement operation changing
 		if is_ghost then
-			on_combinator_ghost_broken(map_data, comb)
+			on_combinator_ghost_broken(map_data, comb, true)
 			on_combinator_ghost_built(map_data, comb)
 		else
-			on_combinator_broken(map_data, comb)
+			on_combinator_broken(map_data, comb, true)
 			on_combinator_built(map_data, comb)
 			-- If anyone actually needs notification of changed ghosts, perhaps a new event can be added for that
 			interface_raise_combinator_changed(comb, old_params)

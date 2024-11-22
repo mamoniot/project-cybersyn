@@ -81,33 +81,6 @@ local function handle_close(e)
 		end
 	end
 end
----@param e EventData.on_gui_selection_state_changed
-local function handle_drop_down(e)
-	local element = e.element
-	if not element then return end
-	local comb = storage.to_comb[element.tags.id]
-	if not comb or not comb.valid then return end
-
-	set_visibility(element.parent.parent.parent.parent, element.selected_index)
-
-	if element.selected_index == 1 then
-		set_comb_operation(comb, MODE_PRIMARY_IO)
-	elseif element.selected_index == 2 then
-		set_comb_operation(comb, MODE_DEPOT)
-	elseif element.selected_index == 3 then
-		set_comb_operation(comb, MODE_REFUELER)
-	elseif element.selected_index == 4 then
-		set_comb_operation(comb, MODE_SECONDARY_IO)
-	elseif element.selected_index == 5 then
-		set_comb_operation(comb, MODE_WAGON)
-	else
-		return
-	end
-
-	combinator_update(storage, comb)
-
-	update_allow_list_section(e.player_index, comb.unit_number)
-end
 ---@param e EventData.on_gui_switch_state_changed
 local function handle_pr_switch(e)
 	local element = e.element
@@ -246,7 +219,7 @@ end
 
 local function get_allow_list_section(player_index)
 	local player = game.get_player(player_index)
-	if player.opened.name == "cybersyn-comnator" then
+	if player.opened.name == COMBINATOR_NAME then
 		return player.opened.frame.vflow.bottom_allowlist
 	end
 end
@@ -269,6 +242,34 @@ local function update_allow_list_section(player_index, comb_unit_number)
 	else
 		layoutSection.visible = false
 	end
+end
+
+---@param e EventData.on_gui_selection_state_changed
+local function handle_drop_down(e)
+	local element = e.element
+	if not element then return end
+	local comb = storage.to_comb[element.tags.id]
+	if not comb or not comb.valid then return end
+
+	set_visibility(element.parent.parent.parent.parent, element.selected_index)
+
+	if element.selected_index == 1 then
+		set_comb_operation(comb, MODE_PRIMARY_IO)
+	elseif element.selected_index == 2 then
+		set_comb_operation(comb, MODE_DEPOT)
+	elseif element.selected_index == 3 then
+		set_comb_operation(comb, MODE_REFUELER)
+	elseif element.selected_index == 4 then
+		set_comb_operation(comb, MODE_SECONDARY_IO)
+	elseif element.selected_index == 5 then
+		set_comb_operation(comb, MODE_WAGON)
+	else
+		return
+	end
+
+	combinator_update(storage, comb)
+
+	update_allow_list_section(e.player_index, comb.unit_number)
 end
 
 ---@param e EventData.on_gui_checked_state_changed
