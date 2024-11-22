@@ -227,7 +227,7 @@ end
 ---@param comb LuaEntity
 ---@param tags Tags?
 ---@return string? op
-local function combinator_build_init(map_data, comb, tags)
+function combinator_build_init(map_data, comb, tags)
 	local control = get_comb_control(comb)
 	local params = control.parameters
 	local op = params.operation
