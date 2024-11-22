@@ -153,7 +153,7 @@ local function find_problems(report)
 				local op = c.get_control_behavior()
 				op = op and op.parameters.operation
 				if op ~= MODE_WAGON then
-					report(c, {"cybersyn-problems.derelict-combinator"})
+					counting_report(c, {"cybersyn-problems.derelict-combinator"})
 				end
 			end
 		end
