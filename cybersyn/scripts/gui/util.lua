@@ -105,6 +105,10 @@ function util.slot_table_build_from_station(station)
       end
       local count = v.count
       local name = item.name
+      -- ignore negative if provide only and positive if request only
+      if (not station.is_r and count < 0) or (not station.is_p and count > 0) then
+        goto continue
+      end
       -- FIXME handle item.quality
       local sprite, img_path, item_string = util.generate_item_references(name)
       if sprite ~= nil then
