@@ -125,12 +125,13 @@ function inventory_tab.build(map_data, player_data)
       for _, v in pairs(comb1_signals) do
         local item = v.signal
         local count = v.count
+        local item_hash = hash_signal(item)
         if item.type ~= "virtual" then
           if station.is_p and count > 0 then
-            if inventory_provided[item.name] == nil then
-              inventory_provided[item.name] = count
+            if inventory_provided[item_hash] == nil then
+              inventory_provided[item_hash] = count
             else
-              inventory_provided[item.name] = inventory_provided[item.name] + count
+              inventory_provided[item_hash] = inventory_provided[item_hash] + count
             end
           end
           if station.is_r and count < 0 then
@@ -141,10 +142,10 @@ function inventory_tab.build(map_data, player_data)
             -- FIXME handle v.signal.quality
 
             if -count >= r_threshold then
-              if inventory_requested[item.name] == nil then
-                inventory_requested[item.name] = count
+              if inventory_requested[item_hash] == nil then
+                inventory_requested[item_hash] = count
               else
-                inventory_requested[item.name] = inventory_requested[item.name] + count
+                inventory_requested[item_hash] = inventory_requested[item_hash] + count
               end
             end
           end
@@ -154,13 +155,12 @@ function inventory_tab.build(map_data, player_data)
 
     local deliveries = station.deliveries
     if deliveries then
-      for item, count in pairs(deliveries) do
+      for item_hash, count in pairs(deliveries) do
         if count > 0 then
-          if inventory_in_transit[item] == nil then
-            inventory_in_transit[item] = 0
-            inventory_in_transit[item] = inventory_in_transit[item] + count
+          if inventory_in_transit[item_hash] == nil then
+            inventory_in_transit[item_hash] = count
           else
-            inventory_in_transit[item] = inventory_in_transit[item] + count
+            inventory_in_transit[item_hash] = inventory_in_transit[item_hash] + count
           end
         end
       end
@@ -171,7 +171,8 @@ function inventory_tab.build(map_data, player_data)
   local provided_children = {}
 
   local i = 0
-  for item, count in pairs(inventory_provided) do
+  for item_hash, count in pairs(inventory_provided) do
+    item, quality = unhash_signal(item_hash)
     i = i + 1
     local sprite, img_path, item_string = util.generate_item_references(item)
     if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
@@ -196,7 +197,8 @@ function inventory_tab.build(map_data, player_data)
   local requested_children = {}
 
   local i = 0
-  for item, count in pairs(inventory_requested) do
+  for item_hash, count in pairs(inventory_requested) do
+    item, quality = unhash_signal(item_hash)
     i = i + 1
     local sprite, img_path, item_string = util.generate_item_references(item)
     if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
@@ -221,7 +223,8 @@ function inventory_tab.build(map_data, player_data)
   local in_transit_children = {}
 
   local i = 0
-  for item, count in pairs(inventory_in_transit) do
+  for item_hash, count in pairs(inventory_in_transit) do
+    item, quality = unhash_signal(item_hash)
     i = i + 1
     local sprite, img_path, item_string = util.generate_item_references(item)
     if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then

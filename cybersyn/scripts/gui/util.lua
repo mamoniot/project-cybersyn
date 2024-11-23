@@ -155,7 +155,8 @@ function util.slot_table_build_from_deliveries(station)
   local children = {}
   local deliveries = station.deliveries
 
-  for item, count in pairs(deliveries) do
+  for item_hash, count in pairs(deliveries) do
+    item, quality = unhash_signal(item_hash)
 
     local sprite, img_path, item_string = util.generate_item_references(item)
     if sprite ~= nil then
