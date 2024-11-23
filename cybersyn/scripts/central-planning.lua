@@ -215,7 +215,8 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 		local item_type = v.signal.type or "item"
 		local item_hash = hash_signal(v.signal)
 		local r_item_count = v.count
-		local r_effective_item_count = r_item_count + (r_station.deliveries[item_hash] or 0)
+		local r_effective_adjustment = r_station.enable_manual_inventory and 0 or (r_station.deliveries[item_hash] or 0)
+		local r_effective_item_count = r_item_count + r_effective_adjustment
 		if r_effective_item_count < 0 and r_item_count < 0 then
 			local r_threshold = r_station.item_thresholds and r_station.item_thresholds[item_hash] or
 				r_station.r_threshold
@@ -755,7 +756,8 @@ local function tick_poll_station(map_data, mod_settings)
 			local item_hash = hash_signal(v.signal)
 			local item_type = v.signal.type or "item"
 			local item_count = v.count
-			local effective_item_count = item_count + (station.deliveries[item_hash] or 0)
+			local effective_adjustment = station.enable_manual_inventory and 0 or (station.deliveries[item_hash] or 0)
+			local effective_item_count = item_count + effective_adjustment
 
 			-- For each item in the combinator input, check if we should provide or request the given item. Requesting takes priority.
 			local is_not_requesting = true
