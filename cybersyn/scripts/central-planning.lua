@@ -81,8 +81,8 @@ function remove_manifest(map_data, station, manifest, sign)
 			deliveries[item_hash] = nil
 		end
 	end
-	set_comb2(map_data, station)
 	station.deliveries_total = station.deliveries_total - 1
+	set_comb2(map_data, station)
 	if station.deliveries_total == 0 and band(station.display_state, 1) > 0 then
 		station.display_state = station.display_state - 1
 		update_display(map_data, station)

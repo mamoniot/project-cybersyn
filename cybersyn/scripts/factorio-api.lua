@@ -802,6 +802,19 @@ function set_comb2(map_data, station)
 				min = sign*count
 			} -- constant combinator cannot have quality = nil (any)
 		end
+
+		-- Add train count virtual signal if enabled
+		if station.enable_train_count then
+			local train_count = station.deliveries_total
+			if train_count > 0 then
+				local i = #signals + 1
+				signals[i] = {
+					value = "signal-T",
+					min = train_count
+				}
+			end
+		end
+
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end
 end
