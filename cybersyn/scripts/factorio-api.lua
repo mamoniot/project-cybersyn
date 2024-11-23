@@ -140,6 +140,8 @@ end
 local condition_wait_inactive = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
 ---@type WaitCondition
 local condition_empty = {type = "empty", compare_type = "and"}
+---@type WaitCondition
+local condition_circuit = {type = "circuit", compare_type = "and", condition = {comparator = ">", first_signal = {type = "virtual", name = "signal-check"}, constant = 0}}
 ---@type WaitCondition[]
 local conditions_only_inactive = {condition_wait_inactive}
 ---@type WaitCondition[]
@@ -169,6 +171,9 @@ function create_loading_order(stop, manifest, schedule_settings)
 	if schedule_settings.enable_inactive then
 		conditions[#conditions + 1] = condition_wait_inactive
 	end
+	if schedule_settings.enable_circuit_condition then
+		conditions[#conditions + 1] = condition_circuit
+	end
 	return {station = stop.backer_name, wait_conditions = conditions}
 end
 
@@ -190,6 +195,10 @@ function create_unloading_order(stop, schedule_settings)
 	else
 		-- No inactivity condition = always wait for empty
 		conditions[#conditions + 1] = condition_empty
+	end
+
+	if schedule_settings.enable_circuit_condition then
+		conditions[#conditions + 1] = condition_circuit
 	end
 
 	return {station = stop.backer_name, wait_conditions = conditions}
