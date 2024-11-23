@@ -41,7 +41,7 @@ local styles = data.raw["gui-style"]["default"]
 -- BUTTON STYLES
 
 -- smaller flib slot buttons
-for _, color in ipairs({ "default", "red", "green", "blue" }) do
+for _, color in ipairs({ "default", "red", "green", "blue", "orange" }) do
   styles["ltnm_small_slot_button_" .. color] = {
     type = "button_style",
     parent = "flib_slot_button_" .. color,

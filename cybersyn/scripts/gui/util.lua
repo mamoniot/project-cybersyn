@@ -116,7 +116,16 @@ function util.slot_table_build_from_station(station)
         if count > 0 then
           color = "green"
         else
-          color = "red"
+          -- color sub-threshold requests orange, others red
+          local r_threshold = station.item_thresholds and station.item_thresholds[name] or station.r_threshold
+          if station.is_stack and item.type ~= "fluid" then
+            r_threshold = r_threshold*get_stack_size(nil, item.name) --first argument never used
+          end
+          if -count < r_threshold then
+            color = "orange"
+          else
+            color = "red"
+          end
         end
         if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
           children[#children + 1] = {
