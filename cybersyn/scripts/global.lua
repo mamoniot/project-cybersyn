@@ -33,6 +33,7 @@
 
 ---@class Cybersyn.StationScheduleSettings
 ---@field public enable_inactive true? If true, enable inactivity timeouts for trains at this station.
+---@field public enable_circuit_condition true? If `true`, trains directed to this station will be given a check>0 circuit condition in their schedule.
 
 ---@class Station: Cybersyn.StationScheduleSettings
 ---@field public entity_stop LuaEntity

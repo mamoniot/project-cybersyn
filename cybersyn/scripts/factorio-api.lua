@@ -483,12 +483,14 @@ function set_station_from_comb(station)
 	local allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
 	local is_stack = bit_extract(bits, SETTING_IS_STACK) > 0
 	local enable_inactive = bit_extract(bits, SETTING_ENABLE_INACTIVE) > 0
+	local enable_circuit_condition = bit_extract(bits, SETTING_ENABLE_CIRCUIT_CONDITION) > 0
 
 	station.allows_all_trains = allows_all_trains
 	station.is_stack = is_stack
 	station.enable_inactive = enable_inactive
 	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
 	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
+	station.enable_circuit_condition = enable_circuit_condition
 
 	local new_name = signal and signal.name or nil
 	if station.network_name ~= new_name then
