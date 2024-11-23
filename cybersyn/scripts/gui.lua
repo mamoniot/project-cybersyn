@@ -49,8 +49,10 @@ local function set_visibility(main_window, selected_index)
 
 	local vflow = main_window.frame.vflow--[[@as LuaGuiElement]]
 	local top_flow = vflow.top--[[@as LuaGuiElement]]
+	local mode_settings_flow = vflow.mode_settings--[[@as LuaGuiElement]]
 	local bottom_flow = vflow.bottom--[[@as LuaGuiElement]]
 	local first_settings = bottom_flow.first--[[@as LuaGuiElement]]
+	local second_settings = bottom_flow.second--[[@as LuaGuiElement]]
 	local depot_settings = bottom_flow.depot--[[@as LuaGuiElement]]
 
 	top_flow.is_pr_switch.visible = is_station
@@ -58,8 +60,9 @@ local function set_visibility(main_window, selected_index)
 	bottom_flow.network.visible = uses_network
 	first_settings.allow_list.visible = uses_allow_list
 	first_settings.is_stack.visible = is_station
-	bottom_flow.enable_inactive.visible = is_station
-	top_flow.enable_slot_barring.visible = is_wagon
+	second_settings.enable_inactive.visible = is_station
+	mode_settings_flow.enable_slot_barring.visible = is_wagon
+
 	depot_settings.visible = is_depot
 end
 
@@ -393,9 +396,12 @@ function gui_opened(comb, player)
 							{"cybersyn-gui.wagon-manifest"},
 						}},
 						{type="switch", name="is_pr_switch", allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, handler=handle_pr_switch, tags={id=comb.unit_number}},
+					}},
+					---Settings section for modal settings
+					{type="flow", name="mode_settings", direction="vertical", style_mods={horizontal_align="left"}, children={
 						{type="checkbox", name="enable_slot_barring", state=setting(bits, SETTING_ENABLE_SLOT_BARRING), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_SLOT_BARRING}, tooltip={"cybersyn-gui.enable-slot-barring-tooltip"}, caption={"cybersyn-gui.enable-slot-barring-description"}},
 					}},
-					---choose-elem-button
+					---Settings section for network
 					{type="line", style_mods={top_padding=10}},
 					{type="label", name="network_label", style="heading_2_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
 					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="top"}, children={
@@ -408,7 +414,9 @@ function gui_opened(comb, player)
 							{type="checkbox", name="allow_list", state=setting_flip(bits, SETTING_DISABLE_ALLOW_LIST), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_DISABLE_ALLOW_LIST}, tooltip={"cybersyn-gui.allow-list-tooltip"}, caption={"cybersyn-gui.allow-list-description"}},
 							{type="checkbox", name="is_stack", state=setting(bits, SETTING_IS_STACK), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_IS_STACK}, tooltip={"cybersyn-gui.is-stack-tooltip"}, caption={"cybersyn-gui.is-stack-description"}},
 						}},
-						{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, caption={"cybersyn-gui.enable-inactive-description"}},
+						{type="flow", name="second", direction="vertical", children={
+							{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, caption={"cybersyn-gui.enable-inactive-description"}},
+						}},
 					}},
 					--preview allow list
 					{type="flow", name="bottom_allowlist", direction="vertical", style_mods={vertical_align="top"}, visible=showLayout, children={
