@@ -292,6 +292,16 @@ local default_orange_color = {
   b = 0
 }
 
+styles.ltnm_label_signal_count = {
+  type = "label_style",
+  parent = "count_label",
+  size = {36, 36},
+  horizontal_align = "right",
+  vertical_align = "bottom",
+  right_padding = 6,
+  parent_hovered_font_color = { 1, 1, 1 }
+}
+
 local hovered_label_color = {
   r = 0.5 * (1 + default_orange_color.r),
   g = 0.5 * (1 + default_orange_color.g),

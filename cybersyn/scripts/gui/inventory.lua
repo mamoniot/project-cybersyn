@@ -174,23 +174,26 @@ function inventory_tab.build(map_data, player_data)
   for item_hash, count in pairs(inventory_provided) do
     item, quality = unhash_signal(item_hash)
     i = i + 1
-    local sprite, img_path, item_string = util.generate_item_references(item)
-    if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-      provided_children[#provided_children+1] = {
-        type = "sprite-button",
-        style = "flib_slot_button_green",
-        enabled = true,
-        ignored_by_interaction = true,
-        sprite = sprite,
-        number = count,
-        tooltip = { "",
-          img_path,
-          " [font=default-semibold]",
-          item_string,
-          "[/font]\n"..format.number(count),
-        },
-      }
-    end
+    provided_children[#provided_children+1] = {
+      type = "choose-elem-button",
+      elem_type = "signal",
+      signal = {
+        type = prototypes.item[item] == nil and "fluid" or "item",
+        name=item,
+        quality=quality,
+      },
+      enabled = true,
+      ignored_by_interaction = true,
+      style = "flib_slot_button_green",
+      children = {
+        {
+          type = "label",
+          style = "ltnm_label_signal_count",
+          ignored_by_interaction = true,
+          caption = format_signal_count(count)
+        }
+      },
+    }
   end
 
   local inventory_requested_table = refs.inventory_requested_table
@@ -200,23 +203,26 @@ function inventory_tab.build(map_data, player_data)
   for item_hash, count in pairs(inventory_requested) do
     item, quality = unhash_signal(item_hash)
     i = i + 1
-    local sprite, img_path, item_string = util.generate_item_references(item)
-    if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-      requested_children[#requested_children+1] = {
-        type = "sprite-button",
-        style = "flib_slot_button_red",
-        enabled = true,
-        ignored_by_interaction = true,
-        sprite = sprite,
-        number = count,
-        tooltip = { "",
-          img_path,
-          " [font=default-semibold]",
-          item_string,
-          "[/font]\n"..format.number(count),
-        },
-      }
-    end
+    requested_children[#requested_children+1] = {
+      type = "choose-elem-button",
+      elem_type = "signal",
+      signal = {
+        type = prototypes.item[item] == nil and "fluid" or "item",
+        name=item,
+        quality=quality,
+      },
+      enabled = true,
+      ignored_by_interaction = true,
+      style = "flib_slot_button_red",
+      children = {
+        {
+          type = "label",
+          style = "ltnm_label_signal_count",
+          ignored_by_interaction = true,
+          caption = format_signal_count(count)
+        }
+      },
+    }
   end
 
   local inventory_in_transit_table = refs.inventory_in_transit_table
@@ -226,24 +232,27 @@ function inventory_tab.build(map_data, player_data)
   for item_hash, count in pairs(inventory_in_transit) do
     item, quality = unhash_signal(item_hash)
     i = i + 1
-    local sprite, img_path, item_string = util.generate_item_references(item)
-    if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-      in_transit_children[#in_transit_children+1] = {
-        type = "sprite-button",
-        style = "flib_slot_button_blue",
-        enabled = true,
-        ignored_by_interaction = true,
-        sprite = sprite,
-        number = count,
-        tooltip = { "",
-          img_path,
-          " [font=default-semibold]",
-          item_string,
-          "[/font]\n"..format.number(count),
-        },
-      }
-      end
-    end
+    in_transit_children[#in_transit_children+1] = {
+      type = "choose-elem-button",
+      elem_type = "signal",
+      signal = {
+        type = prototypes.item[item] == nil and "fluid" or "item",
+        name=item,
+        quality=quality,
+      },
+      enabled = true,
+      ignored_by_interaction = true,
+      style = "flib_slot_button_blue",
+      children = {
+        {
+          type = "label",
+          style = "ltnm_label_signal_count",
+          ignored_by_interaction = true,
+          caption = format_signal_count(count)
+        }
+      },
+    }
+  end
 
   if next(inventory_provided_table.children) ~= nil then
     refs.inventory_provided_table.clear()

@@ -1,3 +1,5 @@
+local util = require "__core__.lualib.util"
+
 --By Mami
 ---@param v string
 ---@param h string?
@@ -70,4 +72,12 @@ function dual_pairs(t1, t2)
 		until t1[key] == nil
 		return key
 	end
+end
+
+--- @param count number
+--- @return string
+function format_signal_count(count)
+	local formatted = util.format_number(count, true)
+	local trimmed = string.gsub(formatted, "(%d%d%d)[%.,]%d+", "%1")
+	return trimmed
 end

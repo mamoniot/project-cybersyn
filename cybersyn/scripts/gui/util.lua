@@ -66,25 +66,26 @@ function util.slot_table_build_from_manifest(manifest, color)
   local children = {}
   if manifest then
     for _, item in pairs(manifest) do
-      local name = item.name
-      local count = item.count
-      local sprite, img_path, item_string = util.generate_item_references(name)
-      if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-        children[#children + 1] = {
-          type = "sprite-button",
-          enabled = true,
-          ignored_by_interaction = true,
-          style = "ltnm_small_slot_button_" .. color,
-          sprite = sprite,
-          number = count,
-          tooltip = {
-            "",
-            img_path,
-            item_string,
-            "\n"..format.number(count),
-          },
-        }
-      end
+      children[#children + 1] = {
+        type = "choose-elem-button",
+        elem_type = "signal",
+        signal = {
+          type=item.type,
+          name=item.name,
+          quality=item.quality,
+        },
+        enabled = true,
+        ignored_by_interaction = true,
+        style = "ltnm_small_slot_button_" .. color,
+        children = {
+          {
+            type = "label",
+            style = "ltnm_label_signal_count",
+            ignored_by_interaction = true,
+            caption = format_signal_count(item.count)
+          }
+        },
+      }
     end
   end
   return children
@@ -109,41 +110,37 @@ function util.slot_table_build_from_station(station)
       if (not station.is_r and count < 0) or (not station.is_p and count > 0) then
         goto continue
       end
-      -- FIXME handle item.quality
-      local sprite, img_path, item_string = util.generate_item_references(name)
-      if sprite ~= nil then
-        local color
-        if count > 0 then
-          color = "green"
-        else
-          -- color sub-threshold requests orange, others red
-          local r_threshold = station.item_thresholds and station.item_thresholds[name] or station.r_threshold
-          if station.is_stack and item.type ~= "fluid" then
-            r_threshold = r_threshold*get_stack_size(nil, item.name) --first argument never used
-          end
-          if -count < r_threshold then
-            color = "orange"
-          else
-            color = "red"
-          end
+      local color
+      if count > 0 then
+        color = "green"
+      else
+        -- color sub-threshold requests orange, others red
+        local r_threshold = station.item_thresholds and station.item_thresholds[name] or station.r_threshold
+        if station.is_stack and item.type ~= "fluid" then
+          r_threshold = r_threshold*get_stack_size(nil, item.name) --first argument never used
         end
-        if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-          children[#children + 1] = {
-            type = "sprite-button",
-            enabled = true,
-            ignored_by_interaction = true,
-            style = "ltnm_small_slot_button_" .. color,
-            sprite = sprite,
-            tooltip = {
-              "",
-              img_path,
-              item_string,
-              "\n"..format.number(count),
-            },
-            number = count
-          }
+        if -count < r_threshold then
+          color = "orange"
+        else
+          color = "red"
         end
       end
+      children[#children + 1] = {
+        type = "choose-elem-button",
+        elem_type = "signal",
+        signal = item,
+        enabled = true,
+        ignored_by_interaction = true,
+        style = "ltnm_small_slot_button_" .. color,
+        children = {
+          {
+            type = "label",
+            style = "ltnm_label_signal_count",
+            ignored_by_interaction = true,
+            caption = format_signal_count(count)
+          }
+        },
+      }
       ::continue::
     end
   end
@@ -158,31 +155,32 @@ function util.slot_table_build_from_deliveries(station)
   for item_hash, count in pairs(deliveries) do
     item, quality = unhash_signal(item_hash)
 
-    local sprite, img_path, item_string = util.generate_item_references(item)
-    if sprite ~= nil then
-      local color
-      if count > 0 then
-        color = "green"
-      else
-        color = "blue"
-      end
-      if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-        children[#children + 1] = {
-          type = "sprite-button",
-          enabled = true,
-          ignored_by_interaction = true,
-          style = "ltnm_small_slot_button_" .. color,
-          sprite = sprite,
-          tooltip = {
-            "",
-            img_path,
-            item_string,
-            "\n"..format.number(count),
-          },
-          number = count
-        }
-      end
+    local color
+    if count > 0 then
+      color = "green"
+    else
+      color = "blue"
     end
+    children[#children + 1] = {
+      type = "choose-elem-button",
+      elem_type = "signal",
+      signal = {
+				type = prototypes.item[item] == nil and "fluid" or "item",
+        name=item,
+        quality=quality,
+      },
+      enabled = true,
+      ignored_by_interaction = true,
+      style = "ltnm_small_slot_button_" .. color,
+      children = {
+        {
+          type = "label",
+          style = "ltnm_label_signal_count",
+          ignored_by_interaction = true,
+          caption = format_signal_count(count)
+        }
+      },
+    }
   end
   return children
 end
@@ -198,31 +196,26 @@ function util.slot_table_build_from_control_signals(station, map_data)
     for _, v in pairs(comb1_signals) do
       local item = v.signal
       local count = v.count
-      local name = item.name
-      -- FIXME handle item.quality
-      local sprite = ""
       local color = "default"
       if item.type ~= "virtual" then
         goto continue
-      else
-        sprite = "virtual-signal" .. "/" .. name
       end
-      if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-        children[#children + 1] = {
-          type = "sprite-button",
-          enabled = true,
-          ignored_by_interaction = true,
-          style = "ltnm_small_slot_button_" .. color,
-          sprite = sprite,
-          tooltip = {
-            "",
-            "[img=virtual-signal." .. name  .. "]",
-            { "virtual-signal-name." .. name },
-            "\n"..format.number(count),
-          },
-          number = count
-        }
-      end
+      children[#children + 1] = {
+        type = "choose-elem-button",
+        elem_type = "signal",
+        signal = item,
+        enabled = true,
+        ignored_by_interaction = true,
+        style = "ltnm_small_slot_button_" .. color,
+        children = {
+          {
+            type = "label",
+            style = "ltnm_label_signal_count",
+            ignored_by_interaction = true,
+            caption = format_signal_count(count)
+          }
+        },
+      }
       ::continue::
     end
   end
@@ -232,61 +225,28 @@ function util.slot_table_build_from_control_signals(station, map_data)
       local item = v.signal
       local count = v.count
       local name = item.name
-      local sprite = ""
       local color = "default"
 
-      if not item.type or item.type == "item" or item.type == "fluid" then
-        local sprite, img_path, item_string = util.generate_item_references(name)
-        if sprite ~= nil then
-          local color
-          if count > 0 then
-            color = "green"
-          else
-            color = "blue"
-          end
-        end
-
-        if station.is_stack and (not item.type or item.type == "item") then
-          count = count * get_stack_size(map_data, name)
-        end
-
-        if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-          children[#children + 1] = {
-            type = "sprite-button",
-            enabled = true,
-            ignored_by_interaction = true,
-            style = "ltnm_small_slot_button_" .. color,
-            sprite = sprite,
-            tooltip = {
-              "",
-              img_path,
-              item_string,
-              "\n"..format.number(count),
-            },
-            number = count
-          }
-        end
-
-      elseif item.type == "virtual" then
-        sprite = "virtual-signal" .. "/" .. name
-        if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-          children[#children + 1] = {
-            type = "sprite-button",
-            enabled = true,
-            ignored_by_interaction = true,
-            style = "ltnm_small_slot_button_" .. color,
-            sprite = sprite,
-            tooltip = {
-              "",
-              "[img=virtual-signal." .. name  .. "]",
-              { "virtual-signal-name." .. name },
-              "\n"..format.number(count),
-            },
-            number = count
-          }
-        end
+      if station.is_stack and (not item.type or item.type == "item") then
+        count = count * get_stack_size(map_data, name)
       end
-      ::continue::
+
+      children[#children + 1] = {
+        type = "choose-elem-button",
+        elem_type = "signal",
+        signal = item,
+        enabled = true,
+        ignored_by_interaction = true,
+        style = "ltnm_small_slot_button_" .. color,
+        children = {
+          {
+            type = "label",
+            style = "ltnm_label_signal_count",
+            ignored_by_interaction = true,
+            caption = format_signal_count(count)
+          }
+        },
+      }
     end
   end
 
