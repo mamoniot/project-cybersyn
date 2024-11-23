@@ -42,6 +42,7 @@
 ---@field public is_p true?
 ---@field public is_r true?
 ---@field public is_stack true?
+---@field public enable_train_count true? If `true`, the station control combinator for this station will output the number of trains enroute.
 ---@field public allows_all_trains true?
 ---@field public deliveries_total int
 ---@field public last_delivery_tick int
