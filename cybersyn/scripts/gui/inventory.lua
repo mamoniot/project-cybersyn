@@ -126,15 +126,16 @@ function inventory_tab.build(map_data, player_data)
         local item = v.signal
         local count = v.count
         if item.type ~= "virtual" then
-          if count > 0 then
+          if station.is_p and count > 0 then
             if inventory_provided[item.name] == nil then
               inventory_provided[item.name] = count
             else
               inventory_provided[item.name] = inventory_provided[item.name] + count
             end
-          else
+          end
+          if station.is_r and count < 0 then
             local r_threshold = station.item_thresholds and station.item_thresholds[item.name] or station.r_threshold
-            if station.is_stack and item_type == "item" then
+            if station.is_stack and item.type ~= "fluid" then
               r_threshold = r_threshold*get_stack_size(map_data, item.name)
             end
             -- FIXME handle v.signal.quality
