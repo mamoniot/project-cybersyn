@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.12
+Date: 2024-11-24
+  Changes:
+    - Expand the problem detection command (/cybersyn-find-problems) to detect combinators that are not close enough to a train stop to affect it
+  Bugfixes:
+    - Fixed changelog formatting
+---------------------------------------------------------------------------------------------------
 Version: 2.0.11
   Changes:
     - Expand the problem detection command (/cybersyn-find-priorities becomes /cybersyn-find-problems with additional inspections)
