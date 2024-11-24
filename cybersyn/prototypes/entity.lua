@@ -22,39 +22,36 @@ for _,dir in pairs({"north","east","south","west"}) do
 	combinator_entity.sprites[dir].layers[1].filename = "__cybersyn__/graphics/combinator/cybernetic-combinator.png"
 end
 
-local function create_combinator_display_direction(x, y, shift)
+local function create_combinator_display_direction(filename, x, y, shift)
 	return {
-			filename="__cybersyn__/graphics/combinator/cybernetic-displays.png",
-			x=x, y=y,
-			width=15, height=11,
-			shift=shift,
-			draw_as_glow=true,
-			hr_version={
-				scale=0.5,
-				filename="__cybersyn__/graphics/combinator/hr-cybernetic-displays.png",
-				x=2*x, y=2*y,
-				width=30, height=22,
-				shift=shift,
-				draw_as_glow=true,
-			},
-		}
-end
-local function create_combinator_display(x, y, shiftv, shifth)
-	return {
-		north=create_combinator_display_direction(x, y, shiftv),
-		east=create_combinator_display_direction(x, y, shifth),
-		south=create_combinator_display_direction(x, y, shiftv),
-		west=create_combinator_display_direction(x, y, shifth),
+		scale=0.5,
+		filename=filename,
+		x=30*x, y=22*y,
+		width=30, height=22,
+		shift=shift,
+		draw_as_glow=true,
 	}
 end
-combinator_entity.plus_symbol_sprites = create_combinator_display(0, 0, { 0, -0.140625, }, { 0, -0.328125, })
-combinator_entity.minus_symbol_sprites = create_combinator_display(15, 0, { 0, -0.140625, }, { 0, -0.328125, })
-combinator_entity.divide_symbol_sprites = create_combinator_display(30, 0, { 0, -0.140625, }, { 0, -0.328125, })
-combinator_entity.modulo_symbol_sprites = create_combinator_display(45, 0, { 0, -0.140625, }, { 0, -0.328125, })
-combinator_entity.power_symbol_sprites = create_combinator_display(0, 11, { 0, -0.140625, }, { 0, -0.328125, })
-combinator_entity.left_shift_symbol_sprites = create_combinator_display(15, 11, { 0, -0.140625, }, { 0, -0.328125, })
-combinator_entity.right_shift_symbol_sprites = create_combinator_display(30, 11, { 0, -0.140625, }, { 0, -0.328125, })
-combinator_entity.multiply_symbol_sprites = combinator_entity.divide_symbol_sprites
+local function create_combinator_display(filename, x, y)
+	return {
+		north = create_combinator_display_direction(filename, x, y, util.by_pixel(0,  -4.5)),
+		east  = create_combinator_display_direction(filename, x, y, util.by_pixel(0, -10.5)),
+		south = create_combinator_display_direction(filename, x, y, util.by_pixel(0,  -4.5)),
+		west  = create_combinator_display_direction(filename, x, y, util.by_pixel(0, -10.5)),
+	}
+end
+
+local CYBERSYN_DISPLAYS = "__cybersyn__/graphics/combinator/cybernetic-displays.png"
+local FACTORIO_DISPLAYS = "__base__/graphics/entity/combinator/combinator-displays.png"
+
+combinator_entity.plus_symbol_sprites        = create_combinator_display(CYBERSYN_DISPLAYS, 0, 0)
+combinator_entity.minus_symbol_sprites       = create_combinator_display(CYBERSYN_DISPLAYS, 1, 0)
+combinator_entity.divide_symbol_sprites      = create_combinator_display(CYBERSYN_DISPLAYS, 2, 0)
+combinator_entity.modulo_symbol_sprites      = create_combinator_display(CYBERSYN_DISPLAYS, 3, 0)
+combinator_entity.power_symbol_sprites       = create_combinator_display(CYBERSYN_DISPLAYS, 0, 1)
+combinator_entity.left_shift_symbol_sprites  = create_combinator_display(FACTORIO_DISPLAYS, 1, 1) -- green '>'
+combinator_entity.right_shift_symbol_sprites = create_combinator_display(CYBERSYN_DISPLAYS, 2, 1)
+combinator_entity.multiply_symbol_sprites    = combinator_entity.divide_symbol_sprites
 
 
 combinator_out_entity = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"], COMBINATOR_OUT_NAME)
