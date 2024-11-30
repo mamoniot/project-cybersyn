@@ -172,6 +172,7 @@ local function fix_priorities_command()
 		for _,ts in pairs(s.find_entities_filtered {name="train-stop"}) do
 			local name = ts.backer_name
 			if ts.train_stop_priority ~= 50 and (stations[name] or depots[name] or refuelers[name]) then
+				ts.train_stop_priority = 50
 				report_print(ts, {"cybersyn-problems.priority-was-reset"})
 			end
 		end
