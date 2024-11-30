@@ -219,18 +219,17 @@ combinator_entity.right_shift_symbol_sprites = create_combinator_display(30, 11,
 combinator_entity.multiply_symbol_sprites = combinator_entity.divide_symbol_sprites
 
 
-combinator_out_entity = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"], COMBINATOR_OUT_NAME)
+combinator_out_entity = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"], COMBINATOR_OUT_NAME) --[[@as data.ConstantCombinatorPrototype]]
 combinator_out_entity.icon = nil
 combinator_out_entity.icon_size = nil
-combinator_out_entity.icon_mipmaps = nil
 combinator_out_entity.next_upgrade = nil
 combinator_out_entity.minable = nil
 combinator_out_entity.selection_box = nil
 combinator_out_entity.collision_box = nil
 combinator_out_entity.collision_mask = { layers = {} }
-combinator_out_entity.item_slot_count = 500
 combinator_out_entity.circuit_wire_max_distance = 3
 combinator_out_entity.flags = {"not-blueprintable", "not-deconstructable", "placeable-off-grid"}
+combinator_out_entity.hidden_in_factoriopedia = true
 
 local origin = {0.0, 0.0}
 local invisible_sprite = {filename = "__cybersyn__/graphics/invisible.png", width = 1, height = 1}
