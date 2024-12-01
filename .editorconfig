@@ -1,0 +1,72 @@
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.lua]
+indent_style = tab
+
+# EmmyLuaCodeStyle rules (https://github.com/CppCXY/EmmyLuaCodeStyle)
+# Supported by LuaLS
+# Commented entries are default values
+
+## Basic options
+quote_style = double
+# call_arg_parentheses = keep
+# continuation_indent = 4
+# max_line_length = 120
+trailing_table_separator = never
+
+## Whitespace options
+# space_around_table_field_list = true
+# space_before_function_open_parenthesis = false
+# space_before_function_call_open_parenthesis = false
+# space_before_closure_open_parenthesis = false
+# space_before_function_call_single_arg = true
+# space_before_open_square_bracket = false
+space_inside_function_call_parentheses = false
+space_inside_function_param_list_parentheses = false
+space_inside_square_brackets = false
+space_around_table_append_operator = false
+ignore_spaces_inside_function_call = false
+# space_before_inline_comment = 1
+
+## Operator whitespace
+# space_around_math_operator = true
+# space_after_comma = true
+# space_after_comma_in_for_statement = true
+# space_around_concat_operator = true
+
+## Alignment
+# Many of these will be set to false since alignment does not play well with tab indentation
+# And also it makes a mess of diffs
+align_call_args = false
+align_function_params = false
+align_continuous_assign_statement = false
+align_continuous_rect_table_field = false
+align_if_branch = false
+align_array_table = false
+
+## Other indentation settings
+never_indent_before_if_condition = false
+never_indent_comment_on_if_branch = false
+
+## Line spacings
+line_space_after_if_statement = max(1)
+line_space_after_do_statement = max(1)
+line_space_after_while_statement = max(1)
+line_space_after_repeat_statement = max(1)
+line_space_after_for_statement = max(1)
+line_space_after_local_or_assign_statement = max(1)
+line_space_after_function_statement = fixed(1)
+line_space_after_expression_statement = max(1)
+line_space_after_comment = max(1)
+
+## Line breaks
+break_all_list_when_line_exceed = true
+# auto_collapse_lines = false
+
+## "Preferences"
+ignore_space_after_colon = false
+# remove_call_expression_list_finish_comma = false
+end_statement_with_semicolon = replace_with_newline
