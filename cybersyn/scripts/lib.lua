@@ -78,9 +78,13 @@ end
 --- @return string
 function format_signal_count(count)
 	local function si_format(divisor, si_symbol)
-		count = math.floor(count / divisor)
-		local format = (math.abs(count) >= 10) and "%.0f%s" or "%.1f%s"
-		return string.format(format, count, si_symbol)
+		if math.abs(math.floor(count / divisor)) >= 10 then
+			count = math.floor(count / divisor)
+			return string.format("%.0f%s", count, si_symbol)
+		else
+			count = math.floor(count / (divisor/10))/10
+			return string.format("%.1f%s", count, si_symbol)
+		end
 	end
 
 	local abs = math.abs(count)
