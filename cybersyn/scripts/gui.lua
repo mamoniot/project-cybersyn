@@ -63,7 +63,8 @@ local function set_visibility(main_window, selected_index)
 	second_settings.enable_inactive.visible = is_station
 	second_settings.enable_circuit_condition.visible = is_station
 	mode_settings_flow.enable_slot_barring.visible = is_wagon
-	
+	mode_settings_flow.enable_train_count.visible = (selected_index == 4)
+
 	depot_settings.visible = is_depot
 end
 
@@ -401,6 +402,7 @@ function gui_opened(comb, player)
 					---Settings section for modal settings
 					{type="flow", name="mode_settings", direction="vertical", style_mods={horizontal_align="left"}, children={
 						{type="checkbox", name="enable_slot_barring", state=setting(bits, SETTING_ENABLE_SLOT_BARRING), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_SLOT_BARRING}, tooltip={"cybersyn-gui.enable-slot-barring-tooltip"}, caption={"cybersyn-gui.enable-slot-barring-description"}},
+						{type="checkbox", name="enable_train_count", state=setting(bits, SETTING_ENABLE_TRAIN_COUNT), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_TRAIN_COUNT}, tooltip={"cybersyn-gui.enable-train-count-tooltip"}, caption={"cybersyn-gui.enable-train-count-description"}},
 					}},
 					---Settings section for network
 					{type="line", style_mods={top_padding=10}},

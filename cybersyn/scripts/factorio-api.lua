@@ -484,6 +484,8 @@ end
 function set_station_from_comb(station)
 	--NOTE: this does nothing to update currently active deliveries
 	--NOTE: this can only be called at the tick init boundary
+
+	-- Extract settings from station combinator
 	local params = get_comb_params(station.entity_comb1)
 	local signal = params.first_signal
 
@@ -500,6 +502,17 @@ function set_station_from_comb(station)
 	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
 	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
 	station.enable_circuit_condition = enable_circuit_condition
+
+	-- Extract settings from station control combinator, if it exists
+	local enable_train_count = nil
+
+	if station.entity_comb2 and station.entity_comb2.valid then
+		local params2 = get_comb_params(station.entity_comb2)
+		local bits2 = params2.second_constant or 0
+		enable_train_count = bit_extract(bits2, SETTING_ENABLE_TRAIN_COUNT) > 0
+	end
+
+	station.enable_train_count = enable_train_count
 
 	local new_name = signal and signal.name or nil
 	if station.network_name ~= new_name then
@@ -789,6 +802,19 @@ function set_comb2(map_data, station)
 				min = sign*count
 			} -- constant combinator cannot have quality = nil (any)
 		end
+
+		-- Add train count virtual signal if enabled
+		if station.enable_train_count then
+			local train_count = station.deliveries_total
+			if train_count > 0 then
+				local i = #signals + 1
+				signals[i] = {
+					value = "signal-T",
+					min = train_count
+				}
+			end
+		end
+
 		set_combinator_output(map_data, station.entity_comb2, signals)
 	end
 end
