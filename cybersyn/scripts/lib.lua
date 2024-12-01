@@ -74,10 +74,19 @@ function dual_pairs(t1, t2)
 	end
 end
 
---- @param count number
+--- @param count integer
 --- @return string
 function format_signal_count(count)
-	local formatted = util.format_number(count, true)
-	local trimmed = string.gsub(formatted, "(%d%d%d)[%.,]%d+", "%1")
-	return trimmed
+	local function si_format(divisor, si_symbol)
+		count = math.floor(count / divisor)
+		local format = (math.abs(count) >= 10) and "%.0f%s" or "%.1f%s"
+		return string.format(format, count, si_symbol)
+	end
+
+	local abs = math.abs(count)
+	return -- signals are 32bit integers so Giga is enough
+		abs >= 1e9 and si_format(1e9, "G") or
+		abs >= 1e6 and si_format(1e6, "M") or
+		abs >= 1e3 and si_format(1e3, "k") or
+		tostring(count)
 end
