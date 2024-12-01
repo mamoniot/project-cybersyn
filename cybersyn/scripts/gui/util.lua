@@ -56,6 +56,16 @@ function util.generate_item_references(item)
   return sprite, image_path, item_name
 end
 
+--- Turns SignalID into a valid rich-text definition of the signal icon.
+--- @param signal SignalID
+--- @return string
+function util.rich_text_from_signal(signal)
+  local quality = signal.quality or ""
+  local type = signal.type or "item" -- if type is nil, it is item
+  return "[" .. type .. "=" .. signal.name .. ",quality=" .. quality .. "]"
+end
+
+
 
 --- Updates a slot table based on the passed criteria.
 --- @param manifest Manifest?
@@ -66,17 +76,23 @@ function util.slot_table_build_from_manifest(manifest, color)
   local children = {}
   if manifest then
     for _, item in pairs(manifest) do
+      local signal = {
+        type=item.type,
+        name=item.name,
+        quality=item.quality,
+      }
       children[#children + 1] = {
         type = "choose-elem-button",
         elem_type = "signal",
-        signal = {
-          type=item.type,
-          name=item.name,
-          quality=item.quality,
-        },
-        enabled = true,
-        ignored_by_interaction = true,
+        signal = signal,
+        enabled = false,
         style = "ltnm_small_slot_button_" .. color,
+        tooltip = {
+          "",
+          util.rich_text_from_signal(signal),
+          " shipped",
+          "\n Amount: "..format.number(item.count),
+        },
         children = {
           {
             type = "label",
@@ -129,9 +145,17 @@ function util.slot_table_build_from_station(station)
         type = "choose-elem-button",
         elem_type = "signal",
         signal = item,
-        enabled = true,
-        ignored_by_interaction = true,
+        enabled = false,
         style = "ltnm_small_slot_button_" .. color,
+        tooltip = {
+          "",
+          util.rich_text_from_signal(item),
+          color == "red" and " requested" or
+          color == "green" and " provided" or
+          color == "orange" and " requested (below threshold)" or
+          "",
+          "\n Amount: "..format.number(count),
+        },
         children = {
           {
             type = "label",
@@ -154,6 +178,11 @@ function util.slot_table_build_from_deliveries(station)
 
   for item_hash, count in pairs(deliveries) do
     item, quality = unhash_signal(item_hash)
+    local signal = {
+      type = prototypes.item[item] == nil and "fluid" or "item",
+      name=item,
+      quality=quality,
+    }
 
     local color
     if count > 0 then
@@ -164,13 +193,16 @@ function util.slot_table_build_from_deliveries(station)
     children[#children + 1] = {
       type = "choose-elem-button",
       elem_type = "signal",
-      signal = {
-				type = prototypes.item[item] == nil and "fluid" or "item",
-        name=item,
-        quality=quality,
+      signal = signal,
+      enabled = false,
+      tooltip = {
+        "",
+        util.rich_text_from_signal(signal),
+        color == "green" and " incoming" or
+        color == "blue" and " outgoing" or
+        "",
+        "\n Amount: "..format.number(count),
       },
-      enabled = true,
-      ignored_by_interaction = true,
       style = "ltnm_small_slot_button_" .. color,
       children = {
         {
@@ -204,7 +236,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
         type = "choose-elem-button",
         elem_type = "signal",
         signal = item,
-        enabled = true,
+        enabled = false,
         ignored_by_interaction = true,
         style = "ltnm_small_slot_button_" .. color,
         children = {
@@ -235,7 +267,7 @@ function util.slot_table_build_from_control_signals(station, map_data)
         type = "choose-elem-button",
         elem_type = "signal",
         signal = item,
-        enabled = true,
+        enabled = false,
         ignored_by_interaction = true,
         style = "ltnm_small_slot_button_" .. color,
         children = {
