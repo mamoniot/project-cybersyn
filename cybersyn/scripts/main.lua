@@ -958,6 +958,54 @@ local function setup_se_compat()
 	end)
 end
 
+local function setup_noxy_compat()
+	IS_NOXY_MULTIDIRECTIONAL_TRAINS_PRESENT = remote.interfaces["Noxys_Multidirectional_Trains"]
+	if IS_NOXY_MULTIDIRECTIONAL_TRAINS_PRESENT then
+		local noxy_on_train_rotating_event = remote.call("Noxys_Multidirectional_Trains", "get_on_train_rotating")--[[@as string]]
+		local noxy_on_train_locomotive_rotated_event = remote.call("Noxys_Multidirectional_Trains", "get_on_train_locomotive_rotated")--[[@as string]]
+		local noxy_on_train_rotated_event = remote.call("Noxys_Multidirectional_Trains", "get_on_train_rotated")--[[@as string]]
+		local noxy_on_train_unrotating_event = remote.call("Noxys_Multidirectional_Trains", "get_on_train_unrotating")--[[@as string]]
+
+		---@param event {}
+		script.on_event(noxy_on_train_rotating_event, function(event)
+			---@type uint
+			local train_id = event.train.id
+			--Noxy will rotate a train a few ticks after it leaves the station, so
+			--no special handling is required the way there is for arrivals.
+
+			--Prevent Cybersyn from removing the train because Noxy is going to
+			--destroy and rebuild it possibly many times in rapid succession.
+			set_is_train_id_volatile(train_id, true)
+		end)
+		---@param event {}
+		script.on_event(noxy_on_train_locomotive_rotated_event, function(event)
+			---@type LuaTrain
+			local train_entity = event.train
+			---@type uint
+			local new_id = train_entity.id
+			---@type uint
+			local old_id = event.old_train_id_1
+			--Every rotation destroys and creates a new train, ensure the train id is migrated
+			--with each rotation to prevent it from losing track.
+			migrate_tracked_train_to_new_id(train_entity, new_id, old_id)
+		end)
+		---@param event {}
+		script.on_event(noxy_on_train_rotated_event, function(event)
+			---@type uint
+			local train_id = event.train.id
+			--Clear the volatile tag, Noxy has finished.
+			set_is_train_id_volatile(train_id, nil)
+		end)
+		---@param event {}	
+		script.on_event(noxy_on_train_unrotating_event, function(event)
+			--Noxy unrotates trains on arrival to stations, which destroys the train and 
+			--prevents Cybersyn from correctly handling train arrivals. 
+			--Forward the change event to Cybersyn's handler.
+			on_train_changed(event)
+		end)
+	end
+end
+
 local function setup_picker_dollies_compat()
 	IS_PICKER_DOLLIES_PRESENT = remote.interfaces["PickerDollies"] and remote.interfaces["PickerDollies"]["add_blacklist_name"]
 	if IS_PICKER_DOLLIES_PRESENT then
@@ -1080,6 +1128,7 @@ local function main()
 		mod_settings.invert_sign = false
 		init_global()
 		setup_se_compat()
+		setup_noxy_compat()
 		setup_picker_dollies_compat()
 		if MANAGER_ENABLED then
 			manager.on_init()
@@ -1096,6 +1145,7 @@ local function main()
 
 	script.on_load(function()
 		setup_se_compat()
+		setup_noxy_compat()
 		setup_picker_dollies_compat()
 	end)
 
