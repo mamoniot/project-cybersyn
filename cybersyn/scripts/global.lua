@@ -81,7 +81,7 @@
 ---@field public network_mask int|{[string]: int}
 
 ---@class Train
----@field public entity LuaTrain --should only be invalid if se_is_being_teleported is true
+---@field public entity LuaTrain --should only be invalid if se_is_being_teleported or is_train_id_volatile is true
 ---@field public layout_id uint
 ---@field public item_slot_capacity int
 ---@field public fluid_capacity int
@@ -99,6 +99,7 @@
 ---@field public network_mask int|{[string]: int} --transient
 ---@field public priority int
 ---@field public refueler_id uint?
+---@field public is_train_id_volatile boolean? --se/noxy only
 ---@field public se_is_being_teleported true? --se only
 ---@field public se_awaiting_removal any? --se only
 ---@field public se_awaiting_rename any? --se only

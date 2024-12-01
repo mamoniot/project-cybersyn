@@ -793,6 +793,56 @@ local function on_rename(event)
 	end
 end
 
+---Sets the `is_train_id_changing` state for a tracked train with the given `train_id` to the given `value`.
+---If no train matching `train_id` is tracked, returns early.
+---@param train_id uint
+---@param value boolean|nil
+local function set_is_train_id_volatile(train_id, value)
+	---@type MapData
+	local map_data = storage
+
+	local train = map_data.trains[train_id]
+	if not train then return end
+
+	train.is_train_id_volatile = value
+end
+
+---@param train_entity LuaTrain
+---@param new_id uint
+---@param old_id uint
+local function migrate_tracked_train_to_new_id(train_entity, new_id, old_id)
+	---@type MapData
+	local map_data = storage
+
+	local train = map_data.trains[old_id]
+	if not train then return end
+
+	if train.is_available then
+		local f, a
+		if train.network_name == NETWORK_EACH then
+			f, a = next, train.network_mask
+		else
+			f, a = once, train.network_name
+		end
+		for network_name in f, a do
+			local network = map_data.available_trains[network_name]
+			if network then
+				network[new_id] = true
+				network[old_id] = nil
+				if next(network) == nil then
+					map_data.available_trains[network_name] = nil
+				end
+			end
+		end
+	end
+
+	map_data.trains[new_id] = train
+	map_data.trains[old_id] = nil
+	train.entity = train_entity
+
+	interface_raise_train_id_changed(new_id, old_id)
+end
+
 
 ---@param schedule TrainSchedule
 ---@param stop LuaEntity
@@ -837,6 +887,7 @@ local function setup_se_compat()
 		if not train then return end
 		--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; our events have either been set up to account for this or should be impossible to trigger until teleportation is finished
 		train.se_is_being_teleported = true
+		set_is_train_id_volatile(train_id, true)
 		interface_raise_train_teleport_started(old_id)
 	end)
 	---@param event {}
@@ -850,32 +901,14 @@ local function setup_se_compat()
 		local old_surface_index = event.old_surface_index
 
 		local old_id = event.old_train_id_1
-		local train = map_data.trains[old_id]
+
+		migrate_tracked_train_to_new_id(train_entity, new_id, old_id)
+
+		local train = map_data.trains[new_id]
 		if not train then return end
 
-		if train.is_available then
-			local f, a
-			if train.network_name == NETWORK_EACH then
-				f, a = next, train.network_mask
-			else
-				f, a = once, train.network_name
-			end
-			for network_name in f, a do
-				local network = map_data.available_trains[network_name]
-				if network then
-					network[new_id] = true
-					network[old_id] = nil
-					if next(network) == nil then
-						map_data.available_trains[network_name] = nil
-					end
-				end
-			end
-		end
-
-		map_data.trains[new_id] = train
-		map_data.trains[old_id] = nil
 		train.se_is_being_teleported = nil
-		train.entity = train_entity
+		set_is_train_id_volatile(train_id, nil)
 
 		if train.se_awaiting_removal then
 			remove_train(map_data, train.se_awaiting_removal, train)
@@ -889,7 +922,7 @@ local function setup_se_compat()
 
 		local schedule = train_entity.schedule
 		if schedule then
-			--this code relies on train chedules being in this specific order to work
+			--this code relies on train schedules being in this specific order to work
 			local start = schedule.current
 			--check depot
 			if not train.use_any_depot then
