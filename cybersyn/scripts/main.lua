@@ -163,11 +163,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 	map_data.warmup_station_ids[#map_data.warmup_station_ids + 1] = id
 	map_data.warmup_station_cycles[id] = 0
 
-	if not map_data.queue_station_update then
-		map_data.queue_station_update = {}
-	end
-	map_data.queue_station_update[id] = true
-
+	queue_station_for_combinator_update(map_data, id)
 	update_stop_if_auto(map_data, station, true)
 	interface_raise_station_created(id)
 end
@@ -337,6 +333,7 @@ local function on_combinator_built(map_data, comb, tags)
 		elseif op == MODE_SECONDARY_IO then
 			if station and not station.entity_comb2 then
 				station.entity_comb2 = comb
+				queue_station_for_combinator_update(map_data, id)
 			end
 		elseif op == MODE_PRIMARY_IO then
 			if refueler then
@@ -402,6 +399,17 @@ local function comb_to_internal_entity(map_data, comb, unit_number)
 	return 0, 0, nil, nil
 end
 
+--- Queue a station's internal state to be updated from combinator data on
+--- next logistics loop.
+---@param map_data MapData
+---@param station_id integer
+function queue_station_for_combinator_update(map_data, station_id)
+	if not map_data.queue_station_update then
+		map_data.queue_station_update = {}
+	end
+	map_data.queue_station_update[station_id] = true
+end
+
 ---@param map_data MapData
 ---@param comb LuaEntity
 ---@param skip_gui_events boolean?
@@ -423,6 +431,7 @@ function on_combinator_broken(map_data, comb, skip_gui_events)
 	elseif type == 2 then
 		local station = entity--[[@as Station]]
 		station.entity_comb2 = search_for_station_combinator(map_data, stop--[[@as LuaEntity]], MODE_SECONDARY_IO, comb)
+		queue_station_for_combinator_update(map_data, id)
 	elseif type == 3 then
 		on_depot_broken(map_data, id, entity--[[@as Depot]])
 		on_stop_built_or_updated(map_data, stop--[[@as LuaEntity]], comb)
@@ -529,10 +538,7 @@ function combinator_update(map_data, comb, reset_display)
 		end
 		if type == 1 or type == 2 then
 			--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
-			if not map_data.queue_station_update then
-				map_data.queue_station_update = {}
-			end
-			map_data.queue_station_update[id] = true
+			queue_station_for_combinator_update(map_data, id)
 		elseif type == 3 then
 			local depot = entity--[[@as Depot]]
 			local train_id = depot.available_train_id
@@ -556,10 +562,7 @@ function combinator_update(map_data, comb, reset_display)
 		--depots do not cache any combinator values so we don't have to update them here
 		if type == 1 or type == 2 then
 			--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
-			if not map_data.queue_station_update then
-				map_data.queue_station_update = {}
-			end
-			map_data.queue_station_update[id] = true
+			queue_station_for_combinator_update(map_data, id)
 		elseif type == 4 then
 			local refueler = entity--[[@as Refueler]]
 			local pre = refueler.allows_all_trains
