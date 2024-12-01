@@ -11,3 +11,7 @@ require("scripts.gui")
 require("scripts.migrations")
 require("scripts.main")
 require("scripts.remote-interface")
+
+-- Enable support for the Global Variable Viewer debugging mod, if it is
+-- installed.
+if script.active_mods["gvv"] then require("__gvv__.gvv")() end
