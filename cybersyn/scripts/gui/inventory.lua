@@ -188,7 +188,7 @@ function inventory_tab.build(map_data, player_data)
       children = {
         {
           type = "label",
-          style = "ltnm_label_signal_count",
+          style = "ltnm_label_signal_count_inventory",
           ignored_by_interaction = true,
           caption = format_signal_count(count)
         }
@@ -217,7 +217,7 @@ function inventory_tab.build(map_data, player_data)
       children = {
         {
           type = "label",
-          style = "ltnm_label_signal_count",
+          style = "ltnm_label_signal_count_inventory",
           ignored_by_interaction = true,
           caption = format_signal_count(count)
         }
@@ -246,7 +246,7 @@ function inventory_tab.build(map_data, player_data)
       children = {
         {
           type = "label",
-          style = "ltnm_label_signal_count",
+          style = "ltnm_label_signal_count_inventory",
           ignored_by_interaction = true,
           caption = format_signal_count(count)
         }

@@ -292,7 +292,7 @@ local default_orange_color = {
   b = 0
 }
 
-styles.ltnm_label_signal_count = {
+styles.ltnm_label_signal_count_inventory = {
   type = "label_style",
   parent = "count_label",
   size = 36,
@@ -301,6 +301,13 @@ styles.ltnm_label_signal_count = {
   vertical_align = "bottom",
   right_padding = 2,
   parent_hovered_font_color = { 1, 1, 1 }
+}
+
+styles.ltnm_label_signal_count = {
+  type = "label_style",
+  parent = "ltnm_label_signal_count_inventory",
+  bottom_padding = 3,
+  right_padding = 4,
 }
 
 local hovered_label_color = {
