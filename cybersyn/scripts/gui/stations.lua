@@ -235,15 +235,15 @@ function stations_tab.build(map_data, player_data, query_limit)
 			{
 				type = "label",
 				style = "ltnm_clickable_semibold_label",
-				style_mods = { width = widths.stations.name },
+				style_mods = { width = widths.stations.name + 15 },
 				tooltip = constants.open_station_gui_tooltip,
 				caption = station.entity_stop.backer_name,
 				handler = stations_tab.handle.open_station_gui,
 				tags = { station_id = station_id }
 			},
 			--templates.status_indicator(widths.stations.status, true), --repurposing status column for network name
-			{ type = "sprite-button", style_mods = { width = widths.stations.status, horizontal_align = "center" }, style = "ltnm_small_slot_button_default", enabled = true, ignored_by_interaction = true, sprite = network_sprite, },
-			{ type = "label", style_mods = { width = widths.stations.network_id, horizontal_align = "center" }, caption = network_mask },
+			{ type = "sprite", style_mods = { width = widths.stations.status - 45, horizontal_align = "center" }, sprite = network_sprite, },
+			{ type = "label", style_mods = { width = widths.stations.network_id + 30, horizontal_align = "center" }, caption = network_mask },
 			templates.small_slot_table(widths.stations, color, "provided_requested"),
 			templates.small_slot_table(widths.stations, color, "shipments"),
 			templates.small_slot_table(widths.stations, color, "control_signals"),
