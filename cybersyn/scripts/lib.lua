@@ -4,7 +4,7 @@ local util = require "__core__.lualib.util"
 ---@param v string
 ---@param h string?
 function once(v, h)
-	return not h and v or nil--[[@as string|nil]]
+	return not h and v or nil --[[@as string|nil]]
 end
 ---@param t any[]
 ---@return any
@@ -82,15 +82,15 @@ function format_signal_count(count)
 			count = math.floor(count / divisor)
 			return string.format("%.0f%s", count, si_symbol)
 		else
-			count = math.floor(count / (divisor/10))/10
+			count = math.floor(count / (divisor / 10)) / 10
 			return string.format("%.1f%s", count, si_symbol)
 		end
 	end
 
 	local abs = math.abs(count)
 	return -- signals are 32bit integers so Giga is enough
-		abs >= 1e9 and si_format(1e9, "G") or
-		abs >= 1e6 and si_format(1e6, "M") or
-		abs >= 1e3 and si_format(1e3, "k") or
-		tostring(count)
+			abs >= 1e9 and si_format(1e9, "G") or
+			abs >= 1e6 and si_format(1e6, "M") or
+			abs >= 1e3 and si_format(1e3, "k") or
+			tostring(count)
 end

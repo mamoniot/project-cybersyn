@@ -1,9 +1,8 @@
 --By Mami
 local flib_migration = require("__flib__.migration")
-local manager_gui = require('gui.main')
-local debug_revision = require('info')
+local manager_gui = require("gui.main")
+local debug_revision = require("info")
 local check_debug_revision
-
 
 local migrations_table = {
 	["1.0.6"] = function()
@@ -34,10 +33,10 @@ local migrations_table = {
 			v.se_depot_surface_i = v.entity.front_stock.surface.index
 			v.is_available = nil
 			if v.parked_at_depot_id and v.network_name then
-				local network = map_data.available_trains[v.network_name--[[@as string]]]
+				local network = map_data.available_trains[ v.network_name --[[@as string]] ]
 				if not network then
 					network = {}
-					map_data.available_trains[v.network_name--[[@as string]]] = network
+					map_data.available_trains[ v.network_name --[[@as string]] ] = network
 				end
 				network[id] = true
 				v.is_available = true
@@ -114,13 +113,13 @@ local migrations_table = {
 			local bits = params.second_constant or 0
 			local bits_old = params_old.second_constant or 0
 
-			local allows_all_trains = bits%2
-			local is_pr_state = math.floor(bits/2)%3
-			local allows_all_trains_old = bits_old%2
-			local is_pr_state_old = math.floor(bits_old/2)%3
+			local allows_all_trains = bits % 2
+			local is_pr_state = math.floor(bits / 2) % 3
+			local allows_all_trains_old = bits_old % 2
+			local is_pr_state_old = math.floor(bits_old / 2) % 3
 
-			bits = bit32.bor(is_pr_state, allows_all_trains*4)
-			bits_old = bit32.bor(is_pr_state_old, allows_all_trains_old*4)
+			bits = bit32.bor(is_pr_state, allows_all_trains * 4)
+			bits_old = bit32.bor(is_pr_state_old, allows_all_trains_old * 4)
 			params.second_constant = bits
 			params_old.second_constant = bits_old
 
@@ -128,7 +127,7 @@ local migrations_table = {
 			map_data.to_comb_params[id] = params_old
 		end
 		for id, station in pairs(map_data.stations) do
-			station.display_state = (station.display_state >= 2 and 1 or 0) + (station.display_state%2)*2
+			station.display_state = (station.display_state >= 2 and 1 or 0) + (station.display_state % 2) * 2
 
 			local params = get_comb_params(station.entity_comb1)
 
@@ -171,10 +170,10 @@ local migrations_table = {
 				local bits = params.second_constant or 0
 				local bits_old = params_old.second_constant or 0
 
-				bits = bit32.replace(bits, 1, SETTING_ENABLE_INACTIVE)--[[@as int]]
-				bits = bit32.replace(bits, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
-				bits_old = bit32.replace(bits_old, 1, SETTING_ENABLE_INACTIVE)--[[@as int]]
-				bits_old = bit32.replace(bits_old, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
+				bits = bit32.replace(bits, 1, SETTING_ENABLE_INACTIVE) --[[@as int]]
+				bits = bit32.replace(bits, 1, SETTING_USE_ANY_DEPOT) --[[@as int]]
+				bits_old = bit32.replace(bits_old, 1, SETTING_ENABLE_INACTIVE) --[[@as int]]
+				bits_old = bit32.replace(bits_old, 1, SETTING_USE_ANY_DEPOT) --[[@as int]]
 				params.second_constant = bits
 				params_old.second_constant = bits_old
 
@@ -191,11 +190,11 @@ local migrations_table = {
 				if train.entity.valid then
 					local e = get_any_train_entity(train.entity)
 					if e then
-						local stops = e.force.get_train_stops({name = train.depot_name, surface = e.surface})
+						local stops = e.force.get_train_stops({ name = train.depot_name, surface = e.surface })
 						for stop in rnext_consume, stops do
 							local new_depot_id = stop.unit_number
 							if map_data.depots[new_depot_id] then
-								train.depot_id = new_depot_id--[[@as uint]]
+								train.depot_id = new_depot_id --[[@as uint]]
 								break
 							end
 						end
@@ -257,8 +256,8 @@ local migrations_table = {
 				local bits = params.second_constant or 0
 				local bits_old = params_old.second_constant or 0
 
-				bits = bit32.replace(bits, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
-				bits_old = bit32.replace(bits_old, 1, SETTING_USE_ANY_DEPOT)--[[@as int]]
+				bits = bit32.replace(bits, 1, SETTING_USE_ANY_DEPOT) --[[@as int]]
+				bits_old = bit32.replace(bits_old, 1, SETTING_USE_ANY_DEPOT) --[[@as int]]
 				params.second_constant = bits
 				params_old.second_constant = bits_old
 
@@ -327,10 +326,10 @@ local migrations_table = {
 				players = {},
 			}
 			for i, v in pairs(game.players) do
-				manager_gui.on_player_created({player_index = i})
+				manager_gui.on_player_created({ player_index = i })
 			end
 		end
-	end
+	end,
 }
 --STATUS_R_TO_D = 5
 ---@param data ConfigurationChangedData

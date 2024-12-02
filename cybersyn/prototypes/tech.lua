@@ -19,19 +19,18 @@ cybersyn_tech.prerequisites = {
 cybersyn_tech.effects = {
 	{
 		type = "unlock-recipe",
-		recipe = COMBINATOR_NAME
+		recipe = COMBINATOR_NAME,
 	},
 }
 cybersyn_tech.unit.ingredients = {
-	{ "automation-science-pack", 1, },
-	{ "logistic-science-pack", 1, }
+	{ "automation-science-pack", 1 },
+	{ "logistic-science-pack", 1 },
 }
 cybersyn_tech.unit.count = 200
 cybersyn_tech.order = "c-g-c"
 
-
 if mods["pypostprocessing"] then
-    cybersyn_tech.unit.ingredients[2] = nil
+	cybersyn_tech.unit.ingredients[2] = nil
 end
 
 --Credit to modo-lv for submitting the following code
@@ -43,18 +42,24 @@ if mods["nullius"] then
 	combinator_recipe.always_show_made_in = true
 	combinator_recipe.energy_required = 3
 	combinator_recipe.ingredients = {
-		{"arithmetic-combinator", 2},
-		{"copper-cable", 10}
+		{ "arithmetic-combinator", 2 },
+		{ "copper-cable", 10 },
 	}
 	-- Enable technology
-	cybersyn_tech.order = "nullius-"..cybersyn_tech.order
+	cybersyn_tech.order = "nullius-" .. cybersyn_tech.order
 	cybersyn_tech.unit = {
 		count = 100,
 		ingredients = {
-			{"nullius-geology-pack", 1}, {"nullius-climatology-pack", 1}, {"nullius-mechanical-pack", 1}, {"nullius-electrical-pack", 1}
+			{ "nullius-geology-pack", 1 },
+			{ "nullius-climatology-pack", 1 },
+			{ "nullius-mechanical-pack", 1 },
+			{
+				"nullius-electrical-pack",
+				1
+			},
 		},
-		time = 25
+		time = 25,
 	}
-	cybersyn_tech.prerequisites = {"nullius-checkpoint-optimization", "nullius-traffic-control"}
+	cybersyn_tech.prerequisites = { "nullius-checkpoint-optimization", "nullius-traffic-control" }
 	cybersyn_tech.ignore_tech_tech_cost_multiplier = true
 end

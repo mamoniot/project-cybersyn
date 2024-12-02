@@ -1,11 +1,9 @@
 --By Mami
-local manager = require('gui.main')
+local manager = require("gui.main")
 
 local ceil = math.ceil
 local table_insert = table.insert
 local table_remove = table.remove
-
-
 
 ---@param map_data MapData
 ---@param stop LuaEntity
@@ -17,7 +15,7 @@ local function on_depot_built(map_data, stop, comb)
 		entity_comb = comb,
 		available_train_id = nil,
 	}
-	local depot_id = stop.unit_number--[[@as uint]]
+	local depot_id = stop.unit_number --[[@as uint]]
 	map_data.depots[depot_id] = depot
 	interface_raise_depot_created(depot_id)
 end
@@ -32,12 +30,13 @@ function on_depot_broken(map_data, depot_id, depot)
 				local e = get_any_train_entity(train.entity)
 				if e then
 					--local stops = e.force.get_train_stops({name = depot.entity_stop.backer_name, surface = e.surface})
-					local stops = game.train_manager.get_train_stops({station_name = depot.entity_stop.backer_name, force = e.force})
+					local stops = game.train_manager.get_train_stops({ station_name = depot.entity_stop.backer_name, force = e
+					.force })
 					--game.print(serpent.block(stops))
 					for stop in rnext_consume, stops do
 						local new_depot_id = stop.unit_number
 						if new_depot_id ~= depot_id and map_data.depots[new_depot_id] then
-							train.depot_id = new_depot_id--[[@as uint]]
+							train.depot_id = new_depot_id --[[@as uint]]
 							goto continue
 						end
 					end
@@ -69,7 +68,7 @@ local function on_refueler_built(map_data, stop, comb)
 		--network_name = set_refueler_from_comb,
 		--network_mask = set_refueler_from_comb,
 	}
-	local id = stop.unit_number--[[@as uint]]
+	local id = stop.unit_number --[[@as uint]]
 	map_data.refuelers[id] = refueler
 	set_refueler_from_comb(map_data, mod_settings, id, refueler)
 	update_stop_if_auto(map_data, refueler, false)
@@ -96,7 +95,7 @@ function on_refueler_broken(map_data, refueler_id, refueler)
 	end
 	local f, a
 	if refueler.network_name == NETWORK_EACH then
-		f, a = pairs(refueler.network_mask--[[@as {[string]: int}]])
+		f, a = pairs(refueler.network_mask --[[@as {[string]: int}]])
 	else
 		f, a = once, refueler.network_name
 	end
@@ -146,7 +145,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		display_state = 0,
 		is_warming_up = true,
 	}
-	local id = stop.unit_number--[[@as uint]]
+	local id = stop.unit_number --[[@as uint]]
 
 	map_data.stations[id] = station
 
@@ -177,7 +176,6 @@ function on_station_broken(map_data, station_id, station)
 			local is_r = train.r_station_id == station_id
 			local is_p = train.p_station_id == station_id
 			if is_p or is_r then
-
 				local is_p_in_progress = train.status == STATUS_TO_P or train.status == STATUS_P
 				local is_r_in_progress = is_p_in_progress or train.status == STATUS_TO_R or train.status == STATUS_R
 				if (is_p and is_p_in_progress) or (is_r and is_r_in_progress) then
@@ -205,10 +203,10 @@ local function search_for_station_combinator(map_data, stop, comb_operation, com
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
 	local search_area = {
-		{pos_x - 2, pos_y - 2},
-		{pos_x + 2, pos_y + 2}
+		{ pos_x - 2, pos_y - 2 },
+		{ pos_x + 2, pos_y + 2 },
 	}
-	local entities = stop.surface.find_entities_filtered({area = search_area, name = COMBINATOR_NAME})
+	local entities = stop.surface.find_entities_filtered({ area = search_area, name = COMBINATOR_NAME })
 	for _, entity in pairs(entities) do
 		if entity.valid and entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == stop then
 			local param = get_comb_params(entity)
@@ -239,7 +237,7 @@ function combinator_build_init(map_data, comb, tags)
 		control.parameters = params
 	end
 
-	local unit_number = comb.unit_number--[[@as uint]]
+	local unit_number = comb.unit_number --[[@as uint]]
 
 	if tags and tags.ghost_unit_number then
 		local old_unit_number = tags.ghost_unit_number
@@ -267,18 +265,18 @@ local function on_combinator_built(map_data, comb, tags)
 	local search_area
 	if comb.direction == defines.direction.north or comb.direction == defines.direction.south then
 		search_area = {
-			{pos_x - 1.5, pos_y - 2},
-			{pos_x + 1.5, pos_y + 2}
+			{ pos_x - 1.5, pos_y - 2 },
+			{ pos_x + 1.5, pos_y + 2 },
 		}
 	else
 		search_area = {
-			{pos_x - 2, pos_y - 1.5},
-			{pos_x + 2, pos_y + 1.5}
+			{ pos_x - 2, pos_y - 1.5 },
+			{ pos_x + 2, pos_y + 1.5 },
 		}
 	end
 	local stop = nil
 	local rail = nil
-	local entities = comb.surface.find_entities_filtered({area = search_area, name = {"train-stop", "straight-rail"}})
+	local entities = comb.surface.find_entities_filtered({ area = search_area, name = { "train-stop", "straight-rail" } })
 	for _, cur_entity in pairs(entities) do
 		if cur_entity.valid then
 			if cur_entity.name == "train-stop" then
@@ -293,7 +291,7 @@ local function on_combinator_built(map_data, comb, tags)
 	local out = comb.surface.create_entity({
 		name = COMBINATOR_OUT_NAME,
 		position = comb.position,
-		force = comb.force
+		force = comb.force,
 	})
 	assert(out, "cybersyn: could not spawn combinator controller")
 	local comb_red = comb.get_wire_connector(defines.wire_connector_id.combinator_output_red, true)
@@ -306,7 +304,7 @@ local function on_combinator_built(map_data, comb, tags)
 
 	local op = combinator_build_init(map_data, comb, tags)
 
-	local unit_number = comb.unit_number--[[@as uint]]
+	local unit_number = comb.unit_number --[[@as uint]]
 	map_data.to_output[unit_number] = out
 	map_data.to_stop[unit_number] = stop
 
@@ -315,7 +313,7 @@ local function on_combinator_built(map_data, comb, tags)
 			update_stop_from_rail(map_data, rail, nil, true)
 		end
 	elseif stop then
-		local id = stop.unit_number--[[@as uint]]
+		local id = stop.unit_number --[[@as uint]]
 		local station = map_data.stations[id]
 		local depot = map_data.depots[id]
 		local refueler = map_data.refuelers[id]
@@ -372,7 +370,7 @@ end
 local function comb_to_internal_entity(map_data, comb, unit_number)
 	local stop = map_data.to_stop[unit_number]
 	if stop and stop.valid then
-		local id = stop.unit_number--[[@as uint]]
+		local id = stop.unit_number --[[@as uint]]
 		local station = map_data.stations[id]
 		if station then
 			if station.entity_comb1 == comb then
@@ -426,18 +424,18 @@ function on_combinator_broken(map_data, comb, skip_gui_events)
 
 	local type, id, entity, stop = comb_to_internal_entity(map_data, comb, comb_id)
 	if type == 1 then
-		on_station_broken(map_data, id, entity--[[@as Station]])
-		on_stop_built_or_updated(map_data, stop--[[@as LuaEntity]], comb)
+		on_station_broken(map_data, id, entity --[[@as Station]])
+		on_stop_built_or_updated(map_data, stop --[[@as LuaEntity]], comb)
 	elseif type == 2 then
-		local station = entity--[[@as Station]]
-		station.entity_comb2 = search_for_station_combinator(map_data, stop--[[@as LuaEntity]], MODE_SECONDARY_IO, comb)
+		local station = entity --[[@as Station]]
+		station.entity_comb2 = search_for_station_combinator(map_data, stop --[[@as LuaEntity]], MODE_SECONDARY_IO, comb)
 		queue_station_for_combinator_update(map_data, id)
 	elseif type == 3 then
-		on_depot_broken(map_data, id, entity--[[@as Depot]])
-		on_stop_built_or_updated(map_data, stop--[[@as LuaEntity]], comb)
+		on_depot_broken(map_data, id, entity --[[@as Depot]])
+		on_stop_built_or_updated(map_data, stop --[[@as LuaEntity]], comb)
 	elseif type == 4 then
-		on_refueler_broken(map_data, id, entity--[[@as Refueler]])
-		on_stop_built_or_updated(map_data, stop--[[@as LuaEntity]], comb)
+		on_refueler_broken(map_data, id, entity --[[@as Refueler]])
+		on_stop_built_or_updated(map_data, stop --[[@as LuaEntity]], comb)
 	end
 
 	if out and out.valid then
@@ -468,7 +466,7 @@ end
 ---@param comb LuaEntity
 ---@param reset_display boolean?
 function combinator_update(map_data, comb, reset_display)
-	local unit_number = comb.unit_number--[[@as uint]]
+	local unit_number = comb.unit_number --[[@as uint]]
 	local control = get_comb_control(comb)
 	local params = control.parameters
 	local old_params = map_data.to_comb_params[unit_number]
@@ -476,7 +474,7 @@ function combinator_update(map_data, comb, reset_display)
 	local type, id, entity = nil, 0, nil
 	local is_ghost = comb.name == "entity-ghost"
 
-	if (old_params == nil ) then
+	if (old_params == nil) then
 		--should be generated after this tick, but in case it persists it is better to let the player know to replace it
 		game.print("cybersyn combinator lacking internal data @ " .. comb.gps_tag)
 	end
@@ -491,10 +489,10 @@ function combinator_update(map_data, comb, reset_display)
 			type, id, entity = comb_to_internal_entity(map_data, comb, unit_number)
 
 			if type == 1 then
-				local station = entity--[[@as Station]]
+				local station = entity --[[@as Station]]
 				if station.display_state == 0 then
 					params.operation = MODE_PRIMARY_IO
-				elseif station.display_state%2 == 1 then
+				elseif station.display_state % 2 == 1 then
 					params.operation = MODE_PRIMARY_IO_ACTIVE
 				else
 					params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
@@ -540,7 +538,7 @@ function combinator_update(map_data, comb, reset_display)
 			--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
 			queue_station_for_combinator_update(map_data, id)
 		elseif type == 3 then
-			local depot = entity--[[@as Depot]]
+			local depot = entity --[[@as Depot]]
 			local train_id = depot.available_train_id
 			if train_id then
 				local train = map_data.trains[train_id]
@@ -549,7 +547,7 @@ function combinator_update(map_data, comb, reset_display)
 				interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
 			end
 		elseif type == 4 then
-			set_refueler_from_comb(map_data, mod_settings, id, entity--[[@as Refueler]])
+			set_refueler_from_comb(map_data, mod_settings, id, entity --[[@as Refueler]])
 		end
 	end
 
@@ -564,7 +562,7 @@ function combinator_update(map_data, comb, reset_display)
 			--NOTE: these updates have to be queued to occur at tick init since central planning is expecting them not to change between ticks
 			queue_station_for_combinator_update(map_data, id)
 		elseif type == 4 then
-			local refueler = entity--[[@as Refueler]]
+			local refueler = entity --[[@as Refueler]]
 			local pre = refueler.allows_all_trains
 			set_refueler_from_comb(map_data, mod_settings, id, refueler)
 			if refueler.allows_all_trains ~= pre then
@@ -590,17 +588,17 @@ function on_stop_built_or_updated(map_data, stop, comb_forbidden)
 	local pos_y = stop.position.y
 
 	local search_area = {
-		{pos_x - 2, pos_y - 2},
-		{pos_x + 2, pos_y + 2}
+		{ pos_x - 2, pos_y - 2 },
+		{ pos_x + 2, pos_y + 2 },
 	}
 	local comb2 = nil
 	local comb1 = nil
 	local depot_comb = nil
 	local refueler_comb = nil
-	local entities = stop.surface.find_entities_filtered({area = search_area, name = COMBINATOR_NAME})
+	local entities = stop.surface.find_entities_filtered({ area = search_area, name = COMBINATOR_NAME })
 	for _, entity in pairs(entities) do
 		if entity.valid and entity ~= comb_forbidden then
-			local id = entity.unit_number--[[@as uint]]
+			local id = entity.unit_number --[[@as uint]]
 			local adj_stop = map_data.to_stop[id]
 			if adj_stop == nil or adj_stop == stop then
 				map_data.to_stop[id] = stop
@@ -633,17 +631,17 @@ local function on_stop_broken(map_data, stop)
 	local pos_y = stop.position.y
 
 	local search_area = {
-		{pos_x - 2, pos_y - 2},
-		{pos_x + 2, pos_y + 2}
+		{ pos_x - 2, pos_y - 2 },
+		{ pos_x + 2, pos_y + 2 },
 	}
-	local entities = stop.surface.find_entities_filtered({area = search_area, name = COMBINATOR_NAME})
+	local entities = stop.surface.find_entities_filtered({ area = search_area, name = COMBINATOR_NAME })
 	for _, entity in pairs(entities) do
 		if entity.valid and map_data.to_stop[entity.unit_number] == stop then
 			map_data.to_stop[entity.unit_number] = nil
 		end
 	end
 
-	local id = stop.unit_number--[[@as uint]]
+	local id = stop.unit_number --[[@as uint]]
 	local station = map_data.stations[id]
 	if station then
 		on_station_broken(map_data, id, station)
@@ -664,7 +662,7 @@ end
 ---@param old_name string
 local function on_stop_rename(map_data, stop, old_name)
 	--search for trains coming to the renamed station
-	local station_id = stop.unit_number--[[@as uint]]
+	local station_id = stop.unit_number --[[@as uint]]
 	local station = map_data.stations[station_id]
 	if station and station.deliveries_total > 0 then
 		for train_id, train in pairs(map_data.trains) do
@@ -678,7 +676,7 @@ local function on_stop_rename(map_data, stop, old_name)
 					if not train.se_is_being_teleported then
 						rename_manifest_schedule(train.entity, r_station.entity_stop, old_name)
 					else
-						train.se_awaiting_rename = {r_station.entity_stop, old_name}
+						train.se_awaiting_rename = { r_station.entity_stop, old_name }
 					end
 				elseif is_p and is_p_in_progress then
 					--train is attempting delivery to a stop that was renamed
@@ -686,7 +684,7 @@ local function on_stop_rename(map_data, stop, old_name)
 					if not train.se_is_being_teleported then
 						rename_manifest_schedule(train.entity, p_station.entity_stop, old_name)
 					else
-						train.se_awaiting_rename = {p_station.entity_stop, old_name}
+						train.se_awaiting_rename = { p_station.entity_stop, old_name }
 					end
 				end
 			end
@@ -698,7 +696,7 @@ end
 ---@param map_data MapData
 local function find_and_add_all_stations_from_nothing(map_data)
 	for _, surface in pairs(game.surfaces) do
-		local entities = surface.find_entities_filtered({name = COMBINATOR_NAME})
+		local entities = surface.find_entities_filtered({ name = COMBINATOR_NAME })
 		for k, comb in pairs(entities) do
 			if comb.valid then
 				on_combinator_built(map_data, comb)
@@ -768,7 +766,7 @@ end
 local function on_surface_removed(event)
 	local surface = game.surfaces[event.surface_index]
 	if surface then
-		local train_stops = surface.find_entities_filtered({type = "train-stop"})
+		local train_stops = surface.find_entities_filtered({ type = "train-stop" })
 		for _, entity in pairs(train_stops) do
 			if entity.valid and entity.name == "train-stop" then
 				on_stop_broken(storage, entity)
@@ -809,11 +807,11 @@ local function se_add_direct_to_station_order(schedule, stop, old_surface_index,
 				if i == 1 then
 					--i == search_start == 1 only if schedule.current == 1, so we can append this order to the very end of the list and let it wrap around
 					records[#records + 1] = create_direct_to_station_order(stop)
-					schedule.current = #records--[[@as uint]]
+					schedule.current = #records --[[@as uint]]
 					return 2
 				else
 					table_insert(records, i, create_direct_to_station_order(stop))
-					return i + 2--[[@as uint]]
+					return i + 2 --[[@as uint]]
 				end
 			end
 		end
@@ -824,8 +822,8 @@ local function setup_se_compat()
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if not IS_SE_PRESENT then return end
 
-	local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event")--[[@as string]]
-	local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event")--[[@as string]]
+	local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event") --[[@as string]]
+	local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event") --[[@as string]]
 
 	---@param event {}
 	script.on_event(se_on_train_teleport_started_event, function(event)
@@ -926,7 +924,8 @@ local function setup_se_compat()
 end
 
 local function setup_picker_dollies_compat()
-	IS_PICKER_DOLLIES_PRESENT = remote.interfaces["PickerDollies"] and remote.interfaces["PickerDollies"]["add_blacklist_name"]
+	IS_PICKER_DOLLIES_PRESENT = remote.interfaces["PickerDollies"] and
+	remote.interfaces["PickerDollies"]["add_blacklist_name"]
 	if IS_PICKER_DOLLIES_PRESENT then
 		remote.call("PickerDollies", "add_blacklist_name", COMBINATOR_NAME)
 		remote.call("PickerDollies", "add_blacklist_name", COMBINATOR_OUT_NAME)
@@ -937,36 +936,36 @@ local function grab_all_settings()
 	mod_settings.enable_planner = settings.global["cybersyn-enable-planner"].value --[[@as boolean]]
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
-	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value--[[@as int]]
-	mod_settings.priority = settings.global["cybersyn-priority"].value--[[@as int]]
-	mod_settings.locked_slots = settings.global["cybersyn-locked-slots"].value--[[@as int]]
-	mod_settings.network_mask = settings.global["cybersyn-network-flag"].value--[[@as int]]
-	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value--[[@as double]]
-	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value--[[@as double]]
-	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value--[[@as double]]
-	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value--[[@as boolean]]
-	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value--[[@as boolean]]
-	mod_settings.manager_ups = settings.global["cybersyn-manager-updates-per-second"].value--[[@as double]]
-	mod_settings.manager_enabled = settings.startup["cybersyn-manager-enabled"].value--[[@as boolean]]
+	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value --[[@as int]]
+	mod_settings.priority = settings.global["cybersyn-priority"].value --[[@as int]]
+	mod_settings.locked_slots = settings.global["cybersyn-locked-slots"].value --[[@as int]]
+	mod_settings.network_mask = settings.global["cybersyn-network-flag"].value --[[@as int]]
+	mod_settings.fuel_threshold = settings.global["cybersyn-fuel-threshold"].value --[[@as double]]
+	mod_settings.warmup_time = settings.global["cybersyn-warmup-time"].value --[[@as double]]
+	mod_settings.stuck_train_time = settings.global["cybersyn-stuck-train-time"].value --[[@as double]]
+	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value --[[@as boolean]]
+	mod_settings.invert_sign = settings.global["cybersyn-invert-sign"].value --[[@as boolean]]
+	mod_settings.manager_ups = settings.global["cybersyn-manager-updates-per-second"].value --[[@as double]]
+	mod_settings.manager_enabled = settings.startup["cybersyn-manager-enabled"].value --[[@as boolean]]
 end
 local function register_tick()
 	script.on_nth_tick(nil)
 	--edge case catch to register both main and manager tick if they're scheduled to run on the same ticks
 	if mod_settings.manager_enabled and mod_settings.manager_ups == mod_settings.tps and mod_settings.tps > DELTA then
-		local nth_tick = ceil(60/mod_settings.tps)--[[@as uint]]
+		local nth_tick = ceil(60 / mod_settings.tps) --[[@as uint]]
 		script.on_nth_tick(nth_tick, function()
 			tick(storage, mod_settings)
 			manager.tick(storage)
 		end)
 	else
 		if mod_settings.tps > DELTA then
-			local nth_tick_main = ceil(60/mod_settings.tps)--[[@as uint]]
+			local nth_tick_main = ceil(60 / mod_settings.tps) --[[@as uint]]
 			script.on_nth_tick(nth_tick_main, function()
 				tick(storage, mod_settings)
 			end)
 		end
 		if mod_settings.manager_enabled and mod_settings.manager_ups > DELTA then
-			local nth_tick_manager = ceil(60/mod_settings.manager_ups)--[[@as uint]]
+			local nth_tick_manager = ceil(60 / mod_settings.manager_ups) --[[@as uint]]
 			script.on_nth_tick(nth_tick_manager, function()
 				manager.tick(storage)
 			end)
@@ -984,25 +983,25 @@ end
 
 
 local filter_built = {
-	{filter = "name", name = "train-stop"},
-	{filter = "name", name = COMBINATOR_NAME},
-	{filter = "ghost", ghost_name = COMBINATOR_NAME},
-	{filter = "type", type = "inserter"},
-	{filter = "type", type = "pump"},
-	{filter = "type", type = "straight-rail"},
-	{filter = "type", type = "curved-rail"},
-	{filter = "type", type = "loader-1x1"},
+	{ filter = "name", name = "train-stop" },
+	{ filter = "name", name = COMBINATOR_NAME },
+	{ filter = "ghost", ghost_name = COMBINATOR_NAME },
+	{ filter = "type", type = "inserter" },
+	{ filter = "type", type = "pump" },
+	{ filter = "type", type = "straight-rail" },
+	{ filter = "type", type = "curved-rail" },
+	{ filter = "type", type = "loader-1x1" },
 }
 local filter_broken = {
-	{filter = "name", name = "train-stop"},
-	{filter = "name", name = COMBINATOR_NAME},
-	{filter = "ghost", name = COMBINATOR_NAME},
-	{filter = "type", type = "inserter"},
-	{filter = "type", type = "pump"},
-	{filter = "type", type = "straight-rail"},
-	{filter = "type", type = "curved-rail"},
-	{filter = "type", type = "loader-1x1"},
-	{filter = "rolling-stock"},
+	{ filter = "name", name = "train-stop" },
+	{ filter = "name", name = COMBINATOR_NAME },
+	{ filter = "ghost", name = COMBINATOR_NAME },
+	{ filter = "type", type = "inserter" },
+	{ filter = "type", type = "pump" },
+	{ filter = "type", type = "straight-rail" },
+	{ filter = "type", type = "curved-rail" },
+	{ filter = "type", type = "loader-1x1" },
+	{ filter = "rolling-stock" },
 }
 local function main()
 	grab_all_settings()
@@ -1015,7 +1014,12 @@ local function main()
 	--NOTE: There is a concern that it is possible to build or destroy important entities without one of these events being triggered, in which case the mod will have undefined behavior
 	script.on_event(defines.events.on_built_entity, on_built, filter_built)
 	script.on_event(defines.events.on_robot_built_entity, on_built, filter_built)
-	script.on_event({defines.events.script_raised_built, defines.events.script_raised_revive, defines.events.on_entity_cloned}, on_built)
+	script.on_event(
+	{
+		defines.events.script_raised_built,
+		defines.events.script_raised_revive,
+		defines.events.on_entity_cloned
+	}, on_built)
 
 	script.on_event(defines.events.on_player_rotated_entity, on_rotate)
 
@@ -1024,7 +1028,7 @@ local function main()
 	script.on_event(defines.events.on_entity_died, on_broken, filter_broken)
 	script.on_event(defines.events.script_raised_destroy, on_broken)
 
-	script.on_event({defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared}, on_surface_removed)
+	script.on_event({ defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared }, on_surface_removed)
 
 	script.on_event(defines.events.on_entity_settings_pasted, on_paste)
 
