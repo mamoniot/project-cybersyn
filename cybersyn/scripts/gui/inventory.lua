@@ -23,7 +23,7 @@ function inventory_tab.create()
       ref = { "inventory", "content_frame" },
       templates.inventory_slot_table("provided", 12),
       templates.inventory_slot_table("in_transit", 8),
-      templates.inventory_slot_table("requested", 6),
+      templates.inventory_slot_table("requested", 7),
     },
   }
 end
