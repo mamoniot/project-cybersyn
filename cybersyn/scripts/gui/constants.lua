@@ -36,14 +36,14 @@ constants.gui = {
   en = {
     trains = {
       train_id = 90,
-      status = 410,
+      status = 420,
       layout = 200,
       depot = 160,
       shipment = 36 * 6,
       shipment_columns = 6,
     },
     stations = {
-      name = 250,
+      name = 255,
       status = 110,
       network_id = 85,
       provided_requested = 36 * 6,

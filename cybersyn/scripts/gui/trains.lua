@@ -32,7 +32,7 @@ function trains_tab.create(widths)
 					templates.sort_checkbox(widths, "trains", "status", false),
 					templates.sort_checkbox(widths, "trains", "layout", false),
 					templates.sort_checkbox(widths, "trains", "depot", false),
-					templates.sort_checkbox(widths, "trains", "shipment", false),
+					templates.sort_checkbox({trains={shipment=widths.trains.shipment-50}}, "trains", "shipment", false),
 				},
 				{ name = "manager_trains_tab_scroll_pane", type = "scroll-pane", style = "ltnm_table_scroll_pane" },
 				{
