@@ -70,10 +70,10 @@ function manager.create(player)
 									handler = { [defines.events.on_gui_text_changed] = manager.handle.manager_update_text_search },
 								},
 								{ type = "label", style = "subheader_caption_label", caption = { "cybersyn-gui.search-item-label" } },
-								{ type= "choose-elem-button", name="manager_item_filter", style="slot_button_in_shallow_frame", elem_type="signal", handler=manager.handle.manager_update_item_search, },
+								{ type= "choose-elem-button", name="manager_item_filter", elem_type="signal", handler=manager.handle.manager_update_item_search, },
 								{ type = "empty-widget", style = "flib_horizontal_pusher" },
 								{ type = "label", style = "caption_label", caption = { "cybersyn-gui.network-name-label" } },
-								{ type= "choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, handler=manager.handle.manager_update_network_name, },
+								{ type= "choose-elem-button", name="network", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, handler=manager.handle.manager_update_network_name, },
 								{ type = "label", style = "caption_label", caption = { "cybersyn-gui.network-id-label" } },
 								{
 									name = "manager_network_mask_field",

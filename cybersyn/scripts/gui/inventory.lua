@@ -23,7 +23,7 @@ function inventory_tab.create()
       ref = { "inventory", "content_frame" },
       templates.inventory_slot_table("provided", 12),
       templates.inventory_slot_table("in_transit", 8),
-      templates.inventory_slot_table("requested", 6),
+      templates.inventory_slot_table("requested", 7),
     },
   }
 end
@@ -125,25 +125,27 @@ function inventory_tab.build(map_data, player_data)
       for _, v in pairs(comb1_signals) do
         local item = v.signal
         local count = v.count
+        local item_hash = hash_signal(item)
         if item.type ~= "virtual" then
-          if count > 0 then
-            if inventory_provided[item.name] == nil then
-              inventory_provided[item.name] = count
+          if station.is_p and count > 0 then
+            if inventory_provided[item_hash] == nil then
+              inventory_provided[item_hash] = count
             else
-              inventory_provided[item.name] = inventory_provided[item.name] + count
+              inventory_provided[item_hash] = inventory_provided[item_hash] + count
             end
-          else
+          end
+          if station.is_r and count < 0 then
             local r_threshold = station.item_thresholds and station.item_thresholds[item.name] or station.r_threshold
-            if station.is_stack and item_type == "item" then
+            if station.is_stack and item.type ~= "fluid" then
               r_threshold = r_threshold*get_stack_size(map_data, item.name)
             end
             -- FIXME handle v.signal.quality
 
             if -count >= r_threshold then
-              if inventory_requested[item.name] == nil then
-                inventory_requested[item.name] = count
+              if inventory_requested[item_hash] == nil then
+                inventory_requested[item_hash] = count
               else
-                inventory_requested[item.name] = inventory_requested[item.name] + count
+                inventory_requested[item_hash] = inventory_requested[item_hash] + count
               end
             end
           end
@@ -153,13 +155,12 @@ function inventory_tab.build(map_data, player_data)
 
     local deliveries = station.deliveries
     if deliveries then
-      for item, count in pairs(deliveries) do
+      for item_hash, count in pairs(deliveries) do
         if count > 0 then
-          if inventory_in_transit[item] == nil then
-            inventory_in_transit[item] = 0
-            inventory_in_transit[item] = inventory_in_transit[item] + count
+          if inventory_in_transit[item_hash] == nil then
+            inventory_in_transit[item_hash] = count
           else
-            inventory_in_transit[item] = inventory_in_transit[item] + count
+            inventory_in_transit[item_hash] = inventory_in_transit[item_hash] + count
           end
         end
       end
@@ -170,76 +171,106 @@ function inventory_tab.build(map_data, player_data)
   local provided_children = {}
 
   local i = 0
-  for item, count in pairs(inventory_provided) do
+  for item_hash, count in pairs(inventory_provided) do
+    item, quality = unhash_signal(item_hash)
+    local signal = {
+      type = prototypes.item[item] == nil and "fluid" or "item",
+      name=item,
+      quality=quality,
+    }
     i = i + 1
-    local sprite, img_path, item_string = util.generate_item_references(item)
-    if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-      provided_children[#provided_children+1] = {
-        type = "sprite-button",
-        style = "flib_slot_button_green",
-        enabled = true,
-        ignored_by_interaction = true,
-        sprite = sprite,
-        number = count,
-        tooltip = { "",
-          img_path,
-          " [font=default-semibold]",
-          item_string,
-          "[/font]\n"..format.number(count),
-        },
-      }
-    end
+    provided_children[#provided_children+1] = {
+      type = "choose-elem-button",
+      elem_type = "signal",
+      signal = signal,
+      enabled = false,
+      style = "flib_slot_button_green",
+      tooltip = {
+        "",
+        util.rich_text_from_signal(signal),
+        " provided",
+        "\n Amount: "..format.number(count),
+      },
+      children = {
+        {
+          type = "label",
+          style = "ltnm_label_signal_count_inventory",
+          ignored_by_interaction = true,
+          caption = format_signal_count(count)
+        }
+      },
+    }
   end
 
   local inventory_requested_table = refs.inventory_requested_table
   local requested_children = {}
 
   local i = 0
-  for item, count in pairs(inventory_requested) do
+  for item_hash, count in pairs(inventory_requested) do
+    item, quality = unhash_signal(item_hash)
+    local signal = {
+      type = prototypes.item[item] == nil and "fluid" or "item",
+      name=item,
+      quality=quality,
+    }
     i = i + 1
-    local sprite, img_path, item_string = util.generate_item_references(item)
-    if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-      requested_children[#requested_children+1] = {
-        type = "sprite-button",
-        style = "flib_slot_button_red",
-        enabled = true,
-        ignored_by_interaction = true,
-        sprite = sprite,
-        number = count,
-        tooltip = { "",
-          img_path,
-          " [font=default-semibold]",
-          item_string,
-          "[/font]\n"..format.number(count),
-        },
-      }
-    end
+    requested_children[#requested_children+1] = {
+      type = "choose-elem-button",
+      elem_type = "signal",
+      signal = signal,
+      enabled = false,
+      style = "flib_slot_button_red",
+      tooltip = {
+        "",
+        util.rich_text_from_signal(signal),
+        " requested",
+        "\n Amount: "..format.number(count),
+      },
+      children = {
+        {
+          type = "label",
+          style = "ltnm_label_signal_count_inventory",
+          ignored_by_interaction = true,
+          caption = format_signal_count(count)
+        }
+      },
+    }
   end
 
   local inventory_in_transit_table = refs.inventory_in_transit_table
   local in_transit_children = {}
 
   local i = 0
-  for item, count in pairs(inventory_in_transit) do
+  for item_hash, count in pairs(inventory_in_transit) do
+    item, quality = unhash_signal(item_hash)
+    local signal = {
+      type = prototypes.item[item] == nil and "fluid" or "item",
+      name=item,
+      quality=quality,
+    }
     i = i + 1
-    local sprite, img_path, item_string = util.generate_item_references(item)
-    if sprite ~= nil and helpers.is_valid_sprite_path(sprite) then
-      in_transit_children[#in_transit_children+1] = {
-        type = "sprite-button",
-        style = "flib_slot_button_blue",
-        enabled = true,
-        ignored_by_interaction = true,
-        sprite = sprite,
-        number = count,
-        tooltip = { "",
-          img_path,
-          " [font=default-semibold]",
-          item_string,
-          "[/font]\n"..format.number(count),
-        },
-      }
-      end
-    end
+    in_transit_children[#in_transit_children+1] = {
+      type = "choose-elem-button",
+      elem_type = "signal",
+      signal = signal,
+      enabled = false,
+      style = "flib_slot_button_blue",
+      tooltip = {
+        "",
+        util.rich_text_from_signal(signal),
+        " in transit",
+        "\n Amount: "..format.number(count),
+      },
+      children = {
+        {
+          type = "label",
+          style = "ltnm_label_signal_count_inventory",
+          ignored_by_interaction = true,
+          caption = format_signal_count(count)
+        }
+      },
+    }
+  end
 
   if next(inventory_provided_table.children) ~= nil then
     refs.inventory_provided_table.clear()
