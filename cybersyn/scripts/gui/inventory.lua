@@ -173,11 +173,7 @@ function inventory_tab.build(map_data, player_data)
   local i = 0
   for item_hash, count in pairs(inventory_provided) do
     item, quality = unhash_signal(item_hash)
-    local signal = {
-      type = prototypes.item[item] == nil and "fluid" or "item",
-      name=item,
-      quality=quality,
-    }
+    local signal = util.signalid_from_name(item, quality)
     i = i + 1
     provided_children[#provided_children+1] = {
       type = "choose-elem-button",
@@ -208,11 +204,7 @@ function inventory_tab.build(map_data, player_data)
   local i = 0
   for item_hash, count in pairs(inventory_requested) do
     item, quality = unhash_signal(item_hash)
-    local signal = {
-      type = prototypes.item[item] == nil and "fluid" or "item",
-      name=item,
-      quality=quality,
-    }
+    local signal = util.signalid_from_name(item, quality)
     i = i + 1
     requested_children[#requested_children+1] = {
       type = "choose-elem-button",
@@ -243,11 +235,7 @@ function inventory_tab.build(map_data, player_data)
   local i = 0
   for item_hash, count in pairs(inventory_in_transit) do
     item, quality = unhash_signal(item_hash)
-    local signal = {
-      type = prototypes.item[item] == nil and "fluid" or "item",
-      name=item,
-      quality=quality,
-    }
+    local signal = util.signalid_from_name(item, quality)
     i = i + 1
     in_transit_children[#in_transit_children+1] = {
       type = "choose-elem-button",
