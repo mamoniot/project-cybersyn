@@ -1,4 +1,3 @@
-
 missing_train_icon = flib.copy_prototype(data.raw["fluid"]["water"], MISSING_TRAIN_NAME)
 missing_train_icon.icon = "__cybersyn__/graphics/icons/missing-train.png"
 missing_train_icon.icon_size = 64

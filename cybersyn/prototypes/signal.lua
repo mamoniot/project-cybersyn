@@ -3,7 +3,7 @@ subgroup_signal = {
 	type = "item-subgroup",
 	name = "cybersyn-signal",
 	group = "signals",
-	order = "f"
+	order = "f",
 }
 r_threshold_signal = {
 	type = "virtual-signal",
@@ -12,7 +12,7 @@ r_threshold_signal = {
 	icon_size = 64,
 	icon_mipmaps = 4,
 	subgroup = "cybersyn-signal",
-	order = "a"
+	order = "a",
 }
 locked_slots_signal = {
 	type = "virtual-signal",
@@ -21,7 +21,7 @@ locked_slots_signal = {
 	icon_size = 64,
 	icon_mipmaps = 4,
 	subgroup = "cybersyn-signal",
-	order = "b"
+	order = "b",
 }
 priority_signal = {
 	type = "virtual-signal",
@@ -30,5 +30,5 @@ priority_signal = {
 	icon_size = 64,
 	icon_mipmaps = 4,
 	subgroup = "cybersyn-signal",
-	order = "c"
+	order = "c",
 }
