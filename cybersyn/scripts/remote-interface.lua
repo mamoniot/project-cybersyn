@@ -23,6 +23,7 @@ local on_train_dispatch_failed = nil
 local on_train_failed_delivery = nil
 local on_train_status_changed = nil
 local on_train_stuck = nil
+local on_train_id_changed = nil
 local on_train_teleport_started = nil
 local on_train_teleported = nil
 local on_tick_init = nil
@@ -92,6 +93,10 @@ end
 function interface.get_on_train_stuck()
 	if not on_train_stuck then on_train_stuck = script_generate_event_name() end
 	return on_train_stuck
+end
+function interface.get_on_train_id_changed()
+	if not on_train_id_changed then on_train_id_changed = script_generate_event_name() end
+	return on_train_id_changed
 end
 function interface.get_on_train_teleport_started()
 	if not on_train_teleport_started then on_train_teleport_started = script_generate_event_name() end
@@ -524,6 +529,16 @@ function interface_raise_train_stuck(train_id)
 	if on_train_stuck then
 		raise_event(on_train_stuck, {
 			train_id = train_id,
+		})
+	end
+end
+---@param new_train_id uint
+---@param old_train_id uint
+function interface_raise_train_id_changed(new_train_id, old_train_id)
+	if on_train_id_changed then
+		raise_event(on_train_id_changed, {
+			new_train_id = new_train_id,--this id stores the train
+			old_train_id = old_train_id,--this id is now invalid
 		})
 	end
 end
