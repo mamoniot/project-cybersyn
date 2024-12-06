@@ -43,6 +43,7 @@
 ---@field public is_r true?
 ---@field public is_stack true?
 ---@field public enable_train_count true? If `true`, the station control combinator for this station will output the number of trains enroute.
+---@field public enable_manual_inventory true? If `true`, the station will not internally compensate for incoming deliveries, and will instead rely on the user to manually control the station's inventory.
 ---@field public allows_all_trains true?
 ---@field public deliveries_total int
 ---@field public last_delivery_tick int
