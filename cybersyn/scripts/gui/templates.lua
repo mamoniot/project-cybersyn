@@ -43,7 +43,13 @@ function templates.inventory_slot_table(name, columns)
 				vertical_scroll_policy = "auto-and-reserve-space",
 				-- vertical_scroll_policy = "always",
 				ref = { "inventory", name, "scroll_pane" },
-				{ type = "table", name = "inventory_" .. name .. "_table", style = "slot_table", column_count = columns, ref = { "inventory", name, "table" } },
+				{
+					type = "table",
+					name = "inventory_" .. name .. "_table",
+					style = "slot_table",
+					column_count = columns,
+					ref = { "inventory", name, "table" }
+				},
 			},
 		},
 	}

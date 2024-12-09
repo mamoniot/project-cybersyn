@@ -32,7 +32,7 @@ function trains_tab.create(widths)
 					templates.sort_checkbox(widths, "trains", "status", false),
 					templates.sort_checkbox(widths, "trains", "layout", false),
 					templates.sort_checkbox(widths, "trains", "depot", false),
-					templates.sort_checkbox({trains={shipment=widths.trains.shipment-50}}, "trains", "shipment", false),
+					templates.sort_checkbox({ trains = { shipment = widths.trains.shipment - 50 } }, "trains", "shipment", false),
 				},
 				{ name = "manager_trains_tab_scroll_pane", type = "scroll-pane", style = "ltnm_table_scroll_pane" },
 				{
@@ -78,7 +78,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 			end
 		elseif search_network_mask ~= -1 then
 			if train.network_name == NETWORK_EACH then
-				local masks = train.network_mask--[[@as {}]]
+				local masks = train.network_mask --[[@as {}]]
 				for _, network_mask in pairs(masks) do
 					if bit32.btest(search_network_mask, network_mask) then
 						goto has_match
@@ -122,7 +122,6 @@ function trains_tab.build(map_data, player_data, query_limit)
 		::continue::
 	end
 
-
 	table.sort(trains_sorted, function(a, b)
 		local train1 = map_data.trains[a]
 		local train2 = map_data.trains[b]
@@ -165,7 +164,8 @@ function trains_tab.build(map_data, player_data, query_limit)
 					local primary_item1 = train1.manifest[1]
 					local primary_item2 = train2.manifest[1]
 					if primary_item1.name ~= primary_item2.name then
-						return invert ~= (primary_item1.type == primary_item2.type and primary_item1.name < primary_item2.name or (not primary_item1.type or primary_item1.type == "item"))
+						return invert ~=
+						(primary_item1.type == primary_item2.type and primary_item1.name < primary_item2.name or (not primary_item1.type or primary_item1.type == "item"))
 					elseif primary_item1.count ~= primary_item2.count then
 						return invert ~= (primary_item1.count < primary_item2.count)
 					end
@@ -205,9 +205,9 @@ function trains_tab.build(map_data, player_data, query_limit)
 			local network_id = nil
 			if network_name then
 				if network_name == NETWORK_EACH then
-					network_id = train.network_mask[search_network_name]--[[@as int?]]
+					network_id = train.network_mask[search_network_name] --[[@as int?]]
 				else
-					network_id = train.network_mask--[[@as int]]
+					network_id = train.network_mask --[[@as int]]
 				end
 				network_sprite, _, _ = util.generate_item_references(network_name)
 			end
@@ -237,7 +237,14 @@ function trains_tab.build(map_data, player_data, query_limit)
 					type = "frame",
 					style = "ltnm_table_row_frame_" .. color,
 					style_mods = { width = widths.trains.status },
-					{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = true, ignored_by_interaction = true, sprite = network_sprite, number = network_id },
+					{
+						type = "sprite-button",
+						style = "ltnm_small_slot_button_default",
+						enabled = true,
+						ignored_by_interaction = true,
+						sprite = network_sprite,
+						number = network_id
+					},
 				},
 				{
 					type = "label",
@@ -259,7 +266,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 						name = "shipment_table",
 						style = "slot_table",
 						column_count = widths.trains.shipment_columns,
-						{  },
+						{},
 					},
 				},
 			}, refs)

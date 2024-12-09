@@ -100,7 +100,7 @@ function remove_manifest(map_data, station, manifest, sign)
 	local deliveries = station.deliveries
 	for i, item in ipairs(manifest) do
 		local item_hash = hash_item(item.name, item.quality)
-		deliveries[item_hash] = deliveries[item_hash] + sign*item.count
+		deliveries[item_hash] = deliveries[item_hash] + sign * item.count
 		if deliveries[item_hash] == 0 then
 			deliveries[item_hash] = nil
 		end
@@ -124,7 +124,6 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 	local p_station = map_data.stations[p_station_id]
 	local train = map_data.trains[train_id]
 	local depot = map_data.depots[train.depot_id]
-
 
 	if not train.entity.valid then
 		on_train_broken(map_data, train_id, train)
@@ -177,17 +176,17 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 			if item_i > 1 or r_is_each or p_is_each then
 				local f, a
 				if r_is_each then
-					f, a = pairs(r_station.network_mask--[[@as {[string]: int}]])
+					f, a = pairs(r_station.network_mask --[[@as {[string]: int}]])
 					if p_is_each then
 						for network_name, _ in f, a do
 							local item_network_name = network_name .. ":" .. item_hash
 							economy.all_r_stations[item_network_name] = nil
 							economy.all_p_stations[item_network_name] = nil
 						end
-						f, a = pairs(p_station.network_mask--[[@as {[string]: int}]])
+						f, a = pairs(p_station.network_mask --[[@as {[string]: int}]])
 					end
 				elseif p_is_each then
-					f, a = pairs(p_station.network_mask--[[@as {[string]: int}]])
+					f, a = pairs(p_station.network_mask --[[@as {[string]: int}]])
 				else
 					f, a = once, r_station.network_name
 				end
@@ -243,16 +242,16 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 		local r_effective_item_count = r_item_count + r_effective_adjustment
 		if r_effective_item_count < 0 and r_item_count < 0 then
 			local r_threshold = r_station.item_thresholds and r_station.item_thresholds[item_hash] or
-				r_station.r_threshold
+					r_station.r_threshold
 			if r_station.is_stack and item_type == "item" then
-				r_threshold = r_threshold*get_stack_size(map_data, item_name)
+				r_threshold = r_threshold * get_stack_size(map_data, item_name)
 			end
 			local p_effective_item_count = p_station.item_p_counts[item_hash]
 			--could be an item that is not present at the station
 			local effective_threshold
 			local override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_hash]
 			if override_threshold and p_station.is_stack and item_type == "item" then
-				override_threshold = override_threshold*get_stack_size(map_data, item_name)
+				override_threshold = override_threshold * get_stack_size(map_data, item_name)
 			end
 			if override_threshold and override_threshold <= r_threshold then
 				effective_threshold = override_threshold
@@ -265,7 +264,7 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 					type = item_type,
 					quality = v.signal.quality,
 					count = min(-r_effective_item_count,
-						p_effective_item_count)
+						p_effective_item_count),
 				}
 				if item_name == primary_item_name then
 					manifest[#manifest + 1] = manifest[1]
@@ -282,7 +281,7 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 	local total_item_slots = train.item_slot_capacity
 	if locked_slots > 0 and total_item_slots > 0 then
 		local total_cargo_wagons = #train.entity.cargo_wagons
-		total_item_slots = max(total_item_slots - total_cargo_wagons*locked_slots, 1)
+		total_item_slots = max(total_item_slots - total_cargo_wagons * locked_slots, 1)
 	end
 	local total_liquid_left = train.fluid_capacity
 
@@ -295,21 +294,21 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 				if item.count > total_liquid_left then
 					item.count = total_liquid_left
 				end
-				total_liquid_left = 0--no liquid merging
+				total_liquid_left = 0 --no liquid merging
 				keep_item = true
 			end
 		elseif total_item_slots > 0 then
 			local stack_size = get_stack_size(map_data, item.name)
-			local slots = ceil(item.count/stack_size)
+			local slots = ceil(item.count / stack_size)
 			if slots > total_item_slots then
-				item.count = total_item_slots*stack_size
+				item.count = total_item_slots * stack_size
 			end
 			total_item_slots = total_item_slots - slots
 			keep_item = true
 		end
 		if keep_item then
 			i = i + 1
-		else--swap remove
+		else --swap remove
 			manifest[i] = manifest[#manifest]
 			manifest[#manifest] = nil
 		end
@@ -347,10 +346,10 @@ local function tick_dispatch(map_data, mod_settings)
 		end
 
 		--randomizing the ordering should only matter if we run out of available trains
-		local name_i = size <= 2 and 2 or 2*random(size/2)
+		local name_i = size <= 2 and 2 or 2 * random(size / 2)
 
-		item_network_name = all_names[name_i - 1]--[[@as Cybersyn.Economy.ItemNetworkName]]
-		local signal = all_names[name_i]--[[@as SignalID]]
+		item_network_name = all_names[name_i - 1] --[[@as Cybersyn.Economy.ItemNetworkName]]
+		local signal = all_names[name_i] --[[@as SignalID]]
 
 		--swap remove
 		all_names[name_i - 1] = all_names[size - 1]
@@ -452,7 +451,7 @@ local function tick_dispatch(map_data, mod_settings)
 		local trains = map_data.available_trains[network_name]
 		local is_fluid = item_type == "fluid"
 		if not is_fluid and r_station.is_stack then
-			r_threshold = r_threshold*get_stack_size(map_data, item_name)
+			r_threshold = r_threshold * get_stack_size(map_data, item_name)
 		end
 		--no train exists with layout accepted by both provide and request stations
 		local correctness = 0
@@ -496,7 +495,7 @@ local function tick_dispatch(map_data, mod_settings)
 			effective_count = p_station.item_p_counts[item_hash]
 			override_threshold = p_station.item_thresholds and p_station.item_thresholds[item_hash]
 			if override_threshold and p_station.is_stack and not is_fluid then
-				override_threshold = override_threshold*get_stack_size(map_data, item_name)
+				override_threshold = override_threshold * get_stack_size(map_data, item_name)
 			end
 			if override_threshold and override_threshold <= r_threshold then
 				effective_threshold = override_threshold
@@ -517,13 +516,16 @@ local function tick_dispatch(map_data, mod_settings)
 
 			p_prior = p_station.priority
 			if override_threshold and p_station.item_priority then
-				p_prior = p_station.item_priority--[[@as int]]
+				p_prior = p_station.item_priority --[[@as int]]
 			end
 			if p_prior < best_p_prior then
 				goto p_continue
 			end
 
-			best_p_to_r_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and get_dist(p_station.entity_stop, r_station.entity_stop) or INF
+			best_p_to_r_dist =
+					p_station.entity_stop.valid and
+					r_station.entity_stop.valid and
+					(get_dist(p_station.entity_stop, r_station.entity_stop) or INF)
 			if p_prior == best_p_prior and best_p_to_r_dist > best_dist then
 				goto p_continue
 			end
@@ -531,7 +533,7 @@ local function tick_dispatch(map_data, mod_settings)
 			if is_fluid then
 				slot_threshold = effective_threshold
 			else
-				slot_threshold = ceil(effective_threshold/get_stack_size(map_data, item_name))
+				slot_threshold = ceil(effective_threshold / get_stack_size(map_data, item_name))
 			end
 
 			if correctness < 1 then
@@ -613,7 +615,9 @@ local function tick_dispatch(map_data, mod_settings)
 					end
 
 					--check if path is shortest so we prioritize locality
-					local t_to_p_dist = train_stock and p_station.entity_stop.valid and (get_dist(train_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT*train.priority) or INF
+					local t_to_p_dist =
+							train_stock and p_station.entity_stop.valid and
+							((get_dist(train_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT * train.priority) or INF)
 					if capacity == best_capacity and t_to_p_dist > best_t_to_p_dist then
 						goto train_continue
 					end
@@ -675,7 +679,7 @@ local function tick_poll_station(map_data, mod_settings)
 
 	local station_id
 	local station
-	while true do--choose a station
+	while true do --choose a station
 		tick_data.i = (tick_data.i or 0) + 1
 		if tick_data.i > #map_data.active_station_ids then
 			tick_data.i = nil
@@ -789,14 +793,14 @@ local function tick_poll_station(map_data, mod_settings)
 			if station.is_r then
 				local r_threshold = station.item_thresholds and station.item_thresholds[item_hash] or station.r_threshold
 				if station.is_stack and item_type == "item" then
-					r_threshold = r_threshold*get_stack_size(map_data, item_name)
+					r_threshold = r_threshold * get_stack_size(map_data, item_name)
 				end
 				if -effective_item_count >= r_threshold and -item_count >= r_threshold then
 					is_not_requesting = false
 					is_requesting_nothing = false
 					local f, a
 					if station.network_name == NETWORK_EACH then
-						f, a = pairs(station.network_mask--[[@as {[string]: int}]])
+						f, a = pairs(station.network_mask --[[@as {[string]: int}]])
 					else
 						f, a = once, station.network_name
 					end
@@ -818,7 +822,7 @@ local function tick_poll_station(map_data, mod_settings)
 				if station.is_p and effective_item_count > 0 and item_count > 0 then
 					local f, a
 					if station.network_name == NETWORK_EACH then
-						f, a = pairs(station.network_mask--[[@as {[string]: int}]])
+						f, a = pairs(station.network_mask --[[@as {[string]: int}]])
 					else
 						f, a = once, station.network_name
 					end
@@ -863,18 +867,19 @@ end
 function tick_poll_entities(map_data, mod_settings)
 	local tick_data = map_data.tick_data
 
-	if map_data.total_ticks%5 == 0 then
+	if map_data.total_ticks % 5 == 0 then
 		if tick_data.last_train == nil or map_data.trains[tick_data.last_train] then
 			local train_id, train = next(map_data.trains, tick_data.last_train)
 			tick_data.last_train = train_id
 			if train then
 				if (not train.entity or not train.entity.valid) then
-					game.print("Cybersyn: Lost track of invalid train after migration. You need to check for lost trains manually. You might get a few of these messages.")
+					game.print(
+						"Cybersyn: Lost track of invalid train after migration. You need to check for lost trains manually. You might get a few of these messages.")
 					map_data.trains[train_id] = nil
 					return
 				end
 
-				if train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time*mod_settings.tps < map_data.total_ticks then
+				if train.manifest and not train.se_is_being_teleported and train.last_manifest_tick + mod_settings.stuck_train_time * mod_settings.tps < map_data.total_ticks then
 					if mod_settings.stuck_train_alert_enabled then
 						send_alert_stuck_train(map_data, train.entity)
 					end
@@ -918,7 +923,6 @@ end
 ---@param map_data MapData
 ---@param mod_settings CybersynModSettings
 function tick_init(map_data, mod_settings)
-
 	map_data.economy.all_p_stations = {}
 	map_data.economy.all_r_stations = {}
 	map_data.economy.all_names = {}
@@ -930,7 +934,7 @@ function tick_init(map_data, mod_settings)
 			local cycles = map_data.warmup_station_cycles[id]
 			--force a station to wait at least 1 cycle so we can be sure active_station_ids was flushed of duplicates
 			if cycles > 0 then
-				if station.last_delivery_tick + mod_settings.warmup_time*mod_settings.tps < map_data.total_ticks then
+				if station.last_delivery_tick + mod_settings.warmup_time * mod_settings.tps < map_data.total_ticks then
 					station.is_warming_up = nil
 					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
 					table_remove(map_data.warmup_station_ids, 1)
@@ -979,9 +983,8 @@ end
 function tick(map_data, mod_settings)
 	map_data.total_ticks = map_data.total_ticks + 1
 
-
 	if map_data.active_alerts then
-		if map_data.total_ticks%(8*mod_settings.tps) < 1 then
+		if map_data.total_ticks % (8 * mod_settings.tps) < 1 then
 			process_active_alerts(map_data)
 		end
 	end

@@ -13,9 +13,7 @@ local inventory_tab = require("scripts.gui.inventory")
 --local alerts_tab = require("scripts.gui.alerts")
 local util = require("scripts.gui.util")
 
-
 local manager = {}
-
 
 --- @param player LuaPlayer
 function manager.create(player)
@@ -50,7 +48,8 @@ function manager.create(player)
 						},
 						--templates.frame_action_button("manager_pin_button", "ltnm_pin", { "cybersyn-gui.keep-open" }, manager.handle.manager_pin),--on_gui_clicked
 						--templates.frame_action_button("manager_refresh_button", "ltnm_refresh", { "cybersyn-gui.refresh-tooltip" }, manager.handle.manager_refresh_click),--on_gui_clicked
-						templates.frame_action_button(nil, "utility/close", { "gui.close-instruction" }, manager.handle.manager_close),--on_gui_clicked
+						templates.frame_action_button(nil, "utility/close", { "gui.close-instruction" }, manager.handle
+						.manager_close),                                                                                          --on_gui_clicked
 					},
 				},
 				{
@@ -70,10 +69,21 @@ function manager.create(player)
 									handler = { [defines.events.on_gui_text_changed] = manager.handle.manager_update_text_search },
 								},
 								{ type = "label", style = "subheader_caption_label", caption = { "cybersyn-gui.search-item-label" } },
-								{ type= "choose-elem-button", name="manager_item_filter", elem_type="signal", handler=manager.handle.manager_update_item_search, },
+								{
+									type = "choose-elem-button",
+									name = "manager_item_filter",
+									elem_type = "signal",
+									handler = manager.handle.manager_update_item_search
+								},
 								{ type = "empty-widget", style = "flib_horizontal_pusher" },
 								{ type = "label", style = "caption_label", caption = { "cybersyn-gui.network-name-label" } },
-								{ type= "choose-elem-button", name="network", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, handler=manager.handle.manager_update_network_name, },
+								{
+									type = "choose-elem-button",
+									name = "network",
+									elem_type = "signal",
+									tooltip = { "cybersyn-gui.network-tooltip" },
+									handler = manager.handle.manager_update_network_name
+								},
 								{ type = "label", style = "caption_label", caption = { "cybersyn-gui.network-id-label" } },
 								{
 									name = "manager_network_mask_field",
@@ -108,8 +118,6 @@ function manager.create(player)
 		},
 	}, refs)
 
-
-
 	refs.manager_titlebar.drag_target = refs.manager_window
 	refs.manager_window.force_auto_center()
 
@@ -136,7 +144,7 @@ function manager.build(player_data)
 		surface_dropdown.add_item(name, i)
 		--reselect same surface
 		if name == currently_selected_surface then
-			refs.manager_surface_dropdown.selected_index = i--[[@as uint]]
+			refs.manager_surface_dropdown.selected_index = i --[[@as uint]]
 		end
 	end
 	-- Validate that the selected index still exist
@@ -164,8 +172,6 @@ function manager.update(map_data, player_data, query_limit)
 	end
 end
 
-
-
 manager.handle = {}
 
 --- @param e {player_index: uint}
@@ -175,7 +181,6 @@ function manager.wrapper(e, handler)
 	local player_data = storage.manager.players[e.player_index]
 	handler(player, player_data, player_data.refs, e)
 end
-
 
 local function toggle_fab(elem, sprite, state)
 	if state then
@@ -204,7 +209,6 @@ function manager.handle.manager_open(player, player_data, refs)
 	player_data.is_manager_open = true
 	player.set_shortcut_toggled("cybersyn-toggle-gui", true)
 end
-
 
 --- @param player LuaPlayer
 --- @param player_data PlayerData
@@ -277,7 +281,6 @@ function manager.handle.manager_update_item_search(player, player_data, refs, e)
 	end
 end
 
-
 --- @param player LuaPlayer
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
@@ -321,8 +324,6 @@ function manager.handle.manager_update_surface(player, player_data, refs, e)
 
 	player_data.search_surface_idx = surface_id
 end
-
-
 
 gui.add_handlers(manager.handle, manager.wrapper)
 

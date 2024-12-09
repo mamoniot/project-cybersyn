@@ -13,7 +13,10 @@ local function set_comb1(map_data, station, manifest, sign)
 		if manifest then
 			local signals = {}
 			for i, item in ipairs(manifest) do
-				signals[i] = {value = {type = item.type, name = item.name, quality = item.quality or "normal", comparator = "="}, min = sign*item.count}
+				signals[i] = {
+					value = { type = item.type, name = item.name, quality = item.quality or "normal", comparator = "=" },
+					min = sign * item.count,
+				}
 			end
 			set_combinator_output(map_data, comb, signals)
 		else
@@ -27,9 +30,9 @@ end
 ---@param train Train
 function on_failed_delivery(map_data, train_id, train)
 	--NOTE: must either change this train's status or remove it after this call
-	local p_station_id = train.p_station_id--[[@as uint]]
-	local r_station_id = train.r_station_id--[[@as uint]]
-	local manifest = train.manifest--[[@as Manifest]]
+	local p_station_id = train.p_station_id --[[@as uint]]
+	local r_station_id = train.r_station_id --[[@as uint]]
+	local manifest = train.manifest --[[@as Manifest]]
 	local is_p_in_progress = train.status == STATUS_TO_P or train.status == STATUS_P
 	local is_r_in_progress = is_p_in_progress or train.status == STATUS_TO_R or train.status == STATUS_R
 	if is_p_in_progress then
@@ -68,10 +71,9 @@ function on_failed_delivery(map_data, train_id, train)
 	train.r_station_id = nil
 	train.p_station_id = nil
 	train.manifest = nil
-	interface_raise_train_failed_delivery(train_id, is_p_in_progress, p_station_id, is_r_in_progress, r_station_id, manifest)
+	interface_raise_train_failed_delivery(train_id, is_p_in_progress, p_station_id, is_r_in_progress, r_station_id,
+		manifest)
 end
-
-
 
 ---@param map_data MapData
 ---@param train_id uint
@@ -143,8 +145,6 @@ function remove_available_train(map_data, train_id, train)
 	return false
 end
 
-
-
 ---@param map_data MapData
 ---@param depot_id uint
 ---@param depot Depot
@@ -197,7 +197,7 @@ local function on_train_arrives_depot(map_data, depot_id, depot, train_entity)
 			--network_name = add_available_train_to_depot,
 			--network_mask = add_available_train_to_depot,
 			--priority = add_available_train_to_depot,
-		}--[[@as Train]]
+		} --[[@as Train]]
 		set_train_layout(map_data, train)
 		map_data.trains[train_id] = train
 		add_available_train_to_depot(map_data, mod_settings, train_id, train, depot_id, depot)
@@ -292,10 +292,10 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 							for i = 1, inv_size do
 								local item = inv[i]
 								if item.valid_for_read then
-									fuel_total = fuel_total + item.count/get_stack_size(map_data, item.name)
+									fuel_total = fuel_total + item.count / get_stack_size(map_data, item.name)
 								end
 							end
-							fuel_fill = min(fuel_fill, fuel_total/inv_size)
+							fuel_fill = min(fuel_fill, fuel_total / inv_size)
 						end
 					end
 				end
@@ -338,10 +338,10 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 							local train_network_mask = get_network_mask(train, network_name)
 							-- Verify refueler compatibility with train.
 							if
-								btest(train_network_mask, refueler_network_mask) and
-								(refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and
-								refueler.trains_total < refueler.entity_stop.trains_limit and
-								is_train_routable(get_any_train_entity(train.entity), refueler.entity_stop)
+									btest(train_network_mask, refueler_network_mask) and
+									(refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and
+									refueler.trains_total < refueler.entity_stop.trains_limit and
+									is_train_routable(get_any_train_entity(train.entity), refueler.entity_stop)
 							then
 								if refueler.priority >= best_prior then
 									local t = get_any_train_entity(train.entity)
@@ -434,7 +434,7 @@ end
 function on_train_changed(event)
 	---@type MapData
 	local map_data = storage
-	local train_e = event.train--[[@as LuaTrain]]
+	local train_e = event.train --[[@as LuaTrain]]
 	if not train_e.valid then return end
 	local train_id = train_e.id
 
@@ -443,7 +443,7 @@ function on_train_changed(event)
 		local data = map_data.active_alerts[train_id]
 		if data then
 			--we need to wait for the train to come to a stop from being locked
-			if data[3] + 10*mod_settings.tps < map_data.total_ticks then
+			if data[3] + 10 * mod_settings.tps < map_data.total_ticks then
 				map_data.active_alerts[train_id] = nil
 				if next(map_data.active_alerts) == nil then
 					map_data.active_alerts = nil
@@ -456,7 +456,7 @@ function on_train_changed(event)
 		local stop = train_e.station
 		if stop and stop.valid and stop.name == "train-stop" then
 			-- Arrived at explicitly named stop
-			local id = stop.unit_number--[[@as uint]]
+			local id = stop.unit_number --[[@as uint]]
 			local depot = map_data.depots[id]
 			if depot then
 				if depot.entity_comb.valid and depot.entity_stop.valid then
@@ -520,7 +520,8 @@ function on_train_changed(event)
 				-- Check if train has been misdirected along a long rail path due to
 				-- the priority of the station at the end.
 				local last_rail = path.rails[#path.rails]
-				local to_stop = (last_rail and last_rail.valid) and (last_rail.get_rail_segment_stop(defines.rail_direction.front) or last_rail.get_rail_segment_stop(defines.rail_direction.back))
+				local to_stop = (last_rail and last_rail.valid) and
+						(last_rail.get_rail_segment_stop(defines.rail_direction.front) or last_rail.get_rail_segment_stop(defines.rail_direction.back))
 				if to_stop and to_stop.train_stop_priority ~= 50 then
 					send_alert_station_non_default_priority(to_stop)
 					-- Fallthrough: still executing normal cybersyn behavior here even
@@ -528,7 +529,7 @@ function on_train_changed(event)
 					-- a case where we want to lock the train or give it an invalid
 					-- schedule as is done elsewhere in the code.)
 				end
-				
+
 				on_train_leaves_stop(map_data, mod_settings, train_id, train)
 			end
 		end

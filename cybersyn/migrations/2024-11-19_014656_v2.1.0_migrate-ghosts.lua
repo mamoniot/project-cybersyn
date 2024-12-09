@@ -1,6 +1,6 @@
 local filter = {
 	name = "entity-ghost",
-	ghost_name = COMBINATOR_NAME
+	ghost_name = COMBINATOR_NAME,
 }
 
 if not storage.to_comb then storage.to_comb = {} end

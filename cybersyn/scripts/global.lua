@@ -30,7 +30,6 @@
 ---@field public se_get_space_elevator_name {}?
 ---@field public se_get_zone_from_surface_index {}?
 
-
 ---@class Cybersyn.StationScheduleSettings
 ---@field public enable_inactive true? If true, enable inactivity timeouts for trains at this station.
 ---@field public enable_circuit_condition true? If `true`, trains directed to this station will be given a check>0 circuit condition in their schedule.

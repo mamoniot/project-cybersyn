@@ -10,7 +10,6 @@ local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
 --local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 
-
 ---@param map_data MapData
 ---@param item_name string
 function get_stack_size(map_data, item_name)
@@ -24,7 +23,6 @@ function item_lt(item_order, item1_name, item2_name)
 	return item_order[item1_name] < item_order[item2_name]
 end
 
-
 ---NOTE: does not check .valid
 ---@param entity0 LuaEntity
 ---@param entity1 LuaEntity
@@ -33,7 +31,6 @@ function get_dist(entity0, entity1)
 	local surface1 = entity1.surface.index
 	return (surface0 == surface1 and get_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE)
 end
-
 
 ---@param cache PerfCache
 ---@param surface LuaSurface
@@ -73,21 +70,21 @@ local function se_get_zone_from_surface_index(cache, surface_index)
 	local zone_index = nil
 	---@type uint?
 	local zone_orbit_index = nil
-	local cache_idx = 2*surface_index
+	local cache_idx = 2 * surface_index
 	if cache.se_get_zone_from_surface_index then
-		zone_index = cache.se_get_zone_from_surface_index[cache_idx - 1]--[[@as uint]]
+		zone_index = cache.se_get_zone_from_surface_index[cache_idx - 1] --[[@as uint]]
 		--zones may not have an orbit_index
-		zone_orbit_index = cache.se_get_zone_from_surface_index[cache_idx]--[[@as uint?]]
+		zone_orbit_index = cache.se_get_zone_from_surface_index[cache_idx] --[[@as uint?]]
 	else
 		cache.se_get_zone_from_surface_index = {}
 	end
 
 	if not zone_index then
-		zone = remote.call("space-exploration", "get_zone_from_surface_index", {surface_index = surface_index})
+		zone = remote.call("space-exploration", "get_zone_from_surface_index", { surface_index = surface_index })
 
 		if zone and type(zone.index) == "number" then
-			zone_index = zone.index--[[@as uint]]
-			zone_orbit_index = zone.orbit_index--[[@as uint?]]
+			zone_index = zone.index --[[@as uint]]
+			zone_orbit_index = zone.orbit_index --[[@as uint?]]
 			--NOTE: caching these indices could be a problem if SE is not deterministic in choosing them
 			cache.se_get_zone_from_surface_index[cache_idx - 1] = zone_index
 			cache.se_get_zone_from_surface_index[cache_idx] = zone_orbit_index
@@ -105,14 +102,12 @@ function get_any_train_entity(train)
 	return train.valid and (train.front_stock or train.back_stock or train.carriages[1]) or nil
 end
 
-
 ---@param e Station|Refueler|Train
 ---@param network_name string
 ---@return int
 function get_network_mask(e, network_name)
-	return e.network_name == NETWORK_EACH and (e.network_mask[network_name] or 0) or e.network_mask--[[@as int]]
+	return e.network_name == NETWORK_EACH and (e.network_mask[network_name] or 0) or e.network_mask --[[@as int]]
 end
-
 
 --- Sets colors of all locomotives of the train to the color of the given station.
 --- Respects the copy_color_from_train_stop user setting.
@@ -131,21 +126,28 @@ function color_train_by_stop(train, station)
 	end
 end
 
-
 ------------------------------------------------------------------------------
---[[train schedules]]--
+--[[train schedules]] --
 ------------------------------------------------------------------------------
 
 ---@type WaitCondition
-local condition_wait_inactive = {type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME}
+local condition_wait_inactive = { type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME }
 ---@type WaitCondition
-local condition_empty = {type = "empty", compare_type = "and"}
+local condition_empty = { type = "empty", compare_type = "and" }
 ---@type WaitCondition
-local condition_circuit = {type = "circuit", compare_type = "and", condition = {comparator = ">", first_signal = {type = "virtual", name = "signal-check"}, constant = 0}}
+local condition_circuit = {
+	type = "circuit",
+	compare_type = "and",
+	condition = {
+		comparator = ">",
+		first_signal = { type = "virtual", name = "signal-check" },
+		constant = 0,
+	},
+}
 ---@type WaitCondition[]
-local conditions_only_inactive = {condition_wait_inactive}
+local conditions_only_inactive = { condition_wait_inactive }
 ---@type WaitCondition[]
-local conditions_direct_to_station = {{type = "time", compare_type = "and", ticks = 1}}
+local conditions_direct_to_station = { { type = "time", compare_type = "and", ticks = 1 } }
 
 ---@param stop LuaEntity
 ---@param manifest Manifest
@@ -165,7 +167,11 @@ function create_loading_order(stop, manifest, schedule_settings)
 		conditions[#conditions + 1] = {
 			type = cond_type,
 			compare_type = "and",
-			condition = {comparator = "≥", first_signal = {type = item.type, name = item.name, quality = item.quality}, constant = item.count}
+			condition = {
+				comparator = "≥",
+				first_signal = { type = item.type, name = item.name, quality = item.quality },
+				constant = item.count,
+			},
 		}
 	end
 	if schedule_settings.enable_inactive then
@@ -174,7 +180,7 @@ function create_loading_order(stop, manifest, schedule_settings)
 	if schedule_settings.enable_circuit_condition then
 		conditions[#conditions + 1] = condition_circuit
 	end
-	return {station = stop.backer_name, wait_conditions = conditions}
+	return { station = stop.backer_name, wait_conditions = conditions }
 end
 
 ---@param stop LuaEntity
@@ -201,24 +207,28 @@ function create_unloading_order(stop, schedule_settings)
 		conditions[#conditions + 1] = condition_circuit
 	end
 
-	return {station = stop.backer_name, wait_conditions = conditions}
+	return { station = stop.backer_name, wait_conditions = conditions }
 end
 
 ---@param depot_name string
 function create_inactivity_order(depot_name)
-	return {station = depot_name, wait_conditions = conditions_only_inactive}
+	return { station = depot_name, wait_conditions = conditions_only_inactive }
 end
 
 ---@param stop LuaEntity
 function create_direct_to_station_order(stop)
-	return {rail = stop.connected_rail, rail_direction = stop.connected_rail_direction, wait_conditions = conditions_direct_to_station}
+	return {
+		rail = stop.connected_rail,
+		rail_direction = stop.connected_rail_direction,
+		wait_conditions = conditions_direct_to_station,
+	}
 end
 
 ---@param train LuaTrain
 ---@param depot_name string
 function set_depot_schedule(train, depot_name)
 	if train.valid then
-		train.schedule = {current = 1, records = {create_inactivity_order(depot_name)}}
+		train.schedule = { current = 1, records = { create_inactivity_order(depot_name) } }
 	end
 end
 
@@ -239,7 +249,7 @@ function lock_train_to_depot(train)
 				if wait and wait[1] then
 					wait[1].ticks = LOCK_TRAIN_TIME
 				else
-					record.wait_conditions = {{type = "inactivity", compare_type = "and", ticks = LOCK_TRAIN_TIME}}
+					record.wait_conditions = { { type = "inactivity", compare_type = "and", ticks = LOCK_TRAIN_TIME } }
 				end
 				train.schedule = schedule
 			else
@@ -271,7 +281,7 @@ end
 ---@param elevator_name string
 ---@param is_train_in_orbit boolean
 function se_create_elevator_order(elevator_name, is_train_in_orbit)
-	return {station = elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)}
+	return { station = elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX) }
 end
 ---NOTE: does not check .valid
 ---@param map_data MapData
@@ -284,26 +294,42 @@ end
 ---@param r_schedule_settings Cybersyn.StationScheduleSettings
 ---@param manifest Manifest
 ---@param start_at_depot boolean?
-function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, p_schedule_settings, r_stop, r_schedule_settings, manifest, start_at_depot)
+function set_manifest_schedule(
+		map_data,
+		train,
+		depot_stop,
+		same_depot,
+		p_stop,
+		p_schedule_settings,
+		r_stop,
+		r_schedule_settings,
+		manifest,
+		start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 	if not p_stop.connected_rail or not r_stop.connected_rail then
 		--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
-		train.schedule = {current = 1, records = {
-			create_inactivity_order(depot_stop.backer_name),
-			create_loading_order(p_stop, manifest, p_schedule_settings),
-			create_unloading_order(r_stop, r_schedule_settings),
-		}}
+		train.schedule = {
+			current = 1,
+			records = {
+				create_inactivity_order(depot_stop.backer_name),
+				create_loading_order(p_stop, manifest, p_schedule_settings),
+				create_unloading_order(r_stop, r_schedule_settings),
+			},
+		}
 		lock_train(train)
 		send_alert_station_of_train_broken(map_data, train)
 		return true
 	end
 	if same_depot and not depot_stop.connected_rail then
 		--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
-		train.schedule = {current = 1, records = {
-			create_inactivity_order(depot_stop.backer_name),
-			create_loading_order(p_stop, manifest, p_schedule_settings),
-			create_unloading_order(r_stop, r_schedule_settings),
-		}}
+		train.schedule = {
+			current = 1,
+			records = {
+				create_inactivity_order(depot_stop.backer_name),
+				create_loading_order(p_stop, manifest, p_schedule_settings),
+				create_unloading_order(r_stop, r_schedule_settings),
+			},
+		}
 		lock_train(train)
 		send_alert_depot_of_train_broken(map_data, train)
 		return true
@@ -335,8 +361,8 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 			records[6] = create_direct_to_station_order(depot_stop)
 		end
 		train.schedule = {
-			current = start_at_depot and 1 or 2--[[@as uint]],
-			records = records
+			current = start_at_depot and 1 or 2 --[[@as uint]],
+			records = records,
 		}
 		if old_schedule and not train.has_path then
 			train.schedule = old_schedule
@@ -348,13 +374,14 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 		local other_surface_i = (not is_p_on_t and p_surface_i) or (not is_r_on_t and r_surface_i) or d_surface_i
 		if (is_p_on_t or p_surface_i == other_surface_i) and (is_r_on_t or r_surface_i == other_surface_i) and (is_d_on_t or d_surface_i == other_surface_i) then
 			local t_zone_index, t_zone_orbit_index = se_get_zone_from_surface_index(map_data.perf_cache, t_surface_i)
-			local other_zone_index, other_zone_orbit_index = se_get_zone_from_surface_index(map_data.perf_cache, other_surface_i)
+			local other_zone_index, other_zone_orbit_index = se_get_zone_from_surface_index(map_data.perf_cache,
+				other_surface_i)
 			if t_zone_index and other_zone_index then
 				local is_train_in_orbit = other_zone_orbit_index == t_zone_index
 				if is_train_in_orbit or t_zone_orbit_index == other_zone_index then
 					local elevator_name = se_get_space_elevator_name(map_data.perf_cache, t_surface)
 					if elevator_name then
-						local records = {create_inactivity_order(depot_stop.backer_name)}
+						local records = { create_inactivity_order(depot_stop.backer_name) }
 						if t_surface_i == p_surface_i then
 							records[#records + 1] = create_direct_to_station_order(p_stop)
 						else
@@ -375,7 +402,7 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 							is_train_in_orbit = not is_train_in_orbit
 						end
 
-						train.schedule = {current = start_at_depot and 1 or 2--[[@as uint]], records = records}
+						train.schedule = { current = start_at_depot and 1 or 2 --[[@as uint]], records = records }
 						if old_schedule and not train.has_path then
 							train.schedule = old_schedule
 							return false
@@ -388,11 +415,14 @@ function set_manifest_schedule(map_data, train, depot_stop, same_depot, p_stop, 
 		end
 	end
 	--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
-	train.schedule = {current = 1, records = {
-		create_inactivity_order(depot_stop.backer_name),
-		create_loading_order(p_stop, manifest, p_schedule_settings),
-		create_unloading_order(r_stop, r_schedule_settings),
-	}}
+	train.schedule = {
+		current = 1,
+		records = {
+			create_inactivity_order(depot_stop.backer_name),
+			create_loading_order(p_stop, manifest, p_schedule_settings),
+			create_unloading_order(r_stop, r_schedule_settings),
+		},
+	}
 	lock_train(train)
 	send_alert_cannot_path_between_surfaces(map_data, train)
 	return true
@@ -403,10 +433,10 @@ end
 ---@param train LuaTrain
 ---@param stop LuaEntity
 function add_refueler_schedule(map_data, train, stop)
-	local schedule = train.schedule or {current = 1, records = {}}
+	local schedule = train.schedule or { current = 1, records = {} }
 	local i = schedule.current
 	if i == 1 then
-		i = #schedule.records + 1--[[@as uint]]
+		i = #schedule.records + 1 --[[@as uint]]
 		schedule.current = i
 	end
 
@@ -435,7 +465,9 @@ function add_refueler_schedule(map_data, train, stop)
 				local elevator_name = se_get_space_elevator_name(map_data.perf_cache, t_surface)
 				if elevator_name then
 					local cur_order = schedule.records[i]
-					local is_elevator_in_orders_already = cur_order and cur_order.station == elevator_name..(is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)
+					local is_elevator_in_orders_already = cur_order and
+							cur_order.station ==
+							elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)
 					if not is_elevator_in_orders_already then
 						table_insert(schedule.records, i, se_create_elevator_order(elevator_name, is_train_in_orbit))
 					end
@@ -463,20 +495,18 @@ function add_refueler_schedule(map_data, train, stop)
 	return false
 end
 
-
 ------------------------------------------------------------------------------
---[[combinators]]--
+--[[combinators]] --
 ------------------------------------------------------------------------------
-
 
 ---@param comb LuaEntity
 function get_comb_control(comb)
 	--NOTE: using this as opposed to get_comb_params gives you R/W access
-	return comb.get_or_create_control_behavior()--[[@as LuaArithmeticCombinatorControlBehavior]]
+	return comb.get_or_create_control_behavior() --[[@as LuaArithmeticCombinatorControlBehavior]]
 end
 ---@param comb LuaEntity
 function get_comb_params(comb)
-	return comb.get_or_create_control_behavior().parameters--[[@as ArithmeticCombinatorParameters]]
+	return comb.get_or_create_control_behavior().parameters --[[@as ArithmeticCombinatorParameters]]
 end
 
 ---NOTE: does not check .valid
@@ -600,7 +630,8 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 		refueler.network_mask = mod_settings.network_mask
 	end
 
-	local signals = refueler.entity_comb.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
+	local signals = refueler.entity_comb.get_signals(defines.wire_connector_id.circuit_red,
+		defines.wire_connector_id.circuit_green)
 	if signals then
 		for k, v in pairs(signals) do
 			local item_name = v.signal.name
@@ -625,7 +656,7 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 
 	local f, a
 	if old_network == NETWORK_EACH then
-		f, a = pairs(old_network_mask--[[@as {[string]: int}]])
+		f, a = pairs(old_network_mask --[[@as {[string]: int}]])
 	elseif old_network ~= refueler.network_name then
 		f, a = once, old_network
 	else
@@ -642,7 +673,7 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 	end
 
 	if refueler.network_name == NETWORK_EACH then
-		f, a = pairs(refueler.network_mask--[[@as {[string]: int}]])
+		f, a = pairs(refueler.network_mask --[[@as {[string]: int}]])
 	elseif old_network ~= refueler.network_name then
 		f, a = once, refueler.network_name
 	else
@@ -669,7 +700,7 @@ function update_display(map_data, station)
 		if params.operation == MODE_PRIMARY_IO or params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
 			if station.display_state == 0 then
 				params.operation = MODE_PRIMARY_IO
-			elseif station.display_state%2 == 1 then
+			elseif station.display_state % 2 == 1 then
 				params.operation = MODE_PRIMARY_IO_ACTIVE
 			else
 				params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
@@ -707,7 +738,7 @@ function get_comb_gui_settings(comb)
 	elseif op == MODE_WAGON then
 		selected_index = 5
 	end
-	return selected_index--[[@as uint]], params.first_signal, switch_state, bits
+	return selected_index --[[@as uint]], params.first_signal, switch_state, bits
 end
 ---@param comb LuaEntity
 ---@param is_pr_state 0|1|2
@@ -747,7 +778,6 @@ function set_comb_operation(comb, op)
 	params.operation = op
 	control.parameters = params
 end
-
 
 --- Set the output signals of a Cybersyn combinator.
 ---@param map_data MapData Cybersyn stored data.
@@ -794,15 +824,15 @@ function set_comb2(map_data, station)
 		for item_hash, count in pairs(deliveries) do
 			local item_name, item_quality = unhash_signal(item_hash)
 			local i = #signals + 1
-			local is_fluid = prototypes.item[item_name] == nil--NOTE: this is expensive
+			local is_fluid = prototypes.item[item_name] == nil --NOTE: this is expensive
 			signals[i] = {
 				value = {
 					type = is_fluid and "fluid" or "item",
 					name = item_name,
 					quality = item_quality or "normal",
-					comparator = "="
+					comparator = "=",
 				},
-				min = sign*count
+				min = sign * count,
 			} -- constant combinator cannot have quality = nil (any)
 		end
 
@@ -813,7 +843,7 @@ function set_comb2(map_data, station)
 				local i = #signals + 1
 				signals[i] = {
 					value = "signal-T",
-					min = train_count
+					min = train_count,
 				}
 			end
 		end
@@ -822,11 +852,9 @@ function set_comb2(map_data, station)
 	end
 end
 
-
 ------------------------------------------------------------------------------
---[[alerts]]--
+--[[alerts]] --
 ------------------------------------------------------------------------------
-
 
 ---@param train LuaTrain
 ---@param icon {}
@@ -836,10 +864,10 @@ local function send_alert_for_train(train, icon, message)
 	if loco then
 		for _, player in pairs(loco.force.players) do
 			player.add_custom_alert(
-			loco,
-			icon,
-			{message},
-			true)
+				loco,
+				icon,
+				{ message },
+				true)
 		end
 	end
 end
@@ -851,26 +879,26 @@ end
 local function send_alert_for_station(station, icon, message)
 	for _, player in pairs(station.force.players) do
 		player.add_custom_alert(
-		station,
-		icon,
-		{message},
-		true)
-		player.play_sound({path = ALERT_SOUND})
+			station,
+			icon,
+			{ message },
+			true)
+		player.play_sound({ path = ALERT_SOUND })
 	end
 end
 
 
-local send_alert_about_missing_train_icon = {name = MISSING_TRAIN_NAME, type = "fluid"}
+local send_alert_about_missing_train_icon = { name = MISSING_TRAIN_NAME, type = "fluid" }
 ---@param r_stop LuaEntity
 ---@param p_stop LuaEntity
 ---@param message string
 function send_alert_about_missing_train(r_stop, p_stop, message)
 	for _, player in pairs(r_stop.force.players) do
 		player.add_custom_alert(
-		r_stop,
-		send_alert_about_missing_train_icon,
-		{message, r_stop.backer_name, p_stop.backer_name},
-		true)
+			r_stop,
+			send_alert_about_missing_train_icon,
+			{ message, r_stop.backer_name, p_stop.backer_name },
+			true)
 	end
 end
 
@@ -879,11 +907,10 @@ function send_alert_sounds(train)
 	local loco = get_any_train_entity(train)
 	if loco then
 		for _, player in pairs(loco.force.players) do
-			player.play_sound({path = ALERT_SOUND})
+			player.play_sound({ path = ALERT_SOUND })
 		end
 	end
 end
-
 
 ---@param r_stop LuaEntity
 ---@param p_stop LuaEntity
@@ -906,34 +933,33 @@ function send_alert_no_train_matches_p_layout(r_stop, p_stop)
 	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-matches-p-layout")
 end
 
-
-local send_stuck_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
+local send_stuck_train_alert_icon = { name = LOST_TRAIN_NAME, type = "fluid" }
 ---@param map_data MapData
 ---@param train LuaTrain
 function send_alert_stuck_train(map_data, train)
 	send_alert_for_train(train, send_stuck_train_alert_icon, "cybersyn-messages.stuck-train")
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 1, map_data.total_ticks}
+	map_data.active_alerts[train.id] = { train, 1, map_data.total_ticks }
 end
 
-local send_nonempty_train_in_depot_alert_icon = {name = NONEMPTY_TRAIN_NAME, type = "fluid"}
+local send_nonempty_train_in_depot_alert_icon = { name = NONEMPTY_TRAIN_NAME, type = "fluid" }
 ---@param map_data MapData
 ---@param train LuaTrain
 function send_alert_nonempty_train_in_depot(map_data, train)
 	send_alert_for_train(train, send_nonempty_train_in_depot_alert_icon, "cybersyn-messages.nonempty-train")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 2, map_data.total_ticks}
+	map_data.active_alerts[train.id] = { train, 2, map_data.total_ticks }
 end
 
-local send_lost_train_alert_icon = {name = LOST_TRAIN_NAME, type = "fluid"}
+local send_lost_train_alert_icon = { name = LOST_TRAIN_NAME, type = "fluid" }
 ---@param map_data MapData
 ---@param train LuaTrain
 function send_alert_depot_of_train_broken(map_data, train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.depot-broken")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 3, map_data.total_ticks}
+	map_data.active_alerts[train.id] = { train, 3, map_data.total_ticks }
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -941,7 +967,7 @@ function send_alert_station_of_train_broken(map_data, train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.station-broken")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 4, map_data.total_ticks}
+	map_data.active_alerts[train.id] = { train, 4, map_data.total_ticks }
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -949,7 +975,7 @@ function send_alert_refueler_of_train_broken(map_data, train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.refueler-broken")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 5, map_data.total_ticks}
+	map_data.active_alerts[train.id] = { train, 5, map_data.total_ticks }
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -957,7 +983,7 @@ function send_alert_train_at_incorrect_station(map_data, train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.train-at-incorrect")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 6, map_data.total_ticks}
+	map_data.active_alerts[train.id] = { train, 6, map_data.total_ticks }
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -965,7 +991,7 @@ function send_alert_cannot_path_between_surfaces(map_data, train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.cannot-path-between-surfaces")
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
-	map_data.active_alerts[train.id] = {train, 7, map_data.total_ticks}
+	map_data.active_alerts[train.id] = { train, 7, map_data.total_ticks }
 end
 
 --- Alert user when a Cybersyn train arrives at a station with non-default
@@ -980,7 +1006,6 @@ function send_alert_unexpected_train(train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.unexpected-train")
 end
 
-
 ---@param map_data MapData
 function process_active_alerts(map_data)
 	for train_id, data in pairs(map_data.active_alerts) do
@@ -994,7 +1019,7 @@ function process_active_alerts(map_data)
 				local is_train_empty = next(train.get_contents()) == nil and next(train.get_fluid_contents()) == nil
 				if is_train_empty then
 					--NOTE: this function could get confused being called internally, be sure it can handle that
-					on_train_changed({train = train})
+					on_train_changed({ train = train })
 				else
 					send_alert_for_train(train, send_nonempty_train_in_depot_alert_icon, "cybersyn-messages.nonempty-train")
 				end

@@ -20,9 +20,6 @@ local manager = require("scripts.gui.manager")
 --- @field pinning boolean
 --- @field selected_tab string?
 
-
-
-
 local function top_left_button_update(player, player_data)
 	local button_flow = mod_gui.get_button_flow(player)
 	local button = button_flow["top_left_button"]
@@ -41,8 +38,6 @@ local function top_left_button_update(player, player_data)
 		})
 	end
 end
-
-
 
 local manager_gui = {}
 
@@ -66,8 +61,6 @@ function manager_gui.on_lua_shortcut(e)
 		end
 	end
 end
-
-
 
 local function create_player(player_index)
 	local player = game.get_player(player_index)
@@ -116,7 +109,6 @@ end
 commands.add_command("cybersyn_rebuild_manager_windows", nil, function(command)
 	local manager_data = storage.manager
 	if manager_data then
-
 		---@param v PlayerData
 		for i, v in pairs(manager_data.players) do
 			local player = game.get_player(i)
@@ -128,14 +120,13 @@ commands.add_command("cybersyn_rebuild_manager_windows", nil, function(command)
 	end
 end)
 
-
 --- @param manager Manager
 local function init_items(manager)
 	local item_order = {}
 	manager.item_order = item_order
 	local i = 1
 
-	for _, protos in pairs{prototypes.item, prototypes.fluid} do
+	for _, protos in pairs { prototypes.item, prototypes.fluid } do
 		--- @type (LuaItemPrototype|LuaFluidPrototype)[]
 		local all_items = {}
 		for _, proto in pairs(protos) do
@@ -164,13 +155,13 @@ function manager_gui.on_migration()
 	if not storage.manager then
 		manager_gui.on_init()
 	end
-	
+
 	for i, p in pairs(game.players) do
 		if storage.manager.players[i] == nil then
 			create_player(i)
 		end
 	end
-	
+
 	for i, v in pairs(storage.manager.players) do
 		manager_gui.reset_player(i, v)
 	end
