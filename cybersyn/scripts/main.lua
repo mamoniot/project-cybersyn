@@ -793,6 +793,56 @@ local function on_rename(event)
 	end
 end
 
+---Sets the `is_train_id_changing` state for a tracked train with the given `train_id` to the given `value`.
+---If no train matching `train_id` is tracked, returns early.
+---@param train_id uint
+---@param value boolean|nil
+local function set_is_train_id_volatile(train_id, value)
+	---@type MapData
+	local map_data = storage
+
+	local train = map_data.trains[train_id]
+	if not train then return end
+
+	train.is_train_id_volatile = value
+end
+
+---@param train_entity LuaTrain
+---@param new_id uint
+---@param old_id uint
+local function migrate_tracked_train_to_new_id(train_entity, new_id, old_id)
+	---@type MapData
+	local map_data = storage
+
+	local train = map_data.trains[old_id]
+	if not train then return end
+
+	if train.is_available then
+		local f, a
+		if train.network_name == NETWORK_EACH then
+			f, a = next, train.network_mask
+		else
+			f, a = once, train.network_name
+		end
+		for network_name in f, a do
+			local network = map_data.available_trains[network_name]
+			if network then
+				network[new_id] = true
+				network[old_id] = nil
+				if next(network) == nil then
+					map_data.available_trains[network_name] = nil
+				end
+			end
+		end
+	end
+
+	map_data.trains[new_id] = train
+	map_data.trains[old_id] = nil
+	train.entity = train_entity
+
+	interface_raise_train_id_changed(new_id, old_id)
+end
+
 
 ---@param schedule TrainSchedule
 ---@param stop LuaEntity
@@ -837,6 +887,7 @@ local function setup_se_compat()
 		if not train then return end
 		--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; our events have either been set up to account for this or should be impossible to trigger until teleportation is finished
 		train.se_is_being_teleported = true
+		set_is_train_id_volatile(train_id, true)
 		interface_raise_train_teleport_started(old_id)
 	end)
 	---@param event {}
@@ -850,32 +901,14 @@ local function setup_se_compat()
 		local old_surface_index = event.old_surface_index
 
 		local old_id = event.old_train_id_1
-		local train = map_data.trains[old_id]
+
+		migrate_tracked_train_to_new_id(train_entity, new_id, old_id)
+
+		local train = map_data.trains[new_id]
 		if not train then return end
 
-		if train.is_available then
-			local f, a
-			if train.network_name == NETWORK_EACH then
-				f, a = next, train.network_mask
-			else
-				f, a = once, train.network_name
-			end
-			for network_name in f, a do
-				local network = map_data.available_trains[network_name]
-				if network then
-					network[new_id] = true
-					network[old_id] = nil
-					if next(network) == nil then
-						map_data.available_trains[network_name] = nil
-					end
-				end
-			end
-		end
-
-		map_data.trains[new_id] = train
-		map_data.trains[old_id] = nil
 		train.se_is_being_teleported = nil
-		train.entity = train_entity
+		set_is_train_id_volatile(train_id, nil)
 
 		if train.se_awaiting_removal then
 			remove_train(map_data, train.se_awaiting_removal, train)
@@ -889,7 +922,7 @@ local function setup_se_compat()
 
 		local schedule = train_entity.schedule
 		if schedule then
-			--this code relies on train chedules being in this specific order to work
+			--this code relies on train schedules being in this specific order to work
 			local start = schedule.current
 			--check depot
 			if not train.use_any_depot then
@@ -923,6 +956,54 @@ local function setup_se_compat()
 		end
 		interface_raise_train_teleported(new_id, old_id)
 	end)
+end
+
+local function setup_noxy_compat()
+	IS_NOXY_MULTIDIRECTIONAL_TRAINS_PRESENT = remote.interfaces["Noxys_Multidirectional_Trains"]
+	if IS_NOXY_MULTIDIRECTIONAL_TRAINS_PRESENT then
+		local noxy_on_train_rotating_event = remote.call("Noxys_Multidirectional_Trains", "get_on_train_rotating")--[[@as string]]
+		local noxy_on_train_locomotive_rotated_event = remote.call("Noxys_Multidirectional_Trains", "get_on_train_locomotive_rotated")--[[@as string]]
+		local noxy_on_train_rotated_event = remote.call("Noxys_Multidirectional_Trains", "get_on_train_rotated")--[[@as string]]
+		local noxy_on_train_unrotating_event = remote.call("Noxys_Multidirectional_Trains", "get_on_train_unrotating")--[[@as string]]
+
+		---@param event {}
+		script.on_event(noxy_on_train_rotating_event, function(event)
+			---@type uint
+			local train_id = event.train.id
+			--Noxy will rotate a train a few ticks after it leaves the station, so
+			--no special handling is required the way there is for arrivals.
+
+			--Prevent Cybersyn from removing the train because Noxy is going to
+			--destroy and rebuild it possibly many times in rapid succession.
+			set_is_train_id_volatile(train_id, true)
+		end)
+		---@param event {}
+		script.on_event(noxy_on_train_locomotive_rotated_event, function(event)
+			---@type LuaTrain
+			local train_entity = event.train
+			---@type uint
+			local new_id = train_entity.id
+			---@type uint
+			local old_id = event.old_train_id_1
+			--Every rotation destroys and creates a new train, ensure the train id is migrated
+			--with each rotation to prevent it from losing track.
+			migrate_tracked_train_to_new_id(train_entity, new_id, old_id)
+		end)
+		---@param event {}
+		script.on_event(noxy_on_train_rotated_event, function(event)
+			---@type uint
+			local train_id = event.train.id
+			--Clear the volatile tag, Noxy has finished.
+			set_is_train_id_volatile(train_id, nil)
+		end)
+		---@param event {}	
+		script.on_event(noxy_on_train_unrotating_event, function(event)
+			--Noxy unrotates trains on arrival to stations, which destroys the train and 
+			--prevents Cybersyn from correctly handling train arrivals. 
+			--Forward the change event to Cybersyn's handler.
+			on_train_changed(event)
+		end)
+	end
 end
 
 local function setup_picker_dollies_compat()
@@ -1047,6 +1128,7 @@ local function main()
 		mod_settings.invert_sign = false
 		init_global()
 		setup_se_compat()
+		setup_noxy_compat()
 		setup_picker_dollies_compat()
 		if MANAGER_ENABLED then
 			manager.on_init()
@@ -1063,6 +1145,7 @@ local function main()
 
 	script.on_load(function()
 		setup_se_compat()
+		setup_noxy_compat()
 		setup_picker_dollies_compat()
 	end)
 

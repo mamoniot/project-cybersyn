@@ -9,6 +9,7 @@
         "base",
         "flib >= 0.15.0",
         "? space-exploration >= 0.6.94",
+        "? Noxys_Multidirectional_Trains >= 0.5.3",
         "? miniloader",
         "? nullius",
         "? pypostprocessing"
