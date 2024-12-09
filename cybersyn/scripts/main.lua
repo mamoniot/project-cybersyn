@@ -30,8 +30,10 @@ function on_depot_broken(map_data, depot_id, depot)
 				local e = get_any_train_entity(train.entity)
 				if e then
 					--local stops = e.force.get_train_stops({name = depot.entity_stop.backer_name, surface = e.surface})
-					local stops = game.train_manager.get_train_stops({ station_name = depot.entity_stop.backer_name, force = e
-					.force })
+					local stops = game.train_manager.get_train_stops({
+						station_name = depot.entity_stop.backer_name,
+						force = e.force,
+					})
 					--game.print(serpent.block(stops))
 					for stop in rnext_consume, stops do
 						local new_depot_id = stop.unit_number
@@ -925,7 +927,7 @@ end
 
 local function setup_picker_dollies_compat()
 	IS_PICKER_DOLLIES_PRESENT = remote.interfaces["PickerDollies"] and
-	remote.interfaces["PickerDollies"]["add_blacklist_name"]
+			remote.interfaces["PickerDollies"]["add_blacklist_name"]
 	if IS_PICKER_DOLLIES_PRESENT then
 		remote.call("PickerDollies", "add_blacklist_name", COMBINATOR_NAME)
 		remote.call("PickerDollies", "add_blacklist_name", COMBINATOR_OUT_NAME)
@@ -1015,11 +1017,11 @@ local function main()
 	script.on_event(defines.events.on_built_entity, on_built, filter_built)
 	script.on_event(defines.events.on_robot_built_entity, on_built, filter_built)
 	script.on_event(
-	{
-		defines.events.script_raised_built,
-		defines.events.script_raised_revive,
-		defines.events.on_entity_cloned
-	}, on_built)
+		{
+			defines.events.script_raised_built,
+			defines.events.script_raised_revive,
+			defines.events.on_entity_cloned,
+		}, on_built)
 
 	script.on_event(defines.events.on_player_rotated_entity, on_rotate)
 
@@ -1041,7 +1043,6 @@ local function main()
 
 	register_gui_actions()
 
-
 	local MANAGER_ENABLED = mod_settings.manager_enabled
 
 	script.on_init(function()
@@ -1056,7 +1057,6 @@ local function main()
 			manager.on_init()
 		end
 	end)
-
 
 	script.on_configuration_changed(function(e)
 		on_config_changed(e)

@@ -15,7 +15,7 @@ local function set_comb1(map_data, station, manifest, sign)
 			for i, item in ipairs(manifest) do
 				signals[i] = {
 					value = { type = item.type, name = item.name, quality = item.quality or "normal", comparator = "=" },
-					min = sign * item.count
+					min = sign * item.count,
 				}
 			end
 			set_combinator_output(map_data, comb, signals)
@@ -521,7 +521,7 @@ function on_train_changed(event)
 				-- the priority of the station at the end.
 				local last_rail = path.rails[#path.rails]
 				local to_stop = (last_rail and last_rail.valid) and
-				(last_rail.get_rail_segment_stop(defines.rail_direction.front) or last_rail.get_rail_segment_stop(defines.rail_direction.back))
+						(last_rail.get_rail_segment_stop(defines.rail_direction.front) or last_rail.get_rail_segment_stop(defines.rail_direction.back))
 				if to_stop and to_stop.train_stop_priority ~= 50 then
 					send_alert_station_non_default_priority(to_stop)
 					-- Fallthrough: still executing normal cybersyn behavior here even

@@ -522,8 +522,10 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			best_p_to_r_dist = p_station.entity_stop.valid and r_station.entity_stop.valid and
-			get_dist(p_station.entity_stop, r_station.entity_stop) or INF
+			best_p_to_r_dist =
+					p_station.entity_stop.valid and
+					r_station.entity_stop.valid and
+					(get_dist(p_station.entity_stop, r_station.entity_stop) or INF)
 			if p_prior == best_p_prior and best_p_to_r_dist > best_dist then
 				goto p_continue
 			end
@@ -613,8 +615,9 @@ local function tick_dispatch(map_data, mod_settings)
 					end
 
 					--check if path is shortest so we prioritize locality
-					local t_to_p_dist = train_stock and p_station.entity_stop.valid and
-					(get_dist(train_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT * train.priority) or INF
+					local t_to_p_dist =
+							train_stock and p_station.entity_stop.valid and
+							((get_dist(train_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT * train.priority) or INF)
 					if capacity == best_capacity and t_to_p_dist > best_t_to_p_dist then
 						goto train_continue
 					end
@@ -871,7 +874,7 @@ function tick_poll_entities(map_data, mod_settings)
 			if train then
 				if (not train.entity or not train.entity.valid) then
 					game.print(
-					"Cybersyn: Lost track of invalid train after migration. You need to check for lost trains manually. You might get a few of these messages.")
+						"Cybersyn: Lost track of invalid train after migration. You need to check for lost trains manually. You might get a few of these messages.")
 					map_data.trains[train_id] = nil
 					return
 				end

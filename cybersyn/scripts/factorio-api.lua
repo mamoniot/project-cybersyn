@@ -10,7 +10,6 @@ local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
 --local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 
-
 ---@param map_data MapData
 ---@param item_name string
 function get_stack_size(map_data, item_name)
@@ -142,8 +141,8 @@ local condition_circuit = {
 	condition = {
 		comparator = ">",
 		first_signal = { type = "virtual", name = "signal-check" },
-		constant = 0
-	}
+		constant = 0,
+	},
 }
 ---@type WaitCondition[]
 local conditions_only_inactive = { condition_wait_inactive }
@@ -171,7 +170,7 @@ function create_loading_order(stop, manifest, schedule_settings)
 			condition = {
 				comparator = "≥",
 				first_signal = { type = item.type, name = item.name, quality = item.quality },
-				constant = item.count
+				constant = item.count,
 			},
 		}
 	end
@@ -221,7 +220,7 @@ function create_direct_to_station_order(stop)
 	return {
 		rail = stop.connected_rail,
 		rail_direction = stop.connected_rail_direction,
-		wait_conditions = conditions_direct_to_station
+		wait_conditions = conditions_direct_to_station,
 	}
 end
 
@@ -315,7 +314,7 @@ function set_manifest_schedule(
 				create_inactivity_order(depot_stop.backer_name),
 				create_loading_order(p_stop, manifest, p_schedule_settings),
 				create_unloading_order(r_stop, r_schedule_settings),
-			}
+			},
 		}
 		lock_train(train)
 		send_alert_station_of_train_broken(map_data, train)
@@ -329,7 +328,7 @@ function set_manifest_schedule(
 				create_inactivity_order(depot_stop.backer_name),
 				create_loading_order(p_stop, manifest, p_schedule_settings),
 				create_unloading_order(r_stop, r_schedule_settings),
-			}
+			},
 		}
 		lock_train(train)
 		send_alert_depot_of_train_broken(map_data, train)
@@ -422,7 +421,7 @@ function set_manifest_schedule(
 			create_inactivity_order(depot_stop.backer_name),
 			create_loading_order(p_stop, manifest, p_schedule_settings),
 			create_unloading_order(r_stop, r_schedule_settings),
-		}
+		},
 	}
 	lock_train(train)
 	send_alert_cannot_path_between_surfaces(map_data, train)
@@ -467,8 +466,8 @@ function add_refueler_schedule(map_data, train, stop)
 				if elevator_name then
 					local cur_order = schedule.records[i]
 					local is_elevator_in_orders_already = cur_order and
-					cur_order.station ==
-					elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)
+							cur_order.station ==
+							elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)
 					if not is_elevator_in_orders_already then
 						table_insert(schedule.records, i, se_create_elevator_order(elevator_name, is_train_in_orbit))
 					end
@@ -499,7 +498,6 @@ end
 ------------------------------------------------------------------------------
 --[[combinators]] --
 ------------------------------------------------------------------------------
-
 
 ---@param comb LuaEntity
 function get_comb_control(comb)
@@ -857,7 +855,6 @@ end
 ------------------------------------------------------------------------------
 --[[alerts]] --
 ------------------------------------------------------------------------------
-
 
 ---@param train LuaTrain
 ---@param icon {}

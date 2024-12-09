@@ -229,7 +229,7 @@ function set_p_wagon_combs(map_data, station, train)
 
 						signals[i] = {
 							value = { type = item.type, name = item.name, quality = item_qual, comparator = "=" },
-							min = sign * count_to_fill
+							min = sign * count_to_fill,
 						}
 						item_count = item_count - count_to_fill
 						item_slots_capacity = item_slots_capacity - slots_to_fill
@@ -328,7 +328,7 @@ function set_r_wagon_combs(map_data, station, train)
 						local i = #signals + 1
 						signals[i] = {
 							value = { type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "=" },
-							min = sign * stack.count
+							min = sign * stack.count,
 						}
 					end
 				end
@@ -343,7 +343,7 @@ function set_r_wagon_combs(map_data, station, train)
 				-- FIXME ? pump conditions can have quality (but why? fluids can only be produced at normal quality and pump filters ignore quality)
 				signals[i] = {
 					value = { type = "fluid", name = fluid_name, quality = "normal", comparator = "=" },
-					min = sign * floor(count)
+					min = sign * floor(count),
 				}
 			end
 			set_combinator_output(map_data, comb, signals)
@@ -402,15 +402,15 @@ function set_refueler_combs(map_data, refueler, train)
 								type = "item",
 								name = stack.name,
 								quality = stack.quality or "normal",
-								comparator = "="
+								comparator = "=",
 							},
-							min = stack.count
+							min = stack.count,
 						}
 					end
 					local j = #signals + 1
 					signals[j] = {
 						value = { type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "=" },
-						min = stack.count
+						min = stack.count,
 					}
 				end
 			end
@@ -496,7 +496,7 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 		if pre_rail then
 			local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({
 				rail_direction = rail_direction_from_stop,
-				rail_connection_direction = defines_straight
+				rail_connection_direction = defines_straight,
 			})
 			if not rail or rail_connection_direction ~= defines_straight then
 				-- There is a curved rail or break in the tracks at this point

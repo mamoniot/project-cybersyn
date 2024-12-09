@@ -361,7 +361,6 @@ interface.send_alert_train_at_incorrect_station = send_alert_train_at_incorrect_
 
 remote.add_interface("cybersyn", interface)
 
-
 ------------------------------------------------------------------
 --[[internal event calls]]
 ------------------------------------------------------------------
