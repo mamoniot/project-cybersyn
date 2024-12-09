@@ -1,3 +1,5 @@
+local util = require "__core__.lualib.util"
+
 --By Mami
 ---@param v string
 ---@param h string?
@@ -87,4 +89,25 @@ function filter(A, f)
 		end
 	end
 	return B
+end
+
+--- @param count integer
+--- @return string
+function format_signal_count(count)
+	local function si_format(divisor, si_symbol)
+		if math.abs(math.floor(count / divisor)) >= 10 then
+			count = math.floor(count / divisor)
+			return string.format("%.0f%s", count, si_symbol)
+		else
+			count = math.floor(count / (divisor/10))/10
+			return string.format("%.1f%s", count, si_symbol)
+		end
+	end
+
+	local abs = math.abs(count)
+	return -- signals are 32bit integers so Giga is enough
+		abs >= 1e9 and si_format(1e9, "G") or
+		abs >= 1e6 and si_format(1e6, "M") or
+		abs >= 1e3 and si_format(1e3, "k") or
+		tostring(count)
 end

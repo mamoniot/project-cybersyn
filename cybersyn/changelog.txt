@@ -1,4 +1,23 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.15
+Date: 2024-12-03
+  Bugfixes:
+    - Fix crash in GUI manager when signal type was not fluid or item
+---------------------------------------------------------------------------------------------------
+Version: 2.0.14
+Date: 2024-12-02
+  Changes:
+    - Support Global Variable Viewer mod if installed
+    - Station combinator can require circuit condition for train to leave (green checkmark > 0)
+    - Station control can output train count
+    - GUI manager improvements and fixes
+    - Add derelict combinators detection to /cybersyn-find-problems
+    - Replace sprites with high-res versions
+    - Change cybernetic combinator green `S` glyph to a green `>`
+  Bugfixes:
+    - Fix /cybersyn-fix-priorities not setting priorities to 50
+    - Hide invisible output combinator in Factoriopedia
+---------------------------------------------------------------------------------------------------
 Version: 2.0.13
 Date: 2024-11-25
   Changes:

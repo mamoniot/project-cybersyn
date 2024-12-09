@@ -31,11 +31,10 @@ function stations_tab.create(widths)
 				widths,
 				"stations",
 				"provided_requested",
-				false,
-				{ "cybersyn-gui-provided-requested-description" }
+				false
 			),
-			templates.sort_checkbox(widths, "stations", "shipments", false, { "cybersyn-gui-shipments-description" }),
-			templates.sort_checkbox(widths, "stations", "control_signals", false),
+			templates.sort_checkbox(widths, "stations", "shipments", false),
+			templates.sort_checkbox({stations={control_signals=widths.stations.control_signals-50}}, "stations", "control_signals", false),
 		},
 		{ name = "manager_stations_tab_scroll_pane", type = "scroll-pane", style = "ltnm_table_scroll_pane", ref = { "stations", "scroll_pane" } },
 		{
@@ -235,14 +234,14 @@ function stations_tab.build(map_data, player_data, query_limit)
 			{
 				type = "label",
 				style = "ltnm_clickable_semibold_label",
-				style_mods = { width = widths.stations.name },
+				style_mods = { width = widths.stations.name + 45},
 				tooltip = constants.open_station_gui_tooltip,
 				caption = station.entity_stop.backer_name,
 				handler = stations_tab.handle.open_station_gui,
 				tags = { station_id = station_id }
 			},
 			--templates.status_indicator(widths.stations.status, true), --repurposing status column for network name
-			{ type = "sprite-button", style = "ltnm_small_slot_button_default", enabled = true, ignored_by_interaction = true, sprite = network_sprite, },
+			{ type = "sprite", style_mods = { width = widths.stations.status - 45, horizontal_align = "center" }, sprite = network_sprite, },
 			{ type = "label", style_mods = { width = widths.stations.network_id, horizontal_align = "center" }, caption = network_mask },
 			templates.small_slot_table(widths.stations, color, "provided_requested"),
 			templates.small_slot_table(widths.stations, color, "shipments"),
