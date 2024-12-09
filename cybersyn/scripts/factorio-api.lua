@@ -537,14 +537,17 @@ function set_station_from_comb(station)
 
 	-- Extract settings from station control combinator, if it exists
 	local enable_train_count = nil
+	local enable_manual_inventory = nil
 
 	if station.entity_comb2 and station.entity_comb2.valid then
 		local params2 = get_comb_params(station.entity_comb2)
 		local bits2 = params2.second_constant or 0
 		enable_train_count = bit_extract(bits2, SETTING_ENABLE_TRAIN_COUNT) > 0
+		enable_manual_inventory = bit_extract(bits2, SETTING_ENABLE_MANUAL_INVENTORY) > 0
 	end
 
 	station.enable_train_count = enable_train_count
+	station.enable_manual_inventory = enable_manual_inventory
 
 	local new_name = signal and signal.name or nil
 	if station.network_name ~= new_name then

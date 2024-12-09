@@ -65,7 +65,27 @@ function util.rich_text_from_signal(signal)
   return "[" .. type .. "=" .. signal.name .. ",quality=" .. quality .. "]"
 end
 
-
+--- Creates a SignalID structure from an item name and optional quality.
+---@param name string
+---@param quality string?
+---@return SignalID
+function util.signalid_from_name(name, quality)
+  ---@type SignalIDType
+  -- TODO is there a better way to get item type from name?
+  local signal_type = prototypes.item[name] ~= nil and "item" or
+                      prototypes.fluid[name] ~= nil and "fluid" or
+                      prototypes.virtual_signal[name] ~= nil and "virtual" or
+                      prototypes.entity[name] ~= nil and "entity" or
+                      prototypes.recipe[name] ~= nil and "recipe" or
+                      prototypes.space_location[name] ~= nil and "space-location" or
+                      prototypes.asteroid_chunk[name] ~= nil and "asteroid-chunk" or
+                      "quality"
+  return {
+    type = signal_type,
+    name = name,
+    quality = quality,
+  }
+end
 
 --- Updates a slot table based on the passed criteria.
 --- @param manifest Manifest?
@@ -178,11 +198,7 @@ function util.slot_table_build_from_deliveries(station)
 
   for item_hash, count in pairs(deliveries) do
     item, quality = unhash_signal(item_hash)
-    local signal = {
-      type = prototypes.item[item] == nil and "fluid" or "item",
-      name=item,
-      quality=quality,
-    }
+    local signal = util.signalid_from_name(item, quality)
 
     local color
     if count > 0 then

@@ -63,6 +63,7 @@ local function set_visibility(main_window, selected_index)
 	second_settings.enable_circuit_condition.visible = is_station
 	mode_settings_flow.enable_slot_barring.visible = is_wagon
 	mode_settings_flow.enable_train_count.visible = (selected_index == 4)
+	mode_settings_flow.enable_manual_inventory.visible = (selected_index == 4)
 
 	depot_settings.visible = is_depot
 end
@@ -368,283 +369,69 @@ function gui_opened(comb, player)
 	local is_ghost = comb.name == "entity-ghost"
 
 	local _, main_window = flib_gui.add(rootgui, {
-		{
-			type = "frame",
-			direction = "vertical",
-			name = COMBINATOR_NAME,
-			children = {
-				--title bar
-				{
-					type = "flow",
-					name = "titlebar",
-					children = {
-						{
-							type = "label",
-							style = "frame_title",
-							caption = { "cybersyn-gui.combinator-title" },
-							elem_mods = { ignored_by_interaction = true }
-						},
-						{ type = "empty-widget", style = "flib_titlebar_drag_handle", elem_mods = { ignored_by_interaction = true } },
-						{
-							type = "sprite-button",
-							style = "frame_action_button",
-							mouse_button_filter = { "left" },
-							sprite = "utility/close",
-							hovered_sprite = "utility/close",
-							name = COMBINATOR_NAME,
-							handler = handle_close,
-							tags = { id = comb.unit_number }
-						},
-					}
-				},
-				{
-					type = "frame",
-					name = "frame",
-					style = "inside_shallow_frame_with_padding",
-					style_mods = { padding = 12, bottom_padding = 9 },
-					children = {
-						{
-							type = "flow",
-							name = "vflow",
-							direction = "vertical",
-							style_mods = { horizontal_align = "left" },
-							children = {
-								--status
-								{
-									type = "flow",
-									style = "flib_titlebar_flow",
-									direction = "horizontal",
-									style_mods = {
-										vertical_align = "center",
-										horizontally_stretchable = true,
-										bottom_padding = 4
-									},
-									children = {
-										{
-											type = "sprite",
-											sprite = is_ghost and STATUS_SPRITES_GHOST or STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT,
-											style = "status_image",
-											style_mods = { stretch_image_to_widget_size = true }
-										},
-										{ type = "label", caption = { is_ghost and STATUS_NAMES_GHOST or STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT } },
-									}
-								},
-								--preview
-								{
-									type = "frame",
-									name = "preview_frame",
-									style = "deep_frame_in_shallow_frame",
-									style_mods = {
-										minimal_width = 0,
-										horizontally_stretchable = true,
-										padding = 0
-									},
-									children = {
-										{ type = "entity-preview", name = "preview", style = "wide_entity_button" },
-									}
-								},
-								--drop down
-								{ type = "label", style = "heading_2_label", caption = { "cybersyn-gui.operation" }, style_mods = { top_padding = 8 } },
-								{
-									type = "flow",
-									name = "top",
-									direction = "horizontal",
-									style_mods = { vertical_align = "center" },
-									children = {
-										{
-											type = "drop-down",
-											style_mods = { top_padding = 3, right_margin = 8 },
-											handler = handle_drop_down,
-											tags = { id = comb.unit_number },
-											selected_index = selected_index,
-											items = {
-												{ "cybersyn-gui.comb1" },
-												{ "cybersyn-gui.depot" },
-												{ "cybersyn-gui.refueler" },
-												{ "cybersyn-gui.comb2" },
-												{ "cybersyn-gui.wagon-manifest" },
-											}
-										},
-										{
-											type = "switch",
-											name = "is_pr_switch",
-											allow_none_state = true,
-											switch_state = switch_state,
-											left_label_caption = { "cybersyn-gui.switch-provide" },
-											right_label_caption = { "cybersyn-gui.switch-request" },
-											left_label_tooltip = { "cybersyn-gui.switch-provide-tooltip" },
-											right_label_tooltip = { "cybersyn-gui.switch-request-tooltip" },
-											handler = handle_pr_switch,
-											tags = { id = comb.unit_number }
-										},
-									}
-								},
-								---Settings section for modal settings
-								{
-									type = "flow",
-									name = "mode_settings",
-									direction = "vertical",
-									style_mods = { horizontal_align = "left" },
-									children = {
-										{
-											type = "checkbox",
-											name = "enable_slot_barring",
-											state = setting(bits, SETTING_ENABLE_SLOT_BARRING),
-											handler = handle_setting,
-											tags = { id = comb.unit_number, bit = SETTING_ENABLE_SLOT_BARRING },
-											tooltip = { "cybersyn-gui.enable-slot-barring-tooltip" },
-											caption = { "cybersyn-gui.enable-slot-barring-description" }
-										},
-										{
-											type = "checkbox",
-											name = "enable_train_count",
-											state = setting(bits, SETTING_ENABLE_TRAIN_COUNT),
-											handler = handle_setting,
-											tags = { id = comb.unit_number, bit = SETTING_ENABLE_TRAIN_COUNT },
-											tooltip = { "cybersyn-gui.enable-train-count-tooltip" },
-											caption = { "cybersyn-gui.enable-train-count-description" }
-										},
-									}
-								},
-								---Settings section for network
-								{ type = "line", style_mods = { top_padding = 10 } },
-								{
-									type = "label",
-									name = "network_label",
-									style = "heading_2_label",
-									caption = { "cybersyn-gui.network" },
-									style_mods = { top_padding = 8 }
-								},
-								{
-									type = "flow",
-									name = "bottom",
-									direction = "horizontal",
-									style_mods = { vertical_align = "top" },
-									children = {
-										{
-											type = "choose-elem-button",
-											name = "network",
-											style = "slot_button_in_shallow_frame",
-											elem_type = "signal",
-											tooltip = { "cybersyn-gui.network-tooltip" },
-											signal = signal,
-											style_mods = { bottom_margin = 1, right_margin = 6, top_margin = 2 },
-											handler = handle_network,
-											tags = { id = comb.unit_number }
-										},
-										{
-											type = "flow",
-											name = "depot",
-											direction = "vertical",
-											style_mods = { horizontal_align = "left" },
-											children = {
-												{
-													type = "checkbox",
-													name = "use_same_depot",
-													state = setting_flip(bits, SETTING_USE_ANY_DEPOT),
-													handler = handle_setting_flip,
-													tags = { id = comb.unit_number, bit = SETTING_USE_ANY_DEPOT },
-													tooltip = { "cybersyn-gui.use-same-depot-tooltip" },
-													caption = { "cybersyn-gui.use-same-depot-description" }
-												},
-												{
-													type = "checkbox",
-													name = "depot_bypass",
-													state = setting_flip(bits, SETTING_DISABLE_DEPOT_BYPASS),
-													handler = handle_setting_flip,
-													tags = { id = comb.unit_number, bit = SETTING_DISABLE_DEPOT_BYPASS },
-													tooltip = { "cybersyn-gui.depot-bypass-tooltip" },
-													caption = { "cybersyn-gui.depot-bypass-description" }
-												},
-											}
-										},
-										{
-											type = "flow",
-											name = "first",
-											direction = "vertical",
-											style_mods = { horizontal_align = "left", right_margin = 8 },
-											children = {
-												{
-													type = "checkbox",
-													name = "allow_list",
-													state = setting_flip(bits, SETTING_DISABLE_ALLOW_LIST),
-													handler = handle_setting_flip,
-													tags = { id = comb.unit_number, bit = SETTING_DISABLE_ALLOW_LIST },
-													tooltip = { "cybersyn-gui.allow-list-tooltip" },
-													caption = { "cybersyn-gui.allow-list-description" }
-												},
-												{
-													type = "checkbox",
-													name = "is_stack",
-													state = setting(bits, SETTING_IS_STACK),
-													handler = handle_setting,
-													tags = { id = comb.unit_number, bit = SETTING_IS_STACK },
-													tooltip = { "cybersyn-gui.is-stack-tooltip" },
-													caption = { "cybersyn-gui.is-stack-description" }
-												},
-											}
-										},
-										{
-											type = "flow",
-											name = "second",
-											direction = "vertical",
-											children = {
-												{
-													type = "checkbox",
-													name = "enable_inactive",
-													state = setting(bits, SETTING_ENABLE_INACTIVE),
-													handler = handle_setting,
-													tags = { id = comb.unit_number, bit = SETTING_ENABLE_INACTIVE },
-													tooltip = { "cybersyn-gui.enable-inactive-tooltip" },
-													caption = { "cybersyn-gui.enable-inactive-description" }
-												},
-												{
-													type = "checkbox",
-													name = "enable_circuit_condition",
-													state = setting(bits, SETTING_ENABLE_CIRCUIT_CONDITION),
-													handler = handle_setting,
-													tags = { id = comb.unit_number, bit = SETTING_ENABLE_CIRCUIT_CONDITION },
-													tooltip = { "cybersyn-gui.enable-circuit-condition-tooltip" },
-													caption = { "cybersyn-gui.enable-circuit-condition-description" }
-												},
-											}
-										},
-									}
-								},
-								--preview allow list
-								{
-									type = "flow",
-									name = "bottom_allowlist",
-									direction = "vertical",
-									style_mods = { vertical_align = "top" },
-									visible = showLayout,
-									children = {
-										{
-											type = "label",
-											name = "allow_list_heading",
-											style = "heading_2_label",
-											caption = { "cybersyn-gui.allow-list-preview" },
-											tooltip = { "cybersyn-gui.allow-list-preview-tooltip" },
-											style_mods = { top_padding = 8 }
-										},
-										{ type = "flow", name = "allow_list_items", direction = "horizontal", tooltip = layoutTooltip, children = layoutItems },
-										{
-											type = "button",
-											name = "allow_list_refresh",
-											tags = { id = comb.unit_number },
-											tooltip = { "cybersyn-gui.allow-list-refresh-tooltip" },
-											caption = { "cybersyn-gui.allow-list-refresh-description" },
-											enabled = not is_ghost,
-											handler = handle_refresh_allow
-										},
-									}
-								},
-							}
-						},
-					}
-				},
-			}
-		},
+		{type="frame", direction="vertical", name=COMBINATOR_NAME, children={
+			--title bar
+			{type="flow", name="titlebar", children={
+				{type="label", style="frame_title", caption={"cybersyn-gui.combinator-title"}, elem_mods={ignored_by_interaction=true}},
+				{type="empty-widget", style="flib_titlebar_drag_handle", elem_mods={ignored_by_interaction=true}},
+				{type="sprite-button", style="frame_action_button", mouse_button_filter={"left"}, sprite="utility/close", hovered_sprite="utility/close", name=COMBINATOR_NAME, handler=handle_close, tags={id=comb.unit_number}}
+			}},
+			{type="frame", name="frame", style="inside_shallow_frame_with_padding", style_mods={padding=12, bottom_padding=9}, children={
+				{type="flow", name="vflow", direction="vertical", style_mods={horizontal_align="left"}, children={
+					--status
+					{type="flow", style="flib_titlebar_flow", direction="horizontal", style_mods={vertical_align="center", horizontally_stretchable=true, bottom_padding=4}, children={
+						{type="sprite", sprite=is_ghost and STATUS_SPRITES_GHOST or STATUS_SPRITES[comb.status] or STATUS_SPRITES_DEFAULT, style="status_image", style_mods={stretch_image_to_widget_size=true}},
+						{type="label", caption={is_ghost and STATUS_NAMES_GHOST or STATUS_NAMES[comb.status] or STATUS_NAMES_DEFAULT}}
+					}},
+					--preview
+					{type="frame", name="preview_frame", style="deep_frame_in_shallow_frame", style_mods={minimal_width=0, horizontally_stretchable=true, padding=0}, children={
+						{type="entity-preview", name="preview", style="wide_entity_button"},
+					}},
+					--drop down
+					{type="label", style="heading_2_label", caption={"cybersyn-gui.operation"}, style_mods={top_padding=8}},
+					{type="flow", name="top", direction="horizontal", style_mods={vertical_align="center"}, children={
+						{type="drop-down", style_mods={top_padding=3, right_margin=8}, handler=handle_drop_down, tags={id=comb.unit_number}, selected_index=selected_index, items={
+							{"cybersyn-gui.comb1"},
+							{"cybersyn-gui.depot"},
+							{"cybersyn-gui.refueler"},
+							{"cybersyn-gui.comb2"},
+							{"cybersyn-gui.wagon-manifest"},
+						}},
+						{type="switch", name="is_pr_switch", allow_none_state=true, switch_state=switch_state, left_label_caption={"cybersyn-gui.switch-provide"}, right_label_caption={"cybersyn-gui.switch-request"}, left_label_tooltip={"cybersyn-gui.switch-provide-tooltip"}, right_label_tooltip={"cybersyn-gui.switch-request-tooltip"}, handler=handle_pr_switch, tags={id=comb.unit_number}},
+					}},
+					---Settings section for modal settings
+					{type="flow", name="mode_settings", direction="vertical", style_mods={horizontal_align="left"}, children={
+						{type="checkbox", name="enable_slot_barring", state=setting(bits, SETTING_ENABLE_SLOT_BARRING), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_SLOT_BARRING}, tooltip={"cybersyn-gui.enable-slot-barring-tooltip"}, caption={"cybersyn-gui.enable-slot-barring-description"}},
+						{type="checkbox", name="enable_train_count", state=setting(bits, SETTING_ENABLE_TRAIN_COUNT), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_TRAIN_COUNT}, tooltip={"cybersyn-gui.enable-train-count-tooltip"}, caption={"cybersyn-gui.enable-train-count-description"}},
+						{type="checkbox", name="enable_manual_inventory", state=setting(bits, SETTING_ENABLE_MANUAL_INVENTORY), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_MANUAL_INVENTORY}, tooltip={"cybersyn-gui.enable-manual-inventory-tooltip"}, caption={"cybersyn-gui.enable-manual-inventory-description"}},
+					}},
+					---Settings section for network
+					{type="line", style_mods={top_padding=10}},
+					{type="label", name="network_label", style="heading_2_label", caption={"cybersyn-gui.network"}, style_mods={top_padding=8}},
+					{type="flow", name="bottom", direction="horizontal", style_mods={vertical_align="top"}, children={
+						{type="choose-elem-button", name="network", style="slot_button_in_shallow_frame", elem_type="signal", tooltip={"cybersyn-gui.network-tooltip"}, signal=signal, style_mods={bottom_margin=1, right_margin=6, top_margin=2}, handler=handle_network, tags={id=comb.unit_number}},
+						{type="flow", name="depot", direction="vertical", style_mods={horizontal_align="left"}, children={
+							{type="checkbox", name="use_same_depot", state=setting_flip(bits, SETTING_USE_ANY_DEPOT), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_USE_ANY_DEPOT}, tooltip={"cybersyn-gui.use-same-depot-tooltip"}, caption={"cybersyn-gui.use-same-depot-description"}},
+							{type="checkbox", name="depot_bypass", state=setting_flip(bits, SETTING_DISABLE_DEPOT_BYPASS), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_DISABLE_DEPOT_BYPASS}, tooltip={"cybersyn-gui.depot-bypass-tooltip"}, caption={"cybersyn-gui.depot-bypass-description"}},
+						}},
+						{type="flow", name="first", direction="vertical", style_mods={horizontal_align="left", right_margin=8}, children={
+							{type="checkbox", name="allow_list", state=setting_flip(bits, SETTING_DISABLE_ALLOW_LIST), handler=handle_setting_flip, tags={id=comb.unit_number, bit=SETTING_DISABLE_ALLOW_LIST}, tooltip={"cybersyn-gui.allow-list-tooltip"}, caption={"cybersyn-gui.allow-list-description"}},
+							{type="checkbox", name="is_stack", state=setting(bits, SETTING_IS_STACK), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_IS_STACK}, tooltip={"cybersyn-gui.is-stack-tooltip"}, caption={"cybersyn-gui.is-stack-description"}},
+						}},
+						{type="flow", name="second", direction="vertical", children={
+							{type="checkbox", name="enable_inactive", state=setting(bits, SETTING_ENABLE_INACTIVE), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_INACTIVE}, tooltip={"cybersyn-gui.enable-inactive-tooltip"}, caption={"cybersyn-gui.enable-inactive-description"}},
+							{type="checkbox", name="enable_circuit_condition", state=setting(bits, SETTING_ENABLE_CIRCUIT_CONDITION), handler=handle_setting, tags={id=comb.unit_number, bit=SETTING_ENABLE_CIRCUIT_CONDITION}, tooltip={"cybersyn-gui.enable-circuit-condition-tooltip"}, caption={"cybersyn-gui.enable-circuit-condition-description"}},
+						}},
+					}},
+					--preview allow list
+					{type="flow", name="bottom_allowlist", direction="vertical", style_mods={vertical_align="top"}, visible=showLayout, children={
+						{type="label", name="allow_list_heading", style="heading_2_label", caption={"cybersyn-gui.allow-list-preview"}, tooltip={"cybersyn-gui.allow-list-preview-tooltip"}, style_mods={top_padding=8}},
+						{type="flow", name="allow_list_items", direction = "horizontal", tooltip = layoutTooltip, children = layoutItems},
+						{type="button", name="allow_list_refresh", tags={id=comb.unit_number}, tooltip={"cybersyn-gui.allow-list-refresh-tooltip"}, caption={"cybersyn-gui.allow-list-refresh-description"}, enabled = not is_ghost, handler=handle_refresh_allow},
+					}}
+				}}
+			}}
+		}}
 	})
 
 	main_window.frame.vflow.preview_frame.preview.entity = comb
