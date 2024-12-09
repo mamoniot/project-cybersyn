@@ -7,6 +7,7 @@ local INF = math.huge
 local btest = bit32.btest
 local band = bit32.band
 local table_remove = table.remove
+local table_insert = table.insert
 local random = math.random
 
 local HASH_STRING = "|"
@@ -66,6 +67,29 @@ function is_train_routable(e1, e2)
 	if (not e1) or (not e2) then return false end
 	--(NOTE: currently does not support train teleportation/space elevators)
 	return (e1.surface == e2.surface)
+end
+
+---Move serviced stations to the end of the station polling list.
+---@param map_data MapData
+---@param p_station_id integer?
+---@param r_station_id integer?
+local function move_stations_to_end_of_polling_queue(map_data, p_station_id, r_station_id)
+	if p_station_id == r_station_id then r_station_id = nil end
+	local found_p, found_r = false, false
+	local next_station_ids = filter(map_data.active_station_ids, function(id)
+		if id == p_station_id then
+			found_p = true
+			return false
+		elseif id == r_station_id then
+			found_r = true
+			return false
+		else
+			return true
+		end
+	end)
+	if found_p and p_station_id then table_insert(next_station_ids, p_station_id) end
+	if found_r and r_station_id then table_insert(next_station_ids, r_station_id) end
+	map_data.active_station_ids = next_station_ids
 end
 
 ---@param map_data MapData
@@ -215,7 +239,8 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 		local item_type = v.signal.type or "item"
 		local item_hash = hash_signal(v.signal)
 		local r_item_count = v.count
-		local r_effective_item_count = r_item_count + (r_station.deliveries[item_hash] or 0)
+		local r_effective_adjustment = r_station.enable_manual_inventory and 0 or (r_station.deliveries[item_hash] or 0)
+		local r_effective_item_count = r_item_count + r_effective_adjustment
 		if r_effective_item_count < 0 and r_item_count < 0 then
 			local r_threshold = r_station.item_thresholds and r_station.item_thresholds[item_hash] or
 				r_station.r_threshold
@@ -615,6 +640,7 @@ local function tick_dispatch(map_data, mod_settings)
 
 		if best_train_id then
 			local p_station_id = table_remove(p_stations, p_station_i)
+			move_stations_to_end_of_polling_queue(map_data, p_station_id, r_station_id)
 			local manifest = create_manifest(map_data, r_station_id, p_station_id, best_train_id, item_name)
 			create_delivery(map_data, r_station_id, p_station_id, best_train_id, manifest)
 			return false
@@ -755,7 +781,8 @@ local function tick_poll_station(map_data, mod_settings)
 			local item_hash = hash_signal(v.signal)
 			local item_type = v.signal.type or "item"
 			local item_count = v.count
-			local effective_item_count = item_count + (station.deliveries[item_hash] or 0)
+			local effective_adjustment = station.enable_manual_inventory and 0 or (station.deliveries[item_hash] or 0)
+			local effective_item_count = item_count + effective_adjustment
 
 			-- For each item in the combinator input, check if we should provide or request the given item. Requesting takes priority.
 			local is_not_requesting = true
@@ -780,7 +807,7 @@ local function tick_poll_station(map_data, mod_settings)
 						if stations == nil then
 							stations = {}
 							all_r_stations[item_network_name] = stations
-							all_names[#all_names + 1] = item_network_name	
+							all_names[#all_names + 1] = item_network_name
 							all_names[#all_names + 1] = v.signal
 						end
 						stations[#stations + 1] = station_id
