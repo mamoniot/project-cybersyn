@@ -71,3 +71,20 @@ function dual_pairs(t1, t2)
 		return key
 	end
 end
+
+---Filter an array by a predicate, creating a new array containing only those
+---elements for which the predicate returns `true`.
+---@generic T
+---@param A T[]
+---@param f fun(v: T): boolean
+---@return T[]
+function filter(A, f)
+	local B = {}
+	for i = 1, #A do
+		local v = A[i]
+		if f(v) then
+			B[#B + 1] = v
+		end
+	end
+	return B
+end
