@@ -32,14 +32,14 @@ SETTING_ENABLE_CIRCUIT_CONDITION = 8
 SETTING_ENABLE_TRAIN_COUNT = 9
 SETTING_ENABLE_MANUAL_INVENTORY = 10
 
-NETWORK_SIGNAL_DEFAULT = {name="signal-A", type="virtual"}
-NETWORK_SIGNAL_GUI_DEFAULT = {name="signal-each", type="virtual"}
+NETWORK_SIGNAL_DEFAULT = { name = "signal-A", type = "virtual" }
+NETWORK_SIGNAL_GUI_DEFAULT = { name = "signal-each", type = "virtual" }
 NETWORK_ANYTHING = "signal-anything"
 NETWORK_EACH = "signal-each"
 INACTIVITY_TIME = 100
-LOCK_TRAIN_TIME = 60*60*60*24*7
+LOCK_TRAIN_TIME = 60 * 60 * 60 * 24 * 7
 
-DELTA = 1/2048
+DELTA = 1 / 2048
 
 DEPOT_PRIORITY_MULT = 2048
 

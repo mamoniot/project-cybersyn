@@ -1,5 +1,5 @@
 flib = require("__flib__.table")
-require('scripts.constants')
+require("scripts.constants")
 
 if mods["nullius"] then
 	-- Credit to modo-lv for submitting the following code

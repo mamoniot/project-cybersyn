@@ -9,8 +9,7 @@ local bit_extract = bit32.extract
 local defines_front = defines.rail_direction.front
 local defines_back = defines.rail_direction.back
 local defines_straight = defines.rail_connection_direction.straight
-local search_type = {"straight-rail", "curved-rail"}
-
+local search_type = { "straight-rail", "curved-rail" }
 
 ---@param layout_pattern (0|1|2|3)[]
 ---@param layout (0|1|2)[]
@@ -82,7 +81,6 @@ function remove_train(map_data, train_id, train)
 	map_data.trains[train_id] = nil
 	interface_raise_train_removed(train_id, train)
 end
-
 
 ---@param map_data MapData
 ---@param train Train
@@ -166,7 +164,7 @@ end
 function set_p_wagon_combs(map_data, station, train)
 	if not station.wagon_combs or not next(station.wagon_combs) then return end
 	local carriages = train.entity.carriages
-	local manifest = train.manifest--[[@as Manifest]]
+	local manifest = train.manifest --[[@as Manifest]]
 	if not manifest[1] then return end
 	local sign = mod_settings.invert_sign and 1 or -1
 
@@ -178,7 +176,7 @@ function set_p_wagon_combs(map_data, station, train)
 		local total_item_slots
 		if locked_slots > 0 then
 			local total_cargo_wagons = #train.entity.cargo_wagons
-			total_item_slots = max(train.item_slot_capacity - total_cargo_wagons*locked_slots, 1)
+			total_item_slots = max(train.item_slot_capacity - total_cargo_wagons * locked_slots, 1)
 		else
 			total_item_slots = train.item_slot_capacity
 		end
@@ -186,10 +184,10 @@ function set_p_wagon_combs(map_data, station, train)
 		local to_be_used_item_slots = 0
 		for i, item in ipairs(train.manifest) do
 			if not item.type or item.type == "item" then
-				to_be_used_item_slots = to_be_used_item_slots + ceil(item.count/get_stack_size(map_data, item.name))
+				to_be_used_item_slots = to_be_used_item_slots + ceil(item.count / get_stack_size(map_data, item.name))
 			end
 		end
-		percent_slots_to_use_per_wagon = min(to_be_used_item_slots/total_item_slots, 1.0)
+		percent_slots_to_use_per_wagon = min(to_be_used_item_slots / total_item_slots, 1.0)
 	end
 
 	local item_i = 1
@@ -220,21 +218,24 @@ function set_p_wagon_combs(map_data, station, train)
 				local signals = {}
 
 				local inv_filter_i = 1
-				local item_slots_capacity = max(ceil((#inv - locked_slots)*percent_slots_to_use_per_wagon), 1)
+				local item_slots_capacity = max(ceil((#inv - locked_slots) * percent_slots_to_use_per_wagon), 1)
 				while item_slots_capacity > 0 and item_i <= #manifest do
 					local do_inc
 					if not item.type or item.type == "item" then
 						local stack_size = get_stack_size(map_data, item.name)
 						local i = #signals + 1
-						local count_to_fill = min(item_slots_capacity*stack_size, item_count)
-						local slots_to_fill = ceil(count_to_fill/stack_size)
+						local count_to_fill = min(item_slots_capacity * stack_size, item_count)
+						local slots_to_fill = ceil(count_to_fill / stack_size)
 
-						signals[i] = {value = {type = item.type, name = item.name, quality = item_qual, comparator = "="}, min = sign*count_to_fill}
+						signals[i] = {
+							value = { type = item.type, name = item.name, quality = item_qual, comparator = "=" },
+							min = sign * count_to_fill,
+						}
 						item_count = item_count - count_to_fill
 						item_slots_capacity = item_slots_capacity - slots_to_fill
 						if comb then
 							for j = 1, slots_to_fill do
-								inv.set_filter(inv_filter_i, {name = item.name, quality = item_qual, comparator = "="})
+								inv.set_filter(inv_filter_i, { name = item.name, quality = item_qual, comparator = "=" })
 								inv_filter_i = inv_filter_i + 1
 							end
 							train.has_filtered_wagon = true
@@ -257,7 +258,7 @@ function set_p_wagon_combs(map_data, station, train)
 
 				if comb then
 					if bit_extract(get_comb_params(comb).second_constant, SETTING_ENABLE_SLOT_BARRING) > 0 then
-						inv.set_bar(inv_filter_i--[[@as uint]])
+						inv.set_bar(inv_filter_i --[[@as uint]])
 						train.has_filtered_wagon = true
 					end
 					set_combinator_output(map_data, comb, signals)
@@ -272,7 +273,7 @@ function set_p_wagon_combs(map_data, station, train)
 				if fluid.type == "fluid" then
 					local count_to_fill = min(fluid_count, fluid_capacity)
 
-					signals[1] = {index = 1, signal = {type = fluid.type, name = fluid.name}, count = sign*count_to_fill}
+					signals[1] = { index = 1, signal = { type = fluid.type, name = fluid.name }, count = sign * count_to_fill }
 					fluid_count = fluid_count - count_to_fill
 					fluid_capacity = 0
 					do_inc = fluid_count == 0
@@ -325,7 +326,10 @@ function set_r_wagon_combs(map_data, station, train)
 					local stack = inv[stack_i]
 					if stack.valid_for_read then
 						local i = #signals + 1
-						signals[i] = {value = {type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "="}, min = sign*stack.count}
+						signals[i] = {
+							value = { type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "=" },
+							min = sign * stack.count,
+						}
 					end
 				end
 				set_combinator_output(map_data, comb, signals)
@@ -337,13 +341,15 @@ function set_r_wagon_combs(map_data, station, train)
 			for fluid_name, count in pairs(inv) do
 				local i = #signals + 1
 				-- FIXME ? pump conditions can have quality (but why? fluids can only be produced at normal quality and pump filters ignore quality)
-				signals[i] = {value = {type = "fluid", name = fluid_name, quality = "normal", comparator = "="}, min = sign*floor(count)}
+				signals[i] = {
+					value = { type = "fluid", name = fluid_name, quality = "normal", comparator = "=" },
+					min = sign * floor(count),
+				}
 			end
 			set_combinator_output(map_data, comb, signals)
 		end
 	end
 end
-
 
 ---@param map_data MapData
 ---@param refueler Refueler
@@ -382,7 +388,7 @@ function set_refueler_combs(map_data, refueler, train)
 						name = a.name
 					end
 					if prototypes.item[name] then
-						wagon_signals[1] = {value = {type = "item", name = a.name, quality = "normal", comparator = "="}, min = 1}
+						wagon_signals[1] = { value = { type = "item", name = a.name, quality = "normal", comparator = "=" }, min = 1 }
 					end
 				end
 			end
@@ -391,10 +397,21 @@ function set_refueler_combs(map_data, refueler, train)
 				if stack.valid_for_read then
 					if comb then
 						local i = #wagon_signals + 1
-						wagon_signals[i] = {value = {type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "="}, min = stack.count}
+						wagon_signals[i] = {
+							value = {
+								type = "item",
+								name = stack.name,
+								quality = stack.quality or "normal",
+								comparator = "=",
+							},
+							min = stack.count,
+						}
 					end
 					local j = #signals + 1
-					signals[j] = {value = {type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "="}, min = stack.count}
+					signals[j] = {
+						value = { type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "=" },
+						min = stack.count,
+					}
 				end
 			end
 			if comb then
@@ -405,7 +422,6 @@ function set_refueler_combs(map_data, refueler, train)
 
 	set_combinator_output(map_data, refueler.entity_comb, signals)
 end
-
 
 ---@param map_data MapData
 ---@param stop Station|Refueler
@@ -424,7 +440,7 @@ function unset_wagon_combs(map_data, stop)
 	end
 end
 
-local type_filter = {"inserter", "pump", "arithmetic-combinator", "loader-1x1", "loader"}
+local type_filter = { "inserter", "pump", "arithmetic-combinator", "loader-1x1", "loader" }
 ---@param map_data MapData
 ---@param stop Station|Refueler
 ---@param is_station_or_refueler boolean
@@ -453,20 +469,20 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 	local area_delta
 	local is_ver
 	if stop_direction == defines.direction.north then
-		search_area = {{middle_x - reach, middle_y}, {middle_x + reach, middle_y + 6}}
-		area_delta = {0, 7}
+		search_area = { { middle_x - reach, middle_y }, { middle_x + reach, middle_y + 6 } }
+		area_delta = { 0, 7 }
 		is_ver = true
 	elseif stop_direction == defines.direction.east then
-		search_area = {{middle_x - 6, middle_y - reach}, {middle_x, middle_y + reach}}
-		area_delta = {-7, 0}
+		search_area = { { middle_x - 6, middle_y - reach }, { middle_x, middle_y + reach } }
+		area_delta = { -7, 0 }
 		is_ver = false
 	elseif stop_direction == defines.direction.south then
-		search_area = {{middle_x - reach, middle_y - 6}, {middle_x + reach, middle_y}}
-		area_delta = {0, -7}
+		search_area = { { middle_x - reach, middle_y - 6 }, { middle_x + reach, middle_y } }
+		area_delta = { 0, -7 }
 		is_ver = true
 	elseif stop_direction == defines.direction.west then
-		search_area = {{middle_x, middle_y - reach}, {middle_x + 6, middle_y + reach}}
-		area_delta = {7, 0}
+		search_area = { { middle_x, middle_y - reach }, { middle_x + 6, middle_y + reach } }
+		area_delta = { 7, 0 }
 		is_ver = false
 	else
 		assert(false, "cybersyn: invalid stop direction")
@@ -474,11 +490,14 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 	local length = 1
 	---@type LuaEntity?
 	local pre_rail = stop_rail
-	local layout_pattern = {0}
+	local layout_pattern = { 0 }
 	local wagon_number = 0
 	for i = 1, 112 do
 		if pre_rail then
-			local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({rail_direction = rail_direction_from_stop, rail_connection_direction = defines_straight})
+			local rail, rail_direction, rail_connection_direction = pre_rail.get_connected_rail({
+				rail_direction = rail_direction_from_stop,
+				rail_connection_direction = defines_straight,
+			})
 			if not rail or rail_connection_direction ~= defines_straight then
 				-- There is a curved rail or break in the tracks at this point
 				-- We are assuming it's a curved rail, maybe that's a bad assumption
@@ -653,7 +672,7 @@ end
 ---@param forbidden_entity LuaEntity?
 ---@param force boolean?
 local function resolve_update_stop_from_rail(map_data, entity, forbidden_entity, force)
-	local id = entity.unit_number--[[@as uint]]
+	local id = entity.unit_number --[[@as uint]]
 	local is_station = true
 	---@type Station|Refueler
 	local stop = map_data.stations[id]
@@ -724,10 +743,10 @@ function update_stop_from_inserter(map_data, inserter, forbidden_entity)
 	end
 	-- We need to check secondary positions because of weird modded inserters.
 	-- Mostly because of miniloaders not aligning with the hitbox of a rail by default.
-	pos1.x = pos1.x + 0.2*(pos1.x - pos0.x)
-	pos1.y = pos1.y + 0.2*(pos1.y - pos0.y)
-	pos2.x = pos2.x + 0.2*(pos2.x - pos0.x)
-	pos2.y = pos2.y + 0.2*(pos2.y - pos0.y)
+	pos1.x = pos1.x + 0.2 * (pos1.x - pos0.x)
+	pos1.y = pos1.y + 0.2 * (pos1.y - pos0.y)
+	pos2.x = pos2.x + 0.2 * (pos2.x - pos0.x)
+	pos2.y = pos2.y + 0.2 * (pos2.y - pos0.y)
 	rails = surface.find_entities_filtered({
 		type = search_type,
 		position = pos1,

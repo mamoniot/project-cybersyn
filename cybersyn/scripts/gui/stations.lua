@@ -13,7 +13,7 @@ function stations_tab.create(widths)
 			type = "tab",
 			caption = { "cybersyn-gui.stations" },
 			ref = { "stations", "tab" },
-			handler = stations_tab.handle.on_stations_tab_selected
+			handler = stations_tab.handle.on_stations_tab_selected,
 		},
 		content = {
 			name = "manager_stations_content_frame",
@@ -28,35 +28,40 @@ function stations_tab.create(widths)
 				templates.sort_checkbox(widths, "stations", "status", false), --repurposed status column, description no longer necessary
 				templates.sort_checkbox(widths, "stations", "network_id", false),
 				templates.sort_checkbox(
-				widths,
-				"stations",
-				"provided_requested",
-				false
-			),
-			templates.sort_checkbox(widths, "stations", "shipments", false),
-			templates.sort_checkbox({stations={control_signals=widths.stations.control_signals-50}}, "stations", "control_signals", false),
-		},
-		{ name = "manager_stations_tab_scroll_pane", type = "scroll-pane", style = "ltnm_table_scroll_pane", ref = { "stations", "scroll_pane" } },
-		{
-			type = "flow",
-			style = "ltnm_warning_flow",
-			visible = false,
-			ref = { "stations", "warning_flow" },
+					widths,
+					"stations",
+					"provided_requested",
+					false
+				),
+				templates.sort_checkbox(widths, "stations", "shipments", false),
+				templates.sort_checkbox({ stations = { control_signals = widths.stations.control_signals - 50 } }, "stations",
+					"control_signals", false),
+			},
 			{
-				type = "label",
-				style = "ltnm_semibold_label",
-				caption = { "cybersyn-gui-no-stations" },
-				ref = { "stations", "warning_label" },
+				name = "manager_stations_tab_scroll_pane",
+				type = "scroll-pane",
+				style = "ltnm_table_scroll_pane",
+				ref = { "stations", "scroll_pane" }
+			},
+			{
+				type = "flow",
+				style = "ltnm_warning_flow",
+				visible = false,
+				ref = { "stations", "warning_flow" },
+				{
+					type = "label",
+					style = "ltnm_semibold_label",
+					caption = { "cybersyn-gui-no-stations" },
+					ref = { "stations", "warning_label" },
+				},
 			},
 		},
-	},
-}
+	}
 end
 
 --- @param map_data MapData
 --- @param player_data PlayerData
 function stations_tab.build(map_data, player_data, query_limit)
-
 	local widths = constants.gui["en"]
 	local refs = player_data.refs
 
@@ -77,8 +82,6 @@ function stations_tab.build(map_data, player_data, query_limit)
 		if not entity.valid then
 			goto continue
 		end
-
-
 
 		if search_query then
 			if not string.match(entity.backer_name, search_query) then
@@ -106,7 +109,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 			end
 		elseif search_network_mask ~= -1 then
 			if station.network_name == NETWORK_EACH then
-				local masks = station.network_mask--[[@as {}]]
+				local masks = station.network_mask --[[@as {}]]
 				for _, network_mask in pairs(masks) do
 					if bit32.btest(search_network_mask, network_mask) then
 						goto has_match
@@ -118,7 +121,6 @@ function stations_tab.build(map_data, player_data, query_limit)
 				goto continue
 			end
 		end
-
 
 		if search_item then
 			if station.deliveries then
@@ -152,7 +154,6 @@ function stations_tab.build(map_data, player_data, query_limit)
 		::continue::
 	end
 
-
 	table.sort(stations_sorted, function(a, b)
 		local station1 = map_data.stations[a]
 		local station2 = map_data.stations[b]
@@ -160,8 +161,8 @@ function stations_tab.build(map_data, player_data, query_limit)
 			local invert = player_data.trains_orderings_invert[i]
 			if v == ORDER_LAYOUT then
 				if not station1.allows_all_trains and not station2.allows_all_trains then
-					local layout1 = station1.layout_pattern--[[@as uint[] ]]
-					local layout2 = station2.layout_pattern--[[@as uint[] ]]
+					local layout1 = station1.layout_pattern --[[@as uint[] ]]
+					local layout2 = station2.layout_pattern --[[@as uint[] ]]
 					for j, c1 in ipairs(layout1) do
 						local c2 = layout2[j]
 						if c1 ~= c2 then
@@ -223,7 +224,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 		local station = stations[station_id]
 		local network_sprite = "utility/close_black"
 		local network_name = station.network_name
-		local network_mask = -1;
+		local network_mask = -1
 		if network_name then
 			network_mask = get_network_mask(station, network_name)
 			network_sprite, _, _ = util.generate_item_references(network_name)
@@ -234,15 +235,23 @@ function stations_tab.build(map_data, player_data, query_limit)
 			{
 				type = "label",
 				style = "ltnm_clickable_semibold_label",
-				style_mods = { width = widths.stations.name + 45},
+				style_mods = { width = widths.stations.name + 45 },
 				tooltip = constants.open_station_gui_tooltip,
 				caption = station.entity_stop.backer_name,
 				handler = stations_tab.handle.open_station_gui,
-				tags = { station_id = station_id }
+				tags = { station_id = station_id },
 			},
 			--templates.status_indicator(widths.stations.status, true), --repurposing status column for network name
-			{ type = "sprite", style_mods = { width = widths.stations.status - 45, horizontal_align = "center" }, sprite = network_sprite, },
-			{ type = "label", style_mods = { width = widths.stations.network_id, horizontal_align = "center" }, caption = network_mask },
+			{
+				type = "sprite",
+				style_mods = { width = widths.stations.status - 45, horizontal_align = "center" },
+				sprite = network_sprite
+			},
+			{
+				type = "label",
+				style_mods = { width = widths.stations.network_id, horizontal_align = "center" },
+				caption = network_mask
+			},
 			templates.small_slot_table(widths.stations, color, "provided_requested"),
 			templates.small_slot_table(widths.stations, color, "shipments"),
 			templates.small_slot_table(widths.stations, color, "control_signals"),
@@ -251,7 +260,6 @@ function stations_tab.build(map_data, player_data, query_limit)
 		gui.add(refs.provided_requested_table, util.slot_table_build_from_station(station))
 		gui.add(refs.shipments_table, util.slot_table_build_from_deliveries(station))
 		gui.add(refs.control_signals_table, util.slot_table_build_from_control_signals(station, map_data))
-
 	end
 
 	if #stations_sorted == 0 then
@@ -264,7 +272,6 @@ function stations_tab.build(map_data, player_data, query_limit)
 		--refs.content_frame.style = "ltnm_main_content_frame"
 	end
 end
-
 
 stations_tab.handle = {}
 
@@ -293,27 +300,26 @@ function stations_tab.handle.open_station_gui(player, player_data, refs, e)
 	end
 
 	if e.shift then
-			player.centered_on = station_entity
+		player.centered_on = station_entity
 
-			rendering.draw_circle({
-				color = constants.colors.red.tbl,
-				target = station_entity.position,
-				surface = station_entity.surface,
-				radius = 0.5,
-				filled = false,
-				width = 5,
-				time_to_live = 60 * 3,
-				players = { player },
-			})
+		rendering.draw_circle({
+			color = constants.colors.red.tbl,
+			target = station_entity.position,
+			surface = station_entity.surface,
+			radius = 0.5,
+			filled = false,
+			width = 5,
+			time_to_live = 60 * 3,
+			players = { player },
+		})
 
-			if not player_data.pinning then util.close_manager_window(player, player_data, refs) end
+		if not player_data.pinning then util.close_manager_window(player, player_data, refs) end
 	elseif e.control then
 		if station_comb1 ~= nil and station_comb1.valid then
 			player.opened = station_comb1
 		else
 			util.error_flying_text(player, { "cybersyn-message.error-cybernetic-combinator-not-found" })
 		end
-
 	elseif e.alt then
 		if station_comb2 ~= nil and station_comb2.valid then
 			player.opened = station_comb2

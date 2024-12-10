@@ -7,48 +7,45 @@ local format = require("__flib__.format")
 local inventory_tab = {}
 
 function inventory_tab.create()
-  return {
-    tab = {
-      name = "manager_inventory_tab",
-      type = "tab",
-      caption = { "cybersyn-gui.inventory" },
-      ref = { "inventory", "tab" },
-      handler = inventory_tab.handle.on_inventory_tab_selected
-    },
-    content = {
-      name = "manager_inventory_content_frame",
-      type = "flow",
-      style_mods = { horizontal_spacing = 12 },
-      direction = "horizontal",
-      ref = { "inventory", "content_frame" },
-      templates.inventory_slot_table("provided", 12),
-      templates.inventory_slot_table("in_transit", 8),
-      templates.inventory_slot_table("requested", 7),
-    },
-  }
+	return {
+		tab = {
+			name = "manager_inventory_tab",
+			type = "tab",
+			caption = { "cybersyn-gui.inventory" },
+			ref = { "inventory", "tab" },
+			handler = inventory_tab.handle.on_inventory_tab_selected,
+		},
+		content = {
+			name = "manager_inventory_content_frame",
+			type = "flow",
+			style_mods = { horizontal_spacing = 12 },
+			direction = "horizontal",
+			ref = { "inventory", "content_frame" },
+			templates.inventory_slot_table("provided", 12),
+			templates.inventory_slot_table("in_transit", 8),
+			templates.inventory_slot_table("requested", 7),
+		},
+	}
 end
 
 ---@param map_data MapData
 ---@param player_data PlayerData
 function inventory_tab.build(map_data, player_data)
+	local refs = player_data.refs
 
-  local refs = player_data.refs
-
-  local search_query = player_data.search_query
-  local search_item = player_data.search_item
+	local search_query = player_data.search_query
+	local search_item = player_data.search_item
 	local search_network_name = player_data.search_network_name
 	local search_network_mask = player_data.search_network_mask
 	local search_surface_idx = player_data.search_surface_idx
 
-  local inventory_provided = {}
-  local inventory_in_transit = {}
-  local inventory_requested = {}
+	local inventory_provided = {}
+	local inventory_in_transit = {}
+	local inventory_requested = {}
 
-  local stations_sorted = {}
+	local stations_sorted = {}
 
-
-
-  for id, station in pairs(map_data.stations) do
+	for id, station in pairs(map_data.stations) do
 		local entity = station.entity_stop
 		if not entity.valid then
 			goto continue
@@ -60,7 +57,7 @@ function inventory_tab.build(map_data, player_data)
 			end
 		end
 		-- move surface comparison up higher in query to short circuit query earlier if surface doesn't match
-    if search_surface_idx then
+		if search_surface_idx then
 			if entity.surface.index ~= search_surface_idx then
 				goto continue
 			end
@@ -75,7 +72,7 @@ function inventory_tab.build(map_data, player_data)
 			end
 		elseif search_network_mask ~= -1 then
 			if station.network_name == NETWORK_EACH then
-				local masks = station.network_mask--[[@as {}]]
+				local masks = station.network_mask --[[@as {}]]
 				for _, network_mask in pairs(masks) do
 					if bit32.btest(search_network_mask, network_mask) then
 						goto has_match
@@ -100,7 +97,7 @@ function inventory_tab.build(map_data, player_data)
 			if comb1_signals then
 				for _, signal_ID in pairs(comb1_signals) do
 					local item = signal_ID.signal.name
-          -- FIXME handle signal_ID.signal.quality
+					-- FIXME handle signal_ID.signal.quality
 					if item then
 						if item == search_item then
 							goto has_match
@@ -116,163 +113,162 @@ function inventory_tab.build(map_data, player_data)
 		::continue::
 	end
 
-  for i, station_id in pairs(stations_sorted) do
-    --- @class Station
-    local station = map_data.stations[station_id]
+	for i, station_id in pairs(stations_sorted) do
+		--- @class Station
+		local station = map_data.stations[station_id]
 
-    local comb1_signals, _ = get_signals(station)
-    if comb1_signals then
-      for _, v in pairs(comb1_signals) do
-        local item = v.signal
-        local count = v.count
-        local item_hash = hash_signal(item)
-        if item.type ~= "virtual" then
-          if station.is_p and count > 0 then
-            if inventory_provided[item_hash] == nil then
-              inventory_provided[item_hash] = count
-            else
-              inventory_provided[item_hash] = inventory_provided[item_hash] + count
-            end
-          end
-          if station.is_r and count < 0 then
-            local r_threshold = station.item_thresholds and station.item_thresholds[item.name] or station.r_threshold
-            if station.is_stack and item.type ~= "fluid" then
-              r_threshold = r_threshold*get_stack_size(map_data, item.name)
-            end
-            -- FIXME handle v.signal.quality
+		local comb1_signals, _ = get_signals(station)
+		if comb1_signals then
+			for _, v in pairs(comb1_signals) do
+				local item = v.signal
+				local count = v.count
+				local item_hash = hash_signal(item)
+				if item.type ~= "virtual" then
+					if station.is_p and count > 0 then
+						if inventory_provided[item_hash] == nil then
+							inventory_provided[item_hash] = count
+						else
+							inventory_provided[item_hash] = inventory_provided[item_hash] + count
+						end
+					end
+					if station.is_r and count < 0 then
+						local r_threshold = station.item_thresholds and station.item_thresholds[item.name] or station.r_threshold
+						if station.is_stack and item.type ~= "fluid" then
+							r_threshold = r_threshold * get_stack_size(map_data, item.name)
+						end
+						-- FIXME handle v.signal.quality
 
-            if -count >= r_threshold then
-              if inventory_requested[item_hash] == nil then
-                inventory_requested[item_hash] = count
-              else
-                inventory_requested[item_hash] = inventory_requested[item_hash] + count
-              end
-            end
-          end
-        end
-      end
-    end
+						if -count >= r_threshold then
+							if inventory_requested[item_hash] == nil then
+								inventory_requested[item_hash] = count
+							else
+								inventory_requested[item_hash] = inventory_requested[item_hash] + count
+							end
+						end
+					end
+				end
+			end
+		end
 
-    local deliveries = station.deliveries
-    if deliveries then
-      for item_hash, count in pairs(deliveries) do
-        if count > 0 then
-          if inventory_in_transit[item_hash] == nil then
-            inventory_in_transit[item_hash] = count
-          else
-            inventory_in_transit[item_hash] = inventory_in_transit[item_hash] + count
-          end
-        end
-      end
-    end
-  end
+		local deliveries = station.deliveries
+		if deliveries then
+			for item_hash, count in pairs(deliveries) do
+				if count > 0 then
+					if inventory_in_transit[item_hash] == nil then
+						inventory_in_transit[item_hash] = count
+					else
+						inventory_in_transit[item_hash] = inventory_in_transit[item_hash] + count
+					end
+				end
+			end
+		end
+	end
 
-  local inventory_provided_table = refs.inventory_provided_table
-  local provided_children = {}
+	local inventory_provided_table = refs.inventory_provided_table
+	local provided_children = {}
 
-  local i = 0
-  for item_hash, count in pairs(inventory_provided) do
-    item, quality = unhash_signal(item_hash)
-    local signal = util.signalid_from_name(item, quality)
-    i = i + 1
-    provided_children[#provided_children+1] = {
-      type = "choose-elem-button",
-      elem_type = "signal",
-      signal = signal,
-      enabled = false,
-      style = "flib_slot_button_green",
-      tooltip = {
-        "",
-        util.rich_text_from_signal(signal),
-        " provided",
-        "\n Amount: "..format.number(count),
-      },
-      children = {
-        {
-          type = "label",
-          style = "ltnm_label_signal_count_inventory",
-          ignored_by_interaction = true,
-          caption = format_signal_count(count)
-        }
-      },
-    }
-  end
+	local i = 0
+	for item_hash, count in pairs(inventory_provided) do
+		item, quality = unhash_signal(item_hash)
+		local signal = util.signalid_from_name(item, quality)
+		i = i + 1
+		provided_children[#provided_children + 1] = {
+			type = "choose-elem-button",
+			elem_type = "signal",
+			signal = signal,
+			enabled = false,
+			style = "flib_slot_button_green",
+			tooltip = {
+				"",
+				util.rich_text_from_signal(signal),
+				" provided",
+				"\n Amount: " .. format.number(count),
+			},
+			children = {
+				{
+					type = "label",
+					style = "ltnm_label_signal_count_inventory",
+					ignored_by_interaction = true,
+					caption = format_signal_count(count),
+				},
+			},
+		}
+	end
 
-  local inventory_requested_table = refs.inventory_requested_table
-  local requested_children = {}
+	local inventory_requested_table = refs.inventory_requested_table
+	local requested_children = {}
 
-  local i = 0
-  for item_hash, count in pairs(inventory_requested) do
-    item, quality = unhash_signal(item_hash)
-    local signal = util.signalid_from_name(item, quality)
-    i = i + 1
-    requested_children[#requested_children+1] = {
-      type = "choose-elem-button",
-      elem_type = "signal",
-      signal = signal,
-      enabled = false,
-      style = "flib_slot_button_red",
-      tooltip = {
-        "",
-        util.rich_text_from_signal(signal),
-        " requested",
-        "\n Amount: "..format.number(count),
-      },
-      children = {
-        {
-          type = "label",
-          style = "ltnm_label_signal_count_inventory",
-          ignored_by_interaction = true,
-          caption = format_signal_count(count)
-        }
-      },
-    }
-  end
+	local i = 0
+	for item_hash, count in pairs(inventory_requested) do
+		item, quality = unhash_signal(item_hash)
+		local signal = util.signalid_from_name(item, quality)
+		i = i + 1
+		requested_children[#requested_children + 1] = {
+			type = "choose-elem-button",
+			elem_type = "signal",
+			signal = signal,
+			enabled = false,
+			style = "flib_slot_button_red",
+			tooltip = {
+				"",
+				util.rich_text_from_signal(signal),
+				" requested",
+				"\n Amount: " .. format.number(count),
+			},
+			children = {
+				{
+					type = "label",
+					style = "ltnm_label_signal_count_inventory",
+					ignored_by_interaction = true,
+					caption = format_signal_count(count),
+				},
+			},
+		}
+	end
 
-  local inventory_in_transit_table = refs.inventory_in_transit_table
-  local in_transit_children = {}
+	local inventory_in_transit_table = refs.inventory_in_transit_table
+	local in_transit_children = {}
 
-  local i = 0
-  for item_hash, count in pairs(inventory_in_transit) do
-    item, quality = unhash_signal(item_hash)
-    local signal = util.signalid_from_name(item, quality)
-    i = i + 1
-    in_transit_children[#in_transit_children+1] = {
-      type = "choose-elem-button",
-      elem_type = "signal",
-      signal = signal,
-      enabled = false,
-      style = "flib_slot_button_blue",
-      tooltip = {
-        "",
-        util.rich_text_from_signal(signal),
-        " in transit",
-        "\n Amount: "..format.number(count),
-      },
-      children = {
-        {
-          type = "label",
-          style = "ltnm_label_signal_count_inventory",
-          ignored_by_interaction = true,
-          caption = format_signal_count(count)
-        }
-      },
-    }
-  end
+	local i = 0
+	for item_hash, count in pairs(inventory_in_transit) do
+		item, quality = unhash_signal(item_hash)
+		local signal = util.signalid_from_name(item, quality)
+		i = i + 1
+		in_transit_children[#in_transit_children + 1] = {
+			type = "choose-elem-button",
+			elem_type = "signal",
+			signal = signal,
+			enabled = false,
+			style = "flib_slot_button_blue",
+			tooltip = {
+				"",
+				util.rich_text_from_signal(signal),
+				" in transit",
+				"\n Amount: " .. format.number(count),
+			},
+			children = {
+				{
+					type = "label",
+					style = "ltnm_label_signal_count_inventory",
+					ignored_by_interaction = true,
+					caption = format_signal_count(count),
+				},
+			},
+		}
+	end
 
-  if next(inventory_provided_table.children) ~= nil then
-    refs.inventory_provided_table.clear()
-  end
-  if next(inventory_requested_table.children) ~= nil then
-    refs.inventory_requested_table.clear()
-  end
-  if next(inventory_in_transit_table.children) ~= nil then
-    refs.inventory_in_transit_table.clear()
-  end
-  gui.add(refs.inventory_provided_table, provided_children)
-  gui.add(refs.inventory_requested_table, requested_children)
-  gui.add(refs.inventory_in_transit_table, in_transit_children)
-
+	if next(inventory_provided_table.children) ~= nil then
+		refs.inventory_provided_table.clear()
+	end
+	if next(inventory_requested_table.children) ~= nil then
+		refs.inventory_requested_table.clear()
+	end
+	if next(inventory_in_transit_table.children) ~= nil then
+		refs.inventory_in_transit_table.clear()
+	end
+	gui.add(refs.inventory_provided_table, provided_children)
+	gui.add(refs.inventory_requested_table, requested_children)
+	gui.add(refs.inventory_in_transit_table, in_transit_children)
 end
 
 inventory_tab.handle = {}
@@ -288,7 +284,7 @@ end
 ---@param player LuaPlayer
 ---@param player_data PlayerData
 function inventory_tab.handle.on_inventory_tab_selected(player, player_data)
-    player_data.selected_tab = "inventory_tab"
+	player_data.selected_tab = "inventory_tab"
 end
 
 gui.add_handlers(inventory_tab.handle, inventory_tab.wrapper)

@@ -110,7 +110,6 @@ function interface.get_on_mod_settings_changed()
 	return on_mod_settings_changed
 end
 
-
 ------------------------------------------------------------------
 --[[helper functions]]
 ------------------------------------------------------------------
@@ -131,7 +130,7 @@ function interface.read_global(...)
 	--the second return value is how many parameters could be processed before a nil value was encountered (in the above example it's useful for telling apart storage.trains[31415] == nil vs storage.trains[31415].manifest == nil)
 	local base = storage
 	local depth = 0
-	for i, v in ipairs({...}) do
+	for i, v in ipairs({ ... }) do
 		depth = i
 		base = base[v]
 		if not base then break end
@@ -170,7 +169,6 @@ function interface.get_id_from_comb(comb)
 	end
 end
 
-
 ------------------------------------------------------------------
 --[[safe API]]
 ------------------------------------------------------------------
@@ -183,7 +181,6 @@ function interface.write_setting(key, value)
 	--these settings are not saved and have to be set on load and on init
 	mod_settings[key] = value
 end
-
 
 ---@param comb LuaEntity
 function interface.combinator_update(comb)
@@ -243,7 +240,6 @@ function interface.update_stop_from_rail(rail, forbidden_entity, force_update)
 	update_stop_from_rail(storage, rail, forbidden_entity, force_update)
 end
 
-
 ------------------------------------------------------------------
 --[[unsafe API]]
 ------------------------------------------------------------------
@@ -255,7 +251,7 @@ end
 function interface.write_global(value, ...)
 	--this can write anything into cybersyn's map_data, please be very careful with anything you write, it can cause permanent damage
 	--so interface.write_global(nil, "trains", 31415, "manifest") will cause storage.trains[31415].manifest = nil (or return false if train 31415 does not exist)
-	local params = {...}
+	local params = { ... }
 	local size = #params
 	local key = params[size]
 	assert(key ~= nil)
@@ -363,9 +359,7 @@ interface.send_alert_refueler_of_train_broken = send_alert_refueler_of_train_bro
 interface.send_alert_station_of_train_broken = send_alert_station_of_train_broken
 interface.send_alert_train_at_incorrect_station = send_alert_train_at_incorrect_station
 
-
 remote.add_interface("cybersyn", interface)
-
 
 ------------------------------------------------------------------
 --[[internal event calls]]
@@ -396,7 +390,7 @@ function interface_raise_station_removed(old_station_id, old_station)
 	if on_station_removed then
 		raise_event(on_station_removed, {
 			old_station_id = old_station_id, --this id is now invalid
-			old_station = old_station, --this is the data that used to be stored at the old id
+			old_station = old_station,    --this is the data that used to be stored at the old id
 		})
 	end
 end
@@ -415,7 +409,7 @@ function interface_raise_depot_removed(old_depot_id, old_depot)
 	if on_depot_removed then
 		raise_event(on_depot_removed, {
 			old_depot_id = old_depot_id, --this id is now invalid
-			old_depot = old_depot, --this is the data that used to be stored at the old id
+			old_depot = old_depot,    --this is the data that used to be stored at the old id
 		})
 	end
 end
@@ -434,7 +428,7 @@ function interface_raise_refueler_removed(old_refueler_id, old_refueler)
 	if on_refueler_removed then
 		raise_event(on_refueler_removed, {
 			old_refueler_id = old_refueler_id, --this id is now invalid
-			old_refueler = old_refueler, --this is the data that used to be stored at the old id
+			old_refueler = old_refueler,    --this is the data that used to be stored at the old id
 		})
 	end
 end
@@ -455,7 +449,7 @@ function interface_raise_train_removed(old_train_id, old_train)
 	if on_train_removed then
 		raise_event(on_train_removed, {
 			old_train_id = old_train_id, --this id is now invalid
-			old_train = old_train, --this is the data that used to be stored at the old id
+			old_train = old_train,    --this is the data that used to be stored at the old id
 		})
 	end
 end
@@ -495,7 +489,13 @@ end
 ---@param was_r_in_progress boolean
 ---@param r_station_id uint
 ---@param manifest Manifest
-function interface_raise_train_failed_delivery(train_id, was_p_in_progress, p_station_id, was_r_in_progress, r_station_id, manifest)
+function interface_raise_train_failed_delivery(
+		train_id,
+		was_p_in_progress,
+		p_station_id,
+		was_r_in_progress,
+		r_station_id,
+		manifest)
 	if on_train_failed_delivery then
 		raise_event(on_train_failed_delivery, {
 			train_id = train_id,
@@ -531,7 +531,7 @@ end
 function interface_raise_train_teleport_started(old_train_id)
 	if on_train_teleport_started then
 		raise_event(on_train_teleport_started, {
-			old_train_id = old_train_id,--this id is currently valid but will become invalid just before on_train_teleported is raised
+			old_train_id = old_train_id, --this id is currently valid but will become invalid just before on_train_teleported is raised
 		})
 	end
 end
@@ -540,8 +540,8 @@ end
 function interface_raise_train_teleported(new_train_id, old_train_id)
 	if on_train_teleported then
 		raise_event(on_train_teleported, {
-			new_train_id = new_train_id,--this id stores the train
-			old_train_id = old_train_id,--this id is now invalid
+			new_train_id = new_train_id, --this id stores the train
+			old_train_id = old_train_id, --this id is now invalid
 		})
 	end
 end
