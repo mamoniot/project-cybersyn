@@ -1,3 +1,10 @@
+-- Code related to Space Exploration compatibility.
+
+SE_ELEVATOR_STOP_PROTO_NAME = "se-space-elevator-train-stop"
+SE_ELEVATOR_ORBIT_SUFFIX = " ↓"
+SE_ELEVATOR_PLANET_SUFFIX = " ↑"
+SE_ELEVATOR_SUFFIX_LENGTH = 4
+
 local table_insert = table.insert
 local string_sub = string.sub
 local string_len = string.len
