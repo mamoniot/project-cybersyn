@@ -1,4 +1,6 @@
 local table_insert = table.insert
+local string_sub = string.sub
+local string_len = string.len
 
 local lib = {}
 
@@ -132,6 +134,188 @@ function lib.setup_se_compat()
 		end
 		interface_raise_train_teleported(new_id, old_id)
 	end)
+end
+
+---@param cache PerfCache
+---@param surface LuaSurface
+function lib.se_get_space_elevator_name(cache, surface)
+	---@type LuaEntity?
+	local entity = nil
+	local cache_idx = surface.index
+	if cache.se_get_space_elevator_name then
+		entity = cache.se_get_space_elevator_name[cache_idx]
+	else
+		cache.se_get_space_elevator_name = {}
+	end
+
+	if not entity or not entity.valid then
+		--Caching failed, default to expensive lookup
+		entity = surface.find_entities_filtered({
+			name = SE_ELEVATOR_STOP_PROTO_NAME,
+			type = "train-stop",
+			limit = 1,
+		})[1]
+
+		if entity then
+			cache.se_get_space_elevator_name[cache_idx] = entity
+		end
+	end
+
+	if entity and entity.valid then
+		return string_sub(entity.backer_name, 1, string_len(entity.backer_name) - SE_ELEVATOR_SUFFIX_LENGTH)
+	else
+		return nil
+	end
+end
+
+---@param cache PerfCache
+---@param surface_index uint
+function lib.se_get_zone_from_surface_index(cache, surface_index)
+	---@type uint?
+	local zone_index = nil
+	---@type uint?
+	local zone_orbit_index = nil
+	local cache_idx = 2 * surface_index
+	if cache.se_get_zone_from_surface_index then
+		zone_index = cache.se_get_zone_from_surface_index[cache_idx - 1] --[[@as uint]]
+		--zones may not have an orbit_index
+		zone_orbit_index = cache.se_get_zone_from_surface_index[cache_idx] --[[@as uint?]]
+	else
+		cache.se_get_zone_from_surface_index = {}
+	end
+
+	if not zone_index then
+		zone = remote.call("space-exploration", "get_zone_from_surface_index", { surface_index = surface_index })
+
+		if zone and type(zone.index) == "number" then
+			zone_index = zone.index --[[@as uint]]
+			zone_orbit_index = zone.orbit_index --[[@as uint?]]
+			--NOTE: caching these indices could be a problem if SE is not deterministic in choosing them
+			cache.se_get_zone_from_surface_index[cache_idx - 1] = zone_index
+			cache.se_get_zone_from_surface_index[cache_idx] = zone_orbit_index
+		end
+	end
+
+	return zone_index, zone_orbit_index
+end
+
+---@param elevator_name string
+---@param is_train_in_orbit boolean
+---@return ScheduleRecord
+function lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
+	return { station = elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX) }
+end
+
+---@param cache PerfCache
+---@param train LuaTrain
+---@param depot_stop LuaEntity
+---@param same_depot boolean
+---@param p_stop LuaEntity
+---@param p_schedule_settings Cybersyn.StationScheduleSettings
+---@param r_stop LuaEntity
+---@param r_schedule_settings Cybersyn.StationScheduleSettings
+---@param manifest Manifest
+---@param start_at_depot boolean?
+---@return (ScheduleRecord[])?
+function lib.se_set_manifest_schedule(
+		cache,
+		train,
+		depot_stop,
+		same_depot,
+		p_stop,
+		p_schedule_settings,
+		r_stop,
+		r_schedule_settings,
+		manifest,
+		start_at_depot)
+	local t_surface = train.front_stock.surface
+	local p_surface = p_stop.surface
+	local r_surface = r_stop.surface
+	local d_surface_i = depot_stop.surface.index
+	local t_surface_i = t_surface.index
+	local p_surface_i = p_surface.index
+	local r_surface_i = r_surface.index
+	local is_p_on_t = t_surface_i == p_surface_i
+	local is_r_on_t = t_surface_i == r_surface_i
+	local is_d_on_t = t_surface_i == d_surface_i
+
+	local other_surface_i = (not is_p_on_t and p_surface_i) or (not is_r_on_t and r_surface_i) or d_surface_i
+	if (is_p_on_t or p_surface_i == other_surface_i) and (is_r_on_t or r_surface_i == other_surface_i) and (is_d_on_t or d_surface_i == other_surface_i) then
+		local t_zone_index, t_zone_orbit_index = lib.se_get_zone_from_surface_index(cache, t_surface_i)
+		local other_zone_index, other_zone_orbit_index = lib.se_get_zone_from_surface_index(cache,
+			other_surface_i)
+		if t_zone_index and other_zone_index then
+			local is_train_in_orbit = other_zone_orbit_index == t_zone_index
+			if is_train_in_orbit or t_zone_orbit_index == other_zone_index then
+				local elevator_name = lib.se_get_space_elevator_name(cache, t_surface)
+				if elevator_name then
+					local records = { create_inactivity_order(depot_stop.backer_name) }
+					if t_surface_i == p_surface_i then
+						records[#records + 1] = create_direct_to_station_order(p_stop)
+					else
+						records[#records + 1] = lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
+						is_train_in_orbit = not is_train_in_orbit
+					end
+					records[#records + 1] = create_loading_order(p_stop, manifest, p_schedule_settings)
+
+					if p_surface_i ~= r_surface_i then
+						records[#records + 1] = lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
+						is_train_in_orbit = not is_train_in_orbit
+					elseif t_surface_i == r_surface_i then
+						records[#records + 1] = create_direct_to_station_order(r_stop)
+					end
+					records[#records + 1] = create_unloading_order(r_stop, r_schedule_settings)
+					if r_surface_i ~= d_surface_i then
+						records[#records + 1] = lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
+						is_train_in_orbit = not is_train_in_orbit
+					end
+
+					return records
+				end
+			end
+		end
+	end
+end
+
+---@param cache PerfCache
+---@param train LuaTrain
+---@param stop LuaEntity
+---@param schedule TrainSchedule Pre-existing schedule. Will be mutated by this function.
+---@return boolean?
+function lib.se_add_refueler_schedule(cache, train, stop, schedule)
+	local t_surface = train.front_stock.surface
+	local f_surface = stop.surface
+	local t_surface_i = t_surface.index
+	local f_surface_i = f_surface.index
+
+	local t_zone_index, t_zone_orbit_index = lib.se_get_zone_from_surface_index(cache, t_surface_i)
+	local other_zone_index, other_zone_orbit_index = lib.se_get_zone_from_surface_index(cache, f_surface_i)
+	if t_zone_index and other_zone_index then
+		local is_train_in_orbit = other_zone_orbit_index == t_zone_index
+		if is_train_in_orbit or t_zone_orbit_index == other_zone_index then
+			local elevator_name = lib.se_get_space_elevator_name(cache, t_surface)
+			if elevator_name then
+				local cur_order = schedule.records[i]
+				local is_elevator_in_orders_already = cur_order and
+						cur_order.station ==
+						elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)
+				if not is_elevator_in_orders_already then
+					table_insert(schedule.records, i, lib.se_create_elevator_order(elevator_name, is_train_in_orbit))
+				end
+				i = i + 1
+				is_train_in_orbit = not is_train_in_orbit
+				table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
+				i = i + 1
+				if not is_elevator_in_orders_already then
+					table_insert(schedule.records, i, lib.se_create_elevator_order(elevator_name, is_train_in_orbit))
+					i = i + 1
+					is_train_in_orbit = not is_train_in_orbit
+				end
+
+				return true
+			end
+		end
+	end
 end
 
 return lib
