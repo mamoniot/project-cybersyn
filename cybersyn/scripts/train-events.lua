@@ -220,12 +220,12 @@ local function on_train_arrives_station(map_data, station, train_id, train)
 	---@type uint
 	if train.status == STATUS_TO_P then
 		train.status = STATUS_P
-		set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and 1 or -1)
+		set_comb1(map_data, station, train.manifest, -1)
 		set_p_wagon_combs(map_data, station, train)
 		interface_raise_train_status_changed(train_id, STATUS_TO_P, STATUS_P)
 	elseif train.status == STATUS_TO_R then
 		train.status = STATUS_R
-		set_comb1(map_data, station, train.manifest, mod_settings.invert_sign and -1 or 1)
+		set_comb1(map_data, station, train.manifest, 1)
 		set_r_wagon_combs(map_data, station, train)
 		interface_raise_train_status_changed(train_id, STATUS_TO_R, STATUS_R)
 	end

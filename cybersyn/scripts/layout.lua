@@ -166,7 +166,6 @@ function set_p_wagon_combs(map_data, station, train)
 	local carriages = train.entity.carriages
 	local manifest = train.manifest --[[@as Manifest]]
 	if not manifest[1] then return end
-	local sign = mod_settings.invert_sign and 1 or -1
 
 	local is_reversed = get_train_direction(station.entity_stop, train.entity)
 
@@ -214,7 +213,7 @@ function set_p_wagon_combs(map_data, station, train)
 		if carriage.type == "cargo-wagon" then
 			local inv = carriage.get_inventory(defines.inventory.cargo_wagon)
 			if inv then
-				---@type ConstantCombinatorParameters[]
+				---@type LogisticFilter[]
 				local signals = {}
 
 				local inv_filter_i = 1
@@ -229,7 +228,7 @@ function set_p_wagon_combs(map_data, station, train)
 
 						signals[i] = {
 							value = { type = item.type, name = item.name, quality = item_qual, comparator = "=" },
-							min = sign * count_to_fill,
+							min = -1 * count_to_fill,
 						}
 						item_count = item_count - count_to_fill
 						item_slots_capacity = item_slots_capacity - slots_to_fill
@@ -266,6 +265,7 @@ function set_p_wagon_combs(map_data, station, train)
 			end
 		elseif carriage.type == "fluid-wagon" then
 			local fluid_capacity = carriage.prototype.fluid_capacity
+			---@type LogisticFilter[]
 			local signals = {}
 
 			while fluid_capacity > 0 and fluid_i <= #manifest do
@@ -273,7 +273,7 @@ function set_p_wagon_combs(map_data, station, train)
 				if fluid.type == "fluid" then
 					local count_to_fill = min(fluid_count, fluid_capacity)
 
-					signals[1] = { index = 1, signal = { type = fluid.type, name = fluid.name }, count = sign * count_to_fill }
+					signals[1] = { index = 1, signal = { type = fluid.type, name = fluid.name }, count = -1 * count_to_fill }
 					fluid_count = fluid_count - count_to_fill
 					fluid_capacity = 0
 					do_inc = fluid_count == 0
@@ -304,7 +304,6 @@ function set_r_wagon_combs(map_data, station, train)
 	local carriages = train.entity.carriages
 
 	local is_reversed = get_train_direction(station.entity_stop, train.entity)
-	local sign = mod_settings.invert_sign and -1 or 1
 
 	local ivpairs = is_reversed and irpairs or ipairs
 	for carriage_i, carriage in ivpairs(carriages) do
@@ -328,7 +327,7 @@ function set_r_wagon_combs(map_data, station, train)
 						local i = #signals + 1
 						signals[i] = {
 							value = { type = "item", name = stack.name, quality = stack.quality or "normal", comparator = "=" },
-							min = sign * stack.count,
+							min = stack.count,
 						}
 					end
 				end
@@ -343,7 +342,7 @@ function set_r_wagon_combs(map_data, station, train)
 				-- FIXME ? pump conditions can have quality (but why? fluids can only be produced at normal quality and pump filters ignore quality)
 				signals[i] = {
 					value = { type = "fluid", name = fluid_name, quality = "normal", comparator = "=" },
-					min = sign * floor(count),
+					min = floor(count),
 				}
 			end
 			set_combinator_output(map_data, comb, signals)

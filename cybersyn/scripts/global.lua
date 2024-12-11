@@ -130,7 +130,6 @@
 ---@field public warmup_time double
 ---@field public stuck_train_time double
 ---@field public fuel_threshold double
----@field public invert_sign boolean
 ---@field public allow_cargo_in_depot boolean
 ---@field public missing_train_alert_enabled boolean --interface setting
 ---@field public stuck_train_alert_enabled boolean --interface setting
