@@ -62,27 +62,34 @@ end
 function util.rich_text_from_signal(signal)
 	local quality = signal.quality or ""
 	local type = signal.type or "item" -- if type is nil, it is item
+	if type == "virtual" then
+		type = "virtual-signal" -- rich text needs 'virtual-signal'
+	end
 	return "[" .. type .. "=" .. signal.name .. ",quality=" .. quality .. "]"
 end
 
---- Creates a SignalID structure from an item name and optional quality.
+--- Returns a prototype based on an item name.
 ---@param name string
+---@return LuaPrototypeBase
+function util.prototype_from_name(name)
+	return prototypes.item[name] or
+		   prototypes.fluid[name] or
+		   prototypes.virtual_signal[name] or
+		   prototypes.entity[name] or
+		   prototypes.recipe[name] or
+		   prototypes.space_location[name] or
+		   prototypes.asteroid_chunk[name] or
+		   prototypes.quality[name]
+end
+
+--- Creates a SignalID structure from a prototype and optional quality.
+---@param prototype LuaPrototypeBase
 ---@param quality string?
 ---@return SignalID
-function util.signalid_from_name(name, quality)
-	---@type SignalIDType
-	-- TODO is there a better way to get item type from name?
-	local signal_type = prototypes.item[name] ~= nil and "item" or
-			prototypes.fluid[name] ~= nil and "fluid" or
-			prototypes.virtual_signal[name] ~= nil and "virtual" or
-			prototypes.entity[name] ~= nil and "entity" or
-			prototypes.recipe[name] ~= nil and "recipe" or
-			prototypes.space_location[name] ~= nil and "space-location" or
-			prototypes.asteroid_chunk[name] ~= nil and "asteroid-chunk" or
-			"quality"
+function util.signalid_from_prototype(prototype, quality)
 	return {
-		type = signal_type,
-		name = name,
+		type = prototype.type,
+		name = prototype.name,
 		quality = quality,
 	}
 end
@@ -96,11 +103,8 @@ function util.slot_table_build_from_manifest(manifest, color)
 	local children = {}
 	if manifest then
 		for _, item in pairs(manifest) do
-			local signal = {
-				type = item.type,
-				name = item.name,
-				quality = item.quality,
-			}
+			local item_prototype = util.prototype_from_name(item.name)
+			local signal = util.signalid_from_prototype(item_prototype, item.quality)
 			children[#children + 1] = {
 				type = "choose-elem-button",
 				elem_type = "signal",
@@ -110,6 +114,7 @@ function util.slot_table_build_from_manifest(manifest, color)
 				tooltip = {
 					"",
 					util.rich_text_from_signal(signal),
+					" ", item_prototype.localised_name,
 					" shipped",
 					"\n Amount: " .. format.number(item.count),
 				},
@@ -137,6 +142,7 @@ function util.slot_table_build_from_station(station)
 	if comb1_signals then
 		for _, v in pairs(comb1_signals) do
 			local item = v.signal
+			local item_prototype = util.prototype_from_name(item.name)
 			if item.type == "virtual" then
 				goto continue
 			end
@@ -170,6 +176,7 @@ function util.slot_table_build_from_station(station)
 				tooltip = {
 					"",
 					util.rich_text_from_signal(item),
+					" ", item_prototype.localised_name,
 					color == "red" and " requested" or
 					color == "green" and " provided" or
 					color == "orange" and " requested (below threshold)" or
@@ -198,7 +205,8 @@ function util.slot_table_build_from_deliveries(station)
 
 	for item_hash, count in pairs(deliveries) do
 		item, quality = unhash_signal(item_hash)
-		local signal = util.signalid_from_name(item, quality)
+		local item_prototype = util.prototype_from_name(item)
+		local signal = util.signalid_from_prototype(item_prototype, quality)
 
 		local color
 		if count > 0 then
@@ -214,6 +222,7 @@ function util.slot_table_build_from_deliveries(station)
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
+				" ", item_prototype.localised_name,
 				color == "green" and " incoming" or
 				color == "blue" and " outgoing" or
 				"",
@@ -248,12 +257,18 @@ function util.slot_table_build_from_control_signals(station, map_data)
 			if item.type ~= "virtual" then
 				goto continue
 			end
+			local item_prototype = util.prototype_from_name(item.name)
 			children[#children + 1] = {
 				type = "choose-elem-button",
 				elem_type = "signal",
 				signal = item,
 				enabled = false,
-				ignored_by_interaction = true,
+				tooltip = {
+					"",
+					util.rich_text_from_signal(item),
+					" ", item_prototype.localised_name,
+					"\n Amount: " .. format.number(count),
+				},
 				style = "ltnm_small_slot_button_" .. color,
 				children = {
 					{
