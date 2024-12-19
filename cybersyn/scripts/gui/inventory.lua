@@ -167,11 +167,10 @@ function inventory_tab.build(map_data, player_data)
 	local inventory_provided_table = refs.inventory_provided_table
 	local provided_children = {}
 
-	local i = 0
 	for item_hash, count in pairs(inventory_provided) do
 		item, quality = unhash_signal(item_hash)
-		local signal = util.signalid_from_name(item, quality)
-		i = i + 1
+		local item_prototype = util.prototype_from_name(item)
+		local signal = util.signalid_from_prototype(item_prototype, quality)
 		provided_children[#provided_children + 1] = {
 			type = "choose-elem-button",
 			elem_type = "signal",
@@ -181,6 +180,7 @@ function inventory_tab.build(map_data, player_data)
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
+				" ", item_prototype.localised_name,
 				" provided",
 				"\n Amount: " .. format.number(count),
 			},
@@ -198,11 +198,10 @@ function inventory_tab.build(map_data, player_data)
 	local inventory_requested_table = refs.inventory_requested_table
 	local requested_children = {}
 
-	local i = 0
 	for item_hash, count in pairs(inventory_requested) do
 		item, quality = unhash_signal(item_hash)
-		local signal = util.signalid_from_name(item, quality)
-		i = i + 1
+		local item_prototype = util.prototype_from_name(item)
+		local signal = util.signalid_from_prototype(item_prototype, quality)
 		requested_children[#requested_children + 1] = {
 			type = "choose-elem-button",
 			elem_type = "signal",
@@ -212,6 +211,7 @@ function inventory_tab.build(map_data, player_data)
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
+				" ", item_prototype.localised_name,
 				" requested",
 				"\n Amount: " .. format.number(count),
 			},
@@ -229,11 +229,10 @@ function inventory_tab.build(map_data, player_data)
 	local inventory_in_transit_table = refs.inventory_in_transit_table
 	local in_transit_children = {}
 
-	local i = 0
 	for item_hash, count in pairs(inventory_in_transit) do
 		item, quality = unhash_signal(item_hash)
-		local signal = util.signalid_from_name(item, quality)
-		i = i + 1
+		local item_prototype = util.prototype_from_name(item)
+		local signal = util.signalid_from_prototype(item_prototype, quality)
 		in_transit_children[#in_transit_children + 1] = {
 			type = "choose-elem-button",
 			elem_type = "signal",
@@ -243,6 +242,7 @@ function inventory_tab.build(map_data, player_data)
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
+				" ", item_prototype.localised_name,
 				" in transit",
 				"\n Amount: " .. format.number(count),
 			},
