@@ -290,8 +290,17 @@ function util.slot_table_build_from_control_signals(station, map_data)
 			local name = item.name
 			local color = "default"
 
+			local stack_tooltip_str = ""
 			if station.is_stack and (not item.type or item.type == "item") then
+				stack_tooltip_str = ", " .. count .. " stacks"
 				count = count * get_stack_size(map_data, name)
+			end
+			local item_prototype = util.prototype_from_name(name)
+
+			-- Indicate request threshold in tooltip if signal is item/fluid
+			local request_threshold_tooltip_str = " "
+			if not item.type or item.type == "item" or item.type == "fluid" then
+				request_threshold_tooltip_str = " Request threshold for "
 			end
 
 			children[#children + 1] = {
@@ -299,8 +308,15 @@ function util.slot_table_build_from_control_signals(station, map_data)
 				elem_type = "signal",
 				signal = item,
 				enabled = false,
-				ignored_by_interaction = true,
 				style = "ltnm_small_slot_button_" .. color,
+				tooltip = {
+					"",
+					util.rich_text_from_signal(item),
+					request_threshold_tooltip_str,
+					item_prototype.localised_name,
+					"\n Amount: " .. format.number(count),
+					stack_tooltip_str,
+				},
 				children = {
 					{
 						type = "label",
