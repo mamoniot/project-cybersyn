@@ -170,7 +170,7 @@ function inventory_tab.build(map_data, player_data)
 	for item_hash, count in pairs(inventory_provided) do
 		item, quality = unhash_signal(item_hash)
 		local item_prototype = util.prototype_from_name(item)
-		local signal = util.signalid_from_prototype(item_prototype, quality)
+		local signal = util.signalid_from_name(item, quality)
 		provided_children[#provided_children + 1] = {
 			type = "choose-elem-button",
 			elem_type = "signal",
@@ -201,7 +201,7 @@ function inventory_tab.build(map_data, player_data)
 	for item_hash, count in pairs(inventory_requested) do
 		item, quality = unhash_signal(item_hash)
 		local item_prototype = util.prototype_from_name(item)
-		local signal = util.signalid_from_prototype(item_prototype, quality)
+		local signal = util.signalid_from_name(item, quality)
 		requested_children[#requested_children + 1] = {
 			type = "choose-elem-button",
 			elem_type = "signal",
@@ -232,7 +232,7 @@ function inventory_tab.build(map_data, player_data)
 	for item_hash, count in pairs(inventory_in_transit) do
 		item, quality = unhash_signal(item_hash)
 		local item_prototype = util.prototype_from_name(item)
-		local signal = util.signalid_from_prototype(item_prototype, quality)
+		local signal = util.signalid_from_name(item, quality)
 		in_transit_children[#in_transit_children + 1] = {
 			type = "choose-elem-button",
 			elem_type = "signal",

@@ -82,14 +82,24 @@ function util.prototype_from_name(name)
 		   prototypes.quality[name]
 end
 
---- Creates a SignalID structure from a prototype and optional quality.
----@param prototype LuaPrototypeBase
+--- Creates a SignalID structure from an item name and optional quality.
+---@param name string
 ---@param quality string?
 ---@return SignalID
-function util.signalid_from_prototype(prototype, quality)
+function util.signalid_from_name(name, quality)
+	---@type SignalIDType
+	-- TODO is there a better way to get item type from name?
+	local signal_type = prototypes.item[name] ~= nil and "item" or
+			prototypes.fluid[name] ~= nil and "fluid" or
+			prototypes.virtual_signal[name] ~= nil and "virtual" or
+			prototypes.entity[name] ~= nil and "entity" or
+			prototypes.recipe[name] ~= nil and "recipe" or
+			prototypes.space_location[name] ~= nil and "space-location" or
+			prototypes.asteroid_chunk[name] ~= nil and "asteroid-chunk" or
+			"quality"
 	return {
-		type = prototype.type,
-		name = prototype.name,
+		type = signal_type,
+		name = name,
 		quality = quality,
 	}
 end
@@ -104,7 +114,7 @@ function util.slot_table_build_from_manifest(manifest, color)
 	if manifest then
 		for _, item in pairs(manifest) do
 			local item_prototype = util.prototype_from_name(item.name)
-			local signal = util.signalid_from_prototype(item_prototype, item.quality)
+			local signal = util.signalid_from_name(item.name, item.quality)
 			children[#children + 1] = {
 				type = "choose-elem-button",
 				elem_type = "signal",
@@ -206,7 +216,7 @@ function util.slot_table_build_from_deliveries(station)
 	for item_hash, count in pairs(deliveries) do
 		item, quality = unhash_signal(item_hash)
 		local item_prototype = util.prototype_from_name(item)
-		local signal = util.signalid_from_prototype(item_prototype, quality)
+		local signal = util.signalid_from_name(item, quality)
 
 		local color
 		if count > 0 then
