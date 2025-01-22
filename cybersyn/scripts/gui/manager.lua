@@ -155,6 +155,21 @@ function manager.build(player_data)
 			player_data.search_surface_idx = nil
 		end
 	end
+
+	-- sometimes manager_item_filter picked item is not saved for some reason
+	-- and then items are filtered but there is no indication in the GUI
+	-- restore the GUI elem from player_data here as a workaround
+	if player_data.search_item then
+		--- @type LuaGuiElement
+		local item_filter_elem = refs.manager_item_filter
+		item_filter_elem.elem_value = util.signalid_from_name(player_data.search_item)
+	end
+
+	-- same as above but for the network GUI elem
+	if player_data.search_network_name then
+		local network_filter_elem = refs.network
+		network_filter_elem.elem_value = util.signalid_from_name(player_data.search_network_name)
+	end
 end
 
 --- @param map_data MapData
