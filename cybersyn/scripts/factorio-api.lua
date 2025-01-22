@@ -816,7 +816,6 @@ end
 ---@param map_data MapData
 ---@param station Station
 function set_comb2(map_data, station)
-	local sign = mod_settings.invert_sign and -1 or 1
 	if station.entity_comb2 then
 		local deliveries = station.deliveries
 		---@type LogisticFilter[]
@@ -832,7 +831,7 @@ function set_comb2(map_data, station)
 					quality = item_quality or "normal",
 					comparator = "=",
 				},
-				min = sign * count,
+				min = count,
 			} -- constant combinator cannot have quality = nil (any)
 		end
 

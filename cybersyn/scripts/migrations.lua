@@ -159,8 +159,10 @@ local migrations_table = {
 		---@type MapData
 		local map_data = storage
 		local setting = settings.global["cybersyn-invert-sign"]
-		setting.value = true
-		settings.global["cybersyn-invert-sign"] = setting
+		if setting then
+			setting.value = true
+			settings.global["cybersyn-invert-sign"] = setting
+		end
 
 		for id, comb in pairs(map_data.to_comb) do
 			if comb.valid then
@@ -245,8 +247,10 @@ local migrations_table = {
 		---@type MapData
 		local map_data = storage
 		local setting = settings.global["cybersyn-invert-sign"]
-		setting.value = true
-		settings.global["cybersyn-invert-sign"] = setting
+		if setting then
+			setting.value = true
+			settings.global["cybersyn-invert-sign"] = setting
+		end
 
 		for id, comb in pairs(map_data.to_comb) do
 			if comb.valid then
