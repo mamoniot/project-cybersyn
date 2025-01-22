@@ -126,9 +126,10 @@ function inventory_tab.build(map_data, player_data)
 				if item.type ~= "virtual" then
 					if station.is_p and count > 0 then
 						if inventory_provided[item_hash] == nil then
-							inventory_provided[item_hash] = count
+							inventory_provided[item_hash] = {count, 1}
 						else
-							inventory_provided[item_hash] = inventory_provided[item_hash] + count
+							inventory_provided[item_hash][1] = inventory_provided[item_hash][1] + count
+							inventory_provided[item_hash][2] = inventory_provided[item_hash][2] + 1
 						end
 					end
 					if station.is_r and count < 0 then
@@ -136,13 +137,13 @@ function inventory_tab.build(map_data, player_data)
 						if station.is_stack and item.type ~= "fluid" then
 							r_threshold = r_threshold * get_stack_size(map_data, item.name)
 						end
-						-- FIXME handle v.signal.quality
 
 						if -count >= r_threshold then
 							if inventory_requested[item_hash] == nil then
-								inventory_requested[item_hash] = count
+								inventory_requested[item_hash] = {count, 1}
 							else
-								inventory_requested[item_hash] = inventory_requested[item_hash] + count
+								inventory_requested[item_hash][1] = inventory_requested[item_hash][1] + count
+								inventory_requested[item_hash][2] = inventory_requested[item_hash][2] + 1
 							end
 						end
 					end
@@ -155,9 +156,10 @@ function inventory_tab.build(map_data, player_data)
 			for item_hash, count in pairs(deliveries) do
 				if count > 0 then
 					if inventory_in_transit[item_hash] == nil then
-						inventory_in_transit[item_hash] = count
+						inventory_in_transit[item_hash] = {count, 1}
 					else
-						inventory_in_transit[item_hash] = inventory_in_transit[item_hash] + count
+						inventory_in_transit[item_hash][1] = inventory_in_transit[item_hash][1] + count
+						inventory_in_transit[item_hash][2] = inventory_in_transit[item_hash][2] + 1
 					end
 				end
 			end
@@ -167,11 +169,11 @@ function inventory_tab.build(map_data, player_data)
 	local inventory_provided_table = refs.inventory_provided_table
 	local provided_children = {}
 
-	local i = 0
-	for item_hash, count in pairs(inventory_provided) do
+	for item_hash, counts in pairs(inventory_provided) do
 		item, quality = unhash_signal(item_hash)
+		local item_count, station_count = table.unpack(counts)
+		local item_prototype = util.prototype_from_name(item)
 		local signal = util.signalid_from_name(item, quality)
-		i = i + 1
 		provided_children[#provided_children + 1] = {
 			type = "choose-elem-button",
 			elem_type = "signal",
@@ -181,15 +183,23 @@ function inventory_tab.build(map_data, player_data)
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
-				" provided",
-				"\n Amount: " .. format.number(count),
+				" ", item_prototype.localised_name, "\n",
+				"Provided by ", tostring(station_count), " station",
+				(station_count > 1 and "s" or ""), "\n",
+				"Amount: " .. format.number(item_count),
 			},
 			children = {
 				{
 					type = "label",
 					style = "ltnm_label_signal_count_inventory",
 					ignored_by_interaction = true,
-					caption = format_signal_count(count),
+					caption = format_signal_count(item_count),
+				},
+				{
+					type = "label",
+					style = "ltnm_label_train_count_inventory",
+					ignored_by_interaction = true,
+					caption = format_signal_count(station_count),
 				},
 			},
 		}
@@ -198,11 +208,11 @@ function inventory_tab.build(map_data, player_data)
 	local inventory_requested_table = refs.inventory_requested_table
 	local requested_children = {}
 
-	local i = 0
-	for item_hash, count in pairs(inventory_requested) do
+	for item_hash, counts in pairs(inventory_requested) do
 		item, quality = unhash_signal(item_hash)
+		local item_count, station_count = table.unpack(counts)
+		local item_prototype = util.prototype_from_name(item)
 		local signal = util.signalid_from_name(item, quality)
-		i = i + 1
 		requested_children[#requested_children + 1] = {
 			type = "choose-elem-button",
 			elem_type = "signal",
@@ -212,15 +222,23 @@ function inventory_tab.build(map_data, player_data)
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
-				" requested",
-				"\n Amount: " .. format.number(count),
+				" ", item_prototype.localised_name, "\n",
+				"Requested by ", tostring(station_count), " station",
+				(station_count > 1 and "s" or ""), "\n",
+				"Amount: " .. format.number(item_count),
 			},
 			children = {
 				{
 					type = "label",
 					style = "ltnm_label_signal_count_inventory",
 					ignored_by_interaction = true,
-					caption = format_signal_count(count),
+					caption = format_signal_count(item_count),
+				},
+				{
+					type = "label",
+					style = "ltnm_label_train_count_inventory",
+					ignored_by_interaction = true,
+					caption = format_signal_count(station_count),
 				},
 			},
 		}
@@ -229,11 +247,11 @@ function inventory_tab.build(map_data, player_data)
 	local inventory_in_transit_table = refs.inventory_in_transit_table
 	local in_transit_children = {}
 
-	local i = 0
-	for item_hash, count in pairs(inventory_in_transit) do
+	for item_hash, counts in pairs(inventory_in_transit) do
 		item, quality = unhash_signal(item_hash)
+		local item_count, station_count = table.unpack(counts)
+		local item_prototype = util.prototype_from_name(item)
 		local signal = util.signalid_from_name(item, quality)
-		i = i + 1
 		in_transit_children[#in_transit_children + 1] = {
 			type = "choose-elem-button",
 			elem_type = "signal",
@@ -243,15 +261,23 @@ function inventory_tab.build(map_data, player_data)
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
-				" in transit",
-				"\n Amount: " .. format.number(count),
+				" ", item_prototype.localised_name, "\n",
+				"In transit to ", tostring(station_count), " station",
+				(station_count > 1 and "s" or ""), "\n",
+				"Amount: " .. format.number(item_count),
 			},
 			children = {
 				{
 					type = "label",
 					style = "ltnm_label_signal_count_inventory",
 					ignored_by_interaction = true,
-					caption = format_signal_count(count),
+					caption = format_signal_count(item_count),
+				},
+				{
+					type = "label",
+					style = "ltnm_label_train_count_inventory",
+					ignored_by_interaction = true,
+					caption = format_signal_count(station_count),
 				},
 			},
 		}

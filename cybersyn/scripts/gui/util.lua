@@ -62,7 +62,24 @@ end
 function util.rich_text_from_signal(signal)
 	local quality = signal.quality or ""
 	local type = signal.type or "item" -- if type is nil, it is item
+	if type == "virtual" then
+		type = "virtual-signal" -- rich text needs 'virtual-signal'
+	end
 	return "[" .. type .. "=" .. signal.name .. ",quality=" .. quality .. "]"
+end
+
+--- Returns a prototype based on an item name.
+---@param name string
+---@return LuaPrototypeBase
+function util.prototype_from_name(name)
+	return prototypes.item[name] or
+		   prototypes.fluid[name] or
+		   prototypes.virtual_signal[name] or
+		   prototypes.entity[name] or
+		   prototypes.recipe[name] or
+		   prototypes.space_location[name] or
+		   prototypes.asteroid_chunk[name] or
+		   prototypes.quality[name]
 end
 
 --- Creates a SignalID structure from an item name and optional quality.
@@ -96,11 +113,8 @@ function util.slot_table_build_from_manifest(manifest, color)
 	local children = {}
 	if manifest then
 		for _, item in pairs(manifest) do
-			local signal = {
-				type = item.type,
-				name = item.name,
-				quality = item.quality,
-			}
+			local item_prototype = util.prototype_from_name(item.name)
+			local signal = util.signalid_from_name(item.name, item.quality)
 			children[#children + 1] = {
 				type = "choose-elem-button",
 				elem_type = "signal",
@@ -110,6 +124,7 @@ function util.slot_table_build_from_manifest(manifest, color)
 				tooltip = {
 					"",
 					util.rich_text_from_signal(signal),
+					" ", item_prototype.localised_name,
 					" shipped",
 					"\n Amount: " .. format.number(item.count),
 				},
@@ -137,6 +152,7 @@ function util.slot_table_build_from_station(station)
 	if comb1_signals then
 		for _, v in pairs(comb1_signals) do
 			local item = v.signal
+			local item_prototype = util.prototype_from_name(item.name)
 			if item.type == "virtual" then
 				goto continue
 			end
@@ -170,6 +186,7 @@ function util.slot_table_build_from_station(station)
 				tooltip = {
 					"",
 					util.rich_text_from_signal(item),
+					" ", item_prototype.localised_name,
 					color == "red" and " requested" or
 					color == "green" and " provided" or
 					color == "orange" and " requested (below threshold)" or
@@ -198,6 +215,7 @@ function util.slot_table_build_from_deliveries(station)
 
 	for item_hash, count in pairs(deliveries) do
 		item, quality = unhash_signal(item_hash)
+		local item_prototype = util.prototype_from_name(item)
 		local signal = util.signalid_from_name(item, quality)
 
 		local color
@@ -214,6 +232,7 @@ function util.slot_table_build_from_deliveries(station)
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
+				" ", item_prototype.localised_name,
 				color == "green" and " incoming" or
 				color == "blue" and " outgoing" or
 				"",
@@ -248,12 +267,18 @@ function util.slot_table_build_from_control_signals(station, map_data)
 			if item.type ~= "virtual" then
 				goto continue
 			end
+			local item_prototype = util.prototype_from_name(item.name)
 			children[#children + 1] = {
 				type = "choose-elem-button",
 				elem_type = "signal",
 				signal = item,
 				enabled = false,
-				ignored_by_interaction = true,
+				tooltip = {
+					"",
+					util.rich_text_from_signal(item),
+					" ", item_prototype.localised_name,
+					"\n Amount: " .. format.number(count),
+				},
 				style = "ltnm_small_slot_button_" .. color,
 				children = {
 					{
@@ -275,8 +300,17 @@ function util.slot_table_build_from_control_signals(station, map_data)
 			local name = item.name
 			local color = "default"
 
+			local stack_tooltip_str = ""
 			if station.is_stack and (not item.type or item.type == "item") then
+				stack_tooltip_str = ", " .. count .. " stacks"
 				count = count * get_stack_size(map_data, name)
+			end
+			local item_prototype = util.prototype_from_name(name)
+
+			-- Indicate request threshold in tooltip if signal is item/fluid
+			local request_threshold_tooltip_str = " "
+			if not item.type or item.type == "item" or item.type == "fluid" then
+				request_threshold_tooltip_str = " Request threshold for "
 			end
 
 			children[#children + 1] = {
@@ -284,8 +318,15 @@ function util.slot_table_build_from_control_signals(station, map_data)
 				elem_type = "signal",
 				signal = item,
 				enabled = false,
-				ignored_by_interaction = true,
 				style = "ltnm_small_slot_button_" .. color,
+				tooltip = {
+					"",
+					util.rich_text_from_signal(item),
+					request_threshold_tooltip_str,
+					item_prototype.localised_name,
+					"\n Amount: " .. format.number(count),
+					stack_tooltip_str,
+				},
 				children = {
 					{
 						type = "label",

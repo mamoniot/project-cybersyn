@@ -310,6 +310,25 @@ styles.ltnm_label_signal_count = {
 	right_padding = 4,
 }
 
+styles.ltnm_label_train_count_inventory = {
+	type = "label_style",
+	parent = "count_label",
+	size = 36,
+	width = 36,
+	horizontal_align = "right",
+	vertical_align = "top",
+	right_padding = 3,
+	top_padding = -4,
+	parent_hovered_font_color = { 1, 1, 1 },
+}
+
+styles.ltnm_label_train_count = {
+	type = "label_style",
+	parent = "ltnm_label_train_count_inventory",
+	right_padding = 6,
+	top_padding = -5,
+}
+
 local hovered_label_color = {
 	r = 0.5 * (1 + default_orange_color.r),
 	g = 0.5 * (1 + default_orange_color.g),
