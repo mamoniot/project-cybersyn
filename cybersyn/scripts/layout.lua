@@ -228,7 +228,7 @@ function set_p_wagon_combs(map_data, station, train)
 
 						signals[i] = {
 							value = { type = item.type, name = item.name, quality = item_qual, comparator = "=" },
-							min = -1 * count_to_fill,
+							min = -count_to_fill,
 						}
 						item_count = item_count - count_to_fill
 						item_slots_capacity = item_slots_capacity - slots_to_fill
