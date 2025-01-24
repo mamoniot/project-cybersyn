@@ -1,4 +1,16 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.17
+Date: 2025-01-24
+  Changes:
+    - Add localised item names in GUI tooltips
+    - Add station count label + tooltip into to inventory tab of GUI
+    - Remove depraciated `invert-sign` setting
+    - Some code refactoring
+  Bugfixes:
+    - Fix for missing GUI item filter data
+  Translation:
+    - Updated russian translation
+---------------------------------------------------------------------------------------------------
 Version: 2.0.16
 Date: 2024-12-11
   Changes:
