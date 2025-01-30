@@ -21,7 +21,7 @@ locked_slots_signal = {
 	icon_size = 64,
 	icon_mipmaps = 4,
 	subgroup = "cybersyn-signal",
-	order = "b",
+	order = "b1",
 }
 priority_signal = {
 	type = "virtual-signal",
@@ -31,4 +31,13 @@ priority_signal = {
 	icon_mipmaps = 4,
 	subgroup = "cybersyn-signal",
 	order = "c",
+}
+reserved_fluid_capacity_signal = {
+	type = "virtual-signal",
+	name = RESERVED_FLUID_CAPACITY,
+	icon = "__cybersyn__/graphics/icons/reserved-fluid-capacity.png",
+	icon_size = 64,
+	icon_mipmaps = 4,
+	subgroup = "cybersyn-signal",
+	order = "b2",
 }
