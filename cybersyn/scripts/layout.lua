@@ -189,6 +189,8 @@ function set_p_wagon_combs(map_data, station, train)
 		percent_slots_to_use_per_wagon = min(to_be_used_item_slots / total_item_slots, 1.0)
 	end
 
+	local reserved_fluid_capacity = (station.reserved_fluid_capacity or 0)
+
 	local item_i = 1
 	local item = manifest[item_i]
 	local item_count = item.count
@@ -264,7 +266,7 @@ function set_p_wagon_combs(map_data, station, train)
 				end
 			end
 		elseif carriage.type == "fluid-wagon" then
-			local fluid_capacity = carriage.prototype.fluid_capacity
+			local fluid_capacity = max(carriage.prototype.fluid_capacity - reserved_fluid_capacity, 0)
 			---@type LogisticFilter[]
 			local signals = {}
 

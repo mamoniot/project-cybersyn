@@ -21,6 +21,7 @@ data:extend({
 	priority_signal,
 	r_threshold_signal,
 	locked_slots_signal,
+	reserved_fluid_capacity_signal,
 	both_wagon_sprite,
 	missing_train_icon,
 	lost_train_icon,

@@ -280,10 +280,19 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 	local locked_slots = p_station.locked_slots
 	local total_item_slots = train.item_slot_capacity
 	if locked_slots > 0 and total_item_slots > 0 then
+		-- TODO: possible subtle bug here with modded wagons if locked_slots is
+		-- bigger than the number of item slots in one wagon but not another. Might need to look
+		-- at individual wagon capacities here.
 		local total_cargo_wagons = #train.entity.cargo_wagons
 		total_item_slots = max(total_item_slots - total_cargo_wagons * locked_slots, 1)
 	end
+	-- account for reserved fluid capacity; actual capacity of each wagon is reduced by reserved_fluid_capacity
 	local total_liquid_left = train.fluid_capacity
+	local reserved_fluid_capacity = (p_station.reserved_fluid_capacity or 0)
+	if reserved_fluid_capacity > 0 and total_liquid_left > 0 then
+		local total_fluid_wagons = #train.entity.fluid_wagons
+		total_liquid_left = max(total_liquid_left - total_fluid_wagons * reserved_fluid_capacity, 1)
+	end
 
 	local i = 1
 	while i <= #manifest do
@@ -708,6 +717,7 @@ local function tick_poll_station(map_data, mod_settings)
 	station.priority = mod_settings.priority
 	station.item_priority = nil
 	station.locked_slots = mod_settings.locked_slots
+	station.reserved_fluid_capacity = 0
 	local is_each = station.network_name == NETWORK_EACH
 	if is_each then
 		station.network_mask = {}
@@ -755,6 +765,8 @@ local function tick_poll_station(map_data, mod_settings)
 						station.r_threshold = abs(item_count)
 					elseif item_name == LOCKED_SLOTS then
 						station.locked_slots = max(item_count, 0)
+					elseif item_name == RESERVED_FLUID_CAPACITY then
+						station.reserved_fluid_capacity = max(item_count, 0)
 					elseif is_each then
 						station.network_mask[item_name] = item_count
 					end
