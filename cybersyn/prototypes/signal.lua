@@ -37,7 +37,6 @@ reserved_fluid_capacity_signal = {
 	name = RESERVED_FLUID_CAPACITY,
 	icon = "__cybersyn__/graphics/icons/reserved-fluid-capacity.png",
 	icon_size = 64,
-	icon_mipmaps = 4,
 	subgroup = "cybersyn-signal",
 	order = "b2",
 }
