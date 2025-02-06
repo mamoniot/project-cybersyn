@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.18
+Date: 2025-02-06
+  Changes:
+    - Adds a new virtual signal: reserved fluid capacity per wagon. When this virtual signal is sent to a provider's station combinator, it will cause incoming fluid trains to subtract the value of the signal from the capacity of each wagon when creating a manifest. This is the rough equivalent of "locked slots" behavior for fluids.
+  Bugfixes:
+    - Fix (de)construction on space platform not handled
+---------------------------------------------------------------------------------------------------
 Version: 2.0.17
 Date: 2025-01-24
   Changes:
