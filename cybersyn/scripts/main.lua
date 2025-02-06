@@ -877,6 +877,7 @@ local function main()
 	--NOTE: There is a concern that it is possible to build or destroy important entities without one of these events being triggered, in which case the mod will have undefined behavior
 	script.on_event(defines.events.on_built_entity, on_built, filter_built)
 	script.on_event(defines.events.on_robot_built_entity, on_built, filter_built)
+	script.on_event(defines.events.on_space_platform_built_entity, on_built, filter_built)
 	script.on_event(
 		{
 			defines.events.script_raised_built,
@@ -888,6 +889,7 @@ local function main()
 
 	script.on_event(defines.events.on_pre_player_mined_item, on_broken, filter_broken)
 	script.on_event(defines.events.on_robot_pre_mined, on_broken, filter_broken)
+	script.on_event(defines.events.on_space_platform_pre_mined, on_broken, filter_broken)
 	script.on_event(defines.events.on_entity_died, on_broken, filter_broken)
 	script.on_event(defines.events.script_raised_destroy, on_broken)
 
