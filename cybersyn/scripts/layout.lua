@@ -270,12 +270,17 @@ function set_p_wagon_combs(map_data, station, train)
 			---@type LogisticFilter[]
 			local signals = {}
 
+			-- TODO: this is a weird copypasta of the above loop but is not needed
+			-- since fluid wagons can only ever have one fluid in them...
 			while fluid_capacity > 0 and fluid_i <= #manifest do
 				local do_inc
 				if fluid.type == "fluid" then
 					local count_to_fill = min(fluid_count, fluid_capacity)
 
-					signals[1] = { index = 1, signal = { type = fluid.type, name = fluid.name }, count = -1 * count_to_fill }
+					signals[1] = {
+						value = { type = fluid.type, name = fluid.name, quality = "normal", comparator = "=" },
+						min = -count_to_fill,
+					}
 					fluid_count = fluid_count - count_to_fill
 					fluid_capacity = 0
 					do_inc = fluid_count == 0
