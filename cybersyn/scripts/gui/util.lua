@@ -152,6 +152,7 @@ function util.slot_table_build_from_station(station)
 	if comb1_signals then
 		for _, v in pairs(comb1_signals) do
 			local item = v.signal
+			local item_type = v.signal.type or "item"
 			local item_prototype = util.prototype_from_name(item.name)
 			if item.type == "virtual" then
 				goto continue
@@ -168,7 +169,7 @@ function util.slot_table_build_from_station(station)
 			else
 				-- color sub-threshold requests orange, others red
 				local r_threshold = station.item_thresholds and station.item_thresholds[name] or station.r_threshold
-				if station.is_stack and item.type ~= "fluid" then
+				if station.is_stack and item_type == "item" then
 					r_threshold = r_threshold * get_stack_size(nil, item.name) --first argument never used
 				end
 				if -count < r_threshold then
