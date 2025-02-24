@@ -122,6 +122,7 @@ function inventory_tab.build(map_data, player_data)
 			for _, v in pairs(comb1_signals) do
 				local item = v.signal
 				local count = v.count
+				local item_type = v.signal.type or "item"
 				local item_hash = hash_signal(item)
 				if item.type ~= "virtual" then
 					if station.is_p and count > 0 then
@@ -134,7 +135,7 @@ function inventory_tab.build(map_data, player_data)
 					end
 					if station.is_r and count < 0 then
 						local r_threshold = station.item_thresholds and station.item_thresholds[item.name] or station.r_threshold
-						if station.is_stack and item.type ~= "fluid" then
+						if station.is_stack and item_type == "item" then
 							r_threshold = r_threshold * get_stack_size(map_data, item.name)
 						end
 
