@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.19
+Date: 2025-02-24
+  Bugfixes:
+    - wagon controls now output fluid signals
+    - GUI crash when some signals were recipes instead of items
+---------------------------------------------------------------------------------------------------
 Version: 2.0.18
 Date: 2025-02-06
   Changes:
