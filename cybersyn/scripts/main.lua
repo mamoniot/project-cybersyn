@@ -801,6 +801,7 @@ local function grab_all_settings()
 	mod_settings.tps = settings.global["cybersyn-ticks-per-second"].value --[[@as double]]
 	mod_settings.update_rate = settings.global["cybersyn-update-rate"].value --[[@as int]]
 	mod_settings.r_threshold = settings.global["cybersyn-request-threshold"].value --[[@as int]]
+	mod_settings.r_fluid_threshold = settings.global["cybersyn-request-fluid-threshold"].value --[[@as int]]
 	mod_settings.priority = settings.global["cybersyn-priority"].value --[[@as int]]
 	mod_settings.locked_slots = settings.global["cybersyn-locked-slots"].value --[[@as int]]
 	mod_settings.network_mask = settings.global["cybersyn-network-flag"].value --[[@as int]]
