@@ -168,7 +168,9 @@ function util.slot_table_build_from_station(station)
 				color = "green"
 			else
 				-- color sub-threshold requests orange, others red
-				local r_threshold = station.item_thresholds and station.item_thresholds[name] or station.r_threshold
+				local r_threshold = station.item_thresholds and station.item_thresholds[name] or
+					item_type == "fluid" and station.r_fluid_threshold or
+					station.r_threshold
 				if station.is_stack and item_type == "item" then
 					r_threshold = r_threshold * get_stack_size(nil, item.name) --first argument never used
 				end

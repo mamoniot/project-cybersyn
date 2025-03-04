@@ -6,6 +6,7 @@ NONEMPTY_TRAIN_NAME = "cybersyn-nonempty-train"
 
 SIGNAL_PRIORITY = "cybersyn-priority"
 REQUEST_THRESHOLD = "cybersyn-request-threshold"
+REQUEST_FLUID_THRESHOLD = "cybersyn-request-fluid-threshold"
 LOCKED_SLOTS = "cybersyn-locked-slots"
 RESERVED_FLUID_CAPACITY = "cybersyn-reserved-fluid-capacity"
 
