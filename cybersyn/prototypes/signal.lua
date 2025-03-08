@@ -14,6 +14,15 @@ r_threshold_signal = {
 	subgroup = "cybersyn-signal",
 	order = "a",
 }
+r_fluid_threshold_signal = {
+	type = "virtual-signal",
+	name = REQUEST_FLUID_THRESHOLD,
+	icon = "__cybersyn__/graphics/icons/request-fluid-threshold.png",
+	icon_size = 64,
+	icon_mipmaps = 4,
+	subgroup = "cybersyn-signal",
+	order = "a1",
+}
 locked_slots_signal = {
 	type = "virtual-signal",
 	name = LOCKED_SLOTS,

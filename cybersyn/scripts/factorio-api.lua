@@ -472,7 +472,7 @@ function set_train_from_comb(mod_settings, train, comb)
 					if item_name == SIGNAL_PRIORITY then
 						train.priority = item_count
 					elseif is_each then
-						if item_name ~= REQUEST_THRESHOLD and item_name ~= LOCKED_SLOTS then
+						if item_name ~= REQUEST_THRESHOLD and item_name ~= REQUEST_FLUID_THRESHOLD and  item_name ~= LOCKED_SLOTS then
 							train.network_mask[item_name] = item_count
 						end
 					end
@@ -521,7 +521,7 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 					if item_name == SIGNAL_PRIORITY then
 						refueler.priority = item_count
 					elseif is_each then
-						if item_name ~= REQUEST_THRESHOLD and item_name ~= LOCKED_SLOTS then
+						if item_name ~= REQUEST_THRESHOLD and item_name ~= REQUEST_FLUID_THRESHOLD and  item_name ~= LOCKED_SLOTS then
 							refueler.network_mask[item_name] = item_count
 						end
 					end

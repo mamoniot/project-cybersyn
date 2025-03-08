@@ -36,6 +36,15 @@ data:extend({
 	},
 	{
 		type = "int-setting",
+		name = "cybersyn-fluid-request-threshold",
+		order = "baf",
+		setting_type = "runtime-global",
+		default_value = 0,
+		minimum_value = 0,
+		maximum_value = 2147483647,
+	},
+	{
+		type = "int-setting",
 		name = "cybersyn-priority",
 		order = "bb",
 		setting_type = "runtime-global",

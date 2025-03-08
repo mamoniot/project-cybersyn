@@ -242,6 +242,7 @@ function create_manifest(map_data, r_station_id, p_station_id, train_id, primary
 		local r_effective_item_count = r_item_count + r_effective_adjustment
 		if r_effective_item_count < 0 and r_item_count < 0 then
 			local r_threshold = r_station.item_thresholds and r_station.item_thresholds[item_hash] or
+					item_type == "fluid" and r_station.r_fluid_threshold or
 					r_station.r_threshold
 			if r_station.is_stack and item_type == "item" then
 				r_threshold = r_threshold * get_stack_size(map_data, item_name)
@@ -412,7 +413,7 @@ local function tick_dispatch(map_data, mod_settings)
 				goto continue
 			end
 
-			local threshold = station.r_threshold
+			local threshold = item_type == "fluid" and station.r_fluid_threshold or station.r_threshold
 			local prior = station.priority
 			local item_threshold = station.item_thresholds and station.item_thresholds[item_hash] or nil
 			if item_threshold then
@@ -714,6 +715,11 @@ local function tick_poll_station(map_data, mod_settings)
 		return false
 	end
 	station.r_threshold = mod_settings.r_threshold
+	if mod_settings.r_fluid_threshold > 0 then
+		station.r_fluid_threshold = mod_settings.r_fluid_threshold
+	else
+		station.r_fluid_threshold = nil
+	end
 	station.priority = mod_settings.priority
 	station.item_priority = nil
 	station.locked_slots = mod_settings.locked_slots
@@ -763,6 +769,9 @@ local function tick_poll_station(map_data, mod_settings)
 					elseif item_name == REQUEST_THRESHOLD then
 						--NOTE: thresholds must be >0 or they can cause a crash
 						station.r_threshold = abs(item_count)
+					elseif item_name == REQUEST_FLUID_THRESHOLD then
+						--NOTE: thresholds must be >0 or they can cause a crash
+						station.r_fluid_threshold = abs(item_count)
 					elseif item_name == LOCKED_SLOTS then
 						station.locked_slots = max(item_count, 0)
 					elseif item_name == RESERVED_FLUID_CAPACITY then
@@ -803,7 +812,9 @@ local function tick_poll_station(map_data, mod_settings)
 			-- For each item in the combinator input, check if we should provide or request the given item. Requesting takes priority.
 			local is_not_requesting = true
 			if station.is_r then
-				local r_threshold = station.item_thresholds and station.item_thresholds[item_hash] or station.r_threshold
+				local r_threshold = station.item_thresholds and station.item_thresholds[item_hash] or
+				  item_type == "fluid" and station.r_fluid_threshold or
+					station.r_threshold
 				if station.is_stack and item_type == "item" then
 					r_threshold = r_threshold * get_stack_size(map_data, item_name)
 				end
