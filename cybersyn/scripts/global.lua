@@ -50,6 +50,7 @@
 ---@field public priority int --transient
 ---@field public item_priority int? --transient
 ---@field public r_threshold int >= 0 --transient
+---@field public r_fluid_threshold int? --transient
 ---@field public locked_slots int >= 0 --transient
 ---@field public reserved_fluid_capacity int Reserved fluid capacity, per wagon, to be subtracted from total capacity when calculating fluid orders for this provider.
 ---@field public network_name string?
@@ -125,6 +126,7 @@
 ---@field public tps double
 ---@field public update_rate int
 ---@field public r_threshold int
+---@field public r_fluid_threshold int
 ---@field public priority int
 ---@field public locked_slots int
 ---@field public network_mask int

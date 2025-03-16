@@ -134,7 +134,9 @@ function inventory_tab.build(map_data, player_data)
 						end
 					end
 					if station.is_r and count < 0 then
-						local r_threshold = station.item_thresholds and station.item_thresholds[item.name] or station.r_threshold
+						local r_threshold = station.item_thresholds and station.item_thresholds[item.name] or
+							item_type == "fluid" and station.r_fluid_threshold or
+							station.r_threshold
 						if station.is_stack and item_type == "item" then
 							r_threshold = r_threshold * get_stack_size(map_data, item.name)
 						end
