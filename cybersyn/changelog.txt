@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.20
+Date: 2025-03-16
+  Changes:
+    - Added separate request threshold for all fluids. It supersedes the request threshold when set and is it self superseded by a specific threshold for a fluid
+---------------------------------------------------------------------------------------------------
 Version: 2.0.19
 Date: 2025-02-24
   Bugfixes:
