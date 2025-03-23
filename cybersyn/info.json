@@ -6,7 +6,7 @@
     "factorio_version": "2.0",
     "description": "Creates a feature-rich train logistics network through cybernetic combinators. With just this mod you can coordinate the economic inputs and outputs of your entire megabase.",
     "dependencies": [
-        "base",
+        "base >= 2.0.34",
         "flib >= 0.15.0",
         "? space-exploration >= 0.6.94",
         "? miniloader",

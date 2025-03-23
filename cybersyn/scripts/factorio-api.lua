@@ -89,7 +89,7 @@ local conditions_direct_to_station = { { type = "time", compare_type = "and", ti
 ---@param stop LuaEntity
 ---@param manifest Manifest
 ---@param schedule_settings Cybersyn.StationScheduleSettings
----@return ScheduleRecord
+---@return AddRecordData
 function create_loading_order(stop, manifest, schedule_settings)
 	---@type WaitCondition[]
 	local conditions = {}
@@ -117,12 +117,16 @@ function create_loading_order(stop, manifest, schedule_settings)
 	if schedule_settings.enable_circuit_condition then
 		conditions[#conditions + 1] = condition_circuit
 	end
-	return { station = stop.backer_name, wait_conditions = conditions }
+	return {
+		station = stop.backer_name,
+		wait_conditions = conditions,
+		temporary = true, -- avoids modifying a potential train group
+	}
 end
 
 ---@param stop LuaEntity
 ---@param schedule_settings Cybersyn.StationScheduleSettings
----@return ScheduleRecord
+---@return AddRecordData
 function create_unloading_order(stop, schedule_settings)
 	---@type WaitCondition[]
 	local conditions = {}
@@ -144,28 +148,67 @@ function create_unloading_order(stop, schedule_settings)
 		conditions[#conditions + 1] = condition_circuit
 	end
 
-	return { station = stop.backer_name, wait_conditions = conditions }
+	return {
+		station = stop.backer_name,
+		wait_conditions = conditions,
+		temporary = true,
+	}
 end
 
 ---@param depot_name string
+---@return AddRecordData
 function create_inactivity_order(depot_name)
-	return { station = depot_name, wait_conditions = conditions_only_inactive }
+	return {
+		station = depot_name,
+		wait_conditions = conditions_only_inactive,
+		temporary = true,
+	}
 end
 
 ---@param stop LuaEntity
+---@return AddRecordData
 function create_direct_to_station_order(stop)
 	return {
 		rail = stop.connected_rail,
 		rail_direction = stop.connected_rail_direction,
 		wait_conditions = conditions_direct_to_station,
+		temporary = true,
 	}
 end
 
 ---@param train LuaTrain
 ---@param depot_name string
 function set_depot_schedule(train, depot_name)
-	if train.valid then
-		train.schedule = { current = 1, records = { create_inactivity_order(depot_name) } }
+	if not train.valid then return end
+
+	local schedule = train.get_schedule()
+	local count = schedule.get_record_count()
+	if count > 0 then
+		local record = schedule.get_record({ schedule_index = count }) --[[@as ScheduleRecord ]]
+		local is_depot = record.station == depot_name
+			and record.wait_conditions
+			and #record.wait_conditions == 1
+			and record.wait_conditions[1].type == "inactivity"
+
+		if is_depot then
+			for i=count-1, 1, -1 do
+				schedule.remove_record({ schedule_index = i })
+			end
+		else
+			schedule.clear_records()
+		end
+	end
+
+	if schedule.get_record_count() == 0 then
+		local depot_record = {
+			station = depot_name,
+			wait_conditions = conditions_only_inactive,
+			-- the only schedule entry that is not temporary
+		}
+		schedule.add_record(depot_record)
+		if train.group then
+			game.print({ "cybersyn-messages.control-train-group", train.group, depot_name })
+		end
 	end
 end
 
@@ -176,26 +219,24 @@ function lock_train(train)
 	end
 end
 ---@param train LuaTrain
-function lock_train_to_depot(train)
-	if train.valid then
-		local schedule = train.schedule
-		if schedule then
-			local record = schedule.records[schedule.current]
-			if record then
-				local wait = record.wait_conditions
-				if wait and wait[1] then
-					wait[1].ticks = LOCK_TRAIN_TIME
-				else
-					record.wait_conditions = { { type = "inactivity", compare_type = "and", ticks = LOCK_TRAIN_TIME } }
-				end
-				train.schedule = schedule
-			else
-				train.manual_mode = true
-			end
-		else
-			train.manual_mode = true
-		end
+---@param depot_name string
+function lock_train_to_depot(train, depot_name)
+	if not train.valid then return end
+
+	local schedule = train.get_schedule()
+	if schedule.get_record_count() == 0 then
+		train.manual_mode = true
+		return
 	end
+
+	local current = schedule.current
+	schedule.add_record({
+		station = depot_name,
+		wait_conditions = { { type = "inactivity", compare_type = "and", ticks = LOCK_TRAIN_TIME } },
+		temporary = true,
+		schedule_index = current,
+	})
+	schedule.go_to_station(current)
 end
 
 ---@param train LuaTrain
@@ -204,15 +245,36 @@ end
 function rename_manifest_schedule(train, stop, old_name)
 	if train.valid then
 		local new_name = stop.backer_name
-		local schedule = train.schedule
-		if not schedule then return end
-		for i, record in ipairs(schedule.records) do
-			if record.station == old_name then
-				record.station = new_name
+		local schedule = train.get_schedule()
+		local records = schedule.get_records()
+		if not records then return end
+
+		for i, record in ipairs(records) do
+			if record.temporary and record.station == old_name then
+				local new_record = record --[[@as AddRecordData]]
+				new_record.station = new_name
+				new_record.index = { schedule_index = i }
+				-- replace the record in the schedule
+				local is_current = schedule.current == i
+				schedule.remove_record(new_record.index)
+				schedule.add_record(new_record)
+				if is_current and schedule.current ~= i then
+					schedule.go_to_station(i)
+				end
 			end
 		end
-		train.schedule = schedule
 	end
+end
+
+---@param schedule LuaSchedule
+---@param record AddRecordData
+---@return int index
+function add_record_before_last(schedule, record)
+	local record_count = schedule.get_record_count()
+	local index = record_count > 0 and record_count or 1
+	record.index = { schedule_index = index }
+	schedule.add_record(record)
+	return index
 end
 
 ---NOTE: does not check .valid
@@ -238,39 +300,26 @@ function set_manifest_schedule(
 		manifest,
 		start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
+
+	local schedule = train.get_schedule()
+
 	if not p_stop.connected_rail or not r_stop.connected_rail then
 		--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
-		train.schedule = {
-			current = 1,
-			records = {
-				create_inactivity_order(depot_stop.backer_name),
-				create_loading_order(p_stop, manifest, p_schedule_settings),
-				create_unloading_order(r_stop, r_schedule_settings),
-			},
-		}
+		add_record_before_last(schedule, create_loading_order(p_stop, manifest, p_schedule_settings))
+		add_record_before_last(schedule, create_unloading_order(r_stop, r_schedule_settings))
 		lock_train(train)
 		send_alert_station_of_train_broken(map_data, train)
 		return true
 	end
 	if same_depot and not depot_stop.connected_rail then
 		--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
-		train.schedule = {
-			current = 1,
-			records = {
-				create_inactivity_order(depot_stop.backer_name),
-				create_loading_order(p_stop, manifest, p_schedule_settings),
-				create_unloading_order(r_stop, r_schedule_settings),
-			},
-		}
+		add_record_before_last(schedule, create_loading_order(p_stop, manifest, p_schedule_settings))
+		add_record_before_last(schedule, create_unloading_order(r_stop, r_schedule_settings))
 		lock_train(train)
 		send_alert_depot_of_train_broken(map_data, train)
 		return true
 	end
 
-	local old_schedule
-	if not start_at_depot then
-		old_schedule = train.schedule
-	end
 	local t_surface = train.front_stock.surface
 	local p_surface = p_stop.surface
 	local r_surface = r_stop.surface
@@ -284,7 +333,6 @@ function set_manifest_schedule(
 	local records = nil
 	if is_p_on_t and is_r_on_t and is_d_on_t then
 		records = {
-			create_inactivity_order(depot_stop.backer_name),
 			create_direct_to_station_order(p_stop),
 			create_loading_order(p_stop, manifest, p_schedule_settings),
 			create_direct_to_station_order(r_stop),
@@ -294,39 +342,37 @@ function set_manifest_schedule(
 			records[6] = create_direct_to_station_order(depot_stop)
 		end
 	elseif IS_SE_PRESENT then
-		records = se_compat.se_set_manifest_schedule(
-			map_data.perf_cache,
-			train,
-			depot_stop,
-			same_depot,
-			p_stop,
-			p_schedule_settings,
-			r_stop,
-			r_schedule_settings,
-			manifest,
-			start_at_depot
-		)
+		game.print("Compatibility with Space Exploration is broken.")
+		-- records = se_compat.se_set_manifest_schedule(
+		-- 	map_data.perf_cache,
+		-- 	train,
+		-- 	depot_stop,
+		-- 	same_depot,
+		-- 	p_stop,
+		-- 	p_schedule_settings,
+		-- 	r_stop,
+		-- 	r_schedule_settings,
+		-- 	manifest,
+		-- 	start_at_depot
+		-- )
 	end
 
 	if records then
-		train.schedule = { current = start_at_depot and 1 or 2 --[[@as uint]], records = records }
-		if old_schedule and not train.has_path then
-			train.schedule = old_schedule
-			return false
-		else
-			return true
+		local insert_index = schedule.get_record_count() --[[@as int]]
+		for _, record in ipairs(records) do
+			add_record_before_last(schedule, record)
 		end
+		if start_at_depot then
+			schedule.go_to_station(schedule.get_record_count() --[[@as int]])
+		elseif schedule.current > insert_index then
+			schedule.go_to_station(insert_index)
+		end
+		return train.has_path
 	end
 
 	--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
-	train.schedule = {
-		current = 1,
-		records = {
-			create_inactivity_order(depot_stop.backer_name),
-			create_loading_order(p_stop, manifest, p_schedule_settings),
-			create_unloading_order(r_stop, r_schedule_settings),
-		},
-	}
+	add_record_before_last(schedule, create_loading_order(p_stop, manifest, p_schedule_settings))
+	add_record_before_last(schedule, create_unloading_order(r_stop, r_schedule_settings))
 	lock_train(train)
 	send_alert_cannot_path_between_surfaces(map_data, train)
 	return true
@@ -337,39 +383,35 @@ end
 ---@param train LuaTrain
 ---@param stop LuaEntity
 function add_refueler_schedule(map_data, train, stop)
-	local schedule = train.schedule or { current = 1, records = {} }
-	local i = schedule.current
-	if i == 1 then
-		i = #schedule.records + 1 --[[@as uint]]
-		schedule.current = i
-	end
-
 	if not stop.connected_rail then
 		send_alert_refueler_of_train_broken(map_data, train)
 		return false
 	end
+
+	local schedule = train.get_schedule()
+	local current = schedule.current
 
 	local t_surface = train.front_stock.surface
 	local f_surface = stop.surface
 	local t_surface_i = t_surface.index
 	local f_surface_i = f_surface.index
 	if t_surface_i == f_surface_i then
-		table_insert(schedule.records, i, create_direct_to_station_order(stop))
-		i = i + 1
-		table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
-
-		train.schedule = schedule
+		local refueler_index = add_record_before_last(schedule, create_direct_to_station_order(stop))
+		add_record_before_last(schedule, create_inactivity_order(stop.backer_name))
+		if current >= refueler_index then
+			schedule.go_to_station(refueler_index)
+		end
 		return true
 	elseif IS_SE_PRESENT then
-		if se_compat.se_add_refueler_schedule(map_data.perf_cache, train, stop, schedule) then
-			train.schedule = schedule
-			return true
-		end
+		game.print("Compatibility with Space Exploration is broken.")
+		-- if se_compat.se_add_refueler_schedule(map_data.perf_cache, train, stop, schedule) then
+		-- 	train.schedule = schedule
+		-- 	return true
+		-- end
 	end
 	--create an order that probably cannot be fulfilled and alert the player
-	table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
+	add_record_before_last(schedule, create_inactivity_order(stop.backer_name))
 	lock_train(train)
-	train.schedule = schedule
 	send_alert_cannot_path_between_surfaces(map_data, train)
 	return false
 end
