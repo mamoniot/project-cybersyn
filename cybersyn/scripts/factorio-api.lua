@@ -234,7 +234,7 @@ function lock_train_to_depot(train, depot_name)
 		station = depot_name,
 		wait_conditions = { { type = "inactivity", compare_type = "and", ticks = LOCK_TRAIN_TIME } },
 		temporary = true,
-		schedule_index = current,
+		index = { schedule_index = current },
 	})
 	schedule.go_to_station(current)
 end
