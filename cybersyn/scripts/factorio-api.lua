@@ -206,7 +206,7 @@ function set_depot_schedule(train, depot_name)
 			-- the only schedule entry that is not temporary
 		}
 		schedule.add_record(depot_record)
-		if train.group then
+		if train.group and train.group ~= "" then
 			game.print({ "cybersyn-messages.control-train-group", train.group, depot_name })
 		end
 	end
