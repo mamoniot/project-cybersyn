@@ -173,7 +173,7 @@ local function on_train_arrives_depot(map_data, depot_id, depot, train_entity)
 			interface_raise_train_status_changed(train_id, old_status, STATUS_D)
 		else
 			--train still has cargo
-			lock_train_to_depot(train_entity)
+			lock_train_to_depot(train_entity, depot.entity_stop.backer_name)
 			remove_train(map_data, train_id, train)
 			send_alert_nonempty_train_in_depot(map_data, train_entity)
 		end
@@ -205,7 +205,7 @@ local function on_train_arrives_depot(map_data, depot_id, depot, train_entity)
 		set_depot_schedule(train_entity, depot.entity_stop.backer_name)
 		interface_raise_train_created(train_id, depot_id)
 	else
-		lock_train_to_depot(train_entity)
+		lock_train_to_depot(train_entity, depot.entity_stop.backer_name)
 		send_alert_nonempty_train_in_depot(map_data, train_entity)
 	end
 	if not is_train_empty then
@@ -481,9 +481,9 @@ function on_train_changed(event)
 			-- stops, this will have to be changed.
 			local train = map_data.trains[train_id]
 			if train then
-				local schedule = train_e.schedule
+				local schedule = train_e.get_schedule()
 				if schedule then
-					local rail = schedule.records[schedule.current].rail
+					local rail = schedule.get_record({schedule_index = schedule.current}).rail
 					if rail then
 						local id, station, is_station
 						if train.status == STATUS_TO_P then

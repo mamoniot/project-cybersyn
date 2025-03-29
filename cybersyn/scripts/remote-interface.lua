@@ -340,8 +340,6 @@ interface.create_direct_to_station_order = create_direct_to_station_order
 interface.set_depot_schedule = set_depot_schedule
 interface.lock_train = lock_train
 interface.rename_manifest_schedule = rename_manifest_schedule
-interface.se_get_space_elevator_name = se_get_space_elevator_name
-interface.se_create_elevator_order = se_create_elevator_order
 interface.set_manifest_schedule = set_manifest_schedule
 interface.add_refueler_schedule = add_refueler_schedule
 
