@@ -351,7 +351,7 @@ function set_manifest_schedule(
 			create_unloading_order(r_stop, r_schedule_settings),
 		}
 		if same_depot then
-			records[6] = create_direct_to_station_order(depot_stop)
+			records[5] = create_direct_to_station_order(depot_stop)
 		end
 	elseif IS_SE_PRESENT then
 		game.print("Compatibility with Space Exploration is broken.")
