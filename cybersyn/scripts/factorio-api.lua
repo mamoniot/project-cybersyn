@@ -303,19 +303,31 @@ function set_manifest_schedule(
 
 	local schedule = train.get_schedule()
 
-	if not p_stop.connected_rail or not r_stop.connected_rail then
-		--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
+	-- clean leftover Cybersyn entries from manual interventions
+	-- this is optional because set_depot_schedule would eventually do a full cleanup
+	-- but having leftover entries on a new delivery would be confusing to players
+	local current_records = schedule.get_records() --[[@as ScheduleRecord[] ]]
+	for i = schedule.get_record_count(), 1, -1 do
+		local current_record = current_records[i]
+		if current_record.temporary and not current_record.created_by_interrupt then
+			schedule.remove_record({ schedule_index = i })
+		end
+	end
+
+	-- creates a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
+	function train_stuck()
 		add_record_before_last(schedule, create_loading_order(p_stop, manifest, p_schedule_settings))
 		add_record_before_last(schedule, create_unloading_order(r_stop, r_schedule_settings))
 		lock_train(train)
+	end
+
+	if not p_stop.connected_rail or not r_stop.connected_rail then
+		train_stuck()
 		send_alert_station_of_train_broken(map_data, train)
 		return true
 	end
 	if same_depot and not depot_stop.connected_rail then
-		--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
-		add_record_before_last(schedule, create_loading_order(p_stop, manifest, p_schedule_settings))
-		add_record_before_last(schedule, create_unloading_order(r_stop, r_schedule_settings))
-		lock_train(train)
+		train_stuck()
 		send_alert_depot_of_train_broken(map_data, train)
 		return true
 	end
@@ -370,10 +382,7 @@ function set_manifest_schedule(
 		return train.has_path
 	end
 
-	--NOTE: create a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
-	add_record_before_last(schedule, create_loading_order(p_stop, manifest, p_schedule_settings))
-	add_record_before_last(schedule, create_unloading_order(r_stop, r_schedule_settings))
-	lock_train(train)
+	train_stuck()
 	send_alert_cannot_path_between_surfaces(map_data, train)
 	return true
 end
