@@ -97,15 +97,16 @@ function set_train_layout(map_data, train)
 			item_slot_capacity = item_slot_capacity + #inv
 		elseif carriage.type == "fluid-wagon" then
 			layout[#layout + 1] = 2
-			if carriage.quality.level == 0 then
+			if carriage.quality.level == 0 or #prototypes.fluid == 0 then
 				fluid_capacity = fluid_capacity + carriage.prototype.fluid_capacity
 			else
 				--This is absolutely the only way of knowing how big a fluid wagon is with quality right now
 				local oldfluid = carriage.get_fluid(1)
 				carriage.set_fluid(1, nil)
-				local fluidsize = carriage.insert_fluid({name="water", amount=1e10})
+				--fluid-unknown should always exist in factorio
+				local fluidsize = carriage.insert_fluid({name="fluid-unknown", amount=1e10})
 				carriage.set_fluid(1, oldfluid)
-				
+
 				fluid_capacity = fluid_capacity + fluidsize
 			end
 		else
