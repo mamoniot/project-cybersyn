@@ -82,6 +82,8 @@ function remove_train(map_data, train_id, train)
 	interface_raise_train_removed(train_id, train)
 end
 
+
+local size_fluidwagon_cache = {}
 ---@param map_data MapData
 ---@param train Train
 function set_train_layout(map_data, train)
@@ -100,13 +102,27 @@ function set_train_layout(map_data, train)
 			if carriage.quality.level == 0 or #prototypes.fluid == 0 then
 				fluid_capacity = fluid_capacity + carriage.prototype.fluid_capacity
 			else
-				--This is absolutely the only way of knowing how big a fluid wagon is with quality right now
-				local oldfluid = carriage.get_fluid(1)
-				carriage.set_fluid(1, nil)
-				--fluid-unknown should always exist in factorio
-				local fluidsize = carriage.insert_fluid({name="fluid-unknown", amount=1e10})
-				carriage.set_fluid(1, oldfluid)
-
+				local fluidsize = 0
+				if not size_fluidwagon_cache[carriage.prototype.name] then
+					--fluid wagon not cached yet
+					size_fluidwagon_cache[carriage.prototype.name] = {fluid_normal_size = carriage.prototype.fluid_capacity, quality_size = {}}
+				end
+				if size_fluidwagon_cache[carriage.prototype.name].fluid_normal_size ~= carriage.prototype.fluid_capacity then
+					--fluid_capacity has changed so recalculating all quality
+					size_fluidwagon_cache[carriage.prototype.name].fluid_normal_size = carriage.prototype.fluid_capacity
+					size_fluidwagon_cache[carriage.prototype.name].quality_size = {}
+				end
+				if not size_fluidwagon_cache[carriage.prototype.name].quality_size[""..carriage.quality.level] then
+					--This is absolutely the only way of knowing how big a fluid wagon is with quality right now
+					local oldfluid = carriage.get_fluid(1)
+					carriage.set_fluid(1, nil)
+					--fluid-unknown should always exist in factorio
+					fluidsize = carriage.insert_fluid({name="fluid-unknown", amount=1e10})
+					carriage.set_fluid(1, oldfluid)
+					size_fluidwagon_cache[carriage.prototype.name].quality_size[""..carriage.quality.level] = fluidsize
+				else
+					fluidsize = size_fluidwagon_cache[carriage.prototype.name].quality_size[""..carriage.quality.level]
+				end
 				fluid_capacity = fluid_capacity + fluidsize
 			end
 		else
