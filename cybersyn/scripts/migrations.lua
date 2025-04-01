@@ -352,6 +352,7 @@ function on_config_changed(data)
 			on_debug_revision_change()
 		end
 	end
+	retrigger_train_calculation()
 end
 
 ---NOTE: this runs before on_config_changed
