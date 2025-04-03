@@ -101,10 +101,24 @@ function set_train_layout(map_data, train)
 			item_slot_capacity = item_slot_capacity + #inv
 		elseif carriage.type == "fluid-wagon" then
 			layout[#layout + 1] = 2
-			if carriage.quality.level == 0 or #prototypes.fluid == 0 then
+			if carriage.quality.level == 0 then
 				fluid_capacity = fluid_capacity + carriage.prototype.fluid_capacity
 			else
+				local fluidnametest = "fluid-unknown"
 				local fluidsize = 0
+				if not prototypes.fluid[fluidnametest] then
+					fluidnametest = "water" -- fall back to water
+					if not prototypes.fluid[fluidnametest] then
+						fluidnametest = nil
+						for _,k in pairs(prototypes.fluid) do -- try to get the first fluid
+							fluidnametest = _
+							break
+						end
+						if not fluidnametest then -- no fluid abort everything
+							goto endfluidsize
+						end
+					end
+				end
 				if not map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name] then
 					--fluid wagon not cached yet
 					map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name] = {fluid_normal_size = carriage.prototype.fluid_capacity, quality_size = {}}
@@ -119,12 +133,13 @@ function set_train_layout(map_data, train)
 					local oldfluid = carriage.get_fluid(1)
 					carriage.set_fluid(1, nil)
 					--fluid-unknown should always exist in factorio
-					fluidsize = carriage.insert_fluid({name="fluid-unknown", amount=1e10})
+					fluidsize = carriage.insert_fluid({name=fluidnametest, amount=1e10})
 					carriage.set_fluid(1, oldfluid)
 					map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[carriage.quality.level] = fluidsize
 				else
 					fluidsize = map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[carriage.quality.level]
 				end
+				::endfluidsize::
 				fluid_capacity = fluid_capacity + fluidsize
 			end
 		else
