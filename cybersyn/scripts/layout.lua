@@ -114,16 +114,16 @@ function set_train_layout(map_data, train)
 					map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].fluid_normal_size = carriage.prototype.fluid_capacity
 					map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size = {}
 				end
-				if not map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[""..carriage.quality.level] then
+				if not map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[carriage.quality.level] then
 					--This is absolutely the only way of knowing how big a fluid wagon is with quality right now
 					local oldfluid = carriage.get_fluid(1)
 					carriage.set_fluid(1, nil)
 					--fluid-unknown should always exist in factorio
 					fluidsize = carriage.insert_fluid({name="fluid-unknown", amount=1e10})
 					carriage.set_fluid(1, oldfluid)
-					map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[""..carriage.quality.level] = fluidsize
+					map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[carriage.quality.level] = fluidsize
 				else
-					fluidsize = map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[""..carriage.quality.level]
+					fluidsize = map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[carriage.quality.level]
 				end
 				fluid_capacity = fluid_capacity + fluidsize
 			end
