@@ -139,7 +139,6 @@ function set_train_layout(map_data, train)
 				else
 					fluidsize = map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[carriage.quality.level]
 				end
-				::endfluidsize::
 				fluid_capacity = fluid_capacity + fluidsize
 			end
 		else
