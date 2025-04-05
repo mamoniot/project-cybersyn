@@ -380,8 +380,7 @@ function on_config_changed(data)
 
 	flib_migration.on_config_changed(data, migrations_table)
 
-	-- needs to be re-visited when SE gets Factorio 2.0 support
-	IS_SE_PRESENT = false -- remote.interfaces["space-exploration"] ~= nil
+	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 
 	if storage.debug_revision ~= debug_revision then
 		storage.debug_revision = debug_revision

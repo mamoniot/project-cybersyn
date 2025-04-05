@@ -11,7 +11,7 @@ local string_len = string.len
 
 local lib = {}
 
----@param schedule TrainSchedule
+---@param schedule LuaSchedule
 ---@param stop LuaEntity
 ---@param old_surface_index uint
 ---@param search_start uint
@@ -20,18 +20,20 @@ local function se_add_direct_to_station_order(schedule, stop, old_surface_index,
 	local surface_i = stop.surface.index
 	if surface_i ~= old_surface_index then
 		local name = stop.backer_name
-		local records = schedule.records
+		local records = schedule.get_records() --[[@as AddRecordData[] ]]
 		for i = search_start, #records do
 			if records[i].station == name then
-				if i == 1 then
-					--i == search_start == 1 only if schedule.current == 1, so we can append this order to the very end of the list and let it wrap around
-					records[#records + 1] = create_direct_to_station_order(stop)
-					schedule.current = #records --[[@as uint]]
-					return 2
-				else
-					table_insert(records, i, create_direct_to_station_order(stop))
-					return i + 2 --[[@as uint]]
+				local current = schedule.current
+
+				local direct_to_station = create_direct_to_station_order(stop)
+				direct_to_station.index = { schedule_index = i }
+				schedule.add_record(direct_to_station)
+
+				if (i == current) then
+					schedule.go_to_station(i)
 				end
+
+				return i + 2
 			end
 		end
 	end
@@ -105,17 +107,12 @@ function lib.setup_se_compat()
 			train.se_awaiting_rename = nil
 		end
 
-		local schedule = train_entity.schedule
+		-- schedule records can only contain references to rail entities on the same surface as the train
+		-- this is why after every surface teleport we need to add the ones that could not be added earlier
+		local schedule = train_entity.get_schedule()
 		if schedule then
 			--this code relies on train chedules being in this specific order to work
 			local start = schedule.current
-			--check depot
-			if not train.use_any_depot then
-				local stop = map_data.depots[train.depot_id].entity_stop
-				if stop.valid then
-					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
-				end
-			end
 			--check provider
 			if train.status == STATUS_TO_P then
 				local stop = map_data.stations[train.p_station_id].entity_stop
@@ -137,7 +134,13 @@ function lib.setup_se_compat()
 					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
 				end
 			end
-			train_entity.schedule = schedule
+			--check depot
+			if not train.use_any_depot then
+				local stop = map_data.depots[train.depot_id].entity_stop
+				if stop.valid then
+					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
+				end
+			end
 		end
 		interface_raise_train_teleported(new_id, old_id)
 	end)
@@ -208,9 +211,12 @@ end
 
 ---@param elevator_name string
 ---@param is_train_in_orbit boolean
----@return ScheduleRecord
+---@return AddRecordData
 function lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
-	return { station = elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX) }
+	return {
+		station = elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX),
+		temporary = true,
+	}
 end
 
 ---@param cache PerfCache
@@ -287,13 +293,15 @@ end
 ---@param cache PerfCache
 ---@param train LuaTrain
 ---@param stop LuaEntity
----@param schedule TrainSchedule Pre-existing schedule. Will be mutated by this function.
+---@param schedule LuaSchedule Pre-existing schedule. Will be mutated by this function.
 ---@return boolean?
 function lib.se_add_refueler_schedule(cache, train, stop, schedule)
 	local t_surface = train.front_stock.surface
 	local f_surface = stop.surface
 	local t_surface_i = t_surface.index
 	local f_surface_i = f_surface.index
+
+	-- FIXME i is not defined anymore, this lost context when the code got moved to a separate module
 
 	local t_zone_index, t_zone_orbit_index = lib.se_get_zone_from_surface_index(cache, t_surface_i)
 	local other_zone_index, other_zone_orbit_index = lib.se_get_zone_from_surface_index(cache, f_surface_i)

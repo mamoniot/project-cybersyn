@@ -379,19 +379,18 @@ function set_manifest_schedule(
 			same_depot and create_direct_to_station_order(depot_stop),
 		}
 	elseif IS_SE_PRESENT then
-		game.print("Compatibility with Space Exploration is broken.")
-		-- records = se_compat.se_set_manifest_schedule(
-		-- 	map_data.perf_cache,
-		-- 	train,
-		-- 	depot_stop,
-		-- 	same_depot,
-		-- 	p_stop,
-		-- 	p_schedule_settings,
-		-- 	r_stop,
-		-- 	r_schedule_settings,
-		-- 	manifest,
-		-- 	start_at_depot
-		-- )
+		records = se_compat.se_set_manifest_schedule(
+			map_data.perf_cache,
+			train,
+			depot_stop,
+			same_depot,
+			p_stop,
+			p_schedule_settings,
+			r_stop,
+			r_schedule_settings,
+			manifest,
+			start_at_depot
+		)
 	end
 
 	if records and next(records) then
