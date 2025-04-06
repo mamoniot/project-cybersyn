@@ -521,7 +521,7 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			local surface_connections = surfaces.find_surface_connections(
+			local surface_connections = Surfaces.find_surface_connections(
 				p_station.entity_stop.surface,
 				r_station.entity_stop.surface,
 				r_station.entity_stop.force --[[@as LuaForce]],

@@ -1,4 +1,4 @@
-local Surfaces = {
+Surfaces = {
     ---@enum Cybersyn.SurfaceConnectionStatus
     status = {
         invalid = 0,
@@ -73,12 +73,12 @@ function Surfaces.disconnect_surfaces(entity1, entity2)
     return Surfaces.status.deleted
 end
 
-  -- adds a surface connection between the given entities; the network_id will be used in delivery processing to discard providers that don't match the surface connection's network_id
-  ---@param entity1 LuaEntity
-  ---@param entity2 LuaEntity
-  ---@param network_masks {[string]: integer}?
-  ---@return Cybersyn.SurfaceConnectionStatus
-  function Surfaces.connect_surfaces(entity1, entity2, network_masks)
+-- adds a surface connection between the given entities; the network_id will be used in delivery processing to discard providers that don't match the surface connection's network_id
+---@param entity1 LuaEntity
+---@param entity2 LuaEntity
+---@param network_masks {[string]: integer}?
+---@return Cybersyn.SurfaceConnectionStatus
+function Surfaces.connect_surfaces(entity1, entity2, network_masks)
     if not (entity1 and entity1.valid and entity2 and entity2.valid) then
         return Surfaces.status.invalid
     end
@@ -126,5 +126,3 @@ function Surfaces.on_surface_deleted(event)
         end
     end
 end
-
-return Surfaces

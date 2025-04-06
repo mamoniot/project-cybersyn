@@ -12,12 +12,12 @@
 
 local DESTORY_TYPE_ENTITY = defines.target_type.entity
 
-local Elevator = {
+Elevators = {
 	name_elevator = "se-space-elevator",
 	name_stop = "se-space-elevator-train-stop",
 }
 
-local ENTITY_SEARCH = { Elevator.name_elevator, Elevator.name_stop }
+local ENTITY_SEARCH = { Elevators.name_elevator, Elevators.name_stop }
 
 --- Creates a new ElevatorEndData structure if all necessary entities are present on the given surfaces at the given location
 --- @param surface LuaSurface
@@ -30,9 +30,9 @@ local function search_entities(surface, position)
 	local elevator, stop
 
 	for _, found_entity in pairs(surface.find_entities_filtered({ name = ENTITY_SEARCH, area = search_area, })) do
-		if found_entity.name == Elevator.name_stop then
+		if found_entity.name == Elevators.name_stop then
 			stop = found_entity
-		elseif found_entity.name == Elevator.name_elevator then
+		elseif found_entity.name == Elevators.name_elevator then
 			elevator = found_entity
 		end
 	end
@@ -52,7 +52,7 @@ local function search_entities(surface, position)
 end
 
 --- Register with Factorio to destroy LTN surface connectors when the corresponding elevator is removed
-function Elevator.on_object_destroyed(e)
+function Elevators.on_object_destroyed(e)
 	if e.type ~= DESTORY_TYPE_ENTITY or not e.useful_id then return end
 
 	local data = storage.se_elevators[e.useful_id] -- useful_id for entities is the unit_number
@@ -84,7 +84,7 @@ end
 --- Looks up the elevator data for the given unit_number. The data structure *won't* be created if it doesn't exist.
 --- @param unit_number integer the unit_number of a `se-space-elevator` or `se-space-elevator-train-stop`
 --- @return Cybersyn.ElevatorData|nil
-function Elevator.from_unit_number(unit_number)
+function Elevators.from_unit_number(unit_number)
 	local elevator = storage.se_elevators[unit_number]
 	return elevator or nil
 end
@@ -92,15 +92,15 @@ end
 --- Looks up the elevator data for the given entity. Creates the data structure if it doesn't exist, yet.
 --- @param entity LuaEntity? must be a `se-space-elevator` or `se-space-elevator-train-stop`
 --- @return Cybersyn.ElevatorData?
-function Elevator.from_entity(entity)
+function Elevators.from_entity(entity)
 	if not (entity and entity.valid) then
 		return nil
 	end
-	local data = Elevator.from_unit_number(entity.unit_number)
+	local data = Elevators.from_unit_number(entity.unit_number)
 	if data then return data end
 
 	-- construct new data
-	if entity.name ~= Elevator.name_elevator and entity.name ~= Elevator.name_stop then
+	if entity.name ~= Elevators.name_elevator and entity.name ~= Elevators.name_stop then
 		error("entity must be an elevator or the corresponding connector entity")
 	end
 
@@ -138,16 +138,47 @@ end
 
 --- Connects or disconnects the eleator from Cybersyn based on cs_enabled and updates the network_id when connected to 
 --- @param data Cybersyn.ElevatorData
-function Elevator.update_connection(data)
+function Elevators.update_connection(data)
 	if data.cs_enabled then
-		local status = surfaces.connect_surfaces(data.ground.stop, data.orbit.stop, data.network_masks)
-		if status == surfaces.status.created then
+		local status = Surfaces.connect_surfaces(data.ground.stop, data.orbit.stop, data.network_masks)
+		if status == Surfaces.status.created then
 			data.ground.elevator.force.print({ "cybersyn-messages.elevator-connected", gps_text(data.ground.elevator) })
 		end
 	else
-		surfaces.disconnect_surfaces(data.ground.stop, data.orbit.stop)
+		Surfaces.disconnect_surfaces(data.ground.stop, data.orbit.stop)
 		data.ground.elevator.force.print({ "cybersyn-messages.elevator-disconnected", gps_text(data.ground.elevator) })
 	end
 end
 
-return Elevator
+---@param command CustomCommandData
+local function command_toggle_elevator(command)
+	if not command.player_index then
+		game.print("Can only be invoked as a player.")
+		return
+	end
+	local player = game.get_player(command.player_index) --[[@as LuaPlayer]]
+
+	local elevator = player.selected
+	if not (elevator and elevator.valid and elevator.name == Elevators.name_elevator) then
+		player.print("You need to hover your mouse over an elevator before executing this command.")
+		return
+	end
+
+	local data = Elevators.from_entity(elevator) --[[@as Cybersyn.ElevatorData]]
+	data.cs_enabled = not data.cs_enabled
+	Elevators.update_connection(data)
+end
+
+---@param command CustomCommandData
+local function command_reset_elevators(command)
+	for _, data in pairs(storage.se_elevators) do
+		Surfaces.disconnect_surfaces(data.ground.stop, data.orbit.stop)
+	end
+	storage.se_elevators = {}
+	game.print("All elevator connections reset.")
+end
+
+commands.add_command("cte", { "cybersyn-messages.toggle-elevator-command-help" }, command_toggle_elevator)
+commands.add_command("cre", { "cybersyn-messages.reset-elevator-command-help" }, command_reset_elevators)
+
+return Elevators
