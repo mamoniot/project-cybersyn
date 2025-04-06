@@ -228,6 +228,7 @@ end
 ---@param r_stop LuaEntity
 ---@param r_schedule_settings Cybersyn.StationScheduleSettings
 ---@param manifest Manifest
+---@param surface_connections Cybersyn.SurfaceConnection[]
 ---@param start_at_depot boolean?
 ---@return (ScheduleRecord[])?
 function lib.se_set_manifest_schedule(
@@ -240,6 +241,7 @@ function lib.se_set_manifest_schedule(
 		r_stop,
 		r_schedule_settings,
 		manifest,
+		surface_connections,
 		start_at_depot)
 	local t_surface = train.front_stock.surface
 	local p_surface = p_stop.surface

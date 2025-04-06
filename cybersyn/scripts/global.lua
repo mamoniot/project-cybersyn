@@ -24,6 +24,8 @@
 ---@field public each_refuelers {[uint]: true}
 ---@field public active_alerts {[uint]: {[1]: LuaTrain, [2]: int}}?
 ---@field public manager Manager
+---@field public Elevators {[uint]: ElevatorData} maps relevant entities on both surfaces to one shared data structure for the whole space elevator; the key can be the unit_number of the elevator's main assembler or its train stop
+---@field public ConnectedSurfaces {[string]: {[string]: Cybersyn.SurfaceConnection}} maps pairs of surfaces to the pairs of entities connecting them
 ---@field public perf_cache PerfCache -- This gets reset to an empty table on migration change
 
 ---@class PerfCache
@@ -35,6 +37,11 @@
 ---@class FluidWagonSize
 ---@field public fluid_normal_size uint -- size of wagon in normal quality
 ---@field public quality_size {[uint] : uint} -- level of quality : size of wagon with this level of quality
+
+---@class Cybersyn.SurfaceConnection
+---@field entity1 LuaEntity the entity that represents the conneciton on the first surface; will eventually discard the connection if invalid
+---@field entity2 LuaEntity the entity that represents the connection on the second surface; will eventually discard the connection if invalid
+---@field network_masks {[string]: integer}? nil means can serve deliveries on any network, otherwise a delivery is matched against the corresponding network_mask in the dictionary
 
 ---@class Cybersyn.StationScheduleSettings
 ---@field public enable_inactive true? If true, enable inactivity timeouts for trains at this station.
@@ -149,6 +156,19 @@
 ---@field public enable_manager boolean
 ---@field public manager_ups double
 ---@field public manager_enabled boolean
+
+---@class ElevatorEndData
+---@field public connector LuaEntity
+---@field public elevator LuaEntity
+---@field public stop LuaEntity
+---@field public connector_id integer
+---@field public elevator_id integer
+
+---@class ElevatorData
+---@field public ground ElevatorEndData
+---@field public orbit ElevatorEndData
+---@field public cs_enabled boolean
+---@field public network_id integer
 
 --if this is uncommented it means there are migrations to write
 

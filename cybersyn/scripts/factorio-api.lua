@@ -322,6 +322,7 @@ end
 ---@param r_stop LuaEntity
 ---@param r_schedule_settings Cybersyn.StationScheduleSettings
 ---@param manifest Manifest
+---@param surface_connections Cybersyn.SurfaceConnection[]
 ---@param start_at_depot boolean?
 function set_manifest_schedule(
 		map_data,
@@ -333,6 +334,7 @@ function set_manifest_schedule(
 		r_stop,
 		r_schedule_settings,
 		manifest,
+		surface_connections,
 		start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 
@@ -389,6 +391,7 @@ function set_manifest_schedule(
 			r_stop,
 			r_schedule_settings,
 			manifest,
+			surface_connections,
 			start_at_depot
 		)
 	end

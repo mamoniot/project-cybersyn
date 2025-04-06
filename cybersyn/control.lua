@@ -1,10 +1,13 @@
 --By Mami
+debug_log = false
+
 require("scripts.constants")
 require("scripts.commands")
 require("scripts.global")
 require("scripts.lib")
 require("scripts.factorio-api")
 require("scripts.layout")
+surfaces = require("scripts.surface-connections")
 require("scripts.central-planning")
 require("scripts.train-events")
 require("scripts.gui")

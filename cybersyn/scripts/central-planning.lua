@@ -64,8 +64,8 @@ end
 ---@param e2 LuaEntity?
 ---@return boolean
 function is_train_routable(e1, e2)
-	if (not e1) or (not e2) then return false end
-	--(NOTE: currently does not support train teleportation/space elevators)
+	if not (e1 and e2) then return false end
+	-- trains are only sourced from the same surface, closest is hard to calculate when a surface travel is involved
 	return (e1.surface == e2.surface)
 end
 
@@ -135,7 +135,8 @@ end
 ---@param p_station_id uint
 ---@param train_id uint
 ---@param manifest Manifest
-function create_delivery(map_data, r_station_id, p_station_id, train_id, manifest)
+---@param surface_connections Cybersyn.SurfaceConnection[]
+function create_delivery(map_data, r_station_id, p_station_id, train_id, manifest, surface_connections)
 	local economy = map_data.economy
 	local r_station = map_data.stations[r_station_id]
 	local p_station = map_data.stations[p_station_id]
@@ -166,7 +167,7 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 	local is_at_depot = remove_available_train(map_data, train_id, train)
 	--NOTE: we assume that the train is not being teleported at this time
 	--NOTE: set_manifest_schedule is allowed to cancel the delivery at the last second if applying the schedule to the train makes it lost and is_at_depot == false
-	if set_manifest_schedule(map_data, train.entity, depot.entity_stop, not train.use_any_depot, p_station.entity_stop, p_station, r_station.entity_stop, r_station, manifest, is_at_depot) then
+	if set_manifest_schedule(map_data, train.entity, depot.entity_stop, not train.use_any_depot, p_station.entity_stop, p_station, r_station.entity_stop, r_station, manifest, surface_connections, is_at_depot) then
 		local old_status = train.status
 		train.status = STATUS_TO_P
 		train.p_station_id = p_station_id
@@ -488,6 +489,7 @@ local function tick_dispatch(map_data, mod_settings)
 		local p_station_i = nil
 		local best_train_id = nil
 		local best_p_prior = -INF
+		local best_surface_connections = {}
 		local best_dist = INF
 		--if no available trains in the network, skip search
 		---@type uint
@@ -515,7 +517,16 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 
 			-- Verify provider->requester routability. (NOTE: also check validity because station was just pulled from cache.)
-			if (not p_station.entity_stop.valid) or (not is_train_routable(p_station.entity_stop, r_station.entity_stop)) then
+			if not p_station.entity_stop.valid then
+				goto p_continue
+			end
+
+			local surface_connections = surfaces.find_surface_connections(
+				p_station.entity_stop.surface,
+				r_station.entity_stop.surface,
+				r_station.entity_stop.force --[[@as LuaForce]],
+				network_name, netand)
+			if not surface_connections then
 				goto p_continue
 			end
 
@@ -549,6 +560,7 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
+			-- get_dist() also handles cross-surface distance by penalizing it
 			best_p_to_r_dist =
 					p_station.entity_stop.valid and
 					r_station.entity_stop.valid and
@@ -672,6 +684,7 @@ local function tick_dispatch(map_data, mod_settings)
 			p_station_i = j
 			best_train_id = best_p_train_id
 			best_p_prior = p_prior
+			best_surface_connections = surface_connections
 			best_dist = best_p_to_r_dist
 			::p_continue::
 			j = j + 1
@@ -682,7 +695,7 @@ local function tick_dispatch(map_data, mod_settings)
 			local p_station_id = table_remove(p_stations, p_station_i)
 			move_stations_to_end_of_polling_queue(map_data, p_station_id, r_station_id)
 			local manifest = create_manifest(map_data, r_station_id, p_station_id, best_train_id, item_name)
-			create_delivery(map_data, r_station_id, p_station_id, best_train_id, manifest)
+			create_delivery(map_data, r_station_id, p_station_id, best_train_id, manifest, best_surface_connections)
 			return false
 		else
 			if closest_to_correct_p_station then

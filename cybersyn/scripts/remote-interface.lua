@@ -287,7 +287,7 @@ end
 function interface.create_delivery(r_station_id, p_station_id, train_id, manifest)
 	local train = storage.trains[train_id]
 	assert(storage.stations[r_station_id] and storage.stations[p_station_id] and train and train.is_available and manifest)
-	return create_delivery(storage, r_station_id, p_station_id, train_id, manifest)
+	return create_delivery(storage, r_station_id, p_station_id, train_id, manifest, {})
 end
 ---@param train_id uint
 function interface.fail_delivery(train_id)
