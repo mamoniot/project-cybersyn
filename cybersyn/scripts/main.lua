@@ -780,6 +780,9 @@ local function on_surface_removed(event)
 	end
 end
 
+local function on_object_destroyed(event)
+	Elevators.on_object_destroyed(event)
+end
 
 local function on_paste(event)
 	local entity = event.destination
@@ -894,6 +897,8 @@ local function main()
 	script.on_event(defines.events.on_space_platform_pre_mined, on_broken, filter_broken)
 	script.on_event(defines.events.on_entity_died, on_broken, filter_broken)
 	script.on_event(defines.events.script_raised_destroy, on_broken)
+
+	script.on_event(defines.events.on_object_destroyed, on_object_destroyed)
 
 	script.on_event({ defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared }, on_surface_removed)
 

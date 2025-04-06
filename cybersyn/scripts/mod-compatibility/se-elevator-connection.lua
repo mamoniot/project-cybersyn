@@ -10,8 +10,6 @@
 ---@field surface_index integer? -- the Factorio surface index of the zone
 ---@field seed integer? -- the mapgen seed
 
-local DESTORY_TYPE_ENTITY = defines.target_type.entity
-
 Elevators = {
 	name_elevator = "se-space-elevator",
 	name_stop = "se-space-elevator-train-stop",
@@ -51,9 +49,11 @@ local function search_entities(surface, position)
 	}
 end
 
+local DESTROY_TYPE_ENTITY = defines.target_type.entity
+
 --- Register with Factorio to destroy LTN surface connectors when the corresponding elevator is removed
 function Elevators.on_object_destroyed(e)
-	if e.type ~= DESTORY_TYPE_ENTITY or not e.useful_id then return end
+	if not (e.useful_id and e.type == DESTROY_TYPE_ENTITY) then return end
 
 	local data = storage.se_elevators[e.useful_id] -- useful_id for entities is the unit_number
 	if data then
