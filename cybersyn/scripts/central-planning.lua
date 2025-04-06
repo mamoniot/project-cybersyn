@@ -495,7 +495,7 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
-			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist, effective_threshold, slot_threshold, item_deliveries
+			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist, effective_threshold, slot_threshold, item_deliveries, surface_connections
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
@@ -521,7 +521,7 @@ local function tick_dispatch(map_data, mod_settings)
 				goto p_continue
 			end
 
-			local surface_connections = Surfaces.find_surface_connections(
+			surface_connections = Surfaces.find_surface_connections(
 				p_station.entity_stop.surface,
 				r_station.entity_stop.surface,
 				r_station.entity_stop.force --[[@as LuaForce]],
