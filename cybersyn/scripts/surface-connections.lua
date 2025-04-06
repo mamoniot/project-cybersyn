@@ -33,7 +33,7 @@ function Surfaces.find_surface_connections(surface1, surface2, force, network_na
     if surface1 == surface2 then return SAME_SURFACE, 0 end
 
     local surface_pair_key = sorted_pair(surface1.index, surface2.index)
-    local surface_connections = storage.ConnectedSurfaces[surface_pair_key]
+    local surface_connections = storage.connected_surfaces[surface_pair_key]
     if not surface_connections then return nil end
 
     local matching_connections = {}
@@ -70,7 +70,7 @@ function Surfaces.disconnect_surfaces(entity1, entity2)
     end
 
     local surface_pair_key = sorted_pair(entity1.surface.index, entity2.surface.index)
-    local surface_connections = storage.ConnectedSurfaces[surface_pair_key]
+    local surface_connections = storage.connected_surfaces[surface_pair_key]
 
     if surface_connections then
         local entity_pair_key = sorted_pair(entity1.unit_number, entity2.unit_number)
@@ -98,7 +98,7 @@ end
     end
 
     local surface_pair_key = sorted_pair(entity1.surface.index, entity2.surface.index)
-    local surface_connections = get_or_create(storage.ConnectedSurfaces, surface_pair_key)
+    local surface_connections = get_or_create(storage.connected_surfaces, surface_pair_key)
 
     local entity_pair_key = sorted_pair(entity1.unit_number, entity2.unit_number)
     if debug_log then
@@ -120,9 +120,9 @@ function Surfaces.on_surface_deleted(event)
     local first_surface = "^"..event.surface_index.."|"
     local second_surface = "|"..event.surface_index.."$"
 
-    for surface_pair_key, _ in pairs(storage.ConnectedSurfaces) do
+    for surface_pair_key, _ in pairs(storage.connected_surfaces) do
         if string.find(surface_pair_key, first_surface) or string.find(surface_pair_key, second_surface) then
-            storage.ConnectedSurfaces[surface_pair_key] = nil
+            storage.connected_surfaces[surface_pair_key] = nil
         end
     end
 end
