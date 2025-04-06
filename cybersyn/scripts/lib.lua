@@ -111,3 +111,38 @@ function format_signal_count(count)
 			abs >= 1e3 and si_format(1e3, "k") or
 			tostring(count)
 end
+
+---Concatenates the give numbers into a string separated by '|'.
+---The same two numbers always produce the same string, no matter the order they are given in.
+---@param number1 number
+---@param number2 number
+---@return string
+function sorted_pair(number1, number2)
+    return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
+end
+
+--- Fetches a subtable from the given table or creates it if necessary
+function get_or_create(a_table, subtable_key)
+    local subtable = a_table[subtable_key]
+    if not subtable then
+        subtable = {}
+        a_table[subtable_key] = subtable
+    end
+    return subtable
+end
+
+---Creates a GPS richtext tag from the given entity
+---@param entity LuaEntity?
+---@return string gpstag an empty string if entity is invalid
+function gps_text(entity)
+	if entity and entity.valid then
+		return string.format("[gps=%s,%s,%s]", entity.position.x, entity.position.y, entity.surface.name )
+	end
+	return ""
+end
+
+---Formats the given integer with prefix `0x` followed by exactly 8 hexadecimal digits
+---@param network_id integer
+function network_text(network_id)
+	return string.format("0x%08X", bit32.band(network_id)) -- band ensures 32bits (the parameter might have more)
+end

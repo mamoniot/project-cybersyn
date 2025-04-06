@@ -19,19 +19,6 @@ local Elevator = {
 
 local ENTITY_SEARCH = { Elevator.name_elevator, Elevator.name_stop }
 
---- @param entity LuaEntity?
-local function gps_text(entity)
-	if entity and entity.valid then
-		return string.format("[gps=%s,%s,%s]", entity.position.x, entity.position.y, entity.surface.name )
-	end
-	return ""
-end
-
---- @param network_id integer
-local function network_text(network_id)
-	return string.format("0x%08X", bit32.band(network_id)) -- band ensures 32bits (the parameter might have more)
-end
-
 --- Creates a new ElevatorEndData structure if all necessary entities are present on the given surfaces at the given location
 --- @param surface LuaSurface
 --- @param position MapPosition supposed to be at the center of an elevator, will be searched in a 12-tile radius

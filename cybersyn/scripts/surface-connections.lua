@@ -11,22 +11,6 @@ local Surfaces = {
 local btest = bit32.btest
 local format = string.format
 
----@param number1 number
----@param number2 number
----@return string
-local function sorted_pair(number1, number2)
-    return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
-end
-
-local function get_or_create(a_table, key)
-    local subtable = a_table[key]
-    if not subtable then
-        subtable = {}
-        a_table[key] = subtable
-    end
-    return subtable
-end
-
 local SAME_SURFACE = {}
 
 ---Filters a list of matching entity-pairs each connecting the two surfaces.
