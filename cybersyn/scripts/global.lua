@@ -168,7 +168,7 @@
 ---@field public ground Cybersyn.ElevatorEndData
 ---@field public orbit Cybersyn.ElevatorEndData
 ---@field public cs_enabled boolean
----@field public network_id integer
+---@field public network_masks {[string]: integer}?
 
 --if this is uncommented it means there are migrations to write
 
