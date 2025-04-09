@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.21
+Date: 2025-04-09
+  Changes:
+    - Add support for quality wagon fluid size
+    - Support train groups and preserve schedule interrupts
+---------------------------------------------------------------------------------------------------
 Version: 2.0.20
 Date: 2025-03-16
   Changes:
