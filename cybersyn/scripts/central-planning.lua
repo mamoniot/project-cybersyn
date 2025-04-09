@@ -575,7 +575,7 @@ local function tick_dispatch(map_data, mod_settings)
 
 					-- Obtain a reference to the rolling stock of the train.
 					local train_stock = get_any_train_entity(train.entity)
-					if not train_stock then goto train_continue end
+					if not train_stock or train.entity.manual_mode then goto train_continue end
 
 					-- Verify train is routable to requester.
 					if not is_train_routable(train_stock, r_station.entity_stop) then
@@ -629,6 +629,13 @@ local function tick_dispatch(map_data, mod_settings)
 							train_stock and p_station.entity_stop.valid and
 							((get_dist(train_stock, p_station.entity_stop) - DEPOT_PRIORITY_MULT * train.priority) or INF)
 					if capacity == best_capacity and t_to_p_dist > best_t_to_p_dist then
+						goto train_continue
+					end
+
+					-- don't interrupt interrupts
+					local schedule = train.entity.get_schedule()
+					local current_record = schedule.get_record({ schedule_index = schedule.current })
+					if current_record and current_record.created_by_interrupt then
 						goto train_continue
 					end
 
