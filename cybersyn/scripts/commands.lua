@@ -179,21 +179,23 @@ local function fix_priorities_command()
 	end
 end
 
-function retrigger_train_calculation()
+function retrigger_train_calculation(print_message)
 	---@type MapData
 	local map_data = storage
-	log("Recalculating all train sizes")
+	log("Recalculating all train capacities")
 	local nbtrains = 0
 	for _,train in pairs(map_data.trains) do
 		set_train_layout(map_data, train)
 		nbtrains = nbtrains+1
 	end
-	game.print("All ".. nbtrains .. " train size recalculated.")
+	if print_message then
+		game.print("All ".. nbtrains .. " train capacities recalculated.")
+	end
 	log("Recalculated "..nbtrains.." trains")
 end
 
 commands.add_command("cybersyn-recalculate-train-size", { "cybersyn-messages.recalculate-train-size-command-help" },
-retrigger_train_calculation)
+	function() retrigger_train_calculation(true) end)
 commands.add_command("cybersyn-find-problems", { "cybersyn-messages.find-problems-command-help" },
 	function() find_problems(report_print) end)
 commands.add_command("cybersyn-fix-priorities", { "cybersyn-messages.fix-priorities-command-help" },
