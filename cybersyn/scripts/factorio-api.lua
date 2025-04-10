@@ -4,6 +4,7 @@ local get_distance = require("__flib__.position").distance
 local table_insert = table.insert
 local bit_extract = bit32.extract
 local bit_replace = bit32.replace
+local max = math.max
 
 local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
@@ -369,8 +370,8 @@ function set_manifest_schedule(
 		-- )
 	end
 
-	if records then
-		local insert_index = schedule.get_record_count() --[[@as int]]
+	if records and next(records) then
+		local insert_index = max(schedule.get_record_count() --[[@as int]], 1) -- schedule might be empty
 		for _, record in ipairs(records) do
 			add_record_before_last(schedule, record)
 		end
@@ -788,14 +789,14 @@ end
 ---@param train LuaTrain
 ---@param icon {}
 ---@param message string
-local function send_alert_for_train(train, icon, message)
+local function send_alert_for_train(train, icon, message, ...)
 	local loco = train.front_stock or train.back_stock
 	if loco then
 		for _, player in pairs(loco.force.players) do
 			player.add_custom_alert(
 				loco,
 				icon,
-				{ message },
+				{ message, ... },
 				true)
 		end
 	end
@@ -921,6 +922,23 @@ function send_alert_cannot_path_between_surfaces(map_data, train)
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = { train, 7, map_data.total_ticks }
+end
+---@param map_data MapData
+---@param train LuaTrain
+---@param group string
+function send_alert_train_group_base_schedule_broken(map_data, train, group)
+	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.train-group-schedule-broken", group)
+	send_alert_sounds(train)
+	map_data.active_alerts = map_data.active_alerts or {}
+	map_data.active_alerts[train.id] = { train, 8, map_data.total_ticks }
+end
+---@param map_data MapData
+---@param train LuaTrain
+function send_alert_train_base_schedule_broken(map_data, train)
+	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.train-schedule-broken")
+	send_alert_sounds(train)
+	map_data.active_alerts = map_data.active_alerts or {}
+	map_data.active_alerts[train.id] = { train, 9, map_data.total_ticks }
 end
 
 --- Alert user when a Cybersyn train arrives at a station with non-default

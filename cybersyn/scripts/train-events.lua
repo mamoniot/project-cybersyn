@@ -279,6 +279,10 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		train.r_station_id = nil
 		train.manifest = nil
 		--add to available trains for depot bypass
+		if not validate_train_base_schedule(map_data, train_id, train) then
+			return -- train already removed from Cybersyn
+		end
+
 		local fuel_fill = 1
 		if mod_settings.fuel_threshold < 1 then
 			for _, v in pairs(train.entity.locomotives) do
@@ -513,10 +517,10 @@ function on_train_changed(event)
 			end
 		end
 	elseif event.old_state == defines.train_state.wait_station then
-		local path = train_e.path
-		if path and path.total_distance > 4 then
-			local train = map_data.trains[train_id]
-			if train then
+		local train = map_data.trains[train_id]
+		if train then
+			local path = train_e.path
+			if path and path.total_distance > 4 then
 				-- Check if train has been misdirected along a long rail path due to
 				-- the priority of the station at the end.
 				local last_rail = path.rails[#path.rails]
@@ -530,6 +534,9 @@ function on_train_changed(event)
 					-- schedule as is done elsewhere in the code.)
 				end
 
+				on_train_leaves_stop(map_data, mod_settings, train_id, train)
+			elseif train_e.get_schedule().get_record_count() == 0 then
+				-- There is no path when the schedule runs empty
 				on_train_leaves_stop(map_data, mod_settings, train_id, train)
 			end
 		end
