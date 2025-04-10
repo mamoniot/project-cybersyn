@@ -334,6 +334,42 @@ local migrations_table = {
 			end
 		end
 	end,
+	["2.0.21"] = function() -- migrate to the new schedule layout with temporary schedule records
+		for _, cybersyn_train in pairs(storage.trains) do
+			local train = cybersyn_train.entity --[[@as LuaTrain]]
+			if not train or not train.valid or train.manual_mode then
+				goto next_train
+			end
+
+			local schedule = train.get_schedule()
+			if schedule.get_record_count() <= 1 then -- not on a delivery
+				goto next_train
+			end
+
+			local current = schedule.current
+			if current == 1 then -- heading back to the depot
+				schedule.set_records({ schedule.get_record({ schedule_index = 1 }) })
+				goto next_train
+			end
+
+			local old_records = schedule.get_records() --[[@as AddRecordData[] ]]
+			local new_records = {}
+
+			-- drop stations that have already been visited and make the rest temporary
+			for i = current, #old_records do
+				local new_record = old_records[i]
+				new_record.temporary = true
+				table.insert(new_records, new_record)
+			end
+
+			table.insert(new_records, old_records[1]) -- move the depot from the top to the bottom
+
+			schedule.set_records(new_records)
+			schedule.go_to_station(1)
+
+			::next_train::
+		end
+	end,
 }
 --STATUS_R_TO_D = 5
 ---@param data ConfigurationChangedData
@@ -344,7 +380,8 @@ function on_config_changed(data)
 
 	flib_migration.on_config_changed(data, migrations_table)
 
-	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
+	-- needs to be re-visited when SE gets Factorio 2.0 support
+	IS_SE_PRESENT = false -- remote.interfaces["space-exploration"] ~= nil
 
 	if storage.debug_revision ~= debug_revision then
 		storage.debug_revision = debug_revision

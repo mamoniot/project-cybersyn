@@ -82,6 +82,7 @@ function remove_train(map_data, train_id, train)
 	interface_raise_train_removed(train_id, train)
 end
 
+
 ---@param map_data MapData
 ---@param train Train
 function set_train_layout(map_data, train)
@@ -90,6 +91,23 @@ function set_train_layout(map_data, train)
 	local i = 1
 	local item_slot_capacity = 0
 	local fluid_capacity = 0
+	if not map_data.perf_cache.size_fluidwagon_cache then
+		map_data.perf_cache.size_fluidwagon_cache = {}
+	end
+	if not map_data.perf_cache.fluid_name_test then -- Getting the fluid to test quality wagon
+		local fluidnametest = "fluid-unknown" -- should be always in the game
+		if not prototypes.fluid[fluidnametest] then
+			fluidnametest = "water" -- fall back to water
+			if not prototypes.fluid[fluidnametest] then
+				fluidnametest = ""
+				for _,k in pairs(prototypes.fluid) do -- try to get the first fluid
+					fluidnametest = _
+					break
+				end
+			end
+		end
+		map_data.perf_cache.fluid_name_test = fluidnametest
+	end
 	for _, carriage in pairs(carriages) do
 		if carriage.type == "cargo-wagon" then
 			layout[#layout + 1] = 1
@@ -97,7 +115,32 @@ function set_train_layout(map_data, train)
 			item_slot_capacity = item_slot_capacity + #inv
 		elseif carriage.type == "fluid-wagon" then
 			layout[#layout + 1] = 2
-			fluid_capacity = fluid_capacity + carriage.prototype.fluid_capacity
+			if carriage.quality.level == 0 or map_data.perf_cache.size_fluidwagon_cache.fluid_name_test == "" then
+				fluid_capacity = fluid_capacity + carriage.prototype.fluid_capacity
+			else
+				local fluidsize = 0
+				if not map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name] then
+					--fluid wagon not cached yet
+					map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name] = {fluid_normal_size = carriage.prototype.fluid_capacity, quality_size = {}}
+				end
+				if map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].fluid_normal_size ~= carriage.prototype.fluid_capacity then
+					--fluid_capacity has changed so recalculating all quality
+					map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].fluid_normal_size = carriage.prototype.fluid_capacity
+					map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size = {}
+				end
+				if not map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[carriage.quality.level] then
+					--This is absolutely the only way of knowing how big a fluid wagon is with quality right now
+					local oldfluid = carriage.get_fluid(1)
+					carriage.set_fluid(1, nil)
+					--fluid-unknown should always exist in factorio
+					fluidsize = carriage.insert_fluid({name=map_data.perf_cache.fluid_name_test, amount=1e10})
+					carriage.set_fluid(1, oldfluid)
+					map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[carriage.quality.level] = fluidsize
+				else
+					fluidsize = map_data.perf_cache.size_fluidwagon_cache[carriage.prototype.name].quality_size[carriage.quality.level]
+				end
+				fluid_capacity = fluid_capacity + fluidsize
+			end
 		else
 			layout[#layout + 1] = 0
 		end
