@@ -69,6 +69,23 @@ function is_train_routable(e1, e2)
 	return (e1.surface == e2.surface)
 end
 
+---Checks that the train has a base schedule it can return to after a delivery.
+---If it does not, the train is removed from Cybersyn and an alert is generated.
+---@param train Train
+---@return boolean base_schedule_valid
+function validate_train_base_schedule(map_data, train_id, train)
+	local schedule = train.entity.get_schedule()
+	if schedule.get_record_count() > 0 then return true end
+
+	remove_train(map_data, train_id, train)
+	if schedule.group and schedule.group ~= "" then
+		send_alert_train_group_base_schedule_broken(map_data, train.entity, schedule.group)
+	else
+		send_alert_train_base_schedule_broken(map_data, train.entity)
+	end
+	return false
+end
+
 ---Move serviced stations to the end of the station polling list.
 ---@param map_data MapData
 ---@param p_station_id integer?
@@ -575,7 +592,9 @@ local function tick_dispatch(map_data, mod_settings)
 
 					-- Obtain a reference to the rolling stock of the train.
 					local train_stock = get_any_train_entity(train.entity)
-					if not train_stock or train.entity.manual_mode then goto train_continue end
+					if not train_stock or train.entity.manual_mode or not validate_train_base_schedule(map_data, train_id, train) then
+						goto train_continue
+					end
 
 					-- Verify train is routable to requester.
 					if not is_train_routable(train_stock, r_station.entity_stop) then
