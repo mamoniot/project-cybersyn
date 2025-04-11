@@ -267,7 +267,7 @@ function rename_manifest_schedule(train, stop, old_name)
 	end
 end
 
----	clean slate; remove all temporary, non-interrupt records from the schedule, including a direct-to-depot record
+---clean slate; remove all temporary, non-interrupt records from the schedule, including a direct-to-depot record
 ---@param schedule LuaSchedule
 function clean_temporary_records(schedule)
 	local current_records = schedule.get_records() --[[@as ScheduleRecord[] ]]
@@ -279,9 +279,11 @@ function clean_temporary_records(schedule)
 	end
 end
 
+---Inserts the given records before the first non-interrupt record in the schedule
 ---@param schedule LuaSchedule
----@param records AddRecordData[]
----@return int index
+---@param records AddRecordData[] supports optional entries by skipping falsy ones
+---@return int insert_index the index of the first inserted record
+---@return int insert_count the number of records that were truthy and thus inserted
 function add_records_after_interrupt(schedule, records)
 	local last_interrupt = 0
 	for i = 1, schedule.get_record_count() do
@@ -292,12 +294,16 @@ function add_records_after_interrupt(schedule, records)
 		last_interrupt = i
 	end
 
-	for i, record in ipairs(records) do
-		record.index = { schedule_index = last_interrupt + i }
-		schedule.add_record(record)
+	local i = 1
+	for _, record in pairs(records) do
+		if record then
+			record.index = { schedule_index = last_interrupt + i }
+			schedule.add_record(record)
+			i = i + 1
+		end
 	end
 
-	return last_interrupt + 1
+	return last_interrupt + 1, i - 1
 end
 
 ---NOTE: does not check .valid
@@ -364,10 +370,8 @@ function set_manifest_schedule(
 			create_loading_order(p_stop, manifest, p_schedule_settings),
 			create_direct_to_station_order(r_stop),
 			create_unloading_order(r_stop, r_schedule_settings),
+			same_depot and create_direct_to_station_order(depot_stop),
 		}
-		if same_depot then
-			records[5] = create_direct_to_station_order(depot_stop)
-		end
 	elseif IS_SE_PRESENT then
 		game.print("Compatibility with Space Exploration is broken.")
 		-- records = se_compat.se_set_manifest_schedule(
