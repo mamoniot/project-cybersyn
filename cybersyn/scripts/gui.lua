@@ -71,7 +71,7 @@ local function set_visibility(main_window, selected_index)
 end
 
 
----@param e EventData.on_gui_click
+---@param e EventData.on_gui_click|EventData.on_gui_closed
 local function handle_close(e)
 	local element = e.element
 	if not element then return end
@@ -319,39 +319,76 @@ local function handle_refresh_allow(e)
 	update_allow_list_section(e.player_index, combId)
 end
 
----@param event EventData.on_gui_opened
-local function on_gui_opened(event)
-	local entity = event.entity
-	if not entity or not entity.valid then return end
-	local name = entity.name == "entity-ghost" and entity.ghost_name or entity.name
-	if name ~= COMBINATOR_NAME then return end
-	local player = game.get_player(event.player_index)
-	if not player then return end
+---@alias EntityOpenedHandler fun(event: EventData.on_gui_opened, player: LuaPlayer, entity: LuaEntity, is_ghost: boolean) player and entity are guaranteed to be valid, is_ghost indicates if the entity is a ghost
+---@type { [string]: EntityOpenedHandler[] }
+local entity_opened_handlers = {}
 
-	gui_opened(entity, player)
+---@alias EntityClosedHandler fun(event: EventData.on_gui_closed, player: LuaPlayer, entity: LuaEntity, is_ghost: boolean) player and entity are guaranteed to be valid, is_ghost indicates if the entity is a ghost
+---@type { [string]: EntityClosedHandler[] }
+local entity_closed_handlers = {}
+
+--- Adds a gui_opened-handler to a specific entity type.
+--- gui_opened-handlers can either attach additional GUIs to the vanilla GUI of an entity or replace it entirely via player.opened
+--- In the latter case only one handler must be installed for a single entity type.
+--- Handlers also get called for ghosts of the entity and must decide wether to act or not.
+---@param entity_name string entity name to add the handler to
+---@param handler EntityOpenedHandler the handler
+function add_entity_opened_handler(entity_name, handler)
+	local event_handlers = get_or_create(entity_opened_handlers, entity_name)
+	table.insert(event_handlers, handler)
 end
 
----@param event EventData.on_gui_closed
-local function on_gui_closed(event)
-	local element = event.element
-	if not element or element.name ~= COMBINATOR_NAME then return end
-	local entity = event.entity or element.tags.unit_number and storage.to_comb[element.tags.unit_number]
-	local is_ghost = entity and entity.name == "entity-ghost"
-	local player = game.get_player(event.player_index)
-	if not player then return end
-	local rootgui = player.gui.screen
+--- Adds a gui_closed-handler for a specific entity type.
+--- The handler gets called when the vanilla GUI for that entity type is closed and should close or destroy the attached UI
+--- so that it is not visible when the vanilla GUI opens for the same machine type but a different entity type.
+--- Handlers also get called for ghosts of the entity and must decide wether to act or not.
+--- Fully custom GUIs cannot use this function.
+--- Instead, they should install an on_gui_closed handler on the GUI element they passed to player.opened using flib.
+---@param entity_name string entity name to add the handler to
+---@param handler EntityClosedHandler the handler
+function add_entity_closed_handler(entity_name, handler)
+	local event_handlers = get_or_create(entity_closed_handlers, entity_name)
+	table.insert(event_handlers, handler)
+end
 
-	if rootgui[COMBINATOR_NAME] then
-		rootgui[COMBINATOR_NAME].destroy()
-		if not is_ghost then
-			player.play_sound({ path = COMBINATOR_CLOSE_SOUND })
+---@param event EventData.on_gui_opened|EventData.on_gui_closed
+local function on_entity_gui_opened_closed(event)
+	local entity = event.entity
+	if not (event.gui_type == defines.gui_type.entity and entity and entity.valid) then
+		return false
+	end
+
+	local name = entity.name
+	local is_ghost = name == "entity-ghost"
+	if is_ghost then name = entity.ghost_name end
+
+	local event_handlers = event.name == defines.events.on_gui_opened
+		and entity_opened_handlers[name]
+		or entity_closed_handlers[name]
+
+	if event_handlers then
+		local player = assert(game.get_player(event.player_index))
+		for _, handler in ipairs(event_handlers) do
+			handler(event --[[@as any]], player, entity, is_ghost)
 		end
+	end
+	return true
+end
+
+---@param e EventData.on_gui_closed
+local function on_gui_closed(e)
+	if not on_entity_gui_opened_closed(e) and e.gui_type == defines.gui_type.custom then
+		flib_gui.dispatch(e)
 	end
 end
 
-
 function register_gui_actions()
+	add_entity_opened_handler(COMBINATOR_NAME, gui_opened) -- fully custom GUI, closes via flib handler
+	add_entity_opened_handler(Elevators.name_elevator, Elevators.on_entity_gui_opened)
+	add_entity_closed_handler(Elevators.name_elevator, Elevators.on_entity_gui_closed)
+
 	flib_gui.add_handlers({
+		["handle_close"] = handle_close,
 		["comb_close"] = handle_close,
 		["comb_refresh_allow"] = handle_refresh_allow,
 		["comb_drop_down"] = handle_drop_down,
@@ -361,13 +398,15 @@ function register_gui_actions()
 		["comb_setting_flip"] = handle_setting_flip,
 	})
 	flib_gui.handle_events()
-	script.on_event(defines.events.on_gui_opened, on_gui_opened)
+	script.on_event(defines.events.on_gui_opened, on_entity_gui_opened_closed)
 	script.on_event(defines.events.on_gui_closed, on_gui_closed)
 end
 
----@param comb LuaEntity
+---@param event EventData.on_gui_opened
 ---@param player LuaPlayer
-function gui_opened(comb, player)
+---@param comb LuaEntity
+---@param is_ghost boolean
+function gui_opened(event, player, comb, is_ghost)
 	combinator_update(storage, comb, true)
 
 	local rootgui = player.gui.screen
@@ -383,13 +422,18 @@ function gui_opened(comb, player)
 		layoutTooltip = generate_stop_layout_text(comb.unit_number)
 	end
 
-	local is_ghost = comb.name == "entity-ghost"
+	local existing = rootgui[COMBINATOR_NAME]
+	if existing then
+		existing.destroy()
+	end
 
 	local _, main_window = flib_gui.add(rootgui, {
 		{
 			type = "frame",
 			direction = "vertical",
 			name = COMBINATOR_NAME,
+			handler = { [defines.events.on_gui_closed] = handle_close },
+			tags = { id = comb.unit_number, is_ghost = is_ghost },
 			children = {
 				--title bar
 				{
@@ -410,8 +454,8 @@ function gui_opened(comb, player)
 							sprite = "utility/close",
 							hovered_sprite = "utility/close",
 							name = COMBINATOR_NAME,
-							handler = handle_close,
-							tags = { id = comb.unit_number },
+							handler = { [defines.events.on_gui_click] = handle_close },
+							tags = { id = comb.unit_number, is_ghost = is_ghost },
 						},
 					},
 				},
@@ -702,10 +746,8 @@ function gui_opened(comb, player)
 	main_window.titlebar.drag_target = main_window
 	main_window.force_auto_center()
 
-	main_window.tags = { unit_number = comb.unit_number }
-
 	set_visibility(main_window, selected_index)
-	player.opened = main_window
+	player.opened = main_window -- replace the default entity UI
 end
 
 ---@param unit_number integer
