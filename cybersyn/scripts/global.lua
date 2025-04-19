@@ -157,19 +157,6 @@
 ---@field public manager_ups double
 ---@field public manager_enabled boolean
 
----@class Cybersyn.ElevatorEndData
----@field public connector LuaEntity
----@field public elevator LuaEntity
----@field public stop LuaEntity
----@field public stop_id integer
----@field public elevator_id integer
-
----@class Cybersyn.ElevatorData
----@field public ground Cybersyn.ElevatorEndData
----@field public orbit Cybersyn.ElevatorEndData
----@field public cs_enabled boolean
----@field public network_masks {[string]: integer}?
-
 --if this is uncommented it means there are migrations to write
 
 ---@alias cybersyn.global MapData

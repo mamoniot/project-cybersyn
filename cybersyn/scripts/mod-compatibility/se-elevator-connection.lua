@@ -1,3 +1,16 @@
+---@class Cybersyn.ElevatorEndData
+---@field public connector LuaEntity
+---@field public elevator LuaEntity
+---@field public stop LuaEntity
+---@field public stop_id integer
+---@field public elevator_id integer
+
+---@class Cybersyn.ElevatorData
+---@field public ground Cybersyn.ElevatorEndData
+---@field public orbit Cybersyn.ElevatorEndData
+---@field public cs_enabled boolean
+---@field public network_masks {[string]: integer}?
+
 ---@alias SeZoneType "star"|"planet"|"moon"|"orbit"|"spaceship"|"asteroid-belt"|"asteroid-field"|"anomaly"
 ---@alias SeZoneIndex integer
 
@@ -11,6 +24,7 @@
 ---@field seed integer? -- the mapgen seed
 
 local gui = require("__flib__.gui")
+local box = require("__flib__.bounding-box")
 
 Elevators = {
 	name_elevator = "se-space-elevator",
@@ -25,9 +39,7 @@ local ENTITY_SEARCH = { Elevators.name_elevator, Elevators.name_stop }
 --- @param position MapPosition supposed to be at the center of an elevator, will be searched in a 12-tile radius
 --- @return Cybersyn.ElevatorEndData?
 local function search_entities(surface, position)
-	local x = position.x or position[1]
-	local y = position.y or position[2]
-	local search_area = { { x - 12, y - 12 }, { x + 12, y + 12 } } -- elevator is 24x24
+	local search_area = box.from_dimensions(position, 24, 24) -- elevator is 24x24
 	local elevator, stop
 
 	for _, found_entity in pairs(surface.find_entities_filtered({ name = ENTITY_SEARCH, area = search_area, })) do
@@ -231,25 +243,6 @@ function Elevators.on_entity_gui_closed(event, player, entity, is_ghost)
 end
 
 ---@param command CustomCommandData
-local function command_toggle_elevator(command)
-	if not command.player_index then
-		game.print("Can only be invoked as a player.")
-		return
-	end
-	local player = assert(game.get_player(command.player_index))
-
-	local elevator = player.selected
-	if not (elevator and elevator.valid and elevator.name == Elevators.name_elevator) then
-		player.print("You need to hover your mouse over an elevator before executing this command.")
-		return
-	end
-
-	local data = assert(Elevators.from_entity(elevator))
-	data.cs_enabled = not data.cs_enabled
-	Elevators.update_connection(data)
-end
-
----@param command CustomCommandData
 local function command_reset_elevators(command)
 	for _, data in pairs(storage.se_elevators) do
 		Surfaces.disconnect_surfaces(data.ground.stop, data.orbit.stop)
@@ -258,7 +251,4 @@ local function command_reset_elevators(command)
 	game.print("All elevator connections reset.")
 end
 
-commands.add_command("cte", { "cybersyn-messages.toggle-elevator-command-help" }, command_toggle_elevator)
 commands.add_command("cre", { "cybersyn-messages.reset-elevator-command-help" }, command_reset_elevators)
-
-return Elevators
