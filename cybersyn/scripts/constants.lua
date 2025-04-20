@@ -46,6 +46,10 @@ DELTA = 1 / 2048
 
 DEPOT_PRIORITY_MULT = 2048
 
+PROVIDER_ID_ITEM = "cybersyn-provider-id"
+REQUESTER_ID_ITEM = "cybersyn-requester-id"
+REFUELER_ID_ITEM = "cybersyn-refueler-id"
+
 STATUS_D = 0
 STATUS_TO_P = 1
 STATUS_P = 2
