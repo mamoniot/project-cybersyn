@@ -3,147 +3,169 @@
 SE_ELEVATOR_STOP_PROTO_NAME = "se-space-elevator-train-stop"
 SE_ELEVATOR_ORBIT_SUFFIX = " ↓"
 SE_ELEVATOR_PLANET_SUFFIX = " ↑"
-SE_ELEVATOR_SUFFIX_LENGTH = 4
+SE_ELEVATOR_SUFFIX_LENGTH = #SE_ELEVATOR_ORBIT_SUFFIX
+SE_ELEVATOR_PREFIX = "[img=entity/se-space-elevator]  "
+SE_ELEVATOR_PREFIX_LENGTH = #SE_ELEVATOR_PREFIX
 
 local table_insert = table.insert
 local string_sub = string.sub
 local string_len = string.len
 
+---@param record ScheduleRecord|AddRecordData
+---@return string? elevator_stop_name
+---@return boolean? is_ground_to_orbit
+local function se_is_elevator_schedule_record(record)
+	local name = record.station
+	if not name then return end
+
+	local prefix = string_sub(name, 1, SE_ELEVATOR_PREFIX_LENGTH)
+	if prefix == SE_ELEVATOR_PREFIX then
+		local suffix = string_sub(name, -SE_ELEVATOR_SUFFIX_LENGTH)
+		if suffix == SE_ELEVATOR_ORBIT_SUFFIX then
+			return name, false
+		elseif suffix == SE_ELEVATOR_PLANET_SUFFIX then
+			return name, true
+		end
+	end
+end
+
 local lib = {}
 
+---@param map_data MapData
+---@param train Train
 ---@param schedule LuaSchedule
----@param stop LuaEntity
----@param old_surface_index uint
----@param search_start uint
-local function se_add_direct_to_station_order(schedule, stop, old_surface_index, search_start)
-	--assert(search_start ~= 1 or schedule.current == 1)
-	local surface_i = stop.surface.index
-	if surface_i ~= old_surface_index then
-		local name = stop.backer_name
-		local records = schedule.get_records() --[[@as AddRecordData[] ]]
-		for i = search_start, #records do
-			if records[i].station == name then
-				local current = schedule.current
+---@param found_cybersyn_stop ScheduleSearchResult
+---@param schedule_offset integer keeps track of modifications to the actual schedule since found_cybersyn_stop was determined
+---@return integer updated_schedule_offset
+local function se_add_direct_to_station_order(map_data, train, schedule, found_cybersyn_stop, schedule_offset)
+	if not found_cybersyn_stop.rail_stop then
+		return schedule_offset
+	end
 
-				local direct_to_station = create_direct_to_station_order(stop)
-				direct_to_station.index = { schedule_index = i }
-				schedule.add_record(direct_to_station)
+	local station = nil
+	if found_cybersyn_stop.stop_type == STATUS_P and train.p_station_id == found_cybersyn_stop.stop_id then
+		station = map_data.to_stop[train.p_station_id]
+	elseif found_cybersyn_stop.stop_type == STATUS_R and train.r_station_id == found_cybersyn_stop.stop_id then
+		station = map_data.to_stop[train.r_station_id]
+	elseif found_cybersyn_stop.stop_type == STATUS_F and train.refueler_id == found_cybersyn_stop.stop_id then
+		station = map_data.to_refuelers[train.refueler_id]
+	-- Depot records are permanent records at the end of the schedule and are possibly shared by a train group.
+	-- As a consequence they cannot have any identifying information on them.
+	-- We have to blindly assume that whatever is in the schedule matches with train.depot_id
+	elseif found_cybersyn_stop.stop_type == STATUS_D and not train.use_any_depot then
+		station = map_data.depots[train.depot_id]
+	end
 
-				if (i == current) then
-					schedule.go_to_station(i)
+	local stop = station and station.entity_stop
+	if not (stop and stop.valid and stop.connected_rail) then
+		-- TODO the destination is gone, should the train be stopped? But that would clog the elevator the train just exited.
+		return schedule_offset
+	end
+
+	local real_index = found_cybersyn_stop.schedule_index + schedule_offset
+	local is_current_destination = schedule.current == real_index
+	local direct_to_station = create_direct_to_station_order(stop)
+	direct_to_station.index = { schedule_index = real_index }
+	schedule.add_record(direct_to_station)
+	if is_current_destination then
+		schedule.go_to_station(real_index)
+	end
+	return schedule_offset + 1
+end
+
+---@param map_data MapData
+---@param train Train
+local function se_add_direct_to_station_orders(map_data, train)
+	-- schedule records can only contain references to rail entities on the same surface as the train
+	-- this is why after every surface teleport we need to add the ones that could not be added earlier
+	local schedule = train.entity.get_schedule()
+	local records = assert(schedule.get_records())
+	---@type ScheduleSearchOptions
+	local options = {
+		search_index = schedule.current,
+		abort_condition = se_is_elevator_schedule_record, -- stop at the next elevator transition
+		include_depot = true,
+	}
+
+	local found_cybersyn_stop = find_next_cybersyn_stop(records, options)
+	local schedule_offset = 0 -- we search through the initial snapshot of the schedule so we need to keep track of additions to it
+
+	while found_cybersyn_stop do
+		schedule_offset = se_add_direct_to_station_order(map_data, train, schedule, found_cybersyn_stop, schedule_offset)
+		options.search_index = found_cybersyn_stop.schedule_index + 1
+		found_cybersyn_stop = find_next_cybersyn_stop(records, options)
+	end
+end
+
+local function se_on_train_teleport_started(event)
+	---@type MapData
+	local map_data = storage
+	local old_id = event.old_train_id_1
+
+	local train = map_data.trains[old_id]
+	if not train then return end
+	-- NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity
+	-- our events have either been set up to account for this or should be impossible to trigger until teleportation is finished
+	train.se_is_being_teleported = true
+	interface_raise_train_teleport_started(old_id)
+end
+
+local function se_on_train_teleport_finished(event)
+	---@type MapData
+	local map_data = storage
+	---@type LuaTrain
+	local train_entity = event.train
+	---@type uint
+	local new_id = train_entity.id
+
+	local old_id = event.old_train_id_1
+	local train = map_data.trains[old_id]
+	if not train then return end
+
+	if train.is_available then
+		local f, a
+		if train.network_name == NETWORK_EACH then
+			f, a = next, train.network_mask
+		else
+			f, a = once, train.network_name
+		end
+		for network_name in f, a do
+			local network = map_data.available_trains[network_name]
+			if network then
+				network[new_id] = true
+				network[old_id] = nil
+				if next(network) == nil then
+					map_data.available_trains[network_name] = nil
 				end
-
-				return i + 2
 			end
 		end
 	end
-	return search_start
+
+	map_data.trains[new_id] = train
+	map_data.trains[old_id] = nil
+	train.se_is_being_teleported = nil
+	train.entity = train_entity
+
+	if train.se_awaiting_removal then
+		remove_train(map_data, train.se_awaiting_removal, train)
+		lock_train(train.entity)
+		send_alert_station_of_train_broken(map_data, train.entity)
+		return
+	elseif train.se_awaiting_rename then
+		rename_manifest_schedule(train.entity, train.se_awaiting_rename[1], train.se_awaiting_rename[2])
+		train.se_awaiting_rename = nil
+	end
+
+	se_add_direct_to_station_orders(map_data, train)
+	interface_raise_train_teleported(new_id, old_id)
 end
 
 function lib.setup_se_compat()
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if not IS_SE_PRESENT then return end
 
-	local se_on_train_teleport_finished_event = remote.call("space-exploration", "get_on_train_teleport_finished_event") --[[@as string]]
-	local se_on_train_teleport_started_event = remote.call("space-exploration", "get_on_train_teleport_started_event") --[[@as string]]
-
-	---@param event {}
-	script.on_event(se_on_train_teleport_started_event, function(event)
-		---@type MapData
-		local map_data = storage
-		local old_id = event.old_train_id_1
-
-		local train = map_data.trains[old_id]
-		if not train then return end
-		--NOTE: IMPORTANT, until se_on_train_teleport_finished_event is called map_data.trains[old_id] will reference an invalid train entity; our events have either been set up to account for this or should be impossible to trigger until teleportation is finished
-		train.se_is_being_teleported = true
-		interface_raise_train_teleport_started(old_id)
-	end)
-	---@param event {}
-	script.on_event(se_on_train_teleport_finished_event, function(event)
-		---@type MapData
-		local map_data = storage
-		---@type LuaTrain
-		local train_entity = event.train
-		---@type uint
-		local new_id = train_entity.id
-		local old_surface_index = event.old_surface_index
-
-		local old_id = event.old_train_id_1
-		local train = map_data.trains[old_id]
-		if not train then return end
-
-		if train.is_available then
-			local f, a
-			if train.network_name == NETWORK_EACH then
-				f, a = next, train.network_mask
-			else
-				f, a = once, train.network_name
-			end
-			for network_name in f, a do
-				local network = map_data.available_trains[network_name]
-				if network then
-					network[new_id] = true
-					network[old_id] = nil
-					if next(network) == nil then
-						map_data.available_trains[network_name] = nil
-					end
-				end
-			end
-		end
-
-		map_data.trains[new_id] = train
-		map_data.trains[old_id] = nil
-		train.se_is_being_teleported = nil
-		train.entity = train_entity
-
-		if train.se_awaiting_removal then
-			remove_train(map_data, train.se_awaiting_removal, train)
-			lock_train(train.entity)
-			send_alert_station_of_train_broken(map_data, train.entity)
-			return
-		elseif train.se_awaiting_rename then
-			rename_manifest_schedule(train.entity, train.se_awaiting_rename[1], train.se_awaiting_rename[2])
-			train.se_awaiting_rename = nil
-		end
-
-		-- schedule records can only contain references to rail entities on the same surface as the train
-		-- this is why after every surface teleport we need to add the ones that could not be added earlier
-		local schedule = train_entity.get_schedule()
-		if schedule then
-			--this code relies on train chedules being in this specific order to work
-			local start = schedule.current
-			--check provider
-			if train.status == STATUS_TO_P then
-				local stop = map_data.stations[train.p_station_id].entity_stop
-				if stop.valid then
-					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
-				end
-			end
-			--check requester
-			if train.status == STATUS_TO_P or train.status == STATUS_TO_R then
-				local stop = map_data.stations[train.r_station_id].entity_stop
-				if stop.valid then
-					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
-				end
-			end
-			--check refueler
-			if train.status == STATUS_TO_F then
-				local stop = map_data.refuelers[train.refueler_id].entity_stop
-				if stop.valid then
-					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
-				end
-			end
-			--check depot
-			if not train.use_any_depot then
-				local stop = map_data.depots[train.depot_id].entity_stop
-				if stop.valid then
-					start = se_add_direct_to_station_order(schedule, stop, old_surface_index, start)
-				end
-			end
-		end
-		interface_raise_train_teleported(new_id, old_id)
-	end)
+	script.on_event(remote.call("space-exploration", "get_on_train_teleport_finished_event"), se_on_train_teleport_finished)
+	script.on_event(remote.call("space-exploration", "get_on_train_teleport_started_event"), se_on_train_teleport_started)
 end
 
 ---@param cache PerfCache
