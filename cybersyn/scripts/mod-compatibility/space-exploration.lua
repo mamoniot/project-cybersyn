@@ -243,35 +243,21 @@ function has_network_match(target, network_masks)
 	return false
 end
 
----@class SeElevatorTravelData
----@field elevators Cybersyn.ElevatorData[]
----@field surface_to_endpoint { [integer] : string }
-
 ---@param surface_connections Cybersyn.SurfaceConnection[]
 ---@param network_masks { [string] : integer }?
----@return SeElevatorTravelData?
-local function se_elevator_travel_data(surface_connections, network_masks)
+---@return Cybersyn.ElevatorData[]?
+local function se_get_elevators(surface_connections, network_masks)
 	local elevators, i = {}, 0
 	for _, connection in pairs(surface_connections) do
 		if connection.entity1.name == Elevators.name_stop then
 			local elevator = Elevators.from_unit_number(connection.entity1.unit_number)
 			if elevator and has_network_match(elevator, network_masks) then
 				i = i + 1
-				elevators[i] = elevator
+			elevators[i] = elevator
 			end
 		end
 	end
-
-	local _, any_elevator = next(elevators)
-	if not any_elevator then return end
-
-	return {
-		elevators = elevators,
-		surface_to_endpoint = {
-			[any_elevator.ground.stop.surface_index] = "ground",
-			[any_elevator.orbit.stop.surface_index] = "orbit",
-		},
-	}
+	return i == 0 and elevators or nil
 end
 
 ---@param elevator_name string
@@ -284,15 +270,16 @@ function lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
 	}
 end
 
----@param travel_data SeElevatorTravelData
+---Creates a schedule record for the elevator that is closest to the given entity
+---@param elevators Cybersyn.ElevatorData[] must be elevators on the surface of the given entity
 ---@param from LuaEntity
 ---@return AddRecordData?
-local function se_create_closest_elevator_travel(travel_data, from)
+local function se_create_closest_elevator_travel(elevators, from)
 	local closest, elevator_stop = 2100000000, nil
-	local endpoint = travel_data.surface_to_endpoint[from.surface_index]
+	local f_surface = from.surface_index
 
-	for _, elevator in ipairs(travel_data.elevators) do
-		local stop = elevator[endpoint].stop
+	for _, elevator in ipairs(elevators) do
+		local stop = elevator[f_surface].stop
 		local dist = get_dist(from, stop)
 		if dist < closest then
 			elevator_stop = stop
@@ -353,14 +340,14 @@ function ScheduleBuilder:add_direct_to_stop(stop)
 end
 
 ---@class SeScheduleBuilder : ScheduleBuilder
----@field private travel_data SeElevatorTravelData
+---@field private elevators Cybersyn.ElevatorData[]
 local SeScheduleBuilder = ScheduleBuilder:derive()
 
 ---@protected
----@param travel_data SeElevatorTravelData
-function SeScheduleBuilder:new(travel_data)
+---@param elevators Cybersyn.ElevatorData[]
+function SeScheduleBuilder:new(elevators)
 	local instance = self:derive(ScheduleBuilder:new())
-	instance.travel_data = travel_data
+	instance.elevators = elevators
 	return instance
 end
 
@@ -369,7 +356,7 @@ end
 ---@param from LuaEntity
 function SeScheduleBuilder:add_elevator_if_necessary(surface_from, surface_to, from)
 	if surface_from ~= surface_to then
-		self:add_surface_travel(se_create_closest_elevator_travel(self.travel_data, from))
+		self:add_surface_travel(se_create_closest_elevator_travel(self.elevators, from))
 		-- TODO se-ltn-glue has the option to add an additional clearance station that mitigates "destination limit stutter". Still needed with SE >= 0.7.13 / Factorio >= 2.0.45?
 	end
 end
@@ -400,8 +387,8 @@ function lib.se_set_manifest_schedule(
 	local t_entity = train.front_stock
 	if not t_entity then return end
 
-	local travel_data = se_elevator_travel_data(surface_connections)
-	if not travel_data then return end -- surface_connections contained no elevators
+	local elevators = se_get_elevators(surface_connections)
+	if not elevators then return end -- surface_connections contained no elevators
 
 	local d_surface = depot_stop.surface_index
 	local t_surface = t_entity.surface_index
@@ -413,7 +400,7 @@ function lib.se_set_manifest_schedule(
 		(d_surface == r_surface or d_surface == p_surface),
 		"invalid surface travel, trains can only travel to surfaces adjacent to their home surface")
 
-	local builder = SeScheduleBuilder:new(travel_data)
+	local builder = SeScheduleBuilder:new(elevators)
 
 	builder:add_elevator_if_necessary(t_surface, p_surface, t_entity)
 	builder:add_direct_to_stop(p_stop)
