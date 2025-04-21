@@ -58,6 +58,43 @@ local function get_network_name_from_item_network_name(item_network_name)
 	return network_name
 end
 
+---Trains are not allowed to move further than one surface away from their home surface.
+---This only checks if the train would be allowed to travel, not if travel is actually possible.
+---@param train_surface uint surface index of the train
+---@param stop_surface uint surface index of a destination
+---@param home_surface uint surface index of the depot
+---@return boolean
+function is_train_allowed_to_travel(train_surface, stop_surface, home_surface)
+	return train_surface == stop_surface
+		or home_surface == stop_surface
+		or train_surface == home_surface
+end
+
+---Deliveries must be on the home surface, from the home surface or to the home surface.
+---This only checks if the delivery would be allowed, not if the surfaces are actually connected.
+---@param train_surface uint surface index of the train
+---@param provider_surface uint surface index of the provider stop
+---@param requester_surface uint surface index of the requester stop
+---@param home_surface uint surface index of the depot
+---@return boolean
+function is_delivery_allowed_for_train(train_surface, provider_surface, requester_surface, home_surface)
+	if requester_surface == provider_surface then
+		-- Same surface deliveries must be pure home surface deliveries.
+		-- Otherwise surface_connections won't be calculated and the train would not know how to find home.
+		-- This is not a problem because the train is still TO_D_BYPASS.
+		-- The state just doesn't take effect for home surface deliveries until the train is back on the home surface.
+		return train_surface == requester_surface and home_surface == requester_surface
+	end
+
+	if provider_surface == home_surface then -- from the home surface
+		return train_surface == home_surface
+	end
+	if requester_surface == home_surface then -- to the home surface
+		return train_surface == provider_surface or train_surface == home_surface
+	end
+	return false
+end
+
 ---Determine if the two given entities could have a train routed between them.
 ---The entities may be either train stops or rolling stock of trains.
 ---@param e1 LuaEntity?
@@ -485,6 +522,8 @@ local function tick_dispatch(map_data, mod_settings)
 		local correctness = 0
 		local closest_to_correct_p_station = nil
 
+		local r_surface_id = r_station.entity_stop.surface_index
+
 		---@type uint?
 		local p_station_i = nil
 		local best_train_id = nil
@@ -495,7 +534,7 @@ local function tick_dispatch(map_data, mod_settings)
 		---@type uint
 		local j = 1
 		while j <= #p_stations do
-			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist, effective_threshold, slot_threshold, item_deliveries, surface_connections
+			local p_flag, r_flag, netand, best_p_train_id, best_t_prior, best_capacity, best_t_to_p_dist, effective_count, override_threshold, p_prior, best_p_to_r_dist, effective_threshold, slot_threshold, item_deliveries, surface_connections, p_surface_id
 
 			local p_station_id = p_stations[j]
 			local p_station = stations[p_station_id]
@@ -520,6 +559,7 @@ local function tick_dispatch(map_data, mod_settings)
 			if not p_station.entity_stop.valid then
 				goto p_continue
 			end
+			p_surface_id = p_station.entity_stop.surface_index
 
 			surface_connections = Surfaces.find_surface_connections(
 				p_station.entity_stop.surface,
@@ -608,8 +648,8 @@ local function tick_dispatch(map_data, mod_settings)
 						goto train_continue
 					end
 
-					-- Verify train is routable to requester.
-					if not is_train_routable(train_stock, r_station.entity_stop) then
+					local t_surface_id = train_stock.surface_index
+					if not is_delivery_allowed_for_train(t_surface_id, p_surface_id, r_surface_id, train.depot_surface_id) then
 						goto train_continue
 					end
 
