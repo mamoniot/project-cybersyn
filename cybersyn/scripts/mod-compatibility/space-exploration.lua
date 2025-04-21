@@ -34,7 +34,7 @@ local lib = {}
 ---@param map_data MapData
 ---@param train Train
 ---@param schedule LuaSchedule
----@param found_cybersyn_stop ScheduleSearchResult
+---@param found_cybersyn_stop ScheduleSearchResult 
 ---@param schedule_offset integer keeps track of modifications to the actual schedule since found_cybersyn_stop was determined
 ---@return integer updated_schedule_offset
 local function se_add_direct_to_station_order(map_data, train, schedule, found_cybersyn_stop, schedule_offset)
@@ -231,6 +231,49 @@ function lib.se_get_zone_from_surface_index(cache, surface_index)
 	return zone_index, zone_orbit_index
 end
 
+---@param target { network_masks : { [string] : integer }? }
+---@param network_masks { [string] : integer }?
+function has_network_match(target, network_masks)
+	local target_masks = target and target.network_masks
+	if not (target_masks and network_masks) then return true end
+
+	for network, mask in pairs(network_masks) do
+		if bit32.btest(target_masks[network] or 0, mask) then return true end
+	end
+	return false
+end
+
+---@class SeElevatorTravelData
+---@field elevators Cybersyn.ElevatorData[]
+---@field surface_to_endpoint { [integer] : string }
+
+---@param surface_connections Cybersyn.SurfaceConnection[]
+---@param network_masks { [string] : integer }?
+---@return SeElevatorTravelData?
+local function se_elevator_travel_data(surface_connections, network_masks)
+	local elevators, i = {}, 0
+	for _, connection in pairs(surface_connections) do
+		if connection.entity1.name == Elevators.name_stop then
+			local elevator = Elevators.from_unit_number(connection.entity1.unit_number)
+			if elevator and has_network_match(elevator, network_masks) then
+				i = i + 1
+				elevators[i] = elevator
+			end
+		end
+	end
+
+	local _, any_elevator = next(elevators)
+	if not any_elevator then return end
+
+	return {
+		elevators = elevators,
+		surface_to_endpoint = {
+			[any_elevator.ground.stop.surface_index] = "ground",
+			[any_elevator.orbit.stop.surface_index] = "orbit",
+		},
+	}
+end
+
 ---@param elevator_name string
 ---@param is_train_in_orbit boolean
 ---@return AddRecordData
@@ -241,7 +284,96 @@ function lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
 	}
 end
 
----@param cache PerfCache
+---@param travel_data SeElevatorTravelData
+---@param from LuaEntity
+---@return AddRecordData?
+local function se_create_closest_elevator_travel(travel_data, from)
+	local closest, elevator_stop = 2100000000, nil
+	local endpoint = travel_data.surface_to_endpoint[from.surface_index]
+
+	for _, elevator in ipairs(travel_data.elevators) do
+		local stop = elevator[endpoint].stop
+		local dist = get_dist(from, stop)
+		if dist < closest then
+			elevator_stop = stop
+		end
+	end
+
+	assert(elevator_stop, "travel_data had no elevators")
+	return {
+		station = elevator_stop.backer_name,
+		temporary = true,
+	}
+end
+
+---@class ScheduleBuilder : Class
+---@field public records AddRecordData[]
+---@field private i integer
+---@field private same_surface boolean
+local ScheduleBuilder = Class:derive()
+
+---@protected
+function ScheduleBuilder:new()
+	local instance = self:derive(Class:new())
+	instance.records = {}
+	instance.i = 0
+	instance.same_surface = true
+	return instance
+end
+
+---Adds the given record.
+---@param record AddRecordData? nil values are skipped
+function ScheduleBuilder:add(record)
+	if record then
+		local i = self.i + 1
+		self.records[i] = record
+		self.i = i
+	end
+end
+
+---Adds the given record and prevents further direct_to_stop records.
+---@param record AddRecordData? nil values are skipped and dont prevent further direct_to_station records
+function ScheduleBuilder:add_surface_travel(record)
+	if record then
+		local i = self.i + 1
+		self.records[i] = record
+		self.i = i
+		self.same_surface = false
+	end
+end
+
+---Adds a temporary rail record for the given train stop if there was no previous surface travel.
+---@param stop LuaEntity? invalid stops are skipped
+function ScheduleBuilder:add_direct_to_stop(stop)
+	if self.same_surface and stop and stop.valid then
+		local i = self.i + 1
+		self.records[i] = create_direct_to_station_order(stop)
+		self.i = i
+	end
+end
+
+---@class SeScheduleBuilder : ScheduleBuilder
+---@field private travel_data SeElevatorTravelData
+local SeScheduleBuilder = ScheduleBuilder:derive()
+
+---@protected
+---@param travel_data SeElevatorTravelData
+function SeScheduleBuilder:new(travel_data)
+	local instance = self:derive(ScheduleBuilder:new())
+	instance.travel_data = travel_data
+	return instance
+end
+
+---@param surface_from uint
+---@param surface_to uint
+---@param from LuaEntity
+function SeScheduleBuilder:add_elevator_if_necessary(surface_from, surface_to, from)
+	if surface_from ~= surface_to then
+		self:add_surface_travel(se_create_closest_elevator_travel(self.travel_data, from))
+		-- TODO se-ltn-glue has the option to add an additional clearance station that mitigates "destination limit stutter". Still needed with SE >= 0.7.13 / Factorio >= 2.0.45?
+	end
+end
+
 ---@param train LuaTrain
 ---@param depot_stop LuaEntity
 ---@param same_depot boolean
@@ -254,7 +386,6 @@ end
 ---@param start_at_depot boolean?
 ---@return (ScheduleRecord[])?
 function lib.se_set_manifest_schedule(
-		cache,
 		train,
 		depot_stop,
 		same_depot,
@@ -265,53 +396,37 @@ function lib.se_set_manifest_schedule(
 		manifest,
 		surface_connections,
 		start_at_depot)
-	local t_surface = train.front_stock.surface
-	local p_surface = p_stop.surface
-	local r_surface = r_stop.surface
-	local d_surface_i = depot_stop.surface.index
-	local t_surface_i = t_surface.index
-	local p_surface_i = p_surface.index
-	local r_surface_i = r_surface.index
-	local is_p_on_t = t_surface_i == p_surface_i
-	local is_r_on_t = t_surface_i == r_surface_i
-	local is_d_on_t = t_surface_i == d_surface_i
 
-	local other_surface_i = (not is_p_on_t and p_surface_i) or (not is_r_on_t and r_surface_i) or d_surface_i
-	if (is_p_on_t or p_surface_i == other_surface_i) and (is_r_on_t or r_surface_i == other_surface_i) and (is_d_on_t or d_surface_i == other_surface_i) then
-		local t_zone_index, t_zone_orbit_index = lib.se_get_zone_from_surface_index(cache, t_surface_i)
-		local other_zone_index, other_zone_orbit_index = lib.se_get_zone_from_surface_index(cache,
-			other_surface_i)
-		if t_zone_index and other_zone_index then
-			local is_train_in_orbit = other_zone_orbit_index == t_zone_index
-			if is_train_in_orbit or t_zone_orbit_index == other_zone_index then
-				local elevator_name = lib.se_get_space_elevator_name(cache, t_surface)
-				if elevator_name then
-					local records = { create_inactivity_order(depot_stop.backer_name) }
-					if t_surface_i == p_surface_i then
-						records[#records + 1] = create_direct_to_station_order(p_stop)
-					else
-						records[#records + 1] = lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
-						is_train_in_orbit = not is_train_in_orbit
-					end
-					records[#records + 1] = create_loading_order(p_stop, manifest, p_schedule_settings)
+	local t_entity = train.front_stock
+	if not t_entity then return end
 
-					if p_surface_i ~= r_surface_i then
-						records[#records + 1] = lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
-						is_train_in_orbit = not is_train_in_orbit
-					elseif t_surface_i == r_surface_i then
-						records[#records + 1] = create_direct_to_station_order(r_stop)
-					end
-					records[#records + 1] = create_unloading_order(r_stop, r_schedule_settings)
-					if r_surface_i ~= d_surface_i then
-						records[#records + 1] = lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
-						is_train_in_orbit = not is_train_in_orbit
-					end
+	local travel_data = se_elevator_travel_data(surface_connections)
+	if not travel_data then return end -- surface_connections contained no elevators
 
-					return records
-				end
-			end
-		end
-	end
+	local d_surface = depot_stop.surface_index
+	local t_surface = t_entity.surface_index
+	local p_surface = p_stop.surface_index
+	local r_surface = r_stop.surface_index
+
+	assert( -- tick_dispatch must discard this scenario
+		(t_surface == r_surface or t_surface == p_surface) and
+		(d_surface == r_surface or d_surface == p_surface),
+		"invalid surface travel, trains can only travel to surfaces adjacent to their home surface")
+
+	local builder = SeScheduleBuilder:new(travel_data)
+
+	builder:add_elevator_if_necessary(t_surface, p_surface, t_entity)
+	builder:add_direct_to_stop(p_stop)
+	builder:add(create_loading_order(p_stop, manifest, p_schedule_settings, true))
+
+	builder:add_elevator_if_necessary(p_surface, r_surface, p_stop)
+	builder:add_direct_to_stop(r_stop)
+	builder:add(create_unloading_order(r_stop, r_schedule_settings, true))
+
+	builder:add_elevator_if_necessary(r_surface, d_surface, r_stop)
+	builder:add_direct_to_stop(same_depot and depot_stop or nil)
+
+	return builder.records
 end
 
 ---@param cache PerfCache
