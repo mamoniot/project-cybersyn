@@ -111,6 +111,7 @@ function add_available_train_to_depot(map_data, mod_settings, train_id, train, d
 	end
 	depot.available_train_id = train_id
 	train.depot_id = depot_id
+	train.depot_surface_id = depot.entity_stop.surface_index
 	train.status = STATUS_D
 
 	add_available_train(map_data, train_id, train)

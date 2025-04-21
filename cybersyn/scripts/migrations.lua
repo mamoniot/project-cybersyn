@@ -370,6 +370,18 @@ local migrations_table = {
 			::next_train::
 		end
 	end,
+	["2.0.23"] = function()
+		local map_data = storage --[[@as MapData]]
+
+		for _, cybersyn_train in pairs(map_data.trains) do
+			local train = cybersyn_train.entity
+			if train and train.valid then
+				local depot = map_data.depots[cybersyn_train.depot_id]
+				local depot_stop = depot and depot.entity_stop
+				cybersyn_train.depot_surface_id = depot_stop and depot_stop.surface_index or train.front_stock.surface_index
+			end
+		end
+	end
 }
 --STATUS_R_TO_D = 5
 ---@param data ConfigurationChangedData
@@ -377,6 +389,8 @@ function on_config_changed(data)
 	storage.tick_state = STATE_INIT
 	storage.tick_data = {}
 	storage.perf_cache = {}
+	get_or_create(storage, "se_elevators")
+	get_or_create(storage, "connected_surfaces")
 
 	flib_migration.on_config_changed(data, migrations_table)
 
