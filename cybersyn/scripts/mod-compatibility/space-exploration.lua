@@ -34,21 +34,21 @@ local lib = {}
 ---@param map_data MapData
 ---@param train Train
 ---@param schedule LuaSchedule
----@param found_cybersyn_stop ScheduleSearchResult 
+---@param found_cybersyn_stop ScheduleSearchResult
 ---@param schedule_offset integer keeps track of modifications to the actual schedule since found_cybersyn_stop was determined
 ---@return integer updated_schedule_offset
 local function se_add_direct_to_station_order(map_data, train, schedule, found_cybersyn_stop, schedule_offset)
-	if not found_cybersyn_stop.rail_stop then
-		return schedule_offset
+	if found_cybersyn_stop.rail_stop then
+		return schedule_offset -- already has a rail stop
 	end
 
 	local station = nil
 	if found_cybersyn_stop.stop_type == STATUS_P and train.p_station_id == found_cybersyn_stop.stop_id then
-		station = map_data.to_stop[train.p_station_id]
+		station = map_data.stations[train.p_station_id]
 	elseif found_cybersyn_stop.stop_type == STATUS_R and train.r_station_id == found_cybersyn_stop.stop_id then
-		station = map_data.to_stop[train.r_station_id]
+		station = map_data.stations[train.r_station_id]
 	elseif found_cybersyn_stop.stop_type == STATUS_F and train.refueler_id == found_cybersyn_stop.stop_id then
-		station = map_data.to_refuelers[train.refueler_id]
+		station = map_data.refuelers[train.refueler_id]
 	-- Depot records are permanent records at the end of the schedule and are possibly shared by a train group.
 	-- As a consequence they cannot have any identifying information on them.
 	-- We have to blindly assume that whatever is in the schedule matches with train.depot_id
@@ -253,11 +253,11 @@ local function se_get_elevators(surface_connections, network_masks)
 			local elevator = Elevators.from_unit_number(connection.entity1.unit_number)
 			if elevator and has_network_match(elevator, network_masks) then
 				i = i + 1
-			elevators[i] = elevator
+				elevators[i] = elevator
 			end
 		end
 	end
-	return i == 0 and elevators or nil
+	return i > 0 and elevators or nil
 end
 
 ---@param elevator_name string

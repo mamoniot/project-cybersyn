@@ -933,7 +933,7 @@ function tick_poll_entities(map_data, mod_settings)
 		if tick_data.last_train == nil or map_data.trains[tick_data.last_train] then
 			local train_id, train = next(map_data.trains, tick_data.last_train)
 			tick_data.last_train = train_id
-			if train then
+			if train and not train.se_is_being_teleported then
 				if (not train.entity or not train.entity.valid) then
 					game.print(
 						"Cybersyn: Lost track of invalid train after migration. You need to check for lost trains manually. You might get a few of these messages.")

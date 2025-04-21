@@ -473,7 +473,6 @@ function set_manifest_schedule(
 		}
 	elseif IS_SE_PRESENT then
 		records = se_compat.se_set_manifest_schedule(
-			map_data.perf_cache,
 			train,
 			depot_stop,
 			same_depot,
