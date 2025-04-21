@@ -2,14 +2,18 @@
 ---@field public connector LuaEntity
 ---@field public elevator LuaEntity
 ---@field public stop LuaEntity
----@field public stop_id integer
----@field public elevator_id integer
+---@field public stop_id uint
+---@field public elevator_id uint
+---@field public surface_id uint
+---@field public is_orbit boolean
 
+---Can be accessed with field-names or with the corresponding surface indices
 ---@class Cybersyn.ElevatorData
 ---@field public ground Cybersyn.ElevatorEndData
 ---@field public orbit Cybersyn.ElevatorEndData
 ---@field public cs_enabled boolean
 ---@field public network_masks {[string]: integer}?
+---@field public [uint] Cybersyn.ElevatorEndData
 
 ---@alias SeZoneType "star"|"planet"|"moon"|"orbit"|"spaceship"|"asteroid-belt"|"asteroid-field"|"anomaly"
 ---@alias SeZoneIndex integer
@@ -134,10 +138,16 @@ function Elevators.from_entity(entity)
 		-- no entity in the world has this information so reset to "no network restrictions but disabled"
 		cs_enabled = false,
 		network_masks = nil,
+		[entity.surface_index] = end1,
+		[opposite_surface_index] = end2,
 	}
 	if data.ground == data.orbit then
 		error("only know how to handle elevators in zone.type 'planet', 'moon' and 'orbit'")
 	end
+	data.ground.is_orbit = false
+	data.orbit.is_orbit = true
+	end1.surface_id = entity.surface_index
+	end2.surface_id = opposite_surface_index
 
 	storage.se_elevators[data.ground.elevator_id] = data
 	storage.se_elevators[data.orbit.elevator_id] = data
