@@ -1,7 +1,7 @@
 --By Mami
 local min = math.min
 local INF = math.huge
-local btest = bit32.btest
+local band = bit32.band
 
 ---@param map_data MapData
 ---@param station Station
@@ -320,6 +320,10 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 			end
 		else
 			-- Train needs refueled. Locate matching refueler.
+			local t_stock = assert(train.entity.front_stock, "train without stock in a train event")
+			local t_surface = t_stock.surface_index
+			local d_surface = train.depot_surface_id
+
 			local f, a
 			if train.network_name == NETWORK_EACH then
 				f, a = next, train.network_mask
@@ -332,6 +336,9 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 					local best_refueler_id = nil
 					local best_dist = INF
 					local best_prior = -INF
+					local best_f_surface
+					local best_surface_connections
+
 					for id, _ in pairs(refuelers) do
 						local refueler = map_data.refuelers[id]
 						if not refueler.entity_stop.valid or not refueler.entity_comb.valid then
@@ -341,20 +348,32 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 
 							local refueler_network_mask = get_network_mask(refueler, network_name)
 							local train_network_mask = get_network_mask(train, network_name)
+							local netand = band(train_network_mask, refueler_network_mask)
 							-- Verify refueler compatibility with train.
 							if
-									btest(train_network_mask, refueler_network_mask) and
-									(refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and
-									refueler.trains_total < refueler.entity_stop.trains_limit and
-									is_train_routable(get_any_train_entity(train.entity), refueler.entity_stop)
+								netand ~= 0 and
+								(refueler.allows_all_trains or refueler.accepted_layouts[train.layout_id]) and
+								refueler.trains_total < refueler.entity_stop.trains_limit
 							then
-								if refueler.priority >= best_prior then
-									local t = get_any_train_entity(train.entity)
-									local dist = t and get_dist(t, refueler.entity_stop) or INF
-									if refueler.priority > best_prior or dist < best_dist then
-										best_refueler_id = id
-										best_dist = dist
-										best_prior = refueler.priority
+								local f_surface = refueler.entity_stop.surface_index
+								if is_train_allowed_to_travel(t_surface, f_surface, d_surface) then
+									-- Surface connections are first obtained without a netmask because if there is a refueler the train needs to go there.
+									-- If travel is not possible, the train must stop and not head back to the depot where it probably won't be refueled.
+									local surface_connections = t_surface == f_surface
+										and Surfaces.find_surface_connections(t_surface, d_surface) -- will return {} if all on same surface
+										or Surfaces.find_surface_connections(t_surface, f_surface)
+
+									if surface_connections and refueler.priority >= best_prior then
+										local t = get_any_train_entity(train.entity)
+										local dist = t and get_dist(t, refueler.entity_stop) or INF
+										if refueler.priority > best_prior or dist < best_dist then
+											best_refueler_id = id
+											best_dist = dist
+											best_prior = refueler.priority
+											best_f_surface = f_surface
+											-- now filter by network mask
+											best_surface_connections = Surfaces.filter_by_network(surface_connections, network_name, netand)
+										end
 									end
 								end
 							end
@@ -362,7 +381,22 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 					end
 					if best_refueler_id then
 						local refueler = map_data.refuelers[best_refueler_id]
-						if add_refueler_schedule(map_data, train.entity, refueler.entity_stop) then
+
+						---@type RefuelSchedulingData
+						local data = { -- don't make API calls for information we already have
+							train = train, t_id = train_id, t_surface = t_surface,
+							t_entity = train.entity,
+							t_stock = t_stock,
+							t_schedule = train.entity.get_schedule(),
+
+							refueler = refueler, f_id = best_refueler_id, f_surface = best_f_surface,
+							f_stop = refueler.entity_stop,
+
+							all_same_surface = t_surface == best_f_surface and t_surface == d_surface,
+							surface_connections = best_surface_connections,
+						}
+
+						if add_refueler_schedule(map_data, data) then
 							train.status = STATUS_TO_F
 							train.refueler_id = best_refueler_id
 							refueler.trains_total = refueler.trains_total + 1

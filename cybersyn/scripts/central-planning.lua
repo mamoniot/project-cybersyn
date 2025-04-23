@@ -95,17 +95,6 @@ function is_delivery_allowed_for_train(train_surface, provider_surface, requeste
 	return false
 end
 
----Determine if the two given entities could have a train routed between them.
----The entities may be either train stops or rolling stock of trains.
----@param e1 LuaEntity?
----@param e2 LuaEntity?
----@return boolean
-function is_train_routable(e1, e2)
-	if not (e1 and e2) then return false end
-	-- trains are only sourced from the same surface, closest is hard to calculate when a surface travel is involved
-	return (e1.surface == e2.surface)
-end
-
 ---Checks that the train has a base schedule it can return to after a delivery.
 ---If it does not, the train is removed from Cybersyn and an alert is generated.
 ---@param train Train

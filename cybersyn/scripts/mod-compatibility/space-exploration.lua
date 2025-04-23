@@ -7,9 +7,7 @@ SE_ELEVATOR_SUFFIX_LENGTH = #SE_ELEVATOR_ORBIT_SUFFIX
 SE_ELEVATOR_PREFIX = "[img=entity/se-space-elevator]  "
 SE_ELEVATOR_PREFIX_LENGTH = #SE_ELEVATOR_PREFIX
 
-local table_insert = table.insert
 local string_sub = string.sub
-local string_len = string.len
 
 ---@param record ScheduleRecord|AddRecordData
 ---@return string? elevator_stop_name
@@ -42,29 +40,41 @@ local function se_add_direct_to_station_order(map_data, train, schedule, found_c
 		return schedule_offset -- already has a rail stop
 	end
 
+	---@param station Station|Refueler|Depot|nil
+	---@param send_alert fun(map_data: MapData, train: LuaTrain)
+	---@return Station|Refueler|Depot|nil
+	local function validate(station, send_alert)
+		local stop = station and station.entity_stop
+		if stop and stop.valid and stop.connected_rail then
+			return station
+		end
+
+		-- This will clog the elevator exit which is better than to misdirect trains.
+		lock_train(train.entity)
+		send_alert(map_data, train.entity)
+	end
+
 	local station = nil
 	if found_cybersyn_stop.stop_type == STATUS_P and train.p_station_id == found_cybersyn_stop.stop_id then
-		station = map_data.stations[train.p_station_id]
+		station = validate(map_data.stations[train.p_station_id], send_alert_station_of_train_broken)
 	elseif found_cybersyn_stop.stop_type == STATUS_R and train.r_station_id == found_cybersyn_stop.stop_id then
-		station = map_data.stations[train.r_station_id]
+		station = validate(map_data.stations[train.r_station_id], send_alert_station_of_train_broken)
 	elseif found_cybersyn_stop.stop_type == STATUS_F and train.refueler_id == found_cybersyn_stop.stop_id then
-		station = map_data.refuelers[train.refueler_id]
+		station = validate(map_data.refuelers[train.refueler_id], send_alert_refueler_of_train_broken)
 	-- Depot records are permanent records at the end of the schedule and are possibly shared by a train group.
 	-- As a consequence they cannot have any identifying information on them.
 	-- We have to blindly assume that whatever is in the schedule matches with train.depot_id
 	elseif found_cybersyn_stop.stop_type == STATUS_D and not train.use_any_depot then
-		station = map_data.depots[train.depot_id]
+		station = validate(map_data.depots[train.depot_id], send_alert_depot_of_train_broken)
 	end
 
-	local stop = station and station.entity_stop
-	if not (stop and stop.valid and stop.connected_rail) then
-		-- TODO the destination is gone, should the train be stopped? But that would clog the elevator the train just exited.
-		return schedule_offset
+	if not station then
+		return schedule_offset -- no change to schedule
 	end
 
 	local real_index = found_cybersyn_stop.schedule_index + schedule_offset
 	local is_current_destination = schedule.current == real_index
-	local direct_to_station = create_direct_to_station_order(stop)
+	local direct_to_station = create_direct_to_station_order(station.entity_stop)
 	direct_to_station.index = { schedule_index = real_index }
 	schedule.add_record(direct_to_station)
 	if is_current_destination then
@@ -166,69 +176,6 @@ function lib.setup_se_compat()
 
 	script.on_event(remote.call("space-exploration", "get_on_train_teleport_finished_event"), se_on_train_teleport_finished)
 	script.on_event(remote.call("space-exploration", "get_on_train_teleport_started_event"), se_on_train_teleport_started)
-end
-
----@param cache PerfCache
----@param surface LuaSurface
-function lib.se_get_space_elevator_name(cache, surface)
-	---@type LuaEntity?
-	local entity = nil
-	local cache_idx = surface.index
-	if cache.se_get_space_elevator_name then
-		entity = cache.se_get_space_elevator_name[cache_idx]
-	else
-		cache.se_get_space_elevator_name = {}
-	end
-
-	if not entity or not entity.valid then
-		--Caching failed, default to expensive lookup
-		entity = surface.find_entities_filtered({
-			name = SE_ELEVATOR_STOP_PROTO_NAME,
-			type = "train-stop",
-			limit = 1,
-		})[1]
-
-		if entity then
-			cache.se_get_space_elevator_name[cache_idx] = entity
-		end
-	end
-
-	if entity and entity.valid then
-		return string_sub(entity.backer_name, 1, string_len(entity.backer_name) - SE_ELEVATOR_SUFFIX_LENGTH)
-	else
-		return nil
-	end
-end
-
----@param cache PerfCache
----@param surface_index uint
-function lib.se_get_zone_from_surface_index(cache, surface_index)
-	---@type uint?
-	local zone_index = nil
-	---@type uint?
-	local zone_orbit_index = nil
-	local cache_idx = 2 * surface_index
-	if cache.se_get_zone_from_surface_index then
-		zone_index = cache.se_get_zone_from_surface_index[cache_idx - 1] --[[@as uint]]
-		--zones may not have an orbit_index
-		zone_orbit_index = cache.se_get_zone_from_surface_index[cache_idx] --[[@as uint?]]
-	else
-		cache.se_get_zone_from_surface_index = {}
-	end
-
-	if not zone_index then
-		zone = remote.call("space-exploration", "get_zone_from_surface_index", { surface_index = surface_index })
-
-		if zone and type(zone.index) == "number" then
-			zone_index = zone.index --[[@as uint]]
-			zone_orbit_index = zone.orbit_index --[[@as uint?]]
-			--NOTE: caching these indices could be a problem if SE is not deterministic in choosing them
-			cache.se_get_zone_from_surface_index[cache_idx - 1] = zone_index
-			cache.se_get_zone_from_surface_index[cache_idx] = zone_orbit_index
-		end
-	end
-
-	return zone_index, zone_orbit_index
 end
 
 ---@param target { network_masks : { [string] : integer }? }
@@ -371,7 +318,7 @@ end
 ---@param manifest Manifest
 ---@param surface_connections Cybersyn.SurfaceConnection[]
 ---@param start_at_depot boolean?
----@return (ScheduleRecord[])?
+---@return AddRecordData[]?
 function lib.se_set_manifest_schedule(
 		train,
 		depot_stop,
@@ -384,25 +331,20 @@ function lib.se_set_manifest_schedule(
 		surface_connections,
 		start_at_depot)
 
-	local t_entity = train.front_stock
-	if not t_entity then return end
+	local t_stock = train.front_stock
+	if not t_stock then return end
 
 	local elevators = se_get_elevators(surface_connections)
 	if not elevators then return end -- surface_connections contained no elevators
 
 	local d_surface = depot_stop.surface_index
-	local t_surface = t_entity.surface_index
+	local t_surface = t_stock.surface_index
 	local p_surface = p_stop.surface_index
 	local r_surface = r_stop.surface_index
 
-	assert( -- tick_dispatch must discard this scenario
-		(t_surface == r_surface or t_surface == p_surface) and
-		(d_surface == r_surface or d_surface == p_surface),
-		"invalid surface travel, trains can only travel to surfaces adjacent to their home surface")
-
 	local builder = SeScheduleBuilder:new(elevators)
 
-	builder:add_elevator_if_necessary(t_surface, p_surface, t_entity)
+	builder:add_elevator_if_necessary(t_surface, p_surface, t_stock)
 	builder:add_direct_to_stop(p_stop)
 	builder:add(create_loading_order(p_stop, manifest, p_schedule_settings, true))
 
@@ -411,52 +353,28 @@ function lib.se_set_manifest_schedule(
 	builder:add(create_unloading_order(r_stop, r_schedule_settings, true))
 
 	builder:add_elevator_if_necessary(r_surface, d_surface, r_stop)
-	builder:add_direct_to_stop(same_depot and depot_stop or nil)
+	-- there must be at least one surface travel, no need to deal with require_same_depot here
 
 	return builder.records
 end
 
----@param cache PerfCache
----@param train LuaTrain
----@param stop LuaEntity
----@param schedule LuaSchedule Pre-existing schedule. Will be mutated by this function.
----@return boolean?
-function lib.se_add_refueler_schedule(cache, train, stop, schedule)
-	local t_surface = train.front_stock.surface
-	local f_surface = stop.surface
-	local t_surface_i = t_surface.index
-	local f_surface_i = f_surface.index
+---@param map_data MapData
+---@param data RefuelSchedulingData
+---@return AddRecordData[]?
+function lib.se_add_refueler_schedule(map_data, data)
+	local elevators = se_get_elevators(data.surface_connections)
+	if not elevators then return end -- surface_connections contained no elevators
 
-	-- FIXME i is not defined anymore, this lost context when the code got moved to a separate module
+	local builder = SeScheduleBuilder:new(elevators)
 
-	local t_zone_index, t_zone_orbit_index = lib.se_get_zone_from_surface_index(cache, t_surface_i)
-	local other_zone_index, other_zone_orbit_index = lib.se_get_zone_from_surface_index(cache, f_surface_i)
-	if t_zone_index and other_zone_index then
-		local is_train_in_orbit = other_zone_orbit_index == t_zone_index
-		if is_train_in_orbit or t_zone_orbit_index == other_zone_index then
-			local elevator_name = lib.se_get_space_elevator_name(cache, t_surface)
-			if elevator_name then
-				local cur_order = schedule.records[i]
-				local is_elevator_in_orders_already = cur_order and
-						cur_order.station ==
-						elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX)
-				if not is_elevator_in_orders_already then
-					table_insert(schedule.records, i, lib.se_create_elevator_order(elevator_name, is_train_in_orbit))
-				end
-				i = i + 1
-				is_train_in_orbit = not is_train_in_orbit
-				table_insert(schedule.records, i, create_inactivity_order(stop.backer_name))
-				i = i + 1
-				if not is_elevator_in_orders_already then
-					table_insert(schedule.records, i, lib.se_create_elevator_order(elevator_name, is_train_in_orbit))
-					i = i + 1
-					is_train_in_orbit = not is_train_in_orbit
-				end
+	builder:add_elevator_if_necessary(data.t_surface, data.f_surface, data.t_stock)
+	builder:add_direct_to_stop(data.f_stop)
+	builder:add(create_inactivity_order(data.f_stop.backer_name, REFUELER_ID_ITEM, data.f_stop.unit_number))
 
-				return true
-			end
-		end
-	end
+	builder:add_elevator_if_necessary(data.f_surface, data.train.depot_surface_id, data.f_stop)
+	-- there must be at least one surface travel, no need to deal with require_same_depot here
+
+	return builder.records
 end
 
 return lib

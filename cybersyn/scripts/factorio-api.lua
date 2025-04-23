@@ -473,18 +473,18 @@ function set_manifest_schedule(
 		}
 	else
 		if IS_SE_PRESENT then
-		records = se_compat.se_set_manifest_schedule(
-			train,
-			depot_stop,
-			same_depot,
-			p_stop,
-			p_schedule_settings,
-			r_stop,
-			r_schedule_settings,
-			manifest,
-			surface_connections,
-			start_at_depot
-		)
+			records = se_compat.se_set_manifest_schedule(
+				train,
+				depot_stop,
+				same_depot,
+				p_stop,
+				p_schedule_settings,
+				r_stop,
+				r_schedule_settings,
+				manifest,
+				surface_connections,
+				start_at_depot
+			)
 		end
 
 		-- if not records and OTHER_TRAVEL_METHOD then ...
@@ -505,42 +505,64 @@ function set_manifest_schedule(
 	return true
 end
 
+---@class RefuelSchedulingData
+---@field train Train
+---@field t_id uint
+---@field t_surface uint
+---@field t_entity LuaTrain
+---@field t_stock LuaEntity
+---@field t_schedule LuaSchedule
+---@field refueler Refueler
+---@field f_id uint
+---@field f_surface uint
+---@field f_stop LuaEntity
+---@field all_same_surface boolean
+---@field surface_connections Cybersyn.SurfaceConnection[]
+
 ---NOTE: does not check .valid
 ---@param map_data MapData
----@param train LuaTrain
----@param stop LuaEntity
-function add_refueler_schedule(map_data, train, stop)
+---@param data RefuelSchedulingData
+function add_refueler_schedule(map_data, data)
+	local stop = data.f_stop
 	if not stop.connected_rail then
-		send_alert_refueler_of_train_broken(map_data, train)
+		send_alert_refueler_of_train_broken(map_data, data.t_entity)
 		return false
 	end
 
-	local schedule = train.get_schedule()
+	local schedule = data.t_schedule
+	local records = nil
 
-	local t_surface = train.front_stock.surface
-	local f_surface = stop.surface
-	local t_surface_i = t_surface.index
-	local f_surface_i = f_surface.index
-	if t_surface_i == f_surface_i then
-		local refueler_index = add_records_after_interrupt(schedule, {
+	if data.all_same_surface then
+		records = {
 			create_direct_to_station_order(stop),
 			create_inactivity_order(stop.backer_name),
-		})
+			-- no need to deal with direct-to-depot, must already be present and won't be removed
+		}
+	else
+		if IS_SE_PRESENT then
+			records = se_compat.se_add_refueler_schedule(map_data, data)
+		end
+
+		-- if not records and OTHER_TRAVEL_METHOD then ...
+	end
+
+	if records and next(records) then
+		if not data.all_same_surface then
+			-- inter-surface travel has to provide a completely new Cybersyn schedule
+			clean_temporary_records(schedule)
+		end
+
+		local refueler_index = add_records_after_interrupt(schedule, records)
 		if schedule.current >= refueler_index then
 			schedule.go_to_station(refueler_index)
 		end
 		return true
-	elseif IS_SE_PRESENT then
-		game.print("Compatibility with Space Exploration is broken.")
-		-- if se_compat.se_add_refueler_schedule(map_data.perf_cache, train, stop, schedule) then
-		-- 	train.schedule = schedule
-		-- 	return true
-		-- end
 	end
+
 	--create an order that probably cannot be fulfilled and alert the player
-	add_records_after_interrupt(schedule, { create_inactivity_order(stop.backer_name) })
-	lock_train(train)
-	send_alert_cannot_path_between_surfaces(map_data, train)
+	add_records_after_interrupt(schedule, { create_inactivity_order(data.f_stop.backer_name) })
+	lock_train(data.t_entity)
+	send_alert_cannot_path_between_surfaces(map_data, data.t_entity)
 	return false
 end
 
