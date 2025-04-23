@@ -615,6 +615,7 @@ local function tick_dispatch(map_data, mod_settings)
 			best_t_prior = -INF
 			best_capacity = 0
 			best_t_to_p_dist = INF
+			best_t_to_r_is_return_home_surface = false
 			if trains then
 				for train_id, _ in pairs(trains) do
 					local train = map_data.trains[train_id]
@@ -683,6 +684,14 @@ local function tick_dispatch(map_data, mod_settings)
 						goto train_continue
 					end
 
+					-- favor trains for which this would be a trip back to their home surface
+					local t_to_r_is_return_home_surface =
+							r_surface_id ~= t_surface_id and
+							r_surface_id == train.depot_surface_id
+					if best_t_to_r_is_return_home_surface and not t_to_r_is_return_home_surface then
+						goto train_continue
+					end
+
 					--check if path is shortest so we prioritize locality
 					local t_to_p_dist =
 							train_stock and p_station.entity_stop.valid and
@@ -702,6 +711,7 @@ local function tick_dispatch(map_data, mod_settings)
 					best_capacity = capacity
 					best_t_prior = train.priority
 					best_t_to_p_dist = t_to_p_dist
+					best_t_to_r_is_return_home_surface = t_to_r_is_return_home_surface
 					::train_continue::
 				end
 			end
