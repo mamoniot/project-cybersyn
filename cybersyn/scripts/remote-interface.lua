@@ -286,9 +286,18 @@ end
 ---@param manifest Manifest
 function interface.create_delivery(r_station_id, p_station_id, train_id, manifest)
 	local train = storage.trains[train_id]
-	assert(storage.stations[r_station_id] and storage.stations[p_station_id] and train and train.is_available and manifest)
-	return create_delivery(storage, r_station_id, p_station_id, train_id, manifest, {})
+	local p_station = storage.stations[r_station_id]
+	local r_station = storage.stations[p_station_id]
+	assert(p_station and r_station and train and train.is_available and manifest)
+
+	local p_surface = p_station.entity_stop.surface_index
+	local r_surface = r_station.entity_stop.surface_index
+	local surface_connections = Surfaces.find_surface_connections(p_surface, r_surface)
+	if surface_connections then
+		return create_delivery(storage, r_station_id, p_station_id, train_id, manifest, surface_connections)
+	end
 end
+
 ---@param train_id uint
 function interface.fail_delivery(train_id)
 	local train = storage.trains[train_id]
