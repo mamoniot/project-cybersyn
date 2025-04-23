@@ -50,6 +50,54 @@ function Surfaces.find_surface_connections_masked(surface1, surface2, network_na
     end
 end
 
+---Filters a list of matching entity-pairs each connecting the two surfaces.
+---@param surface1 uint
+---@param surface2 uint
+---@return Cybersyn.SurfaceConnection[]? connecting_entity_pairs nil without a match, empty if surface1 == surface2
+---@return integer match_count the size of the list
+function Surfaces.find_surface_connections(surface1, surface2)
+    if surface1 == surface2 then return SAME_SURFACE, 0 end
+
+    local surface_pair_key = sorted_pair(surface1, surface2)
+    local surface_connections = storage.connected_surfaces[surface_pair_key]
+    if not surface_connections then return nil, 0 end
+
+    local matching_connections = {}
+    local count = 0
+
+    for entity_pair_key, connection in pairs(surface_connections) do
+        if connection.entity1.valid and connection.entity2.valid then
+            count = count + 1
+            matching_connections[count] = connection
+        else
+            if debug_log then log(format("removing invalid surface connection [%s] between surfaces [%s]", entity_pair_key, surface_pair_key)) end
+            surface_connections[entity_pair_key] = nil
+        end
+    end
+
+    if count > 0 then
+        return matching_connections, count
+    else
+        return nil, 0
+    end
+end
+
+---@param surface_connections Cybersyn.SurfaceConnection[]
+---@param network_name string
+---@param network_mask integer
+---@return Cybersyn.SurfaceConnection[] remaining_connections nil if all connections got filtered out
+---@return integer remaining_count
+function Surfaces.filter_by_network(surface_connections, network_name, network_mask)
+	local filtered, count = {}, 0
+	for _, connection in ipairs(surface_connections) do
+		if not connection.network_masks or btest(network_mask, connection.network_masks[network_name] or 0) then
+			count = count + 1
+			filtered[count] = connection
+		end
+	end
+	return filtered, count
+end
+
 -- removes the surface connection between the given entities from storage.SurfaceConnections. Does nothing if the connection doesn't exist.
 ---@param entity1 LuaEntity
 ---@param entity2 LuaEntity
