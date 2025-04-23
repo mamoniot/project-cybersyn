@@ -27,8 +27,8 @@ end
 ---@param entity0 LuaEntity
 ---@param entity1 LuaEntity
 function get_dist(entity0, entity1)
-	local surface0 = entity0.surface.index
-	local surface1 = entity1.surface.index
+	local surface0 = entity0.surface_index
+	local surface1 = entity1.surface_index
 	return (surface0 == surface1 and get_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE)
 end
 
@@ -452,26 +452,27 @@ function set_manifest_schedule(
 		return true
 	end
 
-	local t_surface = train.front_stock.surface
-	local p_surface = p_stop.surface
-	local r_surface = r_stop.surface
-	local d_surface_i = depot_stop.surface.index
-	local t_surface_i = t_surface.index
-	local p_surface_i = p_surface.index
-	local r_surface_i = r_surface.index
-	local is_p_on_t = t_surface_i == p_surface_i
-	local is_r_on_t = t_surface_i == r_surface_i
-	local is_d_on_t = t_surface_i == d_surface_i
+	local t_surface = train.front_stock.surface_index
+	local p_surface = p_stop.surface_index
+	local r_surface = r_stop.surface_index
+	local d_surface = depot_stop.surface_index
+	local all_same_surface =
+		t_surface == p_surface and
+		t_surface == r_surface and
+		t_surface == d_surface
+
 	local records = nil
-	if is_p_on_t and is_r_on_t and is_d_on_t then
+
+	if all_same_surface then
 		records = {
 			create_direct_to_station_order(p_stop),
 			create_loading_order(p_stop, manifest, p_schedule_settings),
 			create_direct_to_station_order(r_stop),
 			create_unloading_order(r_stop, r_schedule_settings),
-			same_depot and create_direct_to_station_order(depot_stop),
+			same_depot and create_direct_to_station_order(depot_stop) or nil,
 		}
-	elseif IS_SE_PRESENT then
+	else
+		if IS_SE_PRESENT then
 		records = se_compat.se_set_manifest_schedule(
 			train,
 			depot_stop,
@@ -484,6 +485,9 @@ function set_manifest_schedule(
 			surface_connections,
 			start_at_depot
 		)
+		end
+
+		-- if not records and OTHER_TRAVEL_METHOD then ...
 	end
 
 	if records and next(records) then

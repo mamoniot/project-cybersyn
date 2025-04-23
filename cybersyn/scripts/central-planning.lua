@@ -561,10 +561,9 @@ local function tick_dispatch(map_data, mod_settings)
 			end
 			p_surface_id = p_station.entity_stop.surface_index
 
-			surface_connections = Surfaces.find_surface_connections(
-				p_station.entity_stop.surface,
-				r_station.entity_stop.surface,
-				r_station.entity_stop.force --[[@as LuaForce]],
+			surface_connections = Surfaces.find_surface_connections_masked(
+				p_station.entity_stop.surface_index,
+				r_station.entity_stop.surface_index,
 				network_name, netand)
 			if not surface_connections then
 				goto p_continue

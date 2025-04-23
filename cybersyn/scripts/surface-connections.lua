@@ -13,30 +13,27 @@ local format = string.format
 
 local SAME_SURFACE = {}
 
----Filters a list of matching entity-pairs each connecting the two surfaces.
----@param surface1 LuaSurface
----@param surface2 LuaSurface
----@param force LuaForce
+---Filters a list of matching entity-pairs each connecting the two surfaces and matching the given network.
+---Basically `filter_by_network(find_surface_connections(...))` with a little less overhead.
+---@param surface1 uint
+---@param surface2 uint
 ---@param network_name string
 ---@param network_mask integer
 ---@return Cybersyn.SurfaceConnection[]? connecting_entity_pairs nil without a match, empty if surface1 == surface2
----@return integer? match_count the size of the list
-function Surfaces.find_surface_connections(surface1, surface2, force, network_name, network_mask)
+---@return integer match_count the size of the list
+function Surfaces.find_surface_connections_masked(surface1, surface2, network_name, network_mask)
     if surface1 == surface2 then return SAME_SURFACE, 0 end
 
-    local surface_pair_key = sorted_pair(surface1.index, surface2.index)
+    local surface_pair_key = sorted_pair(surface1, surface2)
     local surface_connections = storage.connected_surfaces[surface_pair_key]
-    if not surface_connections then return nil end
+    if not surface_connections then return nil, 0 end
 
     local matching_connections = {}
     local count = 0
 
     for entity_pair_key, connection in pairs(surface_connections) do
         if connection.entity1.valid and connection.entity2.valid then
-            if (not connection.network_masks or btest(network_mask, connection.network_masks[network_name] or 0))
-                and connection.entity1.force == force
-                and connection.entity2.force == force
-            then
+            if not connection.network_masks or btest(network_mask, connection.network_masks[network_name] or 0) then
                 count = count + 1
                 matching_connections[count] = connection
             end
@@ -49,7 +46,7 @@ function Surfaces.find_surface_connections(surface1, surface2, force, network_na
     if count > 0 then
         return matching_connections, count
     else
-        return nil, nil
+        return nil, 0
     end
 end
 
