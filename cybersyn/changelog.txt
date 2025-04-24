@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.23
+Date: 2025-04-24
+  Changes:
+    - changes the strategy to insert Cybersyn schedules from "before the permanent depot entry" to "after interrupt entries". This way add_refueler_schedule does not need to concern itself with direct-to-depot entries.
+    - added a command cybersyn-recalculate-train-size to recalculate all trains and I've added the function on on_configuration_changed
+---------------------------------------------------------------------------------------------------
 Version: 2.0.22
 Date: 2025-04-11
   Bugfixes:
