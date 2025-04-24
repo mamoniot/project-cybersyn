@@ -28,6 +28,9 @@ STATUS_NAMES[defines.entity_status.marked_for_deconstruction] = "entity-status.m
 STATUS_NAMES_DEFAULT = "entity-status.disabled"
 STATUS_NAMES_GHOST = "entity-status.ghost"
 
+local band = bit32.band
+local blshift = bit32.lshift
+local bxor = bit32.bxor
 local bit_extract = bit32.extract
 local function setting(bits, n)
 	return bit_extract(bits, n) > 0
@@ -114,6 +117,42 @@ local function handle_network(e)
 
 	combinator_update(storage, comb)
 end
+
+local DEPENDENT_CONDITION_SETTINGS = bit32.bor(
+	blshift(1, SETTING_ENABLE_INACTIVE),
+	blshift(1, SETTING_ENABLE_CIRCUIT_CONDITION),
+	blshift(1, SETTING_DISABLE_MANIFEST_CONDITION))
+
+local DEPENDEND_DISABLE_SETTINGS = bit32.bor(
+	blshift(1, SETTING_DISABLE_MANIFEST_CONDITION))
+
+---@param comb LuaEntity
+---@param element LuaGuiElement
+---@param flip_bit integer
+local function ensure_wait_condition(comb, element, flip_bit)
+	local control = get_comb_control(comb)
+	local params = control.parameters
+	local bits = params.second_constant or 0
+	if band(bits, DEPENDENT_CONDITION_SETTINGS) == DEPENDEND_DISABLE_SETTINGS then -- only DISABLE_ flags set?
+		bits = bxor(bits, blshift(1, flip_bit))
+		params.second_constant = bits
+		control.parameters = params
+
+		-- update UI, element traversal needs to match gui_opened()
+		local vertical_flow = assert(element.parent)
+		vertical_flow.enable_inactive.state = setting(bits, SETTING_ENABLE_INACTIVE)
+		vertical_flow.enable_circuit_condition.state = setting(bits, SETTING_ENABLE_CIRCUIT_CONDITION)
+		vertical_flow.disable_manifest_condition.state = setting(bits, SETTING_DISABLE_MANIFEST_CONDITION)
+	end
+end
+
+---bit that is currently changed -> bit that should be flipped if otherwise trains would have no loading wait_conditions
+local handle_dependent_settings = {
+	[SETTING_ENABLE_INACTIVE] = SETTING_ENABLE_CIRCUIT_CONDITION,
+	[SETTING_ENABLE_CIRCUIT_CONDITION] = SETTING_ENABLE_INACTIVE,
+	[SETTING_DISABLE_MANIFEST_CONDITION] = SETTING_ENABLE_INACTIVE,
+}
+
 ---@param e EventData.on_gui_checked_state_changed
 local function handle_setting(e)
 	local element = e.element
@@ -122,6 +161,10 @@ local function handle_setting(e)
 	if not comb or not comb.valid then return end
 
 	set_comb_setting(comb, element.tags.bit --[[@as int]], element.state)
+	local flip_bit = handle_dependent_settings[element.tags.bit]
+	if flip_bit then
+		ensure_wait_condition(comb, element, flip_bit)
+	end
 
 	combinator_update(storage, comb)
 end
@@ -625,6 +668,15 @@ function gui_opened(comb, player)
 													tooltip = { "cybersyn-gui.enable-circuit-condition-tooltip" },
 													caption = { "cybersyn-gui.enable-circuit-condition-description" },
 												},
+												{
+													type = "checkbox",
+													name = "disable_manifest_condition",
+													state = setting(bits, SETTING_DISABLE_MANIFEST_CONDITION ),
+													handler = handle_setting,
+													tags = { id = comb.unit_number, bit = SETTING_DISABLE_MANIFEST_CONDITION },
+													tooltip = { "cybersyn-gui.disable-manifest-tooltip" },
+													caption = { "cybersyn-gui.disable-manifest-description" },
+												}
 											},
 										},
 									},

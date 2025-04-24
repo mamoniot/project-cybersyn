@@ -102,15 +102,17 @@ function create_loading_order(stop, manifest, schedule_settings)
 			cond_type = "item_count"
 		end
 
-		conditions[#conditions + 1] = {
-			type = cond_type,
-			compare_type = "and",
-			condition = {
-				comparator = "≥",
-				first_signal = { type = item.type, name = item.name, quality = item.quality },
-				constant = item.count,
-			},
-		}
+		if not schedule_settings.disable_manifest_condition then
+			conditions[#conditions + 1] = {
+				type = cond_type,
+				compare_type = "and",
+				condition = {
+					comparator = "≥",
+					first_signal = { type = item.type, name = item.name, quality = item.quality },
+					constant = item.count,
+				},
+			}
+		end
 	end
 	if schedule_settings.enable_inactive then
 		conditions[#conditions + 1] = condition_wait_inactive
@@ -472,6 +474,7 @@ function set_station_from_comb(station)
 	local is_stack = bit_extract(bits, SETTING_IS_STACK) > 0
 	local enable_inactive = bit_extract(bits, SETTING_ENABLE_INACTIVE) > 0
 	local enable_circuit_condition = bit_extract(bits, SETTING_ENABLE_CIRCUIT_CONDITION) > 0
+	local disable_manifest_condition = bit_extract(bits, SETTING_DISABLE_MANIFEST_CONDITION) > 0
 
 	station.allows_all_trains = allows_all_trains
 	station.is_stack = is_stack
@@ -479,6 +482,7 @@ function set_station_from_comb(station)
 	station.is_p = (is_pr_state == 0 or is_pr_state == 1) or nil
 	station.is_r = (is_pr_state == 0 or is_pr_state == 2) or nil
 	station.enable_circuit_condition = enable_circuit_condition
+	station.disable_manifest_condition = disable_manifest_condition
 
 	-- Extract settings from station control combinator, if it exists
 	local enable_train_count = nil
