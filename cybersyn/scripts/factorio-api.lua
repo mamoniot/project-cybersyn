@@ -267,15 +267,43 @@ function rename_manifest_schedule(train, stop, old_name)
 	end
 end
 
+---clean slate; remove all temporary, non-interrupt records from the schedule, including a direct-to-depot record
 ---@param schedule LuaSchedule
----@param record AddRecordData
----@return int index
-function add_record_before_last(schedule, record)
-	local record_count = schedule.get_record_count()
-	local index = record_count > 0 and record_count or 1
-	record.index = { schedule_index = index }
-	schedule.add_record(record)
-	return index
+function clean_temporary_records(schedule)
+	local current_records = schedule.get_records() --[[@as ScheduleRecord[] ]]
+	for i = schedule.get_record_count(), 1, -1 do
+		local current_record = current_records[i]
+		if current_record.temporary and not current_record.created_by_interrupt then
+			schedule.remove_record({ schedule_index = i })
+		end
+	end
+end
+
+---Inserts the given records before the first non-interrupt record in the schedule
+---@param schedule LuaSchedule
+---@param records AddRecordData[] supports optional entries by skipping falsy ones
+---@return int insert_index the index of the first inserted record
+---@return int insert_count the number of records that were truthy and thus inserted
+function add_records_after_interrupt(schedule, records)
+	local last_interrupt = 0
+	for i = 1, schedule.get_record_count() do
+		-- read single records to optimize under the assumption there is no interrupt
+		-- (tick_dispatch won't schedule deliveries if there is one)
+		local record = schedule.get_record({ schedule_index = i }) --[[@as ScheduleRecord]]
+		if not record.created_by_interrupt then break end
+		last_interrupt = i
+	end
+
+	local i = 1
+	for _, record in pairs(records) do
+		if record then
+			record.index = { schedule_index = last_interrupt + i }
+			schedule.add_record(record)
+			i = i + 1
+		end
+	end
+
+	return last_interrupt + 1, i - 1
 end
 
 ---NOTE: does not check .valid
@@ -303,22 +331,14 @@ function set_manifest_schedule(
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 
 	local schedule = train.get_schedule()
-
-	-- clean leftover Cybersyn entries from manual interventions
-	-- this is optional because set_depot_schedule would eventually do a full cleanup
-	-- but having leftover entries on a new delivery would be confusing to players
-	local current_records = schedule.get_records() --[[@as ScheduleRecord[] ]]
-	for i = schedule.get_record_count(), 1, -1 do
-		local current_record = current_records[i]
-		if current_record.temporary and not current_record.created_by_interrupt then
-			schedule.remove_record({ schedule_index = i })
-		end
-	end
+	clean_temporary_records(schedule)
 
 	-- creates a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
 	function train_stuck()
-		add_record_before_last(schedule, create_loading_order(p_stop, manifest, p_schedule_settings))
-		add_record_before_last(schedule, create_unloading_order(r_stop, r_schedule_settings))
+		add_records_after_interrupt(schedule, {
+			create_loading_order(p_stop, manifest, p_schedule_settings),
+			create_unloading_order(r_stop, r_schedule_settings),
+		})
 		lock_train(train)
 	end
 
@@ -350,10 +370,8 @@ function set_manifest_schedule(
 			create_loading_order(p_stop, manifest, p_schedule_settings),
 			create_direct_to_station_order(r_stop),
 			create_unloading_order(r_stop, r_schedule_settings),
+			same_depot and create_direct_to_station_order(depot_stop),
 		}
-		if same_depot then
-			records[5] = create_direct_to_station_order(depot_stop)
-		end
 	elseif IS_SE_PRESENT then
 		game.print("Compatibility with Space Exploration is broken.")
 		-- records = se_compat.se_set_manifest_schedule(
@@ -371,10 +389,7 @@ function set_manifest_schedule(
 	end
 
 	if records and next(records) then
-		local insert_index = max(schedule.get_record_count() --[[@as int]], 1) -- schedule might be empty
-		for _, record in ipairs(records) do
-			add_record_before_last(schedule, record)
-		end
+		local insert_index = add_records_after_interrupt(schedule, records)
 		if start_at_depot then
 			schedule.go_to_station(schedule.get_record_count() --[[@as int]])
 		elseif schedule.current > insert_index then
@@ -399,16 +414,17 @@ function add_refueler_schedule(map_data, train, stop)
 	end
 
 	local schedule = train.get_schedule()
-	local current = schedule.current
 
 	local t_surface = train.front_stock.surface
 	local f_surface = stop.surface
 	local t_surface_i = t_surface.index
 	local f_surface_i = f_surface.index
 	if t_surface_i == f_surface_i then
-		local refueler_index = add_record_before_last(schedule, create_direct_to_station_order(stop))
-		add_record_before_last(schedule, create_inactivity_order(stop.backer_name))
-		if current >= refueler_index then
+		local refueler_index = add_records_after_interrupt(schedule, {
+			create_direct_to_station_order(stop),
+			create_inactivity_order(stop.backer_name),
+		})
+		if schedule.current >= refueler_index then
 			schedule.go_to_station(refueler_index)
 		end
 		return true
@@ -420,7 +436,7 @@ function add_refueler_schedule(map_data, train, stop)
 		-- end
 	end
 	--create an order that probably cannot be fulfilled and alert the player
-	add_record_before_last(schedule, create_inactivity_order(stop.backer_name))
+	add_records_after_interrupt(schedule, { create_inactivity_order(stop.backer_name) })
 	lock_train(train)
 	send_alert_cannot_path_between_surfaces(map_data, train)
 	return false
