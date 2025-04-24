@@ -102,7 +102,11 @@ function create_loading_order(stop, manifest, schedule_settings)
 			cond_type = "item_count"
 		end
 
-		if not schedule_settings.disable_manifest_condition then
+		if not (schedule_settings.disable_manifest_condition and
+			-- one other wait condition is required without manifest loading conditions
+			(schedule_settings.enable_inactive or
+			schedule_settings.enable_circuit_condition))
+		then
 			conditions[#conditions + 1] = {
 				type = cond_type,
 				compare_type = "and",
