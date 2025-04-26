@@ -63,8 +63,17 @@ data:extend({
 	},
 	{
 		type = "int-setting",
-		name = "cybersyn-network-flag",
+		name = "cybersyn-reserved-fluid-capacity",
 		order = "bd",
+		setting_type = "runtime-global",
+		default_value = 0,
+		minimum_value = 0,
+		maximum_value = 10000000,
+	},
+	{
+		type = "int-setting",
+		name = "cybersyn-network-flag",
+		order = "be",
 		setting_type = "runtime-global",
 		default_value = -1,
 		minimum_value = -2147483648,
@@ -73,7 +82,7 @@ data:extend({
 	{
 		type = "double-setting",
 		name = "cybersyn-fuel-threshold",
-		order = "be",
+		order = "bf",
 		setting_type = "runtime-global",
 		default_value = .5,
 		minimum_value = -1,
