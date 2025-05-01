@@ -1,5 +1,5 @@
 --By Mami
-local se_compat = require("scripts.mod-compatibility.space-exploration")
+local se_compat = require("scripts.mod-compatibility.se-elevator-travel")
 local get_distance = require("__flib__.position").distance
 local table_insert = table.insert
 local bit_extract = bit32.extract

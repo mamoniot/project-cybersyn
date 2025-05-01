@@ -1,7 +1,7 @@
 --By Mami
 local manager = require("gui.main")
 local picker_dollies_compat = require("scripts.mod-compatibility.picker-dollies")
-local se_compat = require("scripts.mod-compatibility.space-exploration")
+local se_compat = require("scripts.mod-compatibility.se-elevator-travel")
 
 local ceil = math.ceil
 local table_insert = table.insert
