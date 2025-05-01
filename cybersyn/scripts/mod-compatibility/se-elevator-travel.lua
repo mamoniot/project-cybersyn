@@ -1,14 +1,14 @@
 -- Code related to Space Exploration compatibility.
 
-SE_ELEVATOR_STOP_PROTO_NAME = "se-space-elevator-train-stop"
-SE_ELEVATOR_ORBIT_SUFFIX = " ↓"
-SE_ELEVATOR_PLANET_SUFFIX = " ↑"
-SE_ELEVATOR_SUFFIX_LENGTH = #SE_ELEVATOR_ORBIT_SUFFIX
-SE_ELEVATOR_PREFIX = "[img=entity/se-space-elevator]  "
-SE_ELEVATOR_PREFIX_LENGTH = #SE_ELEVATOR_PREFIX
+local SE_ELEVATOR_ORBIT_SUFFIX = " ↓"
+local SE_ELEVATOR_PLANET_SUFFIX = " ↑"
+local SE_ELEVATOR_SUFFIX_LENGTH = #SE_ELEVATOR_ORBIT_SUFFIX
+local SE_ELEVATOR_PREFIX = "[img=entity/se-space-elevator]  "
+local SE_ELEVATOR_PREFIX_LENGTH = #SE_ELEVATOR_PREFIX
 
 local string_sub = string.sub
 
+---Can be used as a predicate with find_next_cybersyn_stop
 ---@param record ScheduleRecord|AddRecordData
 ---@return string? elevator_stop_name
 ---@return boolean? is_ground_to_orbit
@@ -27,7 +27,7 @@ local function se_is_elevator_schedule_record(record)
 	end
 end
 
-local lib = {}
+ElevatorTravel = {}
 
 ---@param map_data MapData
 ---@param train Train
@@ -170,7 +170,7 @@ local function se_on_train_teleport_finished(event)
 	interface_raise_train_teleported(new_id, old_id)
 end
 
-function lib.setup_se_compat()
+function ElevatorTravel.setup_se_compat()
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 	if not IS_SE_PRESENT then return end
 
@@ -178,8 +178,9 @@ function lib.setup_se_compat()
 	script.on_event(remote.call("space-exploration", "get_on_train_teleport_started_event"), se_on_train_teleport_started)
 end
 
----@param target { network_masks : { [string] : integer }? }
----@param network_masks { [string] : integer }?
+---@param target { [string] : integer }? the network masks of the target
+---@param network_masks { [string] : integer }? the network masks to check against
+---@return boolean networks_match
 function has_network_match(target, network_masks)
 	local target_masks = target and target.network_masks
 	if not (target_masks and network_masks) then return true end
@@ -198,7 +199,7 @@ local function se_get_elevators(surface_connections, network_masks)
 	for _, connection in pairs(surface_connections) do
 		if connection.entity1.name == Elevators.name_stop then
 			local elevator = Elevators.from_unit_number(connection.entity1.unit_number)
-			if elevator and has_network_match(elevator, network_masks) then
+			if elevator and has_network_match(elevator.network_masks, network_masks) then
 				i = i + 1
 				elevators[i] = elevator
 			end
@@ -210,7 +211,7 @@ end
 ---@param elevator_name string
 ---@param is_train_in_orbit boolean
 ---@return AddRecordData
-function lib.se_create_elevator_order(elevator_name, is_train_in_orbit)
+function ElevatorTravel.se_create_elevator_order(elevator_name, is_train_in_orbit)
 	return {
 		station = elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX),
 		temporary = true,
@@ -319,7 +320,7 @@ end
 ---@param surface_connections Cybersyn.SurfaceConnection[]
 ---@param start_at_depot boolean?
 ---@return AddRecordData[]?
-function lib.se_set_manifest_schedule(
+function ElevatorTravel.se_set_manifest_schedule(
 		train,
 		depot_stop,
 		same_depot,
@@ -361,7 +362,7 @@ end
 ---@param map_data MapData
 ---@param data RefuelSchedulingData
 ---@return AddRecordData[]?
-function lib.se_add_refueler_schedule(map_data, data)
+function ElevatorTravel.se_add_refueler_schedule(map_data, data)
 	local elevators = se_get_elevators(data.surface_connections)
 	if not elevators then return end -- surface_connections contained no elevators
 
@@ -376,5 +377,3 @@ function lib.se_add_refueler_schedule(map_data, data)
 
 	return builder.records
 end
-
-return lib

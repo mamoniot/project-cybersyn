@@ -1,10 +1,8 @@
 --By Mami
 local manager = require("gui.main")
 local picker_dollies_compat = require("scripts.mod-compatibility.picker-dollies")
-local se_compat = require("scripts.mod-compatibility.se-elevator-travel")
 
 local ceil = math.ceil
-local table_insert = table.insert
 local table_remove = table.remove
 
 ---@param map_data MapData
@@ -917,7 +915,7 @@ local function main()
 
 	script.on_init(function()
 		init_global()
-		se_compat.setup_se_compat()
+		ElevatorTravel.setup_se_compat()
 		picker_dollies_compat.setup_picker_dollies_compat()
 		if MANAGER_ENABLED then
 			manager.on_init()
@@ -932,7 +930,7 @@ local function main()
 	end)
 
 	script.on_load(function()
-		se_compat.setup_se_compat()
+		ElevatorTravel.setup_se_compat()
 		picker_dollies_compat.setup_picker_dollies_compat()
 	end)
 

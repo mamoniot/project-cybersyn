@@ -1,10 +1,7 @@
 --By Mami
-local se_compat = require("scripts.mod-compatibility.se-elevator-travel")
 local get_distance = require("__flib__.position").distance
-local table_insert = table.insert
 local bit_extract = bit32.extract
 local bit_replace = bit32.replace
-local max = math.max
 
 local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
@@ -473,7 +470,7 @@ function set_manifest_schedule(
 		}
 	else
 		if IS_SE_PRESENT then
-			records = se_compat.se_set_manifest_schedule(
+			records = ElevatorTravel.se_set_manifest_schedule(
 				train,
 				depot_stop,
 				same_depot,
@@ -540,7 +537,7 @@ function add_refueler_schedule(map_data, data)
 		}
 	else
 		if IS_SE_PRESENT then
-			records = se_compat.se_add_refueler_schedule(map_data, data)
+			records = ElevatorTravel.se_add_refueler_schedule(map_data, data)
 		end
 
 		-- if not records and OTHER_TRAVEL_METHOD then ...
