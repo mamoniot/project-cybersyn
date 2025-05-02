@@ -185,8 +185,10 @@ function retrigger_train_calculation(print_message)
 	log("Recalculating all train capacities")
 	local nbtrains = 0
 	for _,train in pairs(map_data.trains) do
-		set_train_layout(map_data, train)
-		nbtrains = nbtrains+1
+		if train.entity and train.entity.valid then
+			set_train_layout(map_data, train)
+			nbtrains = nbtrains+1
+		end
 	end
 	if print_message then
 		game.print("All ".. nbtrains .. " train capacities recalculated.")
