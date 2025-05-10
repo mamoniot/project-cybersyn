@@ -62,6 +62,7 @@ local function set_visibility(main_window, selected_index)
 	first_settings.is_stack.visible = is_station
 	second_settings.enable_inactive.visible = is_station
 	second_settings.enable_circuit_condition.visible = is_station
+	second_settings.disable_manifest_condition.visible = is_station
 	mode_settings_flow.enable_slot_barring.visible = is_wagon
 	mode_settings_flow.enable_train_count.visible = (selected_index == 4)
 	mode_settings_flow.enable_manual_inventory.visible = (selected_index == 4)
