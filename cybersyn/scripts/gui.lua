@@ -28,6 +28,7 @@ STATUS_NAMES[defines.entity_status.marked_for_deconstruction] = "entity-status.m
 STATUS_NAMES_DEFAULT = "entity-status.disabled"
 STATUS_NAMES_GHOST = "entity-status.ghost"
 
+local band = bit32.band
 local bit_extract = bit32.extract
 local function setting(bits, n)
 	return bit_extract(bits, n) > 0
@@ -61,6 +62,7 @@ local function set_visibility(main_window, selected_index)
 	first_settings.is_stack.visible = is_station
 	second_settings.enable_inactive.visible = is_station
 	second_settings.enable_circuit_condition.visible = is_station
+	second_settings.disable_manifest_condition.visible = is_station
 	mode_settings_flow.enable_slot_barring.visible = is_wagon
 	mode_settings_flow.enable_train_count.visible = (selected_index == 4)
 	mode_settings_flow.enable_manual_inventory.visible = (selected_index == 4)
@@ -114,6 +116,15 @@ local function handle_network(e)
 
 	combinator_update(storage, comb)
 end
+
+local UPDATE_DISABLE_MANIFEST = {
+	[SETTING_ENABLE_INACTIVE] = true,
+	[SETTING_ENABLE_CIRCUIT_CONDITION] = true,
+}
+local ANY_REQUIRED_TO_DISABLE_MANIFEST = bit32.bor(
+	bit32.lshift(1, SETTING_ENABLE_INACTIVE),
+	bit32.lshift(1, SETTING_ENABLE_CIRCUIT_CONDITION))
+
 ---@param e EventData.on_gui_checked_state_changed
 local function handle_setting(e)
 	local element = e.element
@@ -121,7 +132,13 @@ local function handle_setting(e)
 	local comb = storage.to_comb[element.tags.id]
 	if not comb or not comb.valid then return end
 
-	set_comb_setting(comb, element.tags.bit --[[@as int]], element.state)
+	local changed_bit = element.tags.bit
+	set_comb_setting(comb, changed_bit --[[@as int]], element.state)
+
+	if UPDATE_DISABLE_MANIFEST[changed_bit] then
+		local bits = get_comb_params(comb).second_constant or 0
+		element.parent.disable_manifest_condition.enabled = band(bits, ANY_REQUIRED_TO_DISABLE_MANIFEST) > 0
+	end
 
 	combinator_update(storage, comb)
 end
@@ -625,6 +642,16 @@ function gui_opened(comb, player)
 													tooltip = { "cybersyn-gui.enable-circuit-condition-tooltip" },
 													caption = { "cybersyn-gui.enable-circuit-condition-description" },
 												},
+												{
+													type = "checkbox",
+													name = "disable_manifest_condition",
+													state = setting(bits, SETTING_DISABLE_MANIFEST_CONDITION ),
+													enabled = band(bits, ANY_REQUIRED_TO_DISABLE_MANIFEST) > 0,
+													handler = handle_setting,
+													tags = { id = comb.unit_number, bit = SETTING_DISABLE_MANIFEST_CONDITION },
+													tooltip = { "cybersyn-gui.disable-manifest-tooltip" },
+													caption = { "cybersyn-gui.disable-manifest-description" },
+												}
 											},
 										},
 									},
