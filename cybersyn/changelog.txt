@@ -1,4 +1,14 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.26
+Date: 2025-05-11
+  Changes:
+    - Add option to disable manifest loading conditions
+    - Add default setting for reserved fluid capacity
+    - Add descriptions to Cybersyn signals
+    - Add command to remove `Require same depot` from depots and trains
+  Bugfixes:
+    - Re-calculation train capacities accounts for invalid trains (should no longer crash if train was manually deleted)
+---------------------------------------------------------------------------------------------------
 Version: 2.0.24
 Date: 2025-04-24
   Changes:
