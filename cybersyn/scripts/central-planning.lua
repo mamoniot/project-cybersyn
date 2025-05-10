@@ -749,7 +749,7 @@ local function tick_poll_station(map_data, mod_settings)
 	station.priority = mod_settings.priority
 	station.item_priority = nil
 	station.locked_slots = mod_settings.locked_slots
-	station.reserved_fluid_capacity = 0
+	station.reserved_fluid_capacity = mod_settings.reserved_fluid_capacity
 	local is_each = station.network_name == NETWORK_EACH
 	if is_each then
 		station.network_mask = {}

@@ -135,6 +135,7 @@
 ---@field public r_fluid_threshold int
 ---@field public priority int
 ---@field public locked_slots int
+---@field public reserved_fluid_capacity int
 ---@field public network_mask int
 ---@field public warmup_time double
 ---@field public stuck_train_time double
