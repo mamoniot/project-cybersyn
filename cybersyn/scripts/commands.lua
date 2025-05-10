@@ -4,6 +4,19 @@ local function gps_text(entity)
 	return string.format("[gps=%f,%f,%s]", pos.x, pos.y, entity.surface.name)
 end
 
+---@param train LuaTrain
+local function train_richtext(train)
+	local _, loco = next(train.locomotives.front_movers)
+	if loco then
+		return "[train="..loco.unit_number.."]"
+	end
+	return "train "..train.id
+end
+
+local function stop_richtext(stop)
+	return "[train-stop="..stop.unit_number.."]"
+end
+
 --- @param entity LuaEntity
 --- @param message LocalisedString
 local function report_print(entity, message)
@@ -11,7 +24,7 @@ local function report_print(entity, message)
 
 	if entity and entity.valid then
 		if entity.name == "train-stop" then
-			location_info = string.format("[train-stop=%d]", entity.unit_number)
+			location_info = stop_richtext(entity)
 		else
 			location_info = { "", gps_text(entity), " ", entity.localised_name }
 		end
@@ -196,9 +209,84 @@ function retrigger_train_calculation(print_message)
 	log("Recalculated "..nbtrains.." trains")
 end
 
+local function abolish_same_depot()
+	local map_data = storage --[[@as MapData]]
+	local num_depots, num_trains = 0, 0
+
+	log("Disabling Require same depot")
+
+	for _, depot in pairs(map_data.depots) do
+		local stop = depot.entity_stop
+		if stop and stop.valid and depot.entity_comb and depot.entity_comb.valid then
+			local bits = get_comb_params(depot.entity_comb).second_constant or 0
+			if bit32.extract(bits, SETTING_USE_ANY_DEPOT) == 0 then
+				set_comb_setting(depot.entity_comb, SETTING_USE_ANY_DEPOT, true)
+				num_depots = num_depots + 1
+
+				function log_depot(detail)
+					log(string.format("%s adjusted, %s", stop_richtext(stop), detail))
+				end
+
+				if stop.trains_limit > 2100000000 then -- no limit = uint_max, ~int_max is good enough here
+					log_depot("train limit set to 1")
+					stop.trains_limit = 1
+				else
+					log_depot("current train limit retained")
+				end
+			end
+		end
+	end
+
+	for _, train in pairs(map_data.trains) do
+		if not train.use_any_depot and train.entity and train.entity.valid then
+			train.use_any_depot = true
+			num_trains = num_trains + 1
+
+			function log_train(detail)
+				log(string.format("%s adjusted, %s", train_richtext(train.entity), detail))
+			end
+
+			if train.status == STATUS_D then
+				log_train("at depot")
+			else
+				local depot = map_data.depots[train.depot_id] --[[@as Depot?]]
+				if not (depot and depot.entity_stop and depot.entity_stop.valid) then
+					log_train("schedule not touched, depot invalid")
+					goto train_any_depot_done
+				end
+
+				local depot_name = depot.entity_stop.backer_name
+				local schedule = train.entity.get_schedule()
+				local records = schedule.get_records() --[[@as ScheduleRecord[] ]]
+				for i = #records, 2, -1 do
+					if records[i].temporary then break end
+					if records[i].station == depot_name and records[i-1].rail then
+						schedule.remove_record({ schedule_index = i-1 })
+						log_train("depot coordinate entry removed from schedule")
+						goto train_any_depot_done
+					end
+				end
+
+				log_train("schedule not touched but not at depot, schedule:")
+				local current = schedule.current
+				for i, record in ipairs(records) do
+					log(string.format("%s%d: %s", current == i and ">" or "#", i, serpent.line(record)))
+				end
+			end
+
+			::train_any_depot_done::
+		end
+	end
+
+	log("Finished disabling Require same depot")
+	game.print({ "cybersyn-messages.abolish-same-depot-command-result", num_depots, num_trains })
+end
+
 commands.add_command("cybersyn-recalculate-train-size", { "cybersyn-messages.recalculate-train-size-command-help" },
 	function() retrigger_train_calculation(true) end)
 commands.add_command("cybersyn-find-problems", { "cybersyn-messages.find-problems-command-help" },
 	function() find_problems(report_print) end)
 commands.add_command("cybersyn-fix-priorities", { "cybersyn-messages.fix-priorities-command-help" },
 	fix_priorities_command)
+commands.add_command("cybersyn-abolish-same-depot", { "cybersyn-messages.abolish-same-depot-command-help" },
+	abolish_same_depot)
