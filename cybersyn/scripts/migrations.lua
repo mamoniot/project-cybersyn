@@ -370,7 +370,7 @@ local migrations_table = {
 			::next_train::
 		end
 	end,
-	["2.0.23"] = function()
+	["2.0.27"] = function()
 		local map_data = storage --[[@as MapData]]
 
 		get_or_create(map_data, "se_elevators")
@@ -403,7 +403,7 @@ function on_config_changed(data)
 			on_debug_revision_change()
 		end
 	end
-	
+
 	retrigger_train_calculation(false)
 end
 
