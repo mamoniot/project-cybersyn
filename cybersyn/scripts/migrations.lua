@@ -370,6 +370,14 @@ local migrations_table = {
 			::next_train::
 		end
 	end,
+	["2.0.27"] = function()
+		-- Reset the economy data
+		storage.economy = {
+			all_r_stops = {},
+			all_p_stops = {},
+			all_names = {},
+		}
+	end
 }
 --STATUS_R_TO_D = 5
 ---@param data ConfigurationChangedData

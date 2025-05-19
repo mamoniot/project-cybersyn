@@ -43,8 +43,9 @@ end
 local function set_visibility(main_window, selected_index)
 	local is_station = selected_index == 1
 	local is_depot = selected_index == 2
-	local is_wagon = selected_index == 5
-	local uses_network = is_station or is_depot or selected_index == 3
+	local is_wagon = selected_index == 6
+	local is_secondary_inventory = selected_index == 5
+	local uses_network = is_station or is_depot or selected_index == 3 or is_secondary_inventory
 	local uses_allow_list = is_station or selected_index == 3
 
 	local vflow = main_window.frame.vflow --[[@as LuaGuiElement]]
@@ -284,6 +285,8 @@ local function handle_drop_down(e)
 	elseif element.selected_index == 4 then
 		set_comb_operation(comb, MODE_SECONDARY_IO)
 	elseif element.selected_index == 5 then
+		set_comb_operation(comb, MODE_SECONDARY_INVENTORY)
+	elseif element.selected_index == 6 then
 		set_comb_operation(comb, MODE_WAGON)
 	else
 		return
@@ -488,6 +491,7 @@ function gui_opened(comb, player)
 												{ "cybersyn-gui.depot" },
 												{ "cybersyn-gui.refueler" },
 												{ "cybersyn-gui.comb2" },
+												{ "cybersyn-gui.secondary-inventory" },
 												{ "cybersyn-gui.wagon-manifest" },
 											},
 										},

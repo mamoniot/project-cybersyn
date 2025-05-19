@@ -121,7 +121,8 @@ end
 ---@param stop LuaEntity
 ---@param comb1 LuaEntity
 ---@param comb2 LuaEntity?
-local function on_station_built(map_data, stop, comb1, comb2)
+---@param secondary_inv_combs LuaEntity[]?
+local function on_station_built(map_data, stop, comb1, comb2, secondary_inv_combs)
 	--NOTE: only place where new Station
 	local station = {
 		entity_stop = stop,
@@ -145,10 +146,11 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		accepted_layouts = {},
 		layout_pattern = nil,
 		tick_signals = nil,
-		item_p_counts = {},
+		tick_secondary_signals = nil,
 		item_thresholds = nil,
 		display_state = 0,
 		is_warming_up = true,
+		secondary_inv_combs = secondary_inv_combs or {}, -- Store secondary inventory combinators
 	}
 	local id = stop.unit_number --[[@as uint]]
 
@@ -204,7 +206,7 @@ end
 ---@param stop LuaEntity
 ---@param comb_operation string
 ---@param comb_forbidden LuaEntity?
-local function search_for_station_combinator(map_data, stop, comb_operation, comb_forbidden)
+local function search_for_station_combinators(map_data, stop, comb_operation, comb_forbidden, all)
 	local pos_x = stop.position.x
 	local pos_y = stop.position.y
 	local search_area = {
@@ -212,14 +214,22 @@ local function search_for_station_combinator(map_data, stop, comb_operation, com
 		{ pos_x + 2, pos_y + 2 },
 	}
 	local entities = stop.surface.find_entities_filtered({ area = search_area, name = COMBINATOR_NAME })
+	local found = {}
 	for _, entity in pairs(entities) do
 		if entity.valid and entity ~= comb_forbidden and map_data.to_stop[entity.unit_number] == stop then
 			local param = get_comb_params(entity)
 			if param.operation == comb_operation then
-				return entity
+				if not all then
+					return entity
+				end
+				table_insert(found, entity)
 			end
 		end
 	end
+	if all then
+		return found
+	end
+	return nil
 end
 
 ---@param map_data MapData
@@ -236,7 +246,7 @@ function combinator_build_init(map_data, comb, tags)
 		params.operation = op
 		params.first_signal = NETWORK_SIGNAL_DEFAULT
 		control.parameters = params
-	elseif op ~= MODE_PRIMARY_IO and op ~= MODE_SECONDARY_IO and op ~= MODE_DEPOT and op ~= MODE_REFUELER and op ~= MODE_WAGON then
+	elseif op ~= MODE_PRIMARY_IO and op ~= MODE_SECONDARY_IO and op ~= MODE_SECONDARY_INVENTORY and op ~= MODE_DEPOT and op ~= MODE_REFUELER and op ~= MODE_WAGON then
 		op = MODE_PRIMARY_IO
 		params.operation = op
 		control.parameters = params
@@ -338,6 +348,15 @@ local function on_combinator_built(map_data, comb, tags)
 				station.entity_comb2 = comb
 				queue_station_for_combinator_update(map_data, id)
 			end
+		elseif op == MODE_SECONDARY_INVENTORY then
+			if station then
+				-- Add the secondary inventory combinator to the station
+				if not station.secondary_inv_combs then
+					station.secondary_inv_combs = {}
+				end
+				table.insert(station.secondary_inv_combs, comb)
+				queue_station_for_combinator_update(map_data, id)
+			end
 		elseif op == MODE_PRIMARY_IO then
 			if refueler then
 				on_refueler_broken(map_data, id, refueler)
@@ -346,8 +365,11 @@ local function on_combinator_built(map_data, comb, tags)
 				on_depot_broken(map_data, id, depot)
 			end
 			if not station then
-				local comb2 = search_for_station_combinator(map_data, stop, MODE_SECONDARY_IO, comb)
-				on_station_built(map_data, stop, comb, comb2)
+				local comb2 = search_for_station_combinators(map_data, stop, MODE_SECONDARY_IO, comb)
+
+				local secondary_inv_combs = search_for_station_combinators(map_data, stop, MODE_SECONDARY_INVENTORY, comb, true)
+
+				on_station_built(map_data, stop, comb, comb2, secondary_inv_combs)
 			end
 		end
 	end
@@ -433,7 +455,7 @@ function on_combinator_broken(map_data, comb, skip_gui_events)
 		on_stop_built_or_updated(map_data, stop --[[@as LuaEntity]], comb)
 	elseif type == 2 then
 		local station = entity --[[@as Station]]
-		station.entity_comb2 = search_for_station_combinator(map_data, stop --[[@as LuaEntity]], MODE_SECONDARY_IO, comb)
+		station.entity_comb2 = search_for_station_combinators(map_data, stop --[[@as LuaEntity]], MODE_SECONDARY_IO, comb)
 		queue_station_for_combinator_update(map_data, id)
 	elseif type == 3 then
 		on_depot_broken(map_data, id, entity --[[@as Depot]])
@@ -441,6 +463,22 @@ function on_combinator_broken(map_data, comb, skip_gui_events)
 	elseif type == 4 then
 		on_refueler_broken(map_data, id, entity --[[@as Refueler]])
 		on_stop_built_or_updated(map_data, stop --[[@as LuaEntity]], comb)
+	else
+		-- Check if it's a secondary inventory combinator
+		if stop then
+			local station_id = stop.unit_number --[[@as uint]]
+			local station = map_data.stations[station_id]
+			if station and station.secondary_inv_combs then
+				-- Remove this combinator from the secondary_inv_combs list
+				for i, sec_comb in ipairs(station.secondary_inv_combs) do
+					if sec_comb.unit_number == comb_id then
+						table.remove(station.secondary_inv_combs, i)
+						queue_station_for_combinator_update(map_data, station_id)
+						break
+					end
+				end
+			end
+		end
 	end
 
 	if out and out.valid then
@@ -553,6 +591,16 @@ function combinator_update(map_data, comb, reset_display)
 			end
 		elseif type == 4 then
 			set_refueler_from_comb(map_data, mod_settings, id, entity --[[@as Refueler]])
+		else
+			-- Check if it's a secondary inventory combinator
+			local stop = map_data.to_stop[unit_number]
+			if stop and stop.valid then
+				local station_id = stop.unit_number --[[@as uint]]
+				local station = map_data.stations[station_id]
+				if station then
+					queue_station_for_combinator_update(map_data, station_id)
+				end
+			end
 		end
 	end
 
@@ -572,6 +620,16 @@ function combinator_update(map_data, comb, reset_display)
 			set_refueler_from_comb(map_data, mod_settings, id, refueler)
 			if refueler.allows_all_trains ~= pre then
 				update_stop_if_auto(map_data, refueler, false)
+			end
+		else
+			-- Check if it's a secondary inventory combinator
+			local stop = map_data.to_stop[unit_number]
+			if stop and stop.valid then
+				local station_id = stop.unit_number --[[@as uint]]
+				local station = map_data.stations[station_id]
+				if station then
+					queue_station_for_combinator_update(map_data, station_id)
+				end
 			end
 		end
 	end
@@ -597,6 +655,7 @@ function on_stop_built_or_updated(map_data, stop, comb_forbidden)
 		{ pos_x + 2, pos_y + 2 },
 	}
 	local comb2 = nil
+	local secondary_inv_combs = {}  -- Store secondary inventory combinators
 	local comb1 = nil
 	local depot_comb = nil
 	local refueler_comb = nil
@@ -613,6 +672,8 @@ function on_stop_built_or_updated(map_data, stop, comb_forbidden)
 					comb1 = entity
 				elseif op == MODE_SECONDARY_IO then
 					comb2 = entity
+				elseif op == MODE_SECONDARY_INVENTORY then
+					table.insert(secondary_inv_combs, entity)
 				elseif op == MODE_DEPOT then
 					depot_comb = entity
 				elseif op == MODE_REFUELER then
@@ -622,7 +683,8 @@ function on_stop_built_or_updated(map_data, stop, comb_forbidden)
 		end
 	end
 	if comb1 then
-		on_station_built(map_data, stop, comb1, comb2)
+		-- Pass the secondary inventory combinators to the station built function
+		on_station_built(map_data, stop, comb1, comb2, secondary_inv_combs)
 	elseif depot_comb then
 		on_depot_built(map_data, stop, depot_comb)
 	elseif refueler_comb then
