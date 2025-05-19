@@ -41,10 +41,21 @@
 ---@field public enable_circuit_condition true? If `true`, trains directed to this station will be given a check>0 circuit condition in their schedule.
 ---@field public disable_manifest_condition true?
 
----@class Station: Cybersyn.StationScheduleSettings
+---@class (exact) StopInfo
+---@field public station_id uint
+---@field public priority int
+---@field public network_name string?
+---@field public network_mask int|{[string]: int} --transient
+---@field public r_threshold int >= 0 --transient
+---@field public r_fluid_threshold int? --transient
+---@field public item_p_counts {[string]: int} --transient
+---@field public tick_signals {[uint]: Signal}? --transient
+
+---@class (exact)Station: Cybersyn.StationScheduleSettings
 ---@field public entity_stop LuaEntity
 ---@field public entity_comb1 LuaEntity
 ---@field public entity_comb2 LuaEntity?
+---@field public secondary_inv_combs {[int]: LuaEntity}?
 ---@field public is_p true?
 ---@field public is_r true?
 ---@field public is_stack true?
@@ -55,6 +66,7 @@
 ---@field public last_delivery_tick int
 ---@field public trains_limit int --transient
 ---@field public priority int --transient
+---@field public stops {[uint]: StopInfo}? --transient
 ---@field public item_priority int? --transient
 ---@field public r_threshold int >= 0 --transient
 ---@field public r_fluid_threshold int? --transient
@@ -66,8 +78,6 @@
 ---@field public deliveries {[string]: int}
 ---@field public accepted_layouts {[uint]: true?}
 ---@field public layout_pattern (0|1|2|3)[]?
----@field public tick_signals {[uint]: Signal}? --transient
----@field public item_p_counts {[string]: int} --transient
 ---@field public item_thresholds {[string]: int}? --transient
 ---@field public display_state int
 ---@field public is_warming_up true?
@@ -122,8 +132,8 @@
 ---@alias Cybersyn.Economy.ItemNetworkName string A stringified tuple of the form `network_hash:item_hash` for matching specific items between providers and requesters.
 
 ---@class Cybersyn.Economy
----@field public all_r_stations {[Cybersyn.Economy.ItemNetworkName]: uint[]} Maps item network names to lists of requester station IDs wanting matching items.
----@field public all_p_stations {[Cybersyn.Economy.ItemNetworkName]: uint[]} Maps item network names to lists of provider station IDs having matching items.
+---@field public all_r_stops {[Cybersyn.Economy.ItemNetworkName]: StopInfo[]} Maps item network names to lists of requester station IDs wanting matching items.
+---@field public all_p_stops {[Cybersyn.Economy.ItemNetworkName]: StopInfo[]} Maps item network names to lists of provider station IDs having matching items.
 ---@field public all_names (Cybersyn.Economy.ItemNetworkName|SignalID)[] A flattened list of pairs. Each pair is of the form `[item_network_name, item_signal]` where `item_signal` is the signal for the named item. The dispatch logic iterates over these pairs to brute-force match providers to requesters.
 
 --NOTE: any setting labeled as an "interface setting" can only be changed through the remote-interface, these settings are not save and have to be set at initialization
@@ -163,8 +173,8 @@ function init_global()
 	storage.tick_state = STATE_INIT
 	storage.tick_data = {}
 	storage.economy = {
-		all_r_stations = {},
-		all_p_stations = {},
+		all_r_stops = {},
+		all_p_stops = {},
 		all_names = {},
 	}
 	storage.to_comb = {}
