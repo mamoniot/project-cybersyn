@@ -373,6 +373,9 @@ local migrations_table = {
 	["2.0.23"] = function()
 		local map_data = storage --[[@as MapData]]
 
+		get_or_create(map_data, "se_elevators")
+		get_or_create(map_data, "connected_surfaces")
+
 		for _, cybersyn_train in pairs(map_data.trains) do
 			local train = cybersyn_train.entity
 			if train and train.valid then
@@ -389,8 +392,6 @@ function on_config_changed(data)
 	storage.tick_state = STATE_INIT
 	storage.tick_data = {}
 	storage.perf_cache = {}
-	get_or_create(storage, "se_elevators")
-	get_or_create(storage, "connected_surfaces")
 
 	flib_migration.on_config_changed(data, migrations_table)
 

@@ -1,29 +1,30 @@
 ---@class Cybersyn.ElevatorEndData
----@field public connector LuaEntity
----@field public elevator LuaEntity
----@field public stop LuaEntity
----@field public stop_id uint
----@field public elevator_id uint
----@field public surface_id uint
+---@field public elevator LuaEntity the main assembler entity of the elevator; this is what players interact with and where to attach the UI
+---@field public stop LuaEntity the train stop of the elevator; SE allows to rename this stop
+---@field public surface_id uint the surface this endpoint is on
+---@field public stop_id uint reverse pointer in case the entity is destroyed
+---@field public elevator_id uint reverse pointer in case the entity is destroyed
 ---@field public is_orbit boolean
 
----Can be accessed with field-names or with the corresponding surface indices
+---Encompasses both ends of an elevator. Only gets created via UI interactions.
+---This removes the need to listen for `*_built` events and also the need to wait for all relevant entities to exist.
 ---@class Cybersyn.ElevatorData
----@field public ground Cybersyn.ElevatorEndData
+---@field public ground Cybersyn.ElevatorEndData planet or moon in SE, Cybersyn doesn't care which
 ---@field public orbit Cybersyn.ElevatorEndData
----@field public cs_enabled boolean
----@field public network_masks {[string]: integer}?
----@field public [uint] Cybersyn.ElevatorEndData
+---@field public cs_enabled boolean register a surface connection for this elevator or remove it; toggled via UI
+---@field public network_masks {[string]: integer}? network-name to network mask; currently there is no UI for this
+---@field public [uint] Cybersyn.ElevatorEndData maps each endpoint by its corresponding surface_index
+---@see MapData.se_elevators
 
 ---@alias SeZoneType "star"|"planet"|"moon"|"orbit"|"spaceship"|"asteroid-belt"|"asteroid-field"|"anomaly"
----@alias SeZoneIndex integer
+---@alias SeZoneIndex integer a zone index is distinct from a surface index because zone can exist without a physical surface
 
----@class SeZone The relevant fields of a Space Exploration zone
+---@class SeZone The relevant fields of a Space Exploration zone; queried with a remote.call
 ---@field type SeZoneType
 ---@field name string -- the display name of the zone
 ---@field index SeZoneIndex -- the zone's table index
----@field orbit_index SeZoneIndex? -- the zone index of the orbit
----@field parent_index SeZoneIndex? -- the zone index of the parent zone
+---@field orbit_index SeZoneIndex? -- the zone index of the adjacent orbit
+---@field parent_index SeZoneIndex? -- the zone index of the adjacent parent zone
 ---@field surface_index integer? -- the Factorio surface index of the zone
 ---@field seed integer? -- the mapgen seed
 
@@ -61,6 +62,7 @@ local function search_entities(surface, position)
 	return {
 		elevator = elevator,
 		stop = stop,
+		surface_id = surface.index,
 
 		-- these are kept in the record for table cleanup in case the entities become unreadable
 		elevator_id = elevator.unit_number,
@@ -70,7 +72,7 @@ end
 
 local DESTROY_TYPE_ENTITY = defines.target_type.entity
 
---- Register with Factorio to destroy LTN surface connectors when the corresponding elevator is removed
+--- Register with Factorio to clean the Cybersyn surface connection when a corresponding elevator is removed
 function Elevators.on_object_destroyed(e)
 	if not (e.useful_id and e.type == DESTROY_TYPE_ENTITY) then return end
 
@@ -146,8 +148,6 @@ function Elevators.from_entity(entity)
 	end
 	data.ground.is_orbit = false
 	data.orbit.is_orbit = true
-	end1.surface_id = entity.surface_index
-	end2.surface_id = opposite_surface_index
 
 	storage.se_elevators[data.ground.elevator_id] = data
 	storage.se_elevators[data.orbit.elevator_id] = data
@@ -161,7 +161,7 @@ function Elevators.from_entity(entity)
 	return data
 end
 
---- Connects or disconnects the eleator from Cybersyn based on cs_enabled and updates the network_id when connected to 
+--- Connects or disconnects the eleator from Cybersyn based on cs_enabled and updates the network_id when connected to
 --- @param data Cybersyn.ElevatorData
 function Elevators.update_connection(data)
 	if data.cs_enabled then
