@@ -370,6 +370,21 @@ local migrations_table = {
 			::next_train::
 		end
 	end,
+	["2.0.27"] = function()
+		local map_data = storage --[[@as MapData]]
+
+		get_or_create(map_data, "se_elevators")
+		get_or_create(map_data, "connected_surfaces")
+
+		for _, cybersyn_train in pairs(map_data.trains) do
+			local train = cybersyn_train.entity
+			if train and train.valid then
+				local depot = map_data.depots[cybersyn_train.depot_id]
+				local depot_stop = depot and depot.entity_stop
+				cybersyn_train.depot_surface_id = depot_stop and depot_stop.surface_index or train.front_stock.surface_index
+			end
+		end
+	end
 }
 --STATUS_R_TO_D = 5
 ---@param data ConfigurationChangedData
@@ -380,8 +395,7 @@ function on_config_changed(data)
 
 	flib_migration.on_config_changed(data, migrations_table)
 
-	-- needs to be re-visited when SE gets Factorio 2.0 support
-	IS_SE_PRESENT = false -- remote.interfaces["space-exploration"] ~= nil
+	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 
 	if storage.debug_revision ~= debug_revision then
 		storage.debug_revision = debug_revision
@@ -389,7 +403,7 @@ function on_config_changed(data)
 			on_debug_revision_change()
 		end
 	end
-	
+
 	retrigger_train_calculation(false)
 end
 

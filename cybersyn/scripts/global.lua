@@ -24,6 +24,8 @@
 ---@field public each_refuelers {[uint]: true}
 ---@field public active_alerts {[uint]: {[1]: LuaTrain, [2]: int}}?
 ---@field public manager Manager
+---@field public se_elevators {[uint]: Cybersyn.ElevatorData} maps relevant entities on both surfaces to one shared data structure for the whole space elevator; the key can be the unit_number of the elevator's main assembler or its train stop
+---@field public connected_surfaces {[string]: {[string]: Cybersyn.SurfaceConnection}} maps pairs of surfaces to the pairs of entities connecting them
 ---@field public perf_cache PerfCache -- This gets reset to an empty table on migration change
 
 ---@class PerfCache
@@ -35,6 +37,11 @@
 ---@class FluidWagonSize
 ---@field public fluid_normal_size uint -- size of wagon in normal quality
 ---@field public quality_size {[uint] : uint} -- level of quality : size of wagon with this level of quality
+
+---@class Cybersyn.SurfaceConnection
+---@field entity1 LuaEntity the entity that represents the conneciton on the first surface; will eventually discard the connection if invalid
+---@field entity2 LuaEntity the entity that represents the connection on the second surface; will eventually discard the connection if invalid
+---@field network_masks {[string]: integer}? nil means can serve deliveries on any network, otherwise a delivery is matched against the corresponding network_mask in the dictionary
 
 ---@class Cybersyn.StationScheduleSettings
 ---@field public enable_inactive true? If true, enable inactivity timeouts for trains at this station.
@@ -101,6 +108,7 @@
 ---@field public last_manifest_tick int
 ---@field public has_filtered_wagon true?
 ---@field public is_available true?
+---@field public depot_surface_id uint -- use_any_depot trains don't need to depend on an existing depot stop
 ---@field public depot_id uint
 ---@field public use_any_depot true?
 ---@field public disable_bypass true?
@@ -185,6 +193,8 @@ function init_global()
 	storage.to_refuelers = {}
 	storage.each_refuelers = {}
 	storage.perf_cache = {}
+	storage.se_elevators = {}
+	storage.connected_surfaces = {}
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 end
