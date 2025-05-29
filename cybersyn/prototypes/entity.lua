@@ -12,6 +12,7 @@ combinator_entity.radius_visualisation_specification = {
 	distance = 1.5,
 }
 combinator_entity.active_energy_usage = "10kW"
+combinator_entity.fast_replaceable_group = COMBINATOR_NAME
 
 if mods["nullius"] then
 	combinator_entity.localised_name = { "entity-name.cybersyn-combinator" }
