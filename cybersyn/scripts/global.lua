@@ -45,6 +45,7 @@
 ---@field public station_id uint
 ---@field public priority int
 ---@field public network_name string?
+---@field public locked_slots int
 ---@field public network_mask int|{[string]: int} --transient
 ---@field public r_threshold int >= 0 --transient
 ---@field public r_fluid_threshold int? --transient
@@ -55,7 +56,7 @@
 ---@field public entity_stop LuaEntity
 ---@field public entity_comb1 LuaEntity
 ---@field public entity_comb2 LuaEntity?
----@field public secondary_inv_combs {[int]: LuaEntity}?
+---@field public secondary_inv_combs {[uint]: LuaEntity}?
 ---@field public is_p true?
 ---@field public is_r true?
 ---@field public is_stack true?
@@ -195,6 +196,7 @@ function init_global()
 	storage.to_refuelers = {}
 	storage.each_refuelers = {}
 	storage.perf_cache = {}
+	storage.stack_size_cache = {}
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 end

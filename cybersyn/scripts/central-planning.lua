@@ -93,20 +93,14 @@ end
 -- TODO: Look into this with stops instead of station ids
 local function move_stations_to_end_of_polling_queue(map_data, p_station_id, r_station_id)
 	if p_station_id == r_station_id then r_station_id = nil end
-	local found_p, found_r = false, false
-	local next_station_ids = filter(map_data.active_station_ids, function(id)
-		if id == p_station_id then
-			found_p = true
-			return false
-		elseif id == r_station_id then
-			found_r = true
-			return false
-		else
-			return true
+	local next_station_ids = {}
+	for _, id in ipairs(map_data.active_station_ids) do
+		if id ~= p_station_id and id ~= r_station_id then
+			table_insert(next_station_ids, id)
 		end
-	end)
-	if found_p and p_station_id then table_insert(next_station_ids, p_station_id) end
-	if found_r and r_station_id then table_insert(next_station_ids, r_station_id) end
+	end
+	if p_station_id then table_insert(next_station_ids, p_station_id) end
+	if r_station_id then table_insert(next_station_ids, r_station_id) end
 	map_data.active_station_ids = next_station_ids
 end
 
@@ -836,30 +830,20 @@ local function tick_poll_station(map_data, mod_settings)
 		if secondary_inv_signals then
 			for unit_number, signals in pairs(secondary_inv_signals) do
 				if signals then
-
-					local sec_network_name = station.network_name
-					local sec_network_mask = is_each and {} or mod_settings.network_mask
-					local sec_priority = mod_settings.priority
-					local sec_r_threshold = station.r_threshold
-					local sec_r_fluid_threshold = station.r_fluid_threshold
-					local sec_locked_slots = station.locked_slots
-					local sec_reserved_fluid_capacity = station.reserved_fluid_capacity
-
 					---@type StopInfo
 					local stop = {
 						station_id = station_id,
 						tick_signals = signals,
-						network_name = sec_network_name,
-						network_mask = sec_network_mask,
-						priority = sec_priority,
-						r_threshold = sec_r_threshold,
-						r_fluid_threshold = sec_r_fluid_threshold,
-						reserved_fluid_capacity = sec_reserved_fluid_capacity,
-						-- locked_slots = sec_locked_slots,
+						network_name = station.network_name,
+						network_mask = is_each and {} or station.network_mask,
+						priority = station.priority,
+						r_threshold = station.r_threshold,
+						r_fluid_threshold = station.r_fluid_threshold,
+						reserved_fluid_capacity = station.reserved_fluid_capacity,
 						item_p_counts = {},
 					}
 					station.stops[unit_number] = stop
-					
+
 					-- Process control signals for this combinator
 					for k, v in pairs(signals) do
 						local item_name = v.signal.name
@@ -869,23 +853,23 @@ local function tick_poll_station(map_data, mod_settings)
 						if item_name then
 							if item_type == "virtual" then
 								if item_name == SIGNAL_PRIORITY then
-									sec_priority = item_count
+									stop.priority = item_count
 								elseif item_name == REQUEST_THRESHOLD then
-									sec_r_threshold = abs(item_count)
+									stop.r_threshold = abs(item_count)
 								elseif item_name == REQUEST_FLUID_THRESHOLD then
-									sec_r_fluid_threshold = abs(item_count)
-								elseif item_name == LOCKED_SLOTS then
-									sec_locked_slots = max(item_count, 0)
+									stop.r_fluid_threshold = abs(item_count)
 								elseif item_name == RESERVED_FLUID_CAPACITY then
-									sec_reserved_fluid_capacity = max(item_count, 0)
+									stop.reserved_fluid_capacity = max(item_count, 0)
 								elseif is_each then
-									sec_network_mask[item_name] = item_count
+									stop.network_mask[item_name] = item_count
 								end
 								
 								-- Remove control signals from processing later
 								signals[k] = nil
-							elseif item_name == sec_network_name then
-								sec_network_mask = item_count
+							end
+							
+							if item_name == stop.network_name then
+								stop.network_mask = item_count
 								signals[k] = nil
 							end
 							
@@ -912,7 +896,7 @@ local function tick_poll_station(map_data, mod_settings)
 						local is_not_requesting = true
 						if station.is_r and item_count < 0 then
 							local r_threshold = station.item_thresholds and station.item_thresholds[item_hash] or 
-								item_type == "fluid" and sec_r_fluid_threshold or sec_r_threshold
+								item_type == "fluid" and stop.r_fluid_threshold or stop.r_threshold
 								
 							if station.is_stack and item_type == "item" then
 								r_threshold = r_threshold * get_stack_size(map_data, item_name)
@@ -924,10 +908,10 @@ local function tick_poll_station(map_data, mod_settings)
 								
 								-- Register this stop in the appropriate networks
 								local f, a
-								if sec_network_name == NETWORK_EACH then
-									f, a = pairs(sec_network_mask --[[@as {[string]: int}]])
-								else 
-									f, a = once, sec_network_name
+								if stop.network_name == NETWORK_EACH then
+									f, a = pairs(stop.network_mask --[[@as {[string]: int}]])
+								else
+									f, a = once, stop.network_name
 								end
 								
 								for network_name, _ in f, a do
@@ -947,10 +931,10 @@ local function tick_poll_station(map_data, mod_settings)
 						if is_not_requesting and station.is_p and item_count > 0 then
 							-- If item count is positive and station is a provider, it provides
 							local f, a
-							if sec_network_name == NETWORK_EACH then
-								f, a = pairs(sec_network_mask --[[@as {[string]: int}]])
+							if stop.network_name == NETWORK_EACH then
+								f, a = pairs(stop.network_mask --[[@as {[string]: int}]])
 							else
-								f, a = once, sec_network_name
+								f, a = once, stop.network_name
 							end
 							
 							for network_name, _ in f, a do
@@ -1141,12 +1125,16 @@ function tick_init(map_data, mod_settings)
 			local cycles = map_data.warmup_station_cycles[id]
 			--force a station to wait at least 1 cycle so we can be sure active_station_ids was flushed of duplicates
 			if cycles > 0 then
+				if station.entity_stop and station.entity_stop.valid and station.entity_stop.connected_rail == nil then
+					break -- Wait for station to be connected to a rail
+				end
+
 				if station.last_delivery_tick + mod_settings.warmup_time * mod_settings.tps < map_data.total_ticks then
 					station.is_warming_up = nil
 					map_data.active_station_ids[#map_data.active_station_ids + 1] = id
 					table_remove(map_data.warmup_station_ids, 1)
 					map_data.warmup_station_cycles[id] = nil
-					if station.entity_comb1.valid then
+					if station.entity_stop.valid and station.entity_comb1.valid then
 						combinator_update(map_data, station.entity_comb1)
 					else
 						on_station_broken(map_data, id, station)

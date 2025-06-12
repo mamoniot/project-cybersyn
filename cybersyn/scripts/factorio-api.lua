@@ -10,10 +10,14 @@ local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
 --local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 
----@param map_data MapData
----@param item_name string
+local stack_size_cache = {}
+
+for name, prototype in pairs(prototypes.item) do
+	stack_size_cache[name] = prototype.stack_size
+end
+
 function get_stack_size(map_data, item_name)
-	return prototypes.item[item_name].stack_size
+	return stack_size_cache[item_name]
 end
 
 ---@param item_order table<string, int>
@@ -648,20 +652,30 @@ end
 ---@param station Station
 function update_display(map_data, station)
 	local comb = station.entity_comb1
-	if comb.valid then
-		local control = get_comb_control(comb)
-		local params = control.parameters
-		--NOTE: the following check can cause a bug where the display desyncs if the player changes the operation of the combinator and then changes it back before the mod can notice, however removing it causes a bug where the user's change is overwritten and ignored. Everything's bad we need an event to catch copy-paste by blueprint.
-		if params.operation == MODE_PRIMARY_IO or params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
-			if station.display_state == 0 then
-				params.operation = MODE_PRIMARY_IO
-			elseif station.display_state % 2 == 1 then
-				params.operation = MODE_PRIMARY_IO_ACTIVE
-			else
-				params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
-			end
-			control.parameters = params
-		end
+	if not comb.valid then return end
+	
+	local control = get_comb_control(comb)
+	local params = control.parameters
+	local current_op = params.operation
+	
+	if current_op ~= MODE_PRIMARY_IO and 
+	   current_op ~= MODE_PRIMARY_IO_ACTIVE and 
+	   current_op ~= MODE_PRIMARY_IO_FAILED_REQUEST then
+		return
+	end
+	
+	local new_op
+	if station.display_state == 0 then
+		new_op = MODE_PRIMARY_IO
+	elseif station.display_state % 2 == 1 then
+		new_op = MODE_PRIMARY_IO_ACTIVE
+	else
+		new_op = MODE_PRIMARY_IO_FAILED_REQUEST
+	end
+	
+	if new_op ~= current_op then
+		params.operation = new_op
+		control.parameters = params
 	end
 end
 
@@ -773,7 +787,7 @@ function get_signals(station)
 	
 	-- Read signals from secondary inventory combinators
 	if station.secondary_inv_combs then
-		for i, sec_comb in ipairs(station.secondary_inv_combs) do
+		for _, sec_comb in pairs(station.secondary_inv_combs) do
 			if sec_comb and sec_comb.valid then
 				local status = sec_comb.status
 				if status == DEFINES_WORKING or status == DEFINES_LOW_POWER then

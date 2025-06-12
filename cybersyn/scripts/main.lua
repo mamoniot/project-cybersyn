@@ -354,7 +354,7 @@ local function on_combinator_built(map_data, comb, tags)
 				if not station.secondary_inv_combs then
 					station.secondary_inv_combs = {}
 				end
-				table.insert(station.secondary_inv_combs, comb)
+				station.secondary_inv_combs[comb.unit_number] = comb
 				queue_station_for_combinator_update(map_data, id)
 			end
 		elseif op == MODE_PRIMARY_IO then
@@ -393,6 +393,7 @@ end
 --Returns 2 if `comb` is `entity_comb2` of a station.
 --Returns 3 if `comb` defines a depot.
 --Returns 4 if `comb` defines a refueler.
+--Returns 5 if `comb` is a secondary inventory combinator.
 --Returns 0 if `comb` is not a core component of any entity.
 local function comb_to_internal_entity(map_data, comb, unit_number)
 	local stop = map_data.to_stop[unit_number]
@@ -404,6 +405,8 @@ local function comb_to_internal_entity(map_data, comb, unit_number)
 				return 1, id, station, stop
 			elseif station.entity_comb2 == comb then
 				return 2, id, station, stop
+			elseif station.secondary_inv_combs and station.secondary_inv_combs[unit_number] then
+				return 5, id, station, stop
 			end
 		else
 			local depot = map_data.depots[id]
@@ -463,22 +466,10 @@ function on_combinator_broken(map_data, comb, skip_gui_events)
 	elseif type == 4 then
 		on_refueler_broken(map_data, id, entity --[[@as Refueler]])
 		on_stop_built_or_updated(map_data, stop --[[@as LuaEntity]], comb)
-	else
-		-- Check if it's a secondary inventory combinator
-		if stop then
-			local station_id = stop.unit_number --[[@as uint]]
-			local station = map_data.stations[station_id]
-			if station and station.secondary_inv_combs then
-				-- Remove this combinator from the secondary_inv_combs list
-				for i, sec_comb in ipairs(station.secondary_inv_combs) do
-					if sec_comb.unit_number == comb_id then
-						table.remove(station.secondary_inv_combs, i)
-						queue_station_for_combinator_update(map_data, station_id)
-						break
-					end
-				end
-			end
-		end
+	elseif type == 5 then
+		local station = entity --[[@as Station]]
+		station.secondary_inv_combs[comb_id] = nil
+		queue_station_for_combinator_update(map_data, id)
 	end
 
 	if out and out.valid then
@@ -673,7 +664,7 @@ function on_stop_built_or_updated(map_data, stop, comb_forbidden)
 				elseif op == MODE_SECONDARY_IO then
 					comb2 = entity
 				elseif op == MODE_SECONDARY_INVENTORY then
-					table.insert(secondary_inv_combs, entity)
+					secondary_inv_combs[entity.unit_number] = entity
 				elseif op == MODE_DEPOT then
 					depot_comb = entity
 				elseif op == MODE_REFUELER then
