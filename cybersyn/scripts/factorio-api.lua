@@ -10,10 +10,14 @@ local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
 --local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 
----@param map_data MapData
----@param item_name string
+local stack_size_cache = {}
+
+for name, prototype in pairs(prototypes.item) do
+	stack_size_cache[name] = prototype.stack_size
+end
+
 function get_stack_size(map_data, item_name)
-	return prototypes.item[item_name].stack_size
+	return stack_size_cache[item_name]
 end
 
 ---@param item_order table<string, int>
@@ -40,7 +44,7 @@ function get_any_train_entity(train)
 	return train.valid and (train.front_stock or train.back_stock or train.carriages[1]) or nil
 end
 
----@param e Station|Refueler|Train
+---@param e Station|Refueler|Train|StopInfo
 ---@param network_name string
 ---@return int
 function get_network_mask(e, network_name)
@@ -648,20 +652,30 @@ end
 ---@param station Station
 function update_display(map_data, station)
 	local comb = station.entity_comb1
-	if comb.valid then
-		local control = get_comb_control(comb)
-		local params = control.parameters
-		--NOTE: the following check can cause a bug where the display desyncs if the player changes the operation of the combinator and then changes it back before the mod can notice, however removing it causes a bug where the user's change is overwritten and ignored. Everything's bad we need an event to catch copy-paste by blueprint.
-		if params.operation == MODE_PRIMARY_IO or params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
-			if station.display_state == 0 then
-				params.operation = MODE_PRIMARY_IO
-			elseif station.display_state % 2 == 1 then
-				params.operation = MODE_PRIMARY_IO_ACTIVE
-			else
-				params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
-			end
-			control.parameters = params
-		end
+	if not comb.valid then return end
+	
+	local control = get_comb_control(comb)
+	local params = control.parameters
+	local current_op = params.operation
+	
+	if current_op ~= MODE_PRIMARY_IO and 
+	   current_op ~= MODE_PRIMARY_IO_ACTIVE and 
+	   current_op ~= MODE_PRIMARY_IO_FAILED_REQUEST then
+		return
+	end
+	
+	local new_op
+	if station.display_state == 0 then
+		new_op = MODE_PRIMARY_IO
+	elseif station.display_state % 2 == 1 then
+		new_op = MODE_PRIMARY_IO_ACTIVE
+	else
+		new_op = MODE_PRIMARY_IO_FAILED_REQUEST
+	end
+	
+	if new_op ~= current_op then
+		params.operation = new_op
+		control.parameters = params
 	end
 end
 
@@ -690,8 +704,10 @@ function get_comb_gui_settings(comb)
 		selected_index = 3
 	elseif op == MODE_SECONDARY_IO then
 		selected_index = 4
-	elseif op == MODE_WAGON then
+	elseif op == MODE_SECONDARY_INVENTORY then
 		selected_index = 5
+	elseif op == MODE_WAGON then
+		selected_index = 6
 	end
 	return selected_index --[[@as uint]], params.first_signal, switch_state, bits
 end
@@ -726,7 +742,7 @@ function set_comb_network_name(comb, signal)
 	control.parameters = param
 end
 ---@param comb LuaEntity
----@param op string
+---@param op ArithmeticCombinatorParameterOperation
 function set_comb_operation(comb, op)
 	local control = get_comb_control(comb)
 	local params = control.parameters
@@ -754,9 +770,13 @@ function get_signals(station)
 	local comb1_signals = nil
 	---@type Signal[]?
 	local comb2_signals = nil
+	---@type table<string, Signal[]>
+	local secondary_inv_signals = {}
+	
 	if status1 == DEFINES_WORKING or status1 == DEFINES_LOW_POWER then
 		comb1_signals = comb1.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 	end
+	
 	local comb2 = station.entity_comb2
 	if comb2 then
 		local status2 = comb2.status
@@ -764,7 +784,20 @@ function get_signals(station)
 			comb2_signals = comb2.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 		end
 	end
-	return comb1_signals, comb2_signals
+	
+	-- Read signals from secondary inventory combinators
+	if station.secondary_inv_combs then
+		for _, sec_comb in pairs(station.secondary_inv_combs) do
+			if sec_comb and sec_comb.valid then
+				local status = sec_comb.status
+				if status == DEFINES_WORKING or status == DEFINES_LOW_POWER then
+					secondary_inv_signals[sec_comb.unit_number] = sec_comb.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
+				end
+			end
+		end
+	end
+	
+	return comb1_signals, comb2_signals, secondary_inv_signals
 end
 
 --- Update the station control combinator at the given station if it exists.
