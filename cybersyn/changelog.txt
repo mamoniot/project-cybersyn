@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.27
+Date: 2025-06-20
+  Bugfixes:
+    - check if station exists to aviod crashes when station = nil
+    - Don't update deliveries a station no longer knows about - fixes #281
+---------------------------------------------------------------------------------------------------
 Version: 2.0.26
 Date: 2025-05-11
   Changes:
