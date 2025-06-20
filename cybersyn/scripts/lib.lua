@@ -111,3 +111,108 @@ function format_signal_count(count)
 			abs >= 1e3 and si_format(1e3, "k") or
 			tostring(count)
 end
+
+---Concatenates the give numbers into a string separated by '|'.
+---The same two numbers always produce the same string, no matter the order they are given in.
+---@param number1 number
+---@param number2 number
+---@return string
+function sorted_pair(number1, number2)
+    return (number1 < number2) and (number1..'|'..number2) or (number2..'|'..number1)
+end
+
+--- Fetches a subtable from the given table or creates it if necessary
+function get_or_create(a_table, subtable_key)
+    local subtable = a_table[subtable_key]
+    if not subtable then
+        subtable = {}
+        a_table[subtable_key] = subtable
+    end
+    return subtable
+end
+
+---Creates a GPS richtext tag from the given entity
+---@param entity LuaEntity?
+---@return string gpstag an empty string if entity is invalid
+function gps_text(entity)
+	if entity and entity.valid then
+		return string.format("[gps=%s,%s,%s]", entity.position.x, entity.position.y, entity.surface.name )
+	end
+	return ""
+end
+
+---Formats the given integer with prefix `0x` followed by exactly 8 hexadecimal digits
+---@param network_id integer
+function network_text(network_id)
+	return string.format("0x%08X", bit32.band(network_id)) -- band ensures 32bits (the parameter might have more)
+end
+
+
+-------------------------------------------------- simple class system ------------------------------------------------------
+-- Adapted from "Programming in Lua" (PIL 16.2).
+--
+-- The method called "new" in the manual is called "derive" here because that better reflects its purpose.
+-- 
+-- "new" is used as the name of the constructor method that 
+-- 1. creates instances via a call to the constructor of the superclass
+-- 2. ensures the required fields are initialized before handing it to the caller
+
+---Using classes works like this:
+---
+--- 1. Derive the new class from an existing class
+---    ```
+---    ---@class NewClass : Class
+---    ---@field field1 string
+---    NewClass = Class:derive()
+---    ```
+--- 2. Define a constructor for the new class that calls the super constructor (passing along parameters as necessary)
+---    ```
+---    ---@protected
+---    ---@param param1 string
+---    function NewClass:new(param1)
+---        local instance = self:derive(Class:new()) -- the base constructor has no parameters
+---        instance.field1 = param1
+---        return instance
+---    end 
+---    ```
+--- 3. Define new methods
+---    ```
+---    function NewClass:print()
+---        print(string.format("Hello, %s", self.field1))
+---    end 
+---    ```
+--- 4. Create an instance and use it
+---    ```
+---    local instance = NewClass:new("world")
+---    instance:print()
+---    ```
+---@class Class
+Class = {}
+
+---Derives a new class or derives an instance of a class.
+---
+---```
+---ChildClass = ParentClass:derive() -- variant A
+---
+---function ChildClass:new(param1, param2)
+---    local instance = --[[variant B]] self:derive(ParentClass:new(param1))
+---    instance.field2 = param2
+---    return instance
+---end
+---```
+---
+---@generic T
+---@param self T
+---@param o table?
+---@return T
+---@protected
+function Class:derive(o)
+	self.__index = self
+	return setmetatable(o or {}, self)
+end
+
+---Super constructor of all other constructors
+---@protected
+function Class:new()
+    return {}
+end

@@ -1,10 +1,8 @@
 --By Mami
 local manager = require("gui.main")
 local picker_dollies_compat = require("scripts.mod-compatibility.picker-dollies")
-local se_compat = require("scripts.mod-compatibility.space-exploration")
 
 local ceil = math.ceil
-local table_insert = table.insert
 local table_remove = table.remove
 
 ---@param map_data MapData
@@ -780,6 +778,9 @@ local function on_surface_removed(event)
 	end
 end
 
+local function on_object_destroyed(event)
+	Elevators.on_object_destroyed(event)
+end
 
 local function on_paste(event)
 	local entity = event.destination
@@ -895,6 +896,8 @@ local function main()
 	script.on_event(defines.events.on_entity_died, on_broken, filter_broken)
 	script.on_event(defines.events.script_raised_destroy, on_broken)
 
+	script.on_event(defines.events.on_object_destroyed, on_object_destroyed)
+
 	script.on_event({ defines.events.on_pre_surface_deleted, defines.events.on_pre_surface_cleared }, on_surface_removed)
 
 	script.on_event(defines.events.on_entity_settings_pasted, on_paste)
@@ -912,7 +915,7 @@ local function main()
 
 	script.on_init(function()
 		init_global()
-		se_compat.setup_se_compat()
+		ElevatorTravel.setup_se_compat()
 		picker_dollies_compat.setup_picker_dollies_compat()
 		if MANAGER_ENABLED then
 			manager.on_init()
@@ -927,7 +930,7 @@ local function main()
 	end)
 
 	script.on_load(function()
-		se_compat.setup_se_compat()
+		ElevatorTravel.setup_se_compat()
 		picker_dollies_compat.setup_picker_dollies_compat()
 	end)
 

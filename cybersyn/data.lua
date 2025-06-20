@@ -27,6 +27,9 @@ data:extend({
 	missing_train_icon,
 	lost_train_icon,
 	nonempty_train_icon,
+	provider_id_item,
+	requester_id_item,
+	refueler_id_item,
 
 	--{
 	--  type = "shortcut",

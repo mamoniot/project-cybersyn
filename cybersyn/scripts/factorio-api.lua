@@ -1,10 +1,7 @@
 --By Mami
-local se_compat = require("scripts.mod-compatibility.space-exploration")
 local get_distance = require("__flib__.position").distance
-local table_insert = table.insert
 local bit_extract = bit32.extract
 local bit_replace = bit32.replace
-local max = math.max
 
 local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
@@ -27,8 +24,8 @@ end
 ---@param entity0 LuaEntity
 ---@param entity1 LuaEntity
 function get_dist(entity0, entity1)
-	local surface0 = entity0.surface.index
-	local surface1 = entity1.surface.index
+	local surface0 = entity0.surface_index
+	local surface1 = entity1.surface_index
 	return (surface0 == surface1 and get_distance(entity0.position, entity1.position) or DIFFERENT_SURFACE_DISTANCE)
 end
 
@@ -87,13 +84,92 @@ local conditions_only_inactive = { condition_wait_inactive }
 ---@type WaitCondition[]
 local conditions_direct_to_station = { { type = "time", compare_type = "and", ticks = 1 } }
 
+---@param id_item string
+---@param id integer
+local function stop_id_condition(id_item, id)
+	return {
+		type = "fuel_item_count_any",
+		compare_type = "and",
+		condition = {
+			comparator = "≤",
+			first_signal = { type = "item", name = id_item, quality = "normal" },
+			constant = id,
+		}
+	}
+end
+
+local ID_ITEM_TO_STATUS = {
+    [PROVIDER_ID_ITEM] = STATUS_P,
+    [REQUESTER_ID_ITEM] = STATUS_R,
+    [REFUELER_ID_ITEM] = STATUS_F,
+}
+
+---@class ScheduleSearchResult
+---@field schedule_record ScheduleRecord the record of the Cybersyn stop
+---@field schedule_index integer the index of the Cybersyn stop in the schedule
+---@field stop_type integer STATUS_P | STATUS_R | STATUS_F | STATUS_D
+---@field stop_id integer the unit_number of the stop
+---@field rail_stop ScheduleRecord? the preceding rail stop if present in the schedule
+
+---@class ScheduleSearchOptions
+---@field search_index integer? the schedule index to begin the search at
+---@field abort_condition fun(record: ScheduleRecord)? abort the search if a record matches the given condition
+---@field stop_id integer? search for the stop with this id
+---@field include_depot boolean? should the search consider depots? depots never have a stop_id
+
+---Searches the given schedule records for the next Cybersyn stop.
+---Assumes the stops have been created with a stop_id_condition().
+---@param schedule_records ScheduleRecord[] the schedule to search in
+---@param options ScheduleSearchOptions
+---@return ScheduleSearchResult? result nil if no matching Cybersyn stop is in the schedule
+function find_next_cybersyn_stop(schedule_records, options)
+	for i = options.search_index or 1, #schedule_records do
+		local record = schedule_records[i]
+		if options.abort_condition and options.abort_condition(record) then	return end
+
+		if record.temporary and not record.created_by_interrupt and record.wait_conditions then
+			local _, wait_condition = next(record.wait_conditions)
+			if wait_condition and wait_condition.condition and wait_condition.type == "fuel_item_count_any" then
+				local signal = wait_condition.condition.first_signal
+				local constant = wait_condition.condition.constant
+				local stop_type = signal and signal.name and ID_ITEM_TO_STATUS[signal.name]
+				if stop_type and constant and (not options.stop_id or options.stop_id == constant) then
+					---@type ScheduleSearchResult
+					return {
+						schedule_record = record,
+						schedule_index = i,
+						stop_type = stop_type,
+						stop_id = constant,
+						rail_stop = i > 1 and schedule_records[i-1].rail and schedule_records[i-1] or nil,
+					}
+				end
+			end
+		elseif options.include_depot and not record.temporary then
+			---@type ScheduleSearchResult
+			return {
+				schedule_record = record,
+				schedule_index = i,
+				stop_type = STATUS_D,
+				stop_id = 0,
+				rail_stop = i > 1 and schedule_records[i-1].rail and schedule_records[i-1] or nil,
+			}
+		end
+	end
+end
+
 ---@param stop LuaEntity
 ---@param manifest Manifest
 ---@param schedule_settings Cybersyn.StationScheduleSettings
+---@param include_id boolean? will add a condition that has the unit_number of the stop as a constant
 ---@return AddRecordData
-function create_loading_order(stop, manifest, schedule_settings)
+function create_loading_order(stop, manifest, schedule_settings, include_id)
 	---@type WaitCondition[]
 	local conditions = {}
+
+	if include_id then
+		conditions[#conditions + 1] = stop_id_condition(PROVIDER_ID_ITEM, stop.unit_number)
+	end
+
 	for _, item in ipairs(manifest) do
 		local cond_type
 		if item.type == "fluid" then
@@ -133,10 +209,15 @@ end
 
 ---@param stop LuaEntity
 ---@param schedule_settings Cybersyn.StationScheduleSettings
+---@param include_id boolean? will add a condition that has the unit_number of the stop as a constant
 ---@return AddRecordData
-function create_unloading_order(stop, schedule_settings)
+function create_unloading_order(stop, schedule_settings, include_id)
 	---@type WaitCondition[]
 	local conditions = {}
+
+	if include_id then
+		conditions[#conditions + 1] = stop_id_condition(REQUESTER_ID_ITEM, stop.unit_number)
+	end
 
 	if schedule_settings.enable_inactive then
 		conditions[#conditions + 1] = condition_wait_inactive
@@ -163,11 +244,18 @@ function create_unloading_order(stop, schedule_settings)
 end
 
 ---@param depot_name string
+---@param id_item string?
+---@param id integer?
 ---@return AddRecordData
-function create_inactivity_order(depot_name)
+function create_inactivity_order(depot_name, id_item, id)
+	local wait_conditions = id_item and id and {
+		stop_id_condition(id_item, id),
+		condition_wait_inactive,
+	}
+
 	return {
 		station = depot_name,
-		wait_conditions = conditions_only_inactive,
+		wait_conditions = wait_conditions or conditions_only_inactive,
 		temporary = true,
 	}
 end
@@ -322,6 +410,7 @@ end
 ---@param r_stop LuaEntity
 ---@param r_schedule_settings Cybersyn.StationScheduleSettings
 ---@param manifest Manifest
+---@param surface_connections Cybersyn.SurfaceConnection[]
 ---@param start_at_depot boolean?
 function set_manifest_schedule(
 		map_data,
@@ -333,6 +422,7 @@ function set_manifest_schedule(
 		r_stop,
 		r_schedule_settings,
 		manifest,
+		surface_connections,
 		start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 
@@ -359,39 +449,42 @@ function set_manifest_schedule(
 		return true
 	end
 
-	local t_surface = train.front_stock.surface
-	local p_surface = p_stop.surface
-	local r_surface = r_stop.surface
-	local d_surface_i = depot_stop.surface.index
-	local t_surface_i = t_surface.index
-	local p_surface_i = p_surface.index
-	local r_surface_i = r_surface.index
-	local is_p_on_t = t_surface_i == p_surface_i
-	local is_r_on_t = t_surface_i == r_surface_i
-	local is_d_on_t = t_surface_i == d_surface_i
+	local t_surface = train.front_stock.surface_index
+	local p_surface = p_stop.surface_index
+	local r_surface = r_stop.surface_index
+	local d_surface = depot_stop.surface_index
+	local all_same_surface =
+		t_surface == p_surface and
+		t_surface == r_surface and
+		t_surface == d_surface
+
 	local records = nil
-	if is_p_on_t and is_r_on_t and is_d_on_t then
+
+	if all_same_surface then
 		records = {
 			create_direct_to_station_order(p_stop),
 			create_loading_order(p_stop, manifest, p_schedule_settings),
 			create_direct_to_station_order(r_stop),
 			create_unloading_order(r_stop, r_schedule_settings),
-			same_depot and create_direct_to_station_order(depot_stop),
+			same_depot and create_direct_to_station_order(depot_stop) or nil,
 		}
-	elseif IS_SE_PRESENT then
-		game.print("Compatibility with Space Exploration is broken.")
-		-- records = se_compat.se_set_manifest_schedule(
-		-- 	map_data.perf_cache,
-		-- 	train,
-		-- 	depot_stop,
-		-- 	same_depot,
-		-- 	p_stop,
-		-- 	p_schedule_settings,
-		-- 	r_stop,
-		-- 	r_schedule_settings,
-		-- 	manifest,
-		-- 	start_at_depot
-		-- )
+	else
+		if IS_SE_PRESENT then
+			records = ElevatorTravel.se_set_manifest_schedule(
+				train,
+				depot_stop,
+				same_depot,
+				p_stop,
+				p_schedule_settings,
+				r_stop,
+				r_schedule_settings,
+				manifest,
+				surface_connections,
+				start_at_depot
+			)
+		end
+
+		-- if not records and OTHER_TRAVEL_METHOD then ...
 	end
 
 	if records and next(records) then
@@ -409,42 +502,64 @@ function set_manifest_schedule(
 	return true
 end
 
+---@class RefuelSchedulingData
+---@field train Train
+---@field t_id uint
+---@field t_surface uint
+---@field t_entity LuaTrain
+---@field t_stock LuaEntity
+---@field t_schedule LuaSchedule
+---@field refueler Refueler
+---@field f_id uint
+---@field f_surface uint
+---@field f_stop LuaEntity
+---@field all_same_surface boolean
+---@field surface_connections Cybersyn.SurfaceConnection[]
+
 ---NOTE: does not check .valid
 ---@param map_data MapData
----@param train LuaTrain
----@param stop LuaEntity
-function add_refueler_schedule(map_data, train, stop)
+---@param data RefuelSchedulingData
+function add_refueler_schedule(map_data, data)
+	local stop = data.f_stop
 	if not stop.connected_rail then
-		send_alert_refueler_of_train_broken(map_data, train)
+		send_alert_refueler_of_train_broken(map_data, data.t_entity)
 		return false
 	end
 
-	local schedule = train.get_schedule()
+	local schedule = data.t_schedule
+	local records = nil
 
-	local t_surface = train.front_stock.surface
-	local f_surface = stop.surface
-	local t_surface_i = t_surface.index
-	local f_surface_i = f_surface.index
-	if t_surface_i == f_surface_i then
-		local refueler_index = add_records_after_interrupt(schedule, {
+	if data.all_same_surface then
+		records = {
 			create_direct_to_station_order(stop),
 			create_inactivity_order(stop.backer_name),
-		})
+			-- no need to deal with direct-to-depot, must already be present and won't be removed
+		}
+	else
+		if IS_SE_PRESENT then
+			records = ElevatorTravel.se_add_refueler_schedule(map_data, data)
+		end
+
+		-- if not records and OTHER_TRAVEL_METHOD then ...
+	end
+
+	if records and next(records) then
+		if not data.all_same_surface then
+			-- inter-surface travel has to provide a completely new Cybersyn schedule
+			clean_temporary_records(schedule)
+		end
+
+		local refueler_index = add_records_after_interrupt(schedule, records)
 		if schedule.current >= refueler_index then
 			schedule.go_to_station(refueler_index)
 		end
 		return true
-	elseif IS_SE_PRESENT then
-		game.print("Compatibility with Space Exploration is broken.")
-		-- if se_compat.se_add_refueler_schedule(map_data.perf_cache, train, stop, schedule) then
-		-- 	train.schedule = schedule
-		-- 	return true
-		-- end
 	end
+
 	--create an order that probably cannot be fulfilled and alert the player
-	add_records_after_interrupt(schedule, { create_inactivity_order(stop.backer_name) })
-	lock_train(train)
-	send_alert_cannot_path_between_surfaces(map_data, train)
+	add_records_after_interrupt(schedule, { create_inactivity_order(data.f_stop.backer_name) })
+	lock_train(data.t_entity)
+	send_alert_cannot_path_between_surfaces(map_data, data.t_entity)
 	return false
 end
 
