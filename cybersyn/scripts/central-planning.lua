@@ -117,9 +117,11 @@ function remove_manifest(map_data, station, manifest, sign)
 	local deliveries = station.deliveries
 	for i, item in ipairs(manifest) do
 		local item_hash = hash_item(item.name, item.quality)
-		deliveries[item_hash] = deliveries[item_hash] + sign * item.count
-		if deliveries[item_hash] == 0 then
-			deliveries[item_hash] = nil
+		if deliveries[item_hash] then -- only updates deliveries the station still knows about
+			deliveries[item_hash] = deliveries[item_hash] + sign * item.count
+			if deliveries[item_hash] == 0 then
+				deliveries[item_hash] = nil
+			end
 		end
 	end
 	station.deliveries_total = station.deliveries_total - 1
