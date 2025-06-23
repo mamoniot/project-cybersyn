@@ -1,9 +1,15 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.28
+Date: 2025-06-23
+  Bugfixes:
+    - Fixed misshap with 2.0.27 release. It didnt contained advertised fixes, instead it was SE elevator support - changelog for .27 have been modified
+    - Check if station exists to avoid crashes when station = nil
+    - Don't update deliveries a station no longer knows about - fixes #281
+---------------------------------------------------------------------------------------------------
 Version: 2.0.27
 Date: 2025-06-20
-  Bugfixes:
-    - check if station exists to aviod crashes when station = nil
-    - Don't update deliveries a station no longer knows about - fixes #281
+  Changes:
+    - Adds back support of SE Elevators for upcoming 2.0 version of SE
 ---------------------------------------------------------------------------------------------------
 Version: 2.0.26
 Date: 2025-05-11
