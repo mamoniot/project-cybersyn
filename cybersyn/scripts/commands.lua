@@ -5,7 +5,7 @@ local function gps_text(entity)
 end
 
 ---@param train LuaTrain
-local function train_richtext(train)
+function train_richtext(train)
 	local _, loco = next(train.locomotives.front_movers)
 	if loco then
 		return "[train="..loco.unit_number.."]"

@@ -386,6 +386,83 @@ local migrations_table = {
 		end
 	end
 }
+
+function sanitize_economy_names()
+	---@type MapData
+	local map_data = storage
+
+	local proto = {
+		item = prototypes.item,
+		fluid = prototypes.fluid,
+	}
+
+	local removed = {}
+
+	local all_names = map_data.economy.all_names
+	for i, entry in ipairs(map_data.economy.all_names) do
+		if type(entry) == "string" then
+			local _, item_name, _ = parse_item_network_name(entry)
+			if not (proto.item[item_name] or proto.fluid[item_name]) then
+				all_names[i] = nil
+				removed[item_name] = true
+			end
+		else
+			if not proto[entry.type][entry.name] then
+				all_names[i] = nil
+				removed[entry.name] = true
+			end
+		end
+	end
+
+	local all_p_stations = map_data.economy.all_p_stations
+	for item_network_name, _ in pairs(all_p_stations) do
+		local _, item_name, _ = parse_item_network_name(item_network_name)
+		if not (proto.item[item_name] or proto.fluid[item_name]) then
+			all_p_stations[item_network_name] = nil
+			removed[item_name] = true
+		end
+	end
+
+	local all_r_stations = map_data.economy.all_r_stations
+	for item_network_name, _ in pairs(all_r_stations) do
+		local _, item_name, _ = parse_item_network_name(item_network_name)
+		if not (proto.item[item_name] or proto.fluid[item_name]) then
+			all_r_stations[item_network_name] = nil
+			removed[item_name] = true
+		end
+	end
+
+	for _, station in pairs(map_data.stations) do
+		local deliveries = station.deliveries
+		if deliveries then
+			for item_hash, _ in pairs(deliveries) do
+				local item_name, _ = unhash_signal(item_hash)
+				if not (proto.item[item_name] or proto.fluid[item_name]) then
+					deliveries[item_hash] = nil
+					removed[item_name] = true
+				end
+			end
+		end
+	end
+
+	if next(removed) then
+		log("Migrated names removed from economy: "..serpent.block(removed, {sortkeys = true}))
+	end
+
+	for train_id, train in pairs(map_data.trains) do
+		if train.manifest then
+			for _, entry in pairs(train.manifest) do
+				if not proto[entry.type][entry.name] then
+					local msg = string.format("%s delivery aborted: %s no longer exists", train_richtext(train.entity), entry.name)
+					log(msg)
+					game.print(msg)
+					remove_train(map_data, train_id, train)
+				end
+			end
+		end
+	end
+end
+
 --STATUS_R_TO_D = 5
 ---@param data ConfigurationChangedData
 function on_config_changed(data)
@@ -402,6 +479,10 @@ function on_config_changed(data)
 		if debug_revision then
 			on_debug_revision_change()
 		end
+	end
+
+	if data.migration_applied then
+		sanitize_economy_names()
 	end
 
 	retrigger_train_calculation(false)
