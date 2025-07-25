@@ -45,7 +45,6 @@
 ---@field public station_id uint
 ---@field public priority int
 ---@field public network_name string?
----@field public locked_slots int
 ---@field public network_mask int|{[string]: int} --transient
 ---@field public r_threshold int >= 0 --transient
 ---@field public r_fluid_threshold int? --transient

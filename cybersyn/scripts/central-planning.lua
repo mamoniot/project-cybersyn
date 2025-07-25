@@ -243,6 +243,8 @@ function create_manifest(map_data, r_stop, p_stop, train_id, primary_item_name)
 
 	---@type Manifest
 	local manifest = {}
+	---@type {[string]: boolean}
+	local unique_items = {}
 
 	for k, v in pairs(r_stop.tick_signals) do
 		---@type string
@@ -286,6 +288,7 @@ function create_manifest(map_data, r_stop, p_stop, train_id, primary_item_name)
 				else
 					manifest[#manifest + 1] = item
 				end
+				unique_items[item_hash] = true
 			end
 		end
 	end
@@ -294,6 +297,13 @@ function create_manifest(map_data, r_stop, p_stop, train_id, primary_item_name)
 	local locked_slots = p_station.locked_slots
 	local total_item_slots = train.item_slot_capacity
 	if locked_slots > 0 and total_item_slots > 0 then
+		-- Multiply locked slots by number of unique items
+		local unique_item_count = 0
+		for _ in pairs(unique_items) do
+			unique_item_count = unique_item_count + 1
+		end
+		locked_slots = locked_slots * unique_item_count
+		
 		-- TODO: possible subtle bug here with modded wagons if locked_slots is
 		-- bigger than the number of item slots in one wagon but not another. Might need to look
 		-- at individual wagon capacities here.
