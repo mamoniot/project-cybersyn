@@ -414,7 +414,7 @@ function sanitize_economy_names(config_change_data)
 			end
 		else
 			local new_name = migrations[entry.type][entry.name]
-			local new_quality = quality and migrations.quality[entry.quality]
+			local new_quality = entry.quality and migrations.quality[entry.quality]
 			if new_name == "" or new_quality == "" then
 				all_names[i] = nil
 				removed[entry.name] = true
