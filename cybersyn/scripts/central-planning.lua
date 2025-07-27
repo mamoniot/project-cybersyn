@@ -13,7 +13,7 @@ local random = math.random
 local HASH_STRING = "|"
 
 ---@param name string The name of the item
----@param quality string The name of the quality of the item or nil if it is common
+---@param quality string? The name of the quality of the item or nil if it is common
 ---@return string
 function hash_item(name, quality)
 	if quality == nil or quality == "normal" then
@@ -46,7 +46,7 @@ end
 ---@param network_name string Name of the virutal signal prototype identifying the station's network.
 ---@param item_hash string
 ---@return Cybersyn.Economy.ItemNetworkName
-local function create_item_network_name(network_name, item_hash)
+function create_item_network_name(network_name, item_hash)
 	return network_name .. ":" .. item_hash
 end
 

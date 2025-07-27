@@ -387,59 +387,69 @@ local migrations_table = {
 	end
 }
 
-function sanitize_economy_names()
+---@param config_change_data ConfigurationChangedData
+function sanitize_economy_names(config_change_data)
+	local migrations = config_change_data.migrations --[[@as {[string]: {[string]: string}}]]
+
+	if not (migrations.fluid or migrations.item) then return end
+	migrations.fluid = migrations.fluid or {}
+	migrations.item = migrations.item or {}
+
 	---@type MapData
 	local map_data = storage
-
-	local proto = {
-		item = prototypes.item,
-		fluid = prototypes.fluid,
-	}
-
 	local removed = {}
 
 	local all_names = map_data.economy.all_names
 	for i, entry in ipairs(map_data.economy.all_names) do
 		if type(entry) == "string" then
-			local _, item_name, _ = parse_item_network_name(entry)
-			if not (proto.item[item_name] or proto.fluid[item_name]) then
+			local network_name, item_name, quality = parse_item_network_name(entry)
+			local new_name = migrations.item[item_name] or migrations.fluid[item_name]
+			if new_name == "" then
 				all_names[i] = nil
 				removed[item_name] = true
+			elseif new_name then
+				local new_item_network_name = create_item_network_name(network_name, hash_item(new_name, quality))
+				all_names[i] = new_item_network_name
 			end
 		else
-			if not proto[entry.type][entry.name] then
+			local new_name = migrations[entry.type][entry.name]
+			if new_name == "" then
 				all_names[i] = nil
 				removed[entry.name] = true
+			elseif new_name then
+				entry.name = new_name
 			end
 		end
 	end
 
-	local all_p_stations = map_data.economy.all_p_stations
-	for item_network_name, _ in pairs(all_p_stations) do
-		local _, item_name, _ = parse_item_network_name(item_network_name)
-		if not (proto.item[item_name] or proto.fluid[item_name]) then
-			all_p_stations[item_network_name] = nil
-			removed[item_name] = true
-		end
-	end
-
-	local all_r_stations = map_data.economy.all_r_stations
-	for item_network_name, _ in pairs(all_r_stations) do
-		local _, item_name, _ = parse_item_network_name(item_network_name)
-		if not (proto.item[item_name] or proto.fluid[item_name]) then
-			all_r_stations[item_network_name] = nil
-			removed[item_name] = true
+	for _, all_stations in ipairs({ map_data.economy.all_p_stations, map_data.economy.all_r_stations }) do
+		for item_network_name, station_ids in pairs(all_stations) do
+			local network_name, item_name, quality = parse_item_network_name(item_network_name)
+			local new_name = migrations.item[item_name] or migrations.fluid[item_name]
+			if new_name == "" then
+				all_stations[item_network_name] = nil
+				removed[item_name] = true
+			elseif new_name then
+				local new_item_network_name = create_item_network_name(network_name, hash_item(new_name, quality))
+				all_stations[new_item_network_name] = station_ids
+				all_stations[item_network_name] = nil
+			end
 		end
 	end
 
 	for _, station in pairs(map_data.stations) do
 		local deliveries = station.deliveries
 		if deliveries then
-			for item_hash, _ in pairs(deliveries) do
-				local item_name, _ = unhash_signal(item_hash)
-				if not (proto.item[item_name] or proto.fluid[item_name]) then
+			for item_hash, count in pairs(deliveries) do
+				local item_name, quality = unhash_signal(item_hash)
+				local new_name = migrations.item[item_name] or migrations.fluid[item_name]
+				if new_name == "" then
 					deliveries[item_hash] = nil
 					removed[item_name] = true
+				elseif new_name then
+					local new_hash = hash_item(new_name, quality)
+					deliveries[new_hash] = count
+					deliveries[item_hash] = nil
 				end
 			end
 		end
@@ -452,11 +462,14 @@ function sanitize_economy_names()
 	for train_id, train in pairs(map_data.trains) do
 		if train.manifest then
 			for _, entry in pairs(train.manifest) do
-				if not proto[entry.type][entry.name] then
+				local new_name = migrations[entry.type][entry.name]
+				if new_name == "" then
 					local msg = string.format("%s delivery aborted: %s no longer exists", train_richtext(train.entity), entry.name)
 					log(msg)
 					game.print(msg)
 					remove_train(map_data, train_id, train)
+				elseif new_name then
+					entry.name = new_name
 				end
 			end
 		end
@@ -464,13 +477,13 @@ function sanitize_economy_names()
 end
 
 --STATUS_R_TO_D = 5
----@param data ConfigurationChangedData
-function on_config_changed(data)
+---@param config_change_data ConfigurationChangedData
+function on_config_changed(config_change_data)
 	storage.tick_state = STATE_INIT
 	storage.tick_data = {}
 	storage.perf_cache = {}
 
-	flib_migration.on_config_changed(data, migrations_table)
+	flib_migration.on_config_changed(config_change_data, migrations_table)
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 
@@ -481,8 +494,8 @@ function on_config_changed(data)
 		end
 	end
 
-	if data.migration_applied then
-		sanitize_economy_names()
+	if config_change_data.migration_applied then
+		sanitize_economy_names(config_change_data)
 	end
 
 	retrigger_train_calculation(false)
