@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.29
+Date: 2025-07-28
+  Bugfixes:
+    - fix #245 event filters for ghost entities are incorrect
+    - fix layout check for pickup/dropoff position if large inserters
+    - fix #187 Building Cyber Combinator over Arithmetic Combinator Causing Crash
+    - Update migrated names in economy and deliveries
+---------------------------------------------------------------------------------------------------
 Version: 2.0.28
 Date: 2025-06-23
   Bugfixes:
