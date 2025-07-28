@@ -596,18 +596,18 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 							local pos = entity.pickup_position
 							local is_there
 							if is_ver then
-								is_there = middle_x - 1 <= pos.x and pos.x <= middle_x + 1
+								is_there = middle_x - 1 <= pos.x and pos.x <= middle_x + 1 and search_area[1][2] <= pos.y and pos.y <= search_area[2][2]
 							else
-								is_there = middle_y - 1 <= pos.y and pos.y <= middle_y + 1
+								is_there = middle_y - 1 <= pos.y and pos.y <= middle_y + 1 and search_area[1][1] <= pos.x and pos.x <= search_area[2][1]
 							end
 							if is_there then
 								supports_cargo = true
 							else
 								pos = entity.drop_position
 								if is_ver then
-									is_there = middle_x - 1 <= pos.x and pos.x <= middle_x + 1
+									is_there = middle_x - 1 <= pos.x and pos.x <= middle_x + 1 and search_area[1][2] <= pos.y and pos.y <= search_area[2][2]
 								else
-									is_there = middle_y - 1 <= pos.y and pos.y <= middle_y + 1
+									is_there = middle_y - 1 <= pos.y and pos.y <= middle_y + 1 and search_area[1][1] <= pos.x and pos.x <= search_area[2][1]
 								end
 								if is_there then
 									supports_cargo = true
