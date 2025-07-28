@@ -848,20 +848,22 @@ local function on_settings_changed(event)
 end
 
 
+---@type LuaPlayerBuiltEntityEventFilter[]
 local filter_built = {
 	{ filter = "name", name = "train-stop" },
 	{ filter = "name", name = COMBINATOR_NAME },
-	{ filter = "ghost", ghost_name = COMBINATOR_NAME },
+	{ filter = "ghost_name", name = COMBINATOR_NAME },
 	{ filter = "type", type = "inserter" },
 	{ filter = "type", type = "pump" },
 	{ filter = "type", type = "straight-rail" },
 	{ filter = "type", type = "curved-rail" },
 	{ filter = "type", type = "loader-1x1" },
 }
+---@type LuaPlayerMinedEntityEventFilter[]
 local filter_broken = {
 	{ filter = "name", name = "train-stop" },
 	{ filter = "name", name = COMBINATOR_NAME },
-	{ filter = "ghost", name = COMBINATOR_NAME },
+	{ filter = "ghost_name", name = COMBINATOR_NAME },
 	{ filter = "type", type = "inserter" },
 	{ filter = "type", type = "pump" },
 	{ filter = "type", type = "straight-rail" },
