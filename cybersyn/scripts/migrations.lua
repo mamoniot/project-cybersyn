@@ -386,14 +386,111 @@ local migrations_table = {
 		end
 	end
 }
+
+---@param config_change_data ConfigurationChangedData
+function sanitize_economy_names(config_change_data)
+	local migrations = config_change_data.migrations --[[@as {[string]: {[string]: string}}]]
+
+	if not (migrations.fluid or migrations.item) then return end
+	migrations.fluid = migrations.fluid or {}
+	migrations.item = migrations.item or {}
+
+	---@type MapData
+	local map_data = storage
+	local removed = {}
+
+	local all_names = map_data.economy.all_names
+	for i, entry in ipairs(map_data.economy.all_names) do
+		if type(entry) == "string" then
+			local network_name, item_name, quality = parse_item_network_name(entry)
+			local new_name = migrations.item[item_name] or migrations.fluid[item_name]
+			local new_quality = quality and migrations.quality[quality]
+			if new_name == "" or new_quality == "" then
+				all_names[i] = nil
+				removed[item_name] = true
+			elseif new_name or new_quality then
+				local new_item_network_name = create_item_network_name(network_name, hash_item(new_name or item_name, new_quality or quality))
+				all_names[i] = new_item_network_name
+			end
+		else
+			local new_name = migrations[entry.type][entry.name]
+			local new_quality = entry.quality and migrations.quality[entry.quality]
+			if new_name == "" or new_quality == "" then
+				all_names[i] = nil
+				removed[entry.name] = true
+			elseif new_name or new_quality then
+				entry.name = new_name or entry.name
+				entry.quality = new_quality or entry.quality
+			end
+		end
+	end
+
+	for _, all_stations in ipairs({ map_data.economy.all_p_stations, map_data.economy.all_r_stations }) do
+		for item_network_name, station_ids in pairs(all_stations) do
+			local network_name, item_name, quality = parse_item_network_name(item_network_name)
+			local new_name = migrations.item[item_name] or migrations.fluid[item_name]
+			local new_quality = quality and migrations.quality[quality]
+			if new_name == "" or new_quality == "" then
+				all_stations[item_network_name] = nil
+				removed[item_name] = true
+			elseif new_name or new_quality then
+				local new_item_network_name = create_item_network_name(network_name, hash_item(new_name or item_name, new_quality or quality))
+				all_stations[new_item_network_name] = station_ids
+				all_stations[item_network_name] = nil
+			end
+		end
+	end
+
+	for _, station in pairs(map_data.stations) do
+		local deliveries = station.deliveries
+		if deliveries then
+			for item_hash, count in pairs(deliveries) do
+				local item_name, quality = unhash_signal(item_hash)
+				local new_name = migrations.item[item_name] or migrations.fluid[item_name]
+				local new_quality = quality and migrations.quality[quality]
+				if new_name == "" or new_quality == "" then
+					deliveries[item_hash] = nil
+					removed[item_name] = true
+				elseif new_name or new_quality then
+					local new_hash = hash_item(new_name or item_name, new_quality or quality)
+					deliveries[new_hash] = count
+					deliveries[item_hash] = nil
+				end
+			end
+		end
+	end
+
+	if next(removed) then
+		log("Migrated names removed from economy: "..serpent.block(removed, {sortkeys = true}))
+	end
+
+	for train_id, train in pairs(map_data.trains) do
+		if train.manifest then
+			for _, entry in pairs(train.manifest) do
+				local new_name = migrations[entry.type][entry.name]
+				local new_quality = entry.quality and migrations.quality[entry.quality]
+				if new_name == "" or new_quality == "" then
+					local msg = string.format("%s delivery aborted: %s/%s no longer exists", train_richtext(train.entity), entry.name, entry.quality or "normal")
+					log(msg)
+					game.print(msg)
+					remove_train(map_data, train_id, train)
+				elseif new_name or new_quality then
+					entry.name = new_name or entry.name
+					entry.quality = new_quality or entry.quality
+				end
+			end
+		end
+	end
+end
+
 --STATUS_R_TO_D = 5
----@param data ConfigurationChangedData
-function on_config_changed(data)
+---@param config_change_data ConfigurationChangedData
+function on_config_changed(config_change_data)
 	storage.tick_state = STATE_INIT
 	storage.tick_data = {}
 	storage.perf_cache = {}
 
-	flib_migration.on_config_changed(data, migrations_table)
+	flib_migration.on_config_changed(config_change_data, migrations_table)
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 
@@ -402,6 +499,10 @@ function on_config_changed(data)
 		if debug_revision then
 			on_debug_revision_change()
 		end
+	end
+
+	if config_change_data.migration_applied then
+		sanitize_economy_names(config_change_data)
 	end
 
 	retrigger_train_calculation(false)

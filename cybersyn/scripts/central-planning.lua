@@ -13,7 +13,7 @@ local random = math.random
 local HASH_STRING = "|"
 
 ---@param name string The name of the item
----@param quality string The name of the quality of the item or nil if it is common
+---@param quality string? The name of the quality of the item or nil if it is common
 ---@return string
 function hash_item(name, quality)
 	if quality == nil or quality == "normal" then
@@ -46,7 +46,7 @@ end
 ---@param network_name string Name of the virutal signal prototype identifying the station's network.
 ---@param item_hash string
 ---@return Cybersyn.Economy.ItemNetworkName
-local function create_item_network_name(network_name, item_hash)
+function create_item_network_name(network_name, item_hash)
 	return network_name .. ":" .. item_hash
 end
 
@@ -56,6 +56,23 @@ end
 local function get_network_name_from_item_network_name(item_network_name)
 	local _, _, network_name = string.find(item_network_name, "^(.-):")
 	return network_name
+end
+
+---@param item_network_name Cybersyn.Economy.ItemNetworkName
+---@return string network_name
+---@return string item_name
+---@return string? item_quality
+function parse_item_network_name(item_network_name)
+	local s, e = string.find(item_network_name, ":", 1, true)
+	if not (s and e) then
+		error(item_network_name.." is no ItemNetworkName")
+	end
+
+	local network_name = string.sub(item_network_name, 1, s - 1)
+	local item_hash = string.sub(item_network_name, e + 1)
+	local item_name, item_quality = unhash_signal(item_hash)
+
+	return network_name, item_name, item_quality
 end
 
 ---Trains are not allowed to move further than one surface away from their home surface.
