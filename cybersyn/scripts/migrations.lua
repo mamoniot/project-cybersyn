@@ -391,55 +391,17 @@ local migrations_table = {
 function sanitize_economy_names(config_change_data)
 	local migrations = config_change_data.migrations --[[@as {[string]: {[string]: string}}]]
 
-	if not (migrations.fluid or migrations.item) then return end
+	-- migrations seems to have empty tables even for IDTypes without changes but there's no documented guarantee for it
 	migrations.fluid = migrations.fluid or {}
 	migrations.item = migrations.item or {}
+	migrations.quality = migrations.quality or {}
+	if not (next(migrations.fluid) or next(migrations.item) or next(migrations.quality)) then return end
 
 	---@type MapData
 	local map_data = storage
 	local removed = {}
 
-	local all_names = map_data.economy.all_names
-	for i, entry in ipairs(map_data.economy.all_names) do
-		if type(entry) == "string" then
-			local network_name, item_name, quality = parse_item_network_name(entry)
-			local new_name = migrations.item[item_name] or migrations.fluid[item_name]
-			local new_quality = quality and migrations.quality[quality]
-			if new_name == "" or new_quality == "" then
-				all_names[i] = nil
-				removed[item_name] = true
-			elseif new_name or new_quality then
-				local new_item_network_name = create_item_network_name(network_name, hash_item(new_name or item_name, new_quality or quality))
-				all_names[i] = new_item_network_name
-			end
-		else
-			local new_name = migrations[entry.type][entry.name]
-			local new_quality = entry.quality and migrations.quality[entry.quality]
-			if new_name == "" or new_quality == "" then
-				all_names[i] = nil
-				removed[entry.name] = true
-			elseif new_name or new_quality then
-				entry.name = new_name or entry.name
-				entry.quality = new_quality or entry.quality
-			end
-		end
-	end
-
-	for _, all_stations in ipairs({ map_data.economy.all_p_stations, map_data.economy.all_r_stations }) do
-		for item_network_name, station_ids in pairs(all_stations) do
-			local network_name, item_name, quality = parse_item_network_name(item_network_name)
-			local new_name = migrations.item[item_name] or migrations.fluid[item_name]
-			local new_quality = quality and migrations.quality[quality]
-			if new_name == "" or new_quality == "" then
-				all_stations[item_network_name] = nil
-				removed[item_name] = true
-			elseif new_name or new_quality then
-				local new_item_network_name = create_item_network_name(network_name, hash_item(new_name or item_name, new_quality or quality))
-				all_stations[new_item_network_name] = station_ids
-				all_stations[item_network_name] = nil
-			end
-		end
-	end
+	-- no need to migrate map_data.economy, on_config_changed() sets map_data.tick_state = STATE_INIT which will wipe it
 
 	for _, station in pairs(map_data.stations) do
 		local deliveries = station.deliveries
