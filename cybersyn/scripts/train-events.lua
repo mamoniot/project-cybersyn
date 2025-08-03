@@ -538,13 +538,21 @@ function on_train_changed(event)
 							station = map_data.refuelers[id]
 							is_station = false
 						end
-						if id and station.entity_stop.valid and station.entity_stop.connected_rail == rail then
+						if id and station and station.entity_stop.valid and station.entity_stop.connected_rail == rail then
 							if is_station then
 								if station.entity_comb1 and (not station.entity_comb2 or station.entity_comb2.valid) then
 									on_train_arrives_station(map_data, station, train_id, train)
 								end
 							elseif station.entity_comb.valid then
 								on_train_arrives_refueler(map_data, station, train_id, train)
+							end
+						else
+							remove_train(map_data, train_id, train)
+							lock_train(train_e)
+							if is_station then
+								send_alert_station_of_train_broken(map_data, train_e)
+							else
+								send_alert_refueler_of_train_broken(map_data, train_e)
 							end
 						end
 					end
