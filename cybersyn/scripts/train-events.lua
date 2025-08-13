@@ -546,7 +546,7 @@ function on_train_changed(event)
 							elseif station.entity_comb.valid then
 								on_train_arrives_refueler(map_data, station, train_id, train)
 							end
-						else
+						elseif is_station ~= nil then -- STATUS_TO_(P|R|F) but station is gone
 							remove_train(map_data, train_id, train)
 							lock_train(train_e)
 							if is_station then
