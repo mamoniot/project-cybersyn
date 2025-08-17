@@ -222,6 +222,7 @@ end
 ---@param elevators Cybersyn.ElevatorData[] must be elevators on the surface of the given entity
 ---@param from LuaEntity
 ---@return AddRecordData?
+---@return LuaEntity?
 local function se_create_closest_elevator_travel(elevators, from)
 	local closest, elevator_stop = 2100000000, nil
 	local f_surface = from.surface_index
@@ -238,53 +239,7 @@ local function se_create_closest_elevator_travel(elevators, from)
 	return {
 		station = elevator_stop.backer_name,
 		temporary = true,
-	}
-end
-
----@class ScheduleBuilder : Class
----@field public records AddRecordData[]
----@field private i integer
----@field private same_surface boolean
-local ScheduleBuilder = Class:derive()
-
----@protected
-function ScheduleBuilder:new()
-	local instance = self:derive(Class:new())
-	instance.records = {}
-	instance.i = 0
-	instance.same_surface = true
-	return instance
-end
-
----Adds the given record.
----@param record AddRecordData? nil values are skipped
-function ScheduleBuilder:add(record)
-	if record then
-		local i = self.i + 1
-		self.records[i] = record
-		self.i = i
-	end
-end
-
----Adds the given record and prevents further direct_to_stop records.
----@param record AddRecordData? nil values are skipped and dont prevent further direct_to_station records
-function ScheduleBuilder:add_surface_travel(record)
-	if record then
-		local i = self.i + 1
-		self.records[i] = record
-		self.i = i
-		self.same_surface = false
-	end
-end
-
----Adds a temporary rail record for the given train stop if there was no previous surface travel.
----@param stop LuaEntity? invalid stops are skipped
-function ScheduleBuilder:add_direct_to_stop(stop)
-	if self.same_surface and stop and stop.valid then
-		local i = self.i + 1
-		self.records[i] = create_direct_to_station_order(stop)
-		self.i = i
-	end
+	}, elevator_stop
 end
 
 ---@class SeScheduleBuilder : ScheduleBuilder
@@ -304,7 +259,8 @@ end
 ---@param from LuaEntity
 function SeScheduleBuilder:add_elevator_if_necessary(surface_from, surface_to, from)
 	if surface_from ~= surface_to then
-		self:add_surface_travel(se_create_closest_elevator_travel(self.elevators, from))
+		local record, elevator_stop = se_create_closest_elevator_travel(self.elevators, from)
+		self:add_surface_travel(record, elevator_stop)
 		-- TODO se-ltn-glue has the option to add an additional clearance station that mitigates "destination limit stutter". Still needed with SE >= 0.7.13 / Factorio >= 2.0.45?
 	end
 end
@@ -319,7 +275,7 @@ end
 ---@param manifest Manifest
 ---@param surface_connections Cybersyn.SurfaceConnection[]
 ---@param start_at_depot boolean?
----@return AddRecordData[]?
+---@return ScheduleBuilder?
 function ElevatorTravel.se_set_manifest_schedule(
 		train,
 		depot_stop,
@@ -344,36 +300,35 @@ function ElevatorTravel.se_set_manifest_schedule(
 	local r_surface = r_stop.surface_index
 
 	local builder = SeScheduleBuilder:new(elevators)
+	builder:use_ids()
 
 	builder:add_elevator_if_necessary(t_surface, p_surface, t_stock)
-	builder:add_direct_to_stop(p_stop)
-	builder:add(create_loading_order(p_stop, manifest, p_schedule_settings, true))
+	builder:add_loading_order(p_stop, manifest, p_schedule_settings)
 
 	builder:add_elevator_if_necessary(p_surface, r_surface, p_stop)
-	builder:add_direct_to_stop(r_stop)
-	builder:add(create_unloading_order(r_stop, r_schedule_settings, true))
+	builder:add_unloading_order(r_stop, manifest, r_schedule_settings)
 
 	builder:add_elevator_if_necessary(r_surface, d_surface, r_stop)
 	-- there must be at least one surface travel, no need to deal with require_same_depot here
 
-	return builder.records
+	return builder
 end
 
 ---@param map_data MapData
 ---@param data RefuelSchedulingData
----@return AddRecordData[]?
+---@return ScheduleBuilder?
 function ElevatorTravel.se_add_refueler_schedule(map_data, data)
 	local elevators = se_get_elevators(data.surface_connections)
 	if not elevators then return end -- surface_connections contained no elevators
 
 	local builder = SeScheduleBuilder:new(elevators)
+	builder:use_ids()
 
 	builder:add_elevator_if_necessary(data.t_surface, data.f_surface, data.t_stock)
-	builder:add_direct_to_stop(data.f_stop)
-	builder:add(create_inactivity_order(data.f_stop.backer_name, REFUELER_ID_ITEM, data.f_stop.unit_number))
+	builder:add_refuel_order(data.f_stop)
 
 	builder:add_elevator_if_necessary(data.f_surface, data.train.depot_surface_id, data.f_stop)
 	-- there must be at least one surface travel, no need to deal with require_same_depot here
 
-	return builder.records
+	return builder
 end
