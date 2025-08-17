@@ -72,6 +72,12 @@ local function se_add_direct_to_station_order(map_data, train, schedule, found_c
 		return schedule_offset -- no change to schedule
 	end
 
+	-- Factorio does not allow adding temporary rail stops on different surfaces.
+	local rolling_stock = get_any_train_entity(train.entity)
+	if not rolling_stock or rolling_stock.surface_index ~= station.entity_stop.surface_index then
+		return schedule_offset
+	end
+
 	local real_index = found_cybersyn_stop.schedule_index + schedule_offset
 	local is_current_destination = schedule.current == real_index
 	local direct_to_station = create_direct_to_station_order(station.entity_stop)
