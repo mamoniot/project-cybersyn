@@ -144,7 +144,7 @@ local function handle_setting(e)
 end
 
 ---@param combId integer
----@return string
+---@return LocalisedString
 local function generate_stop_layout_text(combId)
 	local targetStop = storage.to_stop[combId]
 	local stopLayout = nil
@@ -158,7 +158,7 @@ local function generate_stop_layout_text(combId)
 		end
 	end
 
-	return serpent.line(stopLayout)
+	return stopLayout and serpent.line(stopLayout) or { "cybersyn-gui.allow-list-no-station" }
 end
 
 local LAYOUT_ITEM_MAP = {
