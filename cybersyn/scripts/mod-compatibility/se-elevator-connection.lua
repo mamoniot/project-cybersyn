@@ -161,6 +161,18 @@ function Elevators.from_entity(entity)
 	return data
 end
 
+--- @param elevator Cybersyn.ElevatorData
+local function warn_same_elevator_name(elevator)
+	local surface_id = elevator.ground.surface_id
+	for _, other_elevator in pairs(storage.se_elevators) do
+		local ground = other_elevator ~= elevator and other_elevator[surface_id]
+		if ground and other_elevator.cs_enabled ~= elevator.cs_enabled and ground.stop.valid and ground.stop.backer_name == elevator.ground.stop.backer_name then
+			local msgId = "cybersyn-messages.other-elevator-" .. (other_elevator.cs_enabled and "enabled" or "disabled")
+			ground.stop.force.print({ msgId, gps_text(ground.elevator) })
+		end
+	end
+end
+
 --- Connects or disconnects the eleator from Cybersyn based on cs_enabled and updates the network_id when connected to
 --- @param data Cybersyn.ElevatorData
 function Elevators.update_connection(data)
@@ -168,10 +180,12 @@ function Elevators.update_connection(data)
 		local status = Surfaces.connect_surfaces(data.ground.stop, data.orbit.stop, data.network_masks)
 		if status == Surfaces.status.created then
 			data.ground.elevator.force.print({ "cybersyn-messages.elevator-connected", gps_text(data.ground.elevator) })
+			warn_same_elevator_name(data)
 		end
 	else
 		Surfaces.disconnect_surfaces(data.ground.stop, data.orbit.stop)
 		data.ground.elevator.force.print({ "cybersyn-messages.elevator-disconnected", gps_text(data.ground.elevator) })
+		warn_same_elevator_name(data)
 	end
 end
 
