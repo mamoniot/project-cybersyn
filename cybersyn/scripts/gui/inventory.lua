@@ -23,7 +23,7 @@ function inventory_tab.create()
 			ref = { "inventory", "content_frame" },
 			templates.inventory_slot_table("provided", 12),
 			templates.inventory_slot_table("in_transit", 8),
-			templates.inventory_slot_table("requested", 7),
+			templates.inventory_slot_table("requested", 8),
 		},
 	}
 end
@@ -216,20 +216,37 @@ function inventory_tab.build(map_data, player_data)
 		local item_count, station_count = table.unpack(counts)
 		local item_prototype = util.prototype_from_name(item)
 		local signal = util.signalid_from_name(item, quality)
+		
+		-- Check if this requested item is in transit
+		local is_in_transit = inventory_in_transit[item_hash] ~= nil
+		local button_style = is_in_transit and "flib_slot_button_orange" or "flib_slot_button_red"
+		
+		-- Build tooltip with transit status
+		local tooltip_parts = {
+			"",
+			util.rich_text_from_signal(signal),
+			" ", item_prototype.localised_name, "\n",
+			"Requested by ", tostring(station_count), " station",
+			(station_count > 1 and "s" or ""), "\n",
+			"Amount: " .. format.number(item_count)
+		}
+		
+		-- Add transit status to tooltip
+		if is_in_transit then
+			local transit_counts = inventory_in_transit[item_hash]
+			local transit_amount = transit_counts[1]
+			tooltip_parts[#tooltip_parts + 1] = "\n[color=orange]In transit: " .. format.number(transit_amount) .. "[/color]"
+		else
+			tooltip_parts[#tooltip_parts + 1] = "\n[color=red]Not in transit[/color]"
+		end
+		
 		requested_children[#requested_children + 1] = {
 			type = "choose-elem-button",
 			elem_type = "signal",
 			signal = signal,
 			enabled = false,
-			style = "flib_slot_button_red",
-			tooltip = {
-				"",
-				util.rich_text_from_signal(signal),
-				" ", item_prototype.localised_name, "\n",
-				"Requested by ", tostring(station_count), " station",
-				(station_count > 1 and "s" or ""), "\n",
-				"Amount: " .. format.number(item_count),
-			},
+			style = button_style,
+			tooltip = tooltip_parts,
 			children = {
 				{
 					type = "label",
