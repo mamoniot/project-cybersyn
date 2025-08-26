@@ -42,6 +42,7 @@ function inventory_tab.build(map_data, player_data)
 	local inventory_provided = {}
 	local inventory_in_transit = {}
 	local inventory_requested = {}
+	local request_start_ticks = {}  -- Track earliest request time for each item
 
 	local stations_sorted = {}
 
@@ -148,6 +149,14 @@ function inventory_tab.build(map_data, player_data)
 								inventory_requested[item_hash][1] = inventory_requested[item_hash][1] + count
 								inventory_requested[item_hash][2] = inventory_requested[item_hash][2] + 1
 							end
+							
+							-- Track the earliest request time for this item
+							if station.request_start_ticks and station.request_start_ticks[item_hash] then
+								local start_tick = station.request_start_ticks[item_hash]
+								if start_tick and (not request_start_ticks[item_hash] or start_tick < request_start_ticks[item_hash]) then
+									request_start_ticks[item_hash] = start_tick
+								end
+							end
 						end
 					end
 				end
@@ -210,8 +219,34 @@ function inventory_tab.build(map_data, player_data)
 
 	local inventory_requested_table = refs.inventory_requested_table
 	local requested_children = {}
-
+	
+	-- Get current tick for calculating wait times
+	local current_tick = game.tick
+	
+	-- Create sorted list of requested items with wait times
+	local requested_items = {}
 	for item_hash, counts in pairs(inventory_requested) do
+		local wait_ticks = request_start_ticks[item_hash] and (current_tick - request_start_ticks[item_hash]) or 0
+		local is_in_transit = inventory_in_transit[item_hash] ~= nil
+		
+		table.insert(requested_items, {
+			hash = item_hash,
+			counts = counts,
+			wait_ticks = wait_ticks,
+			in_transit = is_in_transit
+		})
+	end
+	
+	-- Sort by: 1) transit status (not in transit first), 2) wait time (longest first)
+	table.sort(requested_items, function(a, b)
+		if a.in_transit ~= b.in_transit then
+			return not a.in_transit  -- Not in transit comes first
+		end
+		return a.wait_ticks > b.wait_ticks  -- Longer wait time comes first
+	end)
+	
+	-- Helper function to create button element
+	local function create_requested_button(item_hash, counts, wait_ticks)
 		item, quality = unhash_signal(item_hash)
 		local item_count, station_count = table.unpack(counts)
 		local item_prototype = util.prototype_from_name(item)
@@ -231,6 +266,24 @@ function inventory_tab.build(map_data, player_data)
 			"Amount: " .. format.number(item_count)
 		}
 		
+		-- Add wait time to tooltip
+		if wait_ticks and wait_ticks > 0 then
+			local wait_seconds = math.floor(wait_ticks / 60)
+			local wait_minutes = math.floor(wait_seconds / 60)
+			local wait_hours = math.floor(wait_minutes / 60)
+			local wait_display
+			
+			if wait_hours > 0 then
+				wait_display = string.format("%dh %dm %ds", wait_hours, wait_minutes % 60, wait_seconds % 60)
+			elseif wait_minutes > 0 then
+				wait_display = string.format("%dm %ds", wait_minutes, wait_seconds % 60)
+			else
+				wait_display = string.format("%ds", wait_seconds)
+			end
+			
+			tooltip_parts[#tooltip_parts + 1] = "\n[color=yellow]Waiting for: " .. wait_display .. "[/color]"
+		end
+		
 		-- Add transit status to tooltip
 		if is_in_transit then
 			local transit_counts = inventory_in_transit[item_hash]
@@ -240,7 +293,7 @@ function inventory_tab.build(map_data, player_data)
 			tooltip_parts[#tooltip_parts + 1] = "\n[color=red]Not in transit[/color]"
 		end
 		
-		requested_children[#requested_children + 1] = {
+		return {
 			type = "choose-elem-button",
 			elem_type = "signal",
 			signal = signal,
@@ -262,6 +315,11 @@ function inventory_tab.build(map_data, player_data)
 				},
 			},
 		}
+	end
+	
+	-- Add items in sorted order
+	for _, item_data in ipairs(requested_items) do
+		requested_children[#requested_children + 1] = create_requested_button(item_data.hash, item_data.counts, item_data.wait_ticks)
 	end
 
 	local inventory_in_transit_table = refs.inventory_in_transit_table

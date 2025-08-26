@@ -917,6 +917,15 @@ local function tick_poll_station(map_data, mod_settings)
 				if -effective_item_count >= r_threshold and -item_count >= r_threshold then
 					is_not_requesting = false
 					is_requesting_nothing = false
+					
+					-- Track when this item request started
+					if not station.request_start_ticks then
+						station.request_start_ticks = {}
+					end
+					if not station.request_start_ticks[item_hash] then
+						station.request_start_ticks[item_hash] = game.tick
+					end
+					
 					local f, a
 					if station.network_name == NETWORK_EACH then
 						f, a = pairs(station.network_mask --[[@as {[string]: int}]])
@@ -934,6 +943,11 @@ local function tick_poll_station(map_data, mod_settings)
 							all_names[#all_names + 1] = v.signal
 						end
 						stations[#stations + 1] = station_id
+					end
+				else
+					-- Request no longer needed, clear the tracking
+					if station.request_start_ticks then
+						station.request_start_ticks[item_hash] = nil
 					end
 				end
 			end
@@ -958,6 +972,25 @@ local function tick_poll_station(map_data, mod_settings)
 					end
 				else
 					comb1_signals[k] = nil
+				end
+			end
+		end
+		
+		-- Clean up request_start_ticks for items no longer being requested
+		-- We need to check all tracked items and remove those not currently requested
+		local requested_items = {}
+		for k, v in pairs(comb1_signals) do
+			if v.count < 0 then  -- Negative means requesting
+				local item_hash = hash_signal(v.signal)
+				requested_items[item_hash] = true
+			end
+		end
+		
+		-- Remove tracking for items no longer requested
+		if station.request_start_ticks and next(station.request_start_ticks) then
+			for item_hash, _ in pairs(station.request_start_ticks) do
+				if not requested_items[item_hash] then
+					station.request_start_ticks[item_hash] = nil
 				end
 			end
 		end
