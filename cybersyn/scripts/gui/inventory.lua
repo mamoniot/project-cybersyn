@@ -235,7 +235,6 @@ function inventory_tab.build(map_data, player_data)
 		if is_in_transit then
 			local transit_counts = inventory_in_transit[item_hash]
 			local transit_amount = transit_counts[1]
-			tooltip_parts[#tooltip_parts + 1] = "\n[color=orange]In transit: " .. format.number(transit_amount) .. "[/color]"
 			table.insert(tooltip_parts, "\n[color=orange]")
 			table.insert(tooltip_parts, {"cybersyn-gui.in-transit-amount", format.number(transit_amount)})
 			table.insert(tooltip_parts, "[/color]")
