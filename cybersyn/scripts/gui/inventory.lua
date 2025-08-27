@@ -261,9 +261,8 @@ function inventory_tab.build(map_data, player_data)
 			"",
 			util.rich_text_from_signal(signal),
 			" ", item_prototype.localised_name, "\n",
-			"Requested by ", tostring(station_count), " station",
-			(station_count > 1 and "s" or ""), "\n",
-			"Amount: " .. format.number(item_count)
+			{"cybersyn-gui.requested-by-stations", tostring(station_count)}, "\n",
+			{"cybersyn-gui.amount", format.number(item_count)}
 		}
 		
 		-- Add wait time to tooltip
