@@ -280,7 +280,7 @@ function inventory_tab.build(map_data, player_data)
 				wait_display = string.format("%ds", wait_seconds)
 			end
 			
-			tooltip_parts[#tooltip_parts + 1] = "\n[color=yellow]Waiting for: " .. wait_display .. "[/color]"
+			tooltip_parts[#tooltip_parts + 1] = "\n[color=yellow]" .. {"cybersyn-gui.waiting-for", wait_display} .. "[/color]"
 		end
 		
 		-- Add transit status to tooltip
