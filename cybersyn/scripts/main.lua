@@ -140,7 +140,7 @@ local function on_station_built(map_data, stop, comb1, comb2)
 		network_mask = 0,
 		wagon_combs = nil,
 		deliveries = {},
-		request_start_ticks = {},  -- Track when each item was first requested
+		request_start_ticks = {},
 		accepted_layouts = {},
 		layout_pattern = nil,
 		tick_signals = nil,
@@ -195,6 +195,7 @@ function on_station_broken(map_data, station_id, station)
 			end
 		end
 	end
+	clear_all_request_tracking(station)
 	map_data.stations[station_id] = nil
 	interface_raise_station_removed(station_id, station)
 end

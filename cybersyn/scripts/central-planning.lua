@@ -12,6 +12,42 @@ local random = math.random
 
 local HASH_STRING = "|"
 
+-- Request tracking functions
+-- These functions manage tracking of when item requests started, allowing the GUI
+-- to display how long items have been waiting to be delivered. The tracking is:
+-- - Started when a station begins requesting an item
+-- - Maintained while the request is active (even if deliveries fail)
+-- - Cleared when a successful delivery is made or the request stops
+
+---@param station Station
+local function init_request_tracking(station)
+	if not station.request_start_ticks then
+		station.request_start_ticks = {}
+	end
+end
+
+---@param station Station
+---@param item_hash string
+local function track_request_start(station, item_hash)
+	init_request_tracking(station)
+	if not station.request_start_ticks[item_hash] then
+		station.request_start_ticks[item_hash] = game.tick
+	end
+end
+
+---@param station Station
+---@param item_hash string
+local function clear_request_tracking(station, item_hash)
+	if station.request_start_ticks then
+		station.request_start_ticks[item_hash] = nil
+	end
+end
+
+---@param station Station
+function clear_all_request_tracking(station)
+	station.request_start_ticks = nil
+end
+
 ---@param name string The name of the item
 ---@param quality string? The name of the quality of the item or nil if it is common
 ---@return string
@@ -225,6 +261,12 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 
 		r_station.deliveries_total = r_station.deliveries_total + 1
 		p_station.deliveries_total = p_station.deliveries_total + 1
+
+		-- Reset request tracking times for delivered items
+		for _, item in ipairs(manifest) do
+			local item_hash = hash_item(item.name, item.quality)
+			clear_request_tracking(r_station, item_hash)
+		end
 
 		local r_is_each = r_station.network_name == NETWORK_EACH
 		local p_is_each = p_station.network_name == NETWORK_EACH
@@ -919,12 +961,7 @@ local function tick_poll_station(map_data, mod_settings)
 					is_requesting_nothing = false
 					
 					-- Track when this item request started
-					if not station.request_start_ticks then
-						station.request_start_ticks = {}
-					end
-					if not station.request_start_ticks[item_hash] then
-						station.request_start_ticks[item_hash] = game.tick
-					end
+					track_request_start(station, item_hash)
 					
 					local f, a
 					if station.network_name == NETWORK_EACH then
@@ -946,9 +983,7 @@ local function tick_poll_station(map_data, mod_settings)
 					end
 				else
 					-- Request no longer needed, clear the tracking
-					if station.request_start_ticks then
-						station.request_start_ticks[item_hash] = nil
-					end
+					clear_request_tracking(station, item_hash)
 				end
 			end
 			if is_not_requesting then
@@ -977,21 +1012,26 @@ local function tick_poll_station(map_data, mod_settings)
 		end
 		
 		-- Clean up request_start_ticks for items no longer being requested
-		-- We need to check all tracked items and remove those not currently requested
-		local requested_items = {}
-		for k, v in pairs(comb1_signals) do
-			if v.count < 0 then  -- Negative means requesting
-				local item_hash = hash_signal(v.signal)
-				requested_items[item_hash] = true
-			end
-		end
-		
-		-- Remove tracking for items no longer requested
 		if station.request_start_ticks and next(station.request_start_ticks) then
+			local requested_items = {}
+			-- Build set of currently requested items
+			for k, v in pairs(comb1_signals) do
+				if v.count < 0 then  -- Negative means requesting
+					local item_hash = hash_signal(v.signal)
+					requested_items[item_hash] = true
+				end
+			end
+			
+			-- Remove tracking for items no longer requested
 			for item_hash, _ in pairs(station.request_start_ticks) do
 				if not requested_items[item_hash] then
-					station.request_start_ticks[item_hash] = nil
+					clear_request_tracking(station, item_hash)
 				end
+			end
+			
+			-- If no items are being requested, clear all tracking
+			if not next(requested_items) then
+				clear_all_request_tracking(station)
 			end
 		end
 	end
