@@ -148,6 +148,7 @@
 ---@field public network_mask int
 ---@field public warmup_time double
 ---@field public stuck_train_time double
+---@field public track_request_wait_times boolean
 ---@field public fuel_threshold double
 ---@field public allow_cargo_in_depot boolean
 ---@field public missing_train_alert_enabled boolean --interface setting

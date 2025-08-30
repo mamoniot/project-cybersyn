@@ -151,7 +151,7 @@ function inventory_tab.build(map_data, player_data)
 							end
 							
 							-- Track the earliest request time for this item
-							if station.request_start_ticks and station.request_start_ticks[item_hash] then
+							if mod_settings.track_request_wait_times and station.request_start_ticks and station.request_start_ticks[item_hash] then
 								local start_tick = station.request_start_ticks[item_hash]
 								if start_tick and (not request_start_ticks[item_hash] or start_tick < request_start_ticks[item_hash]) then
 									request_start_ticks[item_hash] = start_tick

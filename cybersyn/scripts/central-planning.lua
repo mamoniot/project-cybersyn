@@ -29,6 +29,9 @@ end
 ---@param station Station
 ---@param item_hash string
 local function track_request_start(station, item_hash)
+	if not mod_settings.track_request_wait_times then
+		return
+	end
 	init_request_tracking(station)
 	if not station.request_start_ticks[item_hash] then
 		station.request_start_ticks[item_hash] = game.tick
@@ -1012,7 +1015,7 @@ local function tick_poll_station(map_data, mod_settings)
 		end
 		
 		-- Clean up request_start_ticks for items no longer being requested
-		if station.request_start_ticks and next(station.request_start_ticks) then
+		if mod_settings.track_request_wait_times and station.request_start_ticks and next(station.request_start_ticks) then
 			local requested_items = {}
 			-- Build set of currently requested items
 			for k, v in pairs(comb1_signals) do
