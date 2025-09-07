@@ -384,6 +384,16 @@ local migrations_table = {
 				cybersyn_train.depot_surface_id = depot_stop and depot_stop.surface_index or train.front_stock.surface_index
 			end
 		end
+	end,
+	["2.0.33"] = function()
+		-- Add request_start_ticks field to existing stations
+		---@type MapData
+		local map_data = storage
+		for _, station in pairs(map_data.stations) do
+			if not station.request_start_ticks then
+				station.request_start_ticks = {}
+			end
+		end
 	end
 }
 
