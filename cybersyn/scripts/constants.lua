@@ -41,6 +41,7 @@ NETWORK_ANYTHING = "signal-anything"
 NETWORK_EACH = "signal-each"
 INACTIVITY_TIME = 100
 LOCK_TRAIN_TIME = 60 * 60 * 60 * 24 * 7
+NO_PATH_SKIP_TIME = 5 * 60 -- 5s
 
 DELTA = 1 / 2048
 

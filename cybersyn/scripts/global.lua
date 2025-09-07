@@ -119,6 +119,7 @@
 ---@field public se_is_being_teleported true? --se only
 ---@field public se_awaiting_removal any? --se only
 ---@field public se_awaiting_rename any? --se only
+---@field public skip_path_checks_until int?
 
 ---@alias Manifest ManifestEntry[]
 ---@class ManifestEntry
