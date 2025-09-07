@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.33
+Date: 2025-09-07
+  Changes:
+    - SE Integration - Warn about elevators with the same name
+  Bugfixes:
+    - Fix crash when updating a station's layout.
+    - SE Integration - Fix crash when elevator travel happens out of order
+---------------------------------------------------------------------------------------------------
 Version: 2.0.32
 Date: 2025-08-13
   Bugfixes:
