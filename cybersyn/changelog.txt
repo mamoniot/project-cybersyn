@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.35
+Date: 2025-10-08
+  Changes:
+    - Avoid no path to first schedule entry
+    - Use different colors for in-transit and not-in-transit items
+    - Add optional Wait Time Tracking to Station GUI
+---------------------------------------------------------------------------------------------------
 Version: 2.0.33
 Date: 2025-09-07
   Changes:
