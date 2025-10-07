@@ -373,6 +373,118 @@ function clean_temporary_records(schedule)
 	end
 end
 
+---@class ScheduleBuilder : Class
+---@field public records AddRecordData[]
+---@field public stops (LuaEntity?)[]
+---@field private i integer
+---@field private same_surface boolean
+---@field private include_ids boolean
+ScheduleBuilder = Class:derive()
+
+---@protected
+function ScheduleBuilder:new()
+	local instance = self:derive(Class:new())
+	instance.records = {}
+	instance.stops = {}
+	instance.i = 0
+	instance.same_surface = true
+	instance.include_ids = false
+	return instance
+end
+
+function ScheduleBuilder:use_ids()
+	self.include_ids = true
+end
+
+---Adds the given record.
+---@param record AddRecordData? nil values are skipped
+---@param stop LuaEntity? the stop that's associated with the record, if any
+function ScheduleBuilder:add(record, stop)
+	if record then
+		local i = self.i + 1
+		self.records[i] = record
+		self.stops[i] = stop
+		self.i = i
+	end
+end
+
+---Adds the given record and prevents further direct_to_stop records.
+---@param record AddRecordData? nil values are skipped and dont prevent further direct_to_station records
+---@param stop LuaEntity? the stop that's associated with the record, if any
+function ScheduleBuilder:add_surface_travel(record, stop)
+	if record then
+		local i = self.i + 1
+		self.records[i] = record
+		self.stops[i] = stop
+		self.i = i
+		self.same_surface = false
+		self.include_ids = true
+	end
+end
+
+---Adds a temporary rail record for the given train stop if there was no previous surface travel.
+---@param stop LuaEntity? invalid stops are skipped
+function ScheduleBuilder:add_direct_to_stop(stop)
+	if self.same_surface and stop and stop.valid then
+		local i = self.i + 1
+		self.records[i] = create_direct_to_station_order(stop)
+		self.stops[i] = stop
+		self.i = i
+	end
+end
+
+---@param p_stop LuaEntity
+---@param manifest Manifest
+---@param p_schedule_settings Cybersyn.StationScheduleSettings
+function ScheduleBuilder:add_loading_order(p_stop, manifest, p_schedule_settings)
+	self:add_direct_to_stop(p_stop)
+	self:add(create_loading_order(p_stop, manifest, p_schedule_settings, self.include_ids), p_stop)
+end
+
+---@param r_stop LuaEntity
+---@param manifest Manifest
+---@param r_schedule_settings Cybersyn.StationScheduleSettings
+function ScheduleBuilder:add_unloading_order(r_stop, manifest, r_schedule_settings)
+	self:add_direct_to_stop(r_stop)
+	self:add(create_unloading_order(r_stop, manifest, self.include_ids), r_stop)
+end
+
+---@param f_stop LuaEntity
+function ScheduleBuilder:add_refuel_order(f_stop)
+	self:add_direct_to_stop(f_stop)
+	self:add(create_inactivity_order(f_stop.backer_name, self.include_ids and REFUELER_ID_ITEM or nil, f_stop.unit_number), f_stop)
+end
+
+---@param train LuaTrain
+---@return boolean
+function ScheduleBuilder:is_path_available(train)
+	---@type TrainPathFinderGoal?
+	local goal = nil
+	for i = 1, self.i do
+		if self.stops[i] then
+			goal = { train_stop = self.stops[i] }
+			break
+		end
+		local r = self.records[i]
+		if r.rail then
+			goal = { rail = r.rail, direction = r.rail_direction }
+			break
+		end
+	end
+	if not goal then return false end
+
+	local path_result = game.train_manager.request_train_path({
+		type = "any-goal-accessible",
+		train = train,
+		goals = { goal },
+		search_direction = "any-direction-with-locomotives",
+		in_chain_signal_section = true,
+		shortest_path = true,
+	})
+
+	return path_result.found_path
+end
+
 ---Inserts the given records before the first non-interrupt record in the schedule
 ---@param schedule LuaSchedule
 ---@param records AddRecordData[] supports optional entries by skipping falsy ones
@@ -402,7 +514,7 @@ end
 
 ---NOTE: does not check .valid
 ---@param map_data MapData
----@param train LuaTrain
+---@param train Train
 ---@param depot_stop LuaEntity
 ---@param same_depot boolean
 ---@param p_stop LuaEntity
@@ -426,7 +538,8 @@ function set_manifest_schedule(
 		start_at_depot)
 	--NOTE: can only return false if start_at_depot is false, it should be incredibly rare that this function returns false
 
-	local schedule = train.get_schedule()
+	local train_e = train.entity
+	local schedule = train_e.get_schedule()
 	clean_temporary_records(schedule)
 
 	-- creates a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
@@ -435,21 +548,21 @@ function set_manifest_schedule(
 			create_loading_order(p_stop, manifest, p_schedule_settings),
 			create_unloading_order(r_stop, r_schedule_settings),
 		})
-		lock_train(train)
+		lock_train(train_e)
 	end
 
 	if not p_stop.connected_rail or not r_stop.connected_rail then
 		train_stuck()
-		send_alert_station_of_train_broken(map_data, train)
+		send_alert_station_of_train_broken(map_data, train_e)
 		return true
 	end
 	if same_depot and not depot_stop.connected_rail then
 		train_stuck()
-		send_alert_depot_of_train_broken(map_data, train)
+		send_alert_depot_of_train_broken(map_data, train_e)
 		return true
 	end
 
-	local t_surface = train.front_stock.surface_index
+	local t_surface = train_e.front_stock.surface_index
 	local p_surface = p_stop.surface_index
 	local r_surface = r_stop.surface_index
 	local d_surface = depot_stop.surface_index
@@ -458,20 +571,19 @@ function set_manifest_schedule(
 		t_surface == r_surface and
 		t_surface == d_surface
 
-	local records = nil
+	local new_schedule = nil
 
 	if all_same_surface then
-		records = {
-			create_direct_to_station_order(p_stop),
-			create_loading_order(p_stop, manifest, p_schedule_settings),
-			create_direct_to_station_order(r_stop),
-			create_unloading_order(r_stop, r_schedule_settings),
-			same_depot and create_direct_to_station_order(depot_stop) or nil,
-		}
+		new_schedule = ScheduleBuilder:new()
+		new_schedule:add_loading_order(p_stop, manifest, p_schedule_settings)
+		new_schedule:add_unloading_order(r_stop, manifest, r_schedule_settings)
+		if same_depot then
+			new_schedule:add_direct_to_stop(depot_stop)
+		end
 	else
 		if IS_SE_PRESENT then
-			records = ElevatorTravel.se_set_manifest_schedule(
-				train,
+			new_schedule = ElevatorTravel.se_set_manifest_schedule(
+				train_e,
 				depot_stop,
 				same_depot,
 				p_stop,
@@ -487,18 +599,25 @@ function set_manifest_schedule(
 		-- if not records and OTHER_TRAVEL_METHOD then ...
 	end
 
-	if records and next(records) then
-		local insert_index = add_records_after_interrupt(schedule, records)
+	if new_schedule and next(new_schedule.records) then
+		-- only available trains that are mid-travel can run into a situation where the train will have no path
+		if train.status == STATUS_TO_D_BYPASS and not new_schedule:is_path_available(train_e) then
+			-- give the train some time to travel and avoid expensive path checks for a while
+			train.skip_path_checks_until = game.tick + NO_PATH_SKIP_TIME
+			return false
+		end
+
+		local insert_index = add_records_after_interrupt(schedule, new_schedule.records)
 		if start_at_depot then
 			schedule.go_to_station(schedule.get_record_count() --[[@as int]])
 		elseif schedule.current > insert_index then
 			schedule.go_to_station(insert_index)
 		end
-		return train.has_path
+		return train_e.has_path
 	end
 
 	train_stuck()
-	send_alert_cannot_path_between_surfaces(map_data, train)
+	send_alert_cannot_path_between_surfaces(map_data, train_e)
 	return true
 end
 
@@ -527,29 +646,29 @@ function add_refueler_schedule(map_data, data)
 	end
 
 	local schedule = data.t_schedule
-	local records = nil
+	local new_schedule = nil
 
 	if data.all_same_surface then
-		records = {
-			create_direct_to_station_order(stop),
-			create_inactivity_order(stop.backer_name),
-			-- no need to deal with direct-to-depot, must already be present and won't be removed
-		}
+		new_schedule = ScheduleBuilder:new()
+		new_schedule:add_refuel_order(stop)
+		-- no need to deal with direct-to-depot, must already be present and won't be removed
 	else
 		if IS_SE_PRESENT then
-			records = ElevatorTravel.se_add_refueler_schedule(map_data, data)
+			new_schedule = ElevatorTravel.se_add_refueler_schedule(map_data, data)
 		end
 
 		-- if not records and OTHER_TRAVEL_METHOD then ...
 	end
 
-	if records and next(records) then
+	if new_schedule and next(new_schedule.records) then
+		-- not checking for an available pathe here, current train.status is always STATUS_R
+
 		if not data.all_same_surface then
 			-- inter-surface travel has to provide a completely new Cybersyn schedule
 			clean_temporary_records(schedule)
 		end
 
-		local refueler_index = add_records_after_interrupt(schedule, records)
+		local refueler_index = add_records_after_interrupt(schedule, new_schedule.records)
 		if schedule.current >= refueler_index then
 			schedule.go_to_station(refueler_index)
 		end
