@@ -117,6 +117,20 @@ function inventory_tab.build(map_data, player_data)
 	for i, station_id in pairs(stations_sorted) do
 		--- @class Station
 		local station = map_data.stations[station_id]
+		
+		local deliveries = station.deliveries
+		if deliveries then
+			for item_hash, count in pairs(deliveries) do
+				if count > 0 then
+					if inventory_in_transit[item_hash] == nil then
+						inventory_in_transit[item_hash] = {count, 1}
+					else
+						inventory_in_transit[item_hash][1] = inventory_in_transit[item_hash][1] + count
+						inventory_in_transit[item_hash][2] = inventory_in_transit[item_hash][2] + 1
+					end
+				end
+			end
+		end
 
 		local comb1_signals, _ = get_signals(station)
 		if comb1_signals then
@@ -141,6 +155,10 @@ function inventory_tab.build(map_data, player_data)
 						if station.is_stack and item_type == "item" then
 							r_threshold = r_threshold * get_stack_size(map_data, item.name)
 						end
+						
+						if inventory_in_transit[item_hash] ~= nil then
+							count = count + inventory_in_transit[item_hash][1]
+						end
 
 						if -count >= r_threshold then
 							if inventory_requested[item_hash] == nil then
@@ -158,20 +176,6 @@ function inventory_tab.build(map_data, player_data)
 								end
 							end
 						end
-					end
-				end
-			end
-		end
-
-		local deliveries = station.deliveries
-		if deliveries then
-			for item_hash, count in pairs(deliveries) do
-				if count > 0 then
-					if inventory_in_transit[item_hash] == nil then
-						inventory_in_transit[item_hash] = {count, 1}
-					else
-						inventory_in_transit[item_hash][1] = inventory_in_transit[item_hash][1] + count
-						inventory_in_transit[item_hash][2] = inventory_in_transit[item_hash][2] + 1
 					end
 				end
 			end
