@@ -760,7 +760,7 @@ function gui_entity_destroyed(unit_number, silent)
 		if not player or not player.valid then goto continue end
 		local screen = player.gui.screen
 		local window = screen[COMBINATOR_NAME]
-		if window and window.tags.unit_number == unit_number then
+		if window and window.tags.id == unit_number then
 			window.destroy()
 			if not silent then
 				player.play_sound({ path = COMBINATOR_CLOSE_SOUND })
