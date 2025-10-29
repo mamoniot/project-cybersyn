@@ -130,13 +130,6 @@ data:extend({
 		maximum_value = 60,
 	},
 	{
-		type = "bool-setting",
-		name = "cybersyn-manager-enabled",
-		order = "aa",
-		setting_type = "startup",
-		default_value = true,
-	},
-	{
 		type = "int-setting",
 		name = "cybersyn-manager-result-limit",
 		order = "aa",

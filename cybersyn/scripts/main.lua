@@ -815,12 +815,11 @@ local function grab_all_settings()
 	mod_settings.track_request_wait_times = settings.global["cybersyn-track-request-wait-times"].value --[[@as boolean]]
 	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value --[[@as boolean]]
 	mod_settings.manager_ups = settings.global["cybersyn-manager-updates-per-second"].value --[[@as double]]
-	mod_settings.manager_enabled = settings.startup["cybersyn-manager-enabled"].value --[[@as boolean]]
 end
 local function register_tick()
 	script.on_nth_tick(nil)
 	--edge case catch to register both main and manager tick if they're scheduled to run on the same ticks
-	if mod_settings.manager_enabled and mod_settings.manager_ups == mod_settings.tps and mod_settings.tps > DELTA then
+	if mod_settings.manager_ups == mod_settings.tps and mod_settings.tps > DELTA then
 		local nth_tick = ceil(60 / mod_settings.tps) --[[@as uint]]
 		script.on_nth_tick(nth_tick, function()
 			tick(storage, mod_settings)
@@ -833,7 +832,7 @@ local function register_tick()
 				tick(storage, mod_settings)
 			end)
 		end
-		if mod_settings.manager_enabled and mod_settings.manager_ups > DELTA then
+		if mod_settings.manager_ups > DELTA then
 			local nth_tick_manager = ceil(60 / mod_settings.manager_ups) --[[@as uint]]
 			script.on_nth_tick(nth_tick_manager, function()
 				manager.tick(storage)
@@ -916,22 +915,16 @@ local function main()
 
 	register_gui_actions()
 
-	local MANAGER_ENABLED = mod_settings.manager_enabled
-
 	script.on_init(function()
 		init_global()
 		ElevatorTravel.setup_se_compat()
 		picker_dollies_compat.setup_picker_dollies_compat()
-		if MANAGER_ENABLED then
-			manager.on_init()
-		end
+		manager.on_init()
 	end)
 
 	script.on_configuration_changed(function(e)
 		on_config_changed(e)
-		if MANAGER_ENABLED then
-			manager.on_migration()
-		end
+		manager.on_migration()
 	end)
 
 	script.on_load(function()
@@ -939,13 +932,11 @@ local function main()
 		picker_dollies_compat.setup_picker_dollies_compat()
 	end)
 
-	if MANAGER_ENABLED then
-		script.on_event(defines.events.on_player_removed, manager.on_player_removed)
-		script.on_event(defines.events.on_player_created, manager.on_player_created)
-		script.on_event(defines.events.on_lua_shortcut, manager.on_lua_shortcut)
-		script.on_event(defines.events.on_gui_closed, manager.on_lua_shortcut)
-		script.on_event("cybersyn-toggle-gui", manager.on_lua_shortcut)
-	end
+	script.on_event(defines.events.on_player_removed, manager.on_player_removed)
+	script.on_event(defines.events.on_player_created, manager.on_player_created)
+	script.on_event(defines.events.on_lua_shortcut, manager.on_lua_shortcut)
+	script.on_event(defines.events.on_gui_closed, manager.on_lua_shortcut)
+	script.on_event("cybersyn-toggle-gui", manager.on_lua_shortcut)
 
 	register_tick()
 end
