@@ -76,6 +76,11 @@ function stations_tab.build(map_data, player_data, query_limit)
 	local stations_sorted = {}
 	local to_sorted_manifest = {}
 
+	if (search_query) then
+		-- lowercase search query to remove case sensitivity 
+		search_query = search_query:lower()
+	end
+
 	local i = 0
 	for id, station in pairs(stations) do
 		local entity = station.entity_stop
@@ -84,7 +89,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 		end
 
 		if search_query then
-			if not string.match(entity.backer_name, search_query) then
+			if not string.match(entity.backer_name:lower(), search_query) then
 				goto continue
 			end
 		end
