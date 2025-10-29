@@ -406,37 +406,26 @@ styles.ltnm_tabbed_pane = {
 	},
 }
 
-if settings.startup["cybersyn-manager-enabled"].value then
-	data:extend({
-		-- custom inputs
-		{
-			type = "custom-input",
-			name = "cybersyn-toggle-gui",
-			key_sequence = "CONTROL + T",
-			action = "lua",
-		},
-		--{
-		--  type = "custom-input",
-		--  name = "ltnm-linked-focus-search",
-		--  key_sequence = "",
-		--  linked_game_control = "focus-search",
-		--},
-		-- shortcuts
-		{
-			type = "shortcut",
-			name = "cybersyn-toggle-gui",
-			icon = "__cybersyn__/graphics/shortcut/shortcut_icon.png",
-			icon_size = 32,
-			small_icon = "__cybersyn__/graphics/shortcut/shortcut_icon.png",
-			small_icon_size = 24,
-			--icon = data_util.build_sprite("nil", { 0, 0 }, util.paths.shortcut_icons, 32, 2),
-			--disabled_icon = data_util.build_sprite(nil, { 48, 0 }, util.paths.shortcut_icons, 32, 2),
-			--small_icon = data_util.build_sprite(nil, { 0, 32 }, util.paths.shortcut_icons, 24, 2),
-			--disabled_small_icon = data_util.build_sprite(nil, { 36, 32 }, util.paths.shortcut_icons, 24, 2),
-			toggleable = true,
-			action = "lua",
-			associated_control_input = "cybersyn-toggle-gui",
-			technology_to_unlock = "cybersyn-train-network",
-		},
-	})
-end
+
+data:extend({
+	-- custom inputs
+	{
+		type = "custom-input",
+		name = "cybersyn-toggle-gui",
+		key_sequence = "CONTROL + T",
+		action = "lua",
+	},
+	{
+		type = "shortcut",
+		name = "cybersyn-toggle-gui",
+		icon = "__cybersyn__/graphics/shortcut/manager-toolbar-white.png",
+		icon_size = 32,
+		small_icon = "__cybersyn__/graphics/shortcut/manager-toolbar-white.png",
+		small_icon_size = 32,
+		style = "green",
+		toggleable = true,
+		action = "lua",
+		associated_control_input = "cybersyn-toggle-gui",
+		technology_to_unlock = "cybersyn-train-network",
+	},
+})

@@ -1,4 +1,14 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.36
+Date: 2025-10-29
+  Changes:
+    - change icon for Cybersyn Manager
+    - make Cybersyn Manager always on (there is no longer setting for enabling/disabling it)
+  Bugfixes:
+    - fixed variable mismatch causing the GUI not being closable and not auto closing on entity being removed or destroyed
+  Translation:
+    - remove Cybersyn Manager enabling setting key and description from all locale files
+---------------------------------------------------------------------------------------------------
 Version: 2.0.35
 Date: 2025-10-08
   Changes:
