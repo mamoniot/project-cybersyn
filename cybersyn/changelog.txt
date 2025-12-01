@@ -1,13 +1,25 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.37
+Date: 2025-12-01
+  Changes:
+    - Remove case sensitivity from station search in GUI
+    - Removed alert sending when train cannot find path between surfaces
+  Bugfixes:
+    - Now correctly uses closest Space Elevator when making schedule
+  Translation:
+    - Added Polish language pack
+    - Fix in Russian translation
+    - Fix in German translation
+---------------------------------------------------------------------------------------------------
 Version: 2.0.36
 Date: 2025-10-29
   Changes:
-    - change icon for Cybersyn Manager
-    - make Cybersyn Manager always on (there is no longer setting for enabling/disabling it)
+    - Change icon for Cybersyn Manager
+    - Make Cybersyn Manager always on (there is no longer setting for enabling/disabling it)
   Bugfixes:
-    - fixed variable mismatch causing the GUI not being closable and not auto closing on entity being removed or destroyed
+    - Fixed variable mismatch causing the GUI not being closable and not auto closing on entity being removed or destroyed
   Translation:
-    - remove Cybersyn Manager enabling setting key and description from all locale files
+    - Remove Cybersyn Manager enabling setting key and description from all locale files
 ---------------------------------------------------------------------------------------------------
 Version: 2.0.35
 Date: 2025-10-08
