@@ -617,7 +617,6 @@ function set_manifest_schedule(
 	end
 
 	train_stuck()
-	send_alert_cannot_path_between_surfaces(map_data, train_e)
 	return true
 end
 
