@@ -238,6 +238,7 @@ local function se_create_closest_elevator_travel(elevators, from)
 		local dist = get_dist(from, stop)
 		if dist < closest then
 			elevator_stop = stop
+			closest = dist
 		end
 	end
 
