@@ -540,7 +540,7 @@ function set_manifest_schedule(
 
 	local train_e = train.entity
 	local schedule = train_e.get_schedule()
-	clean_temporary_records(schedule)
+
 
 	-- creates a schedule that cannot be fulfilled, the train will be stuck but it will give the player information what went wrong
 	function train_stuck()
@@ -606,6 +606,7 @@ function set_manifest_schedule(
 			train.skip_path_checks_until = game.tick + NO_PATH_SKIP_TIME
 			return false
 		end
+		clean_temporary_records(schedule)
 
 		local insert_index = add_records_after_interrupt(schedule, new_schedule.records)
 		if start_at_depot then
