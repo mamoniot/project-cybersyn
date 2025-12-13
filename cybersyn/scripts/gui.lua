@@ -144,7 +144,7 @@ local function handle_setting(e)
 end
 
 ---@param combId integer
----@return string
+---@return LocalisedString
 local function generate_stop_layout_text(combId)
 	local targetStop = storage.to_stop[combId]
 	local stopLayout = nil
@@ -158,7 +158,7 @@ local function generate_stop_layout_text(combId)
 		end
 	end
 
-	return serpent.line(stopLayout)
+	return stopLayout and serpent.line(stopLayout) or { "cybersyn-gui.allow-list-no-station" }
 end
 
 local LAYOUT_ITEM_MAP = {
@@ -310,13 +310,16 @@ end
 
 ---@param e EventData.on_gui_click
 local function handle_refresh_allow(e)
-	-- < function interface.reset_stop_layout(stop_id, forbidden_entity, force_update)
 	local combId = e.element.tags.id
 	local stop = storage.to_stop[combId]
-	if stop == nil then return end
-	local stopId = stop.unit_number
-	remote.call("cybersyn", "reset_stop_layout", stopId, nil, true)
-	update_allow_list_section(e.player_index, combId)
+	if not stop or not stop.valid then return end
+
+	local station = storage.stations[stop.unit_number]
+	local stationOrRefueler = station or storage.refuelers[stop.unit_number]
+	if stationOrRefueler then
+		reset_stop_layout(storage, stationOrRefueler, station ~= nil)
+	end
+	update_allow_list_section(e.player_index, combId) -- will update to X, if stationOrRefueler is nil
 end
 
 ---@alias EntityOpenedHandler fun(event: EventData.on_gui_opened, player: LuaPlayer, entity: LuaEntity, is_ghost: boolean) player and entity are guaranteed to be valid, is_ghost indicates if the entity is a ghost
@@ -757,7 +760,7 @@ function gui_entity_destroyed(unit_number, silent)
 		if not player or not player.valid then goto continue end
 		local screen = player.gui.screen
 		local window = screen[COMBINATOR_NAME]
-		if window and window.tags.unit_number == unit_number then
+		if window and window.tags.id == unit_number then
 			window.destroy()
 			if not silent then
 				player.play_sound({ path = COMBINATOR_CLOSE_SOUND })

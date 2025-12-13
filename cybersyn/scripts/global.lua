@@ -119,6 +119,7 @@
 ---@field public se_is_being_teleported true? --se only
 ---@field public se_awaiting_removal any? --se only
 ---@field public se_awaiting_rename any? --se only
+---@field public skip_path_checks_until int?
 
 ---@alias Manifest ManifestEntry[]
 ---@class ManifestEntry
@@ -157,7 +158,6 @@
 ---@field public react_to_train_early_to_depot boolean --interface setting
 ---@field public enable_manager boolean
 ---@field public manager_ups double
----@field public manager_enabled boolean
 
 --if this is uncommented it means there are migrations to write
 

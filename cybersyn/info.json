@@ -1,12 +1,12 @@
 {
     "name": "cybersyn",
-    "version": "2.0.33",
+    "version": "2.0.37",
     "title": "Project Cybersyn",
     "author": "Mami",
     "factorio_version": "2.0",
     "description": "Creates a feature-rich train logistics network through cybernetic combinators. With just this mod you can coordinate the economic inputs and outputs of your entire megabase.",
     "dependencies": [
-        "base >= 2.0.55",
+        "base >= 2.0.60",
         "flib >= 0.15.0",
         "? space-exploration >= 0.6.94",
         "? miniloader",

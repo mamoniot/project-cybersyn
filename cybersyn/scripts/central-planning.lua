@@ -251,7 +251,7 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 	local is_at_depot = remove_available_train(map_data, train_id, train)
 	--NOTE: we assume that the train is not being teleported at this time
 	--NOTE: set_manifest_schedule is allowed to cancel the delivery at the last second if applying the schedule to the train makes it lost and is_at_depot == false
-	if set_manifest_schedule(map_data, train.entity, depot.entity_stop, not train.use_any_depot, p_station.entity_stop, p_station, r_station.entity_stop, r_station, manifest, surface_connections, is_at_depot) then
+	if set_manifest_schedule(map_data, train, depot.entity_stop, not train.use_any_depot, p_station.entity_stop, p_station, r_station.entity_stop, r_station, manifest, surface_connections, is_at_depot) then
 		local old_status = train.status
 		train.status = STATUS_TO_P
 		train.p_station_id = p_station_id
@@ -794,10 +794,12 @@ local function tick_dispatch(map_data, mod_settings)
 		end
 
 		if best_train_id then
-			local p_station_id = table_remove(p_stations, p_station_i)
-			move_stations_to_end_of_polling_queue(map_data, p_station_id, r_station_id)
+			local p_station_id = p_stations[p_station_i]
 			local manifest = create_manifest(map_data, r_station_id, p_station_id, best_train_id, item_name)
-			create_delivery(map_data, r_station_id, p_station_id, best_train_id, manifest, best_surface_connections)
+			if create_delivery(map_data, r_station_id, p_station_id, best_train_id, manifest, best_surface_connections) then
+				table_remove(p_stations, p_station_i)
+				move_stations_to_end_of_polling_queue(map_data, p_station_id, r_station_id)
+			end
 			return false
 		else
 			if closest_to_correct_p_station then
@@ -1063,6 +1065,7 @@ function tick_poll_entities(map_data, mod_settings)
 	local tick_data = map_data.tick_data
 
 	if map_data.total_ticks % 5 == 0 then
+		local tick = game.tick
 		if tick_data.last_train == nil or map_data.trains[tick_data.last_train] then
 			local train_id, train = next(map_data.trains, tick_data.last_train)
 			tick_data.last_train = train_id
@@ -1079,6 +1082,8 @@ function tick_poll_entities(map_data, mod_settings)
 						send_alert_stuck_train(map_data, train.entity)
 					end
 					interface_raise_train_stuck(train_id)
+				elseif train.status == STATUS_TO_D_BYPASS and tick >= (train.skip_path_checks_until or 0) then
+					add_available_train(map_data, train_id, train)
 				end
 			end
 		else
