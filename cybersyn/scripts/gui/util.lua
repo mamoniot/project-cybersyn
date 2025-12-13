@@ -149,6 +149,8 @@ function util.slot_table_build_from_station(station)
 	---@type GuiElemDef[]
 	local children = {}
 	local comb1_signals, comb2_signals = get_signals(station)
+	local current_tick = game.tick
+	
 	if comb1_signals then
 		for _, v in pairs(comb1_signals) do
 			local item = v.signal
@@ -164,8 +166,16 @@ function util.slot_table_build_from_station(station)
 				goto continue
 			end
 			local color
+			local tooltip_parts = {
+				"",
+				util.rich_text_from_signal(item),
+				" ", item_prototype.localised_name
+			}
+			
 			if count > 0 then
 				color = "green"
+				tooltip_parts[#tooltip_parts + 1] = " "
+				tooltip_parts[#tooltip_parts + 1] = {"cybersyn-gui.provided"}
 			else
 				-- color sub-threshold requests orange, others red
 				local r_threshold = station.item_thresholds and station.item_thresholds[name] or
@@ -176,26 +186,50 @@ function util.slot_table_build_from_station(station)
 				end
 				if -count < r_threshold then
 					color = "orange"
+					tooltip_parts[#tooltip_parts + 1] = " "
+					tooltip_parts[#tooltip_parts + 1] = {"cybersyn-gui.requested-below-threshold"}
 				else
 					color = "red"
+					tooltip_parts[#tooltip_parts + 1] = " "
+					tooltip_parts[#tooltip_parts + 1] = {"cybersyn-gui.requested"}
+					
+					-- Add wait time for active requests
+					if mod_settings.track_request_wait_times and station.request_start_ticks then
+						local item_hash = hash_signal(item)
+						local start_tick = station.request_start_ticks[item_hash]
+						if start_tick then
+							local wait_ticks = current_tick - start_tick
+							local wait_seconds = math.floor(wait_ticks / 60)
+							local wait_minutes = math.floor(wait_seconds / 60)
+							local wait_hours = math.floor(wait_minutes / 60)
+							local wait_display
+							
+							if wait_hours > 0 then
+								wait_display = string.format("%dh %dm %ds", wait_hours, wait_minutes % 60, wait_seconds % 60)
+							elseif wait_minutes > 0 then
+								wait_display = string.format("%dm %ds", wait_minutes, wait_seconds % 60)
+							else
+								wait_display = string.format("%ds", wait_seconds)
+							end
+							
+							tooltip_parts[#tooltip_parts + 1] = "\n[color=yellow]"
+							tooltip_parts[#tooltip_parts + 1] = {"cybersyn-gui.waiting-for", wait_display}
+							tooltip_parts[#tooltip_parts + 1] = "[/color]"
+						end
+					end
 				end
 			end
+			
+			tooltip_parts[#tooltip_parts + 1] = "\n"
+			tooltip_parts[#tooltip_parts + 1] = {"cybersyn-gui.amount", format.number(count)}
+			
 			children[#children + 1] = {
 				type = "choose-elem-button",
 				elem_type = "signal",
 				signal = item,
 				enabled = false,
 				style = "ltnm_small_slot_button_" .. color,
-				tooltip = {
-					"",
-					util.rich_text_from_signal(item),
-					" ", item_prototype.localised_name,
-					color == "red" and " requested" or
-					color == "green" and " provided" or
-					color == "orange" and " requested (below threshold)" or
-					"",
-					"\n Amount: " .. format.number(count),
-				},
+				tooltip = tooltip_parts,
 				children = {
 					{
 						type = "label",
@@ -235,11 +269,11 @@ function util.slot_table_build_from_deliveries(station)
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
-				" ", item_prototype.localised_name,
-				color == "green" and " incoming" or
-				color == "blue" and " outgoing" or
+				" ", item_prototype.localised_name, " ",
+				color == "green" and {"cybersyn-gui.incoming"} or
+				color == "blue" and {"cybersyn-gui.outgoing"} or
 				"",
-				"\n Amount: " .. format.number(count),
+				"\n", {"cybersyn-gui.amount", format.number(count)},
 			},
 			style = "ltnm_small_slot_button_" .. color,
 			children = {

@@ -186,19 +186,21 @@ function inventory_tab.build(map_data, player_data)
 		local item_count, station_count = table.unpack(counts)
 		local item_prototype = util.prototype_from_name(item)
 		local signal = util.signalid_from_name(item, quality)
+		local sprite_path = signal.type == "item" and "item/" .. signal.name or
+							signal.type == "fluid" and "fluid/" .. signal.name or
+							"virtual-signal/" .. signal.name
 		provided_children[#provided_children + 1] = {
-			type = "choose-elem-button",
-			elem_type = "signal",
-			signal = signal,
-			enabled = false,
+			type = "sprite-button",
+			sprite = sprite_path,
 			style = "flib_slot_button_green",
+			tags = { item_name = item, item_hash = item_hash },
+			handler = inventory_tab.handle.on_inventory_item_click,
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
 				" ", item_prototype.localised_name, "\n",
-				"Provided by ", tostring(station_count), " station",
-				(station_count > 1 and "s" or ""), "\n",
-				"Amount: " .. format.number(item_count),
+				{"cybersyn-gui.provided-by-stations", tostring(station_count)}, "\n",
+				{"cybersyn-gui.amount", format.number(item_count)},
 			},
 			children = {
 				{
@@ -298,12 +300,16 @@ function inventory_tab.build(map_data, player_data)
 			table.insert(tooltip_parts, "[/color]")
 		end
 		
+		local sprite_path = signal.type == "item" and "item/" .. signal.name or
+							signal.type == "fluid" and "fluid/" .. signal.name or
+							"virtual-signal/" .. signal.name
+		
 		return {
-			type = "choose-elem-button",
-			elem_type = "signal",
-			signal = signal,
-			enabled = false,
+			type = "sprite-button",
+			sprite = sprite_path,
 			style = button_style,
+			tags = { item_name = item, item_hash = item_hash },
+			handler = inventory_tab.handle.on_inventory_item_click,
 			tooltip = tooltip_parts,
 			children = {
 				{
@@ -335,19 +341,21 @@ function inventory_tab.build(map_data, player_data)
 		local item_count, station_count = table.unpack(counts)
 		local item_prototype = util.prototype_from_name(item)
 		local signal = util.signalid_from_name(item, quality)
+		local sprite_path = signal.type == "item" and "item/" .. signal.name or
+							signal.type == "fluid" and "fluid/" .. signal.name or
+							"virtual-signal/" .. signal.name
 		in_transit_children[#in_transit_children + 1] = {
-			type = "choose-elem-button",
-			elem_type = "signal",
-			signal = signal,
-			enabled = false,
+			type = "sprite-button",
+			sprite = sprite_path,
 			style = "flib_slot_button_blue",
+			tags = { item_name = item, item_hash = item_hash },
+			handler = inventory_tab.handle.on_inventory_item_click,
 			tooltip = {
 				"",
 				util.rich_text_from_signal(signal),
 				" ", item_prototype.localised_name, "\n",
-				"In transit to ", tostring(station_count), " station",
-				(station_count > 1 and "s" or ""), "\n",
-				"Amount: " .. format.number(item_count),
+				{"cybersyn-gui.in-transit-to-stations", tostring(station_count)}, "\n",
+				{"cybersyn-gui.amount", format.number(item_count)},
 			},
 			children = {
 				{
@@ -394,6 +402,37 @@ end
 ---@param player_data PlayerData
 function inventory_tab.handle.on_inventory_tab_selected(player, player_data)
 	player_data.selected_tab = "inventory_tab"
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_click
+function inventory_tab.handle.on_inventory_item_click(player, player_data, refs, e)
+	local element = e.element
+	if not element or not element.tags then return end
+	
+	local item_name = element.tags.item_name
+	if not item_name then return end
+	
+	if e.button == defines.mouse_button_type.left then
+		-- Set the item filter
+		local signal = util.signalid_from_name(item_name)
+		refs.manager_item_filter.elem_value = signal
+		player_data.search_item = item_name
+		
+		-- Switch to stations tab
+		local tabbed_pane = refs.manager_tabbed_pane
+		if tabbed_pane then
+			-- Find stations tab index (it's the second tab)
+			tabbed_pane.selected_tab_index = 2
+			player_data.selected_tab = "stations_tab"
+		end
+	elseif e.button == defines.mouse_button_type.right then
+		-- Clear the item filter
+		refs.manager_item_filter.elem_value = nil
+		player_data.search_item = nil
+	end
 end
 
 gui.add_handlers(inventory_tab.handle, inventory_tab.wrapper)
