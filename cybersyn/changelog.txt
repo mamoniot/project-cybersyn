@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.38
+Date: 2025-12-23
+  Changes:
+    - Click on inventory item to filter stations in GUI
+  Bugfixes:
+    - Occasional "No Path" error for cross-surface return trips (SE Elevator)
+  Translation:
+    - Update to RU locale
+---------------------------------------------------------------------------------------------------
 Version: 2.0.37
 Date: 2025-12-01
   Changes:
