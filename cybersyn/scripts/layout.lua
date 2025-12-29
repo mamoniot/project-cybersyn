@@ -63,6 +63,14 @@ function remove_train(map_data, train_id, train)
 	end
 	remove_available_train(map_data, train_id, train)
 
+	-- Clean up refueler counter if train was heading to or at a refueler
+	if train.refueler_id then
+		local refueler = map_data.refuelers[train.refueler_id]
+		if refueler then
+			refueler.trains_total = refueler.trains_total - 1
+		end
+	end
+
 	local layout_id = train.layout_id
 	local count = storage.layout_train_count[layout_id]
 	if count <= 1 then
