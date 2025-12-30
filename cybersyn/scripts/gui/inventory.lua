@@ -189,6 +189,7 @@ function inventory_tab.build(map_data, player_data)
 		local sprite_path = signal.type == "item" and "item/" .. signal.name or
 							signal.type == "fluid" and "fluid/" .. signal.name or
 							"virtual-signal/" .. signal.name
+		if not helpers.is_valid_sprite_path(sprite_path) then goto continue_provided end
 		provided_children[#provided_children + 1] = {
 			type = "sprite-button",
 			sprite = sprite_path,
@@ -217,6 +218,7 @@ function inventory_tab.build(map_data, player_data)
 				},
 			},
 		}
+		::continue_provided::
 	end
 
 	local inventory_requested_table = refs.inventory_requested_table
@@ -303,7 +305,8 @@ function inventory_tab.build(map_data, player_data)
 		local sprite_path = signal.type == "item" and "item/" .. signal.name or
 							signal.type == "fluid" and "fluid/" .. signal.name or
 							"virtual-signal/" .. signal.name
-		
+		if not helpers.is_valid_sprite_path(sprite_path) then return nil end
+
 		return {
 			type = "sprite-button",
 			sprite = sprite_path,
@@ -330,7 +333,10 @@ function inventory_tab.build(map_data, player_data)
 	
 	-- Add items in sorted order
 	for _, item_data in ipairs(requested_items) do
-		requested_children[#requested_children + 1] = create_requested_button(item_data.hash, item_data.counts, item_data.wait_ticks)
+		local button = create_requested_button(item_data.hash, item_data.counts, item_data.wait_ticks)
+		if button then
+			requested_children[#requested_children + 1] = button
+		end
 	end
 
 	local inventory_in_transit_table = refs.inventory_in_transit_table
@@ -344,6 +350,7 @@ function inventory_tab.build(map_data, player_data)
 		local sprite_path = signal.type == "item" and "item/" .. signal.name or
 							signal.type == "fluid" and "fluid/" .. signal.name or
 							"virtual-signal/" .. signal.name
+		if not helpers.is_valid_sprite_path(sprite_path) then goto continue_in_transit end
 		in_transit_children[#in_transit_children + 1] = {
 			type = "sprite-button",
 			sprite = sprite_path,
@@ -372,6 +379,7 @@ function inventory_tab.build(map_data, player_data)
 				},
 			},
 		}
+		::continue_in_transit::
 	end
 
 	if next(inventory_provided_table.children) ~= nil then
