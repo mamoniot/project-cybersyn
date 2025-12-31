@@ -917,7 +917,9 @@ local function main()
 
 	script.on_init(function()
 		init_global()
-		ElevatorTravel.setup_se_compat()
+		-- Always set up intersurface/elevator logic.
+		-- It will check for SE presence internally for event registration.
+		IntersurfaceTravel.setup_se_compat()
 		picker_dollies_compat.setup_picker_dollies_compat()
 		manager.on_init()
 	end)
@@ -928,7 +930,8 @@ local function main()
 	end)
 
 	script.on_load(function()
-		ElevatorTravel.setup_se_compat()
+		-- Always set up intersurface/elevator logic.
+		IntersurfaceTravel.setup_se_compat()
 		picker_dollies_compat.setup_picker_dollies_compat()
 	end)
 
