@@ -76,12 +76,26 @@ local DESTROY_TYPE_ENTITY = defines.target_type.entity
 function Elevators.on_object_destroyed(e)
 	if not (e.useful_id and e.type == DESTROY_TYPE_ENTITY) then return end
 
-	local data = storage.se_elevators[e.useful_id] -- useful_id for entities is the unit_number
-	if data then
-		storage.se_elevators[data.ground.elevator_id] = nil
-		storage.se_elevators[data.orbit.elevator_id] = nil
-		storage.se_elevators[data.ground.stop_id] = nil
-		storage.se_elevators[data.orbit.stop_id] = nil
+	-- Scan nested connected_surfaces table to remove the connection if this entity was part of one.
+	-- This now correctly iterates through the two-level table structure.
+	for surface_key, surface_connections in pairs(storage.connected_surfaces) do
+		for entity_key, connection in pairs(surface_connections) do
+			-- Check if either entity in the connection matches the destroyed entity's ID
+			if (connection.entity1 and connection.entity1.valid and connection.entity1.unit_number == e.useful_id) or
+			   (connection.entity2 and connection.entity2.valid and connection.entity2.unit_number == e.useful_id) then
+				
+				-- Remove the specific entity pair connection
+				surface_connections[entity_key] = nil
+				
+				-- If the inner table is now empty, remove the surface pair key as well for cleanliness
+				if not next(surface_connections) then
+					storage.connected_surfaces[surface_key] = nil
+				end
+				
+				-- We found and removed the connection, so we can stop searching.
+				return
+			end
+		end
 	end
 end
 
@@ -102,12 +116,12 @@ local function find_opposite_surface(surface_index)
 	return nil
 end
 
---- Looks up the elevator data for the given unit_number. The data structure *won't* be created if it doesn't exist.
---- @param unit_number integer the unit_number of a `se-space-elevator` or `se-space-elevator-train-stop`
+
+--- @param unit_number integer the unit_number of either the entity or the train stop entity
 --- @return Cybersyn.ElevatorData|nil
+--- Deprecated as we no longer maintain a separate elevator database.
 function Elevators.from_unit_number(unit_number)
-	local elevator = storage.se_elevators[unit_number]
-	return elevator or nil
+	return nil
 end
 
 --- Looks up the elevator data for the given entity. Creates the data structure if it doesn't exist, yet.
@@ -117,63 +131,87 @@ function Elevators.from_entity(entity)
 	if not (entity and entity.valid) then
 		return nil
 	end
-	local data = Elevators.from_unit_number(entity.unit_number)
-	if data then return data end
 
-	-- construct new data
-	if entity.name ~= Elevators.name_elevator and entity.name ~= Elevators.name_stop then
-		error("entity must be an elevator or the corresponding connector entity")
-	end
-
+	-- Identify opposite surface logic remains the same
 	local opposite_surface_index, opposite_zone_type = find_opposite_surface(entity.surface.index)
 	if not opposite_surface_index then return nil end
 
+	-- Find local end
 	local end1 = search_entities(entity.surface, entity.position)
 	if not end1 then return nil end
 
+	-- Find remote end
 	local end2 = search_entities(game.surfaces[opposite_surface_index], entity.position)
 	if not end2 then return nil end
 
-	data = {
+	-- Check if they are currently connected in Cybersyn
+	local surfaces_connected = false
+	local surface_pair_key = sorted_pair(entity.surface.index, opposite_surface_index)
+	local connections = storage.connected_surfaces[surface_pair_key]
+	if connections then
+		-- Verify if this specific pair of stops is connected
+		local entity_pair_key = sorted_pair(end1.stop.unit_number, end2.stop.unit_number)
+		if connections[entity_pair_key] then
+			surfaces_connected = true
+		end
+	end
+
+	-- Construct temporary data object for GUI use
+	local data = {
 		ground = (opposite_zone_type == "planet" or opposite_zone_type == "moon") and end2 or end1,
 		orbit = opposite_zone_type == "orbit" and end2 or end1,
-		-- no entity in the world has this information so reset to "no network restrictions but disabled"
-		cs_enabled = false,
+		cs_enabled = surfaces_connected, -- Dynamic state check
 		network_masks = nil,
 		[entity.surface_index] = end1,
 		[opposite_surface_index] = end2,
 	}
+	
 	if data.ground == data.orbit then
-		error("only know how to handle elevators in zone.type 'planet', 'moon' and 'orbit'")
+		-- This check is kept from original code logic
+		return nil 
 	end
+	
 	data.ground.is_orbit = false
 	data.orbit.is_orbit = true
 
-	storage.se_elevators[data.ground.elevator_id] = data
-	storage.se_elevators[data.orbit.elevator_id] = data
-	storage.se_elevators[data.ground.stop_id] = data
-	storage.se_elevators[data.orbit.stop_id] = data
-
-	-- no need to track by registration number, both entities are valid and must have a unit_number
-	script.register_on_object_destroyed(data.ground.elevator)
-	script.register_on_object_destroyed(data.orbit.elevator)
+	-- We DO NOT register to storage.se_elevators or script.on_object_destroyed here anymore.
+	-- Cleanup is handled by the global on_object_destroyed scan.
 
 	return data
 end
 
 --- @param elevator Cybersyn.ElevatorData
 local function warn_same_elevator_name(elevator)
-	local surface_id = elevator.ground.surface_id
-	for _, other_elevator in pairs(storage.se_elevators) do
-		local ground = other_elevator ~= elevator and other_elevator[surface_id]
-		if ground and other_elevator.cs_enabled ~= elevator.cs_enabled and ground.stop.valid and ground.stop.backer_name == elevator.ground.stop.backer_name then
-			local msgId = "cybersyn-messages.other-elevator-" .. (other_elevator.cs_enabled and "enabled" or "disabled")
-			ground.stop.force.print({ msgId, gps_text(ground.elevator) })
+	-- Check for name collisions against active connections in storage.connected_surfaces.
+	-- storage.connected_surfaces is a nested table: [surface_pair_key] -> { [entity_pair_key] -> connection }
+	
+	local current_name = elevator.ground.stop.backer_name
+	local self_id_1 = elevator.ground.stop.unit_number
+	local self_id_2 = elevator.orbit.stop.unit_number
+
+	-- Outer loop: iterate over surface pairs
+	for _, surface_connections in pairs(storage.connected_surfaces) do
+		-- Inner loop: iterate over specific connections within that pair
+		for _, conn in pairs(surface_connections) do
+			if conn and conn.entity1 and conn.entity1.valid and conn.entity2 and conn.entity2.valid then
+				-- Check if this connection is NOT the current elevator
+				if conn.entity1.unit_number ~= self_id_1 and conn.entity1.unit_number ~= self_id_2 and
+				   conn.entity2.unit_number ~= self_id_1 and conn.entity2.unit_number ~= self_id_2 then
+					
+					-- Check if names match
+					if conn.entity1.backer_name == current_name or conn.entity2.backer_name == current_name then
+						local msgId = "cybersyn-messages.other-elevator-enabled"
+						elevator.ground.elevator.force.print({ msgId, gps_text(conn.entity1) })
+						return
+					end
+				end
+			end
 		end
 	end
 end
 
---- Connects or disconnects the eleator from Cybersyn based on cs_enabled and updates the network_id when connected to
+--- Connects or disconnects the elevator from Cybersyn based on cs_enabled
+--- Direct API calls, no database side effects.
 --- @param data Cybersyn.ElevatorData
 function Elevators.update_connection(data)
 	if data.cs_enabled then
@@ -193,10 +231,14 @@ end
 local function se_elevator_toggle(e)
 	local player = assert(game.get_player(e.player_index))
 
+	-- Re-scan entities to get fresh state objects
 	local data = Elevators.from_entity(player.opened --[[@as LuaEntity? ]])
 	if not data then return end
 
+	-- Set the desired state based on switch position
 	data.cs_enabled = e.element.switch_state == "right"
+	
+	-- Apply the change
 	Elevators.update_connection(data)
 end
 
@@ -268,10 +310,11 @@ end
 
 ---@param command CustomCommandData
 local function command_reset_elevators(command)
-	for _, data in pairs(storage.se_elevators) do
-		Surfaces.disconnect_surfaces(data.ground.stop, data.orbit.stop)
-	end
-	storage.se_elevators = {}
+	-- Wipe the entire connection table.
+	storage.connected_surfaces = {}
+	-- Note: storage.se_elevators is deprecated/removed.
+	if storage.se_elevators then storage.se_elevators = nil end
+	
 	game.print("All elevator connections reset.")
 end
 
