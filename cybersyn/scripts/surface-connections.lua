@@ -32,7 +32,11 @@ function Surfaces.find_surface_connections_masked(surface1, surface2, network_na
     local count = 0
 
     for entity_pair_key, connection in pairs(surface_connections) do
-        if connection.entity1.valid and connection.entity2.valid then
+        -- Check if both surface-indexed entities are valid
+        local entity1 = connection[surface1]
+        local entity2 = connection[surface2]
+        
+        if entity1 and entity1.valid and entity2 and entity2.valid then
             if not connection.network_masks or btest(network_mask, connection.network_masks[network_name] or 0) then
                 count = count + 1
                 matching_connections[count] = connection
@@ -66,7 +70,11 @@ function Surfaces.find_surface_connections(surface1, surface2)
     local count = 0
 
     for entity_pair_key, connection in pairs(surface_connections) do
-        if connection.entity1.valid and connection.entity2.valid then
+        -- Check if both surface-indexed entities are valid
+        local entity1 = connection[surface1]
+        local entity2 = connection[surface2]
+        
+        if entity1 and entity1.valid and entity2 and entity2.valid then
             count = count + 1
             matching_connections[count] = connection
         else
@@ -150,12 +158,14 @@ function Surfaces.connect_surfaces(entity1, entity2, network_masks)
         entity2.unit_number, entity2.surface.name, entity2.surface.index))
     end
 
-    -- enforce a consistent order for repeated calls with the same two entities
-    if entity2.unit_number < entity1.unit_number then
-        surface_connections[entity_pair_key] = { entity1 = entity2, entity2 = entity1, network_masks = network_masks }
-    else
-        surface_connections[entity_pair_key] = { entity1 = entity1, entity2 = entity2, network_masks = network_masks }
-    end
+    -- Store entities indexed by surface for O(1) lookup during pathfinding
+    local s1 = entity1.surface.index
+    local s2 = entity2.surface.index
+    surface_connections[entity_pair_key] = {
+        [s1] = entity1,
+        [s2] = entity2,
+        network_masks = network_masks
+    }
 
     return is_update and Surfaces.status.updated or Surfaces.status.created
 end

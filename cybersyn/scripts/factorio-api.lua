@@ -581,8 +581,10 @@ function set_manifest_schedule(
 			new_schedule:add_direct_to_stop(depot_stop)
 		end
 	else
-		if IS_SE_PRESENT then
-			new_schedule = ElevatorTravel.se_set_manifest_schedule(
+		-- [Refactored] Check if IntersurfaceTravel module is loaded instead of checking IS_SE_PRESENT.
+		-- This allows generic intersurface travel if surface_connections are provided.
+		if IntersurfaceTravel then
+			new_schedule = IntersurfaceTravel.set_intersurface_manifest_schedule(
 				train_e,
 				depot_stop,
 				same_depot,
@@ -653,8 +655,9 @@ function add_refueler_schedule(map_data, data)
 		new_schedule:add_refuel_order(stop)
 		-- no need to deal with direct-to-depot, must already be present and won't be removed
 	else
-		if IS_SE_PRESENT then
-			new_schedule = ElevatorTravel.se_add_refueler_schedule(map_data, data)
+		-- [Refactored] Generic check for IntersurfaceTravel module.
+		if IntersurfaceTravel then
+			new_schedule = IntersurfaceTravel.add_intersurface_refueler_schedule(map_data, data)
 		end
 
 		-- if not records and OTHER_TRAVEL_METHOD then ...
