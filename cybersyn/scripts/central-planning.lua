@@ -9,6 +9,7 @@ local band = bit32.band
 local table_remove = table.remove
 local table_insert = table.insert
 local random = math.random
+local analytics = require("scripts.analytics")
 
 local HASH_STRING = "|"
 
@@ -266,8 +267,18 @@ function create_delivery(map_data, r_station_id, p_station_id, train_id, manifes
 		p_station.deliveries_total = p_station.deliveries_total + 1
 
 		-- Reset request tracking times for delivered items
-		for _, item in ipairs(manifest) do
+		-- Also record delivery start for analytics
+		for i, item in ipairs(manifest) do
 			local item_hash = hash_item(item.name, item.quality)
+			-- Record delivery start for analytics (only for first item to avoid duplicates)
+			if i == 1 then
+				-- Calculate fulfillment time BEFORE clearing request tracking
+				local fulfillment_time = nil
+				if r_station.request_start_ticks and r_station.request_start_ticks[item_hash] then
+					fulfillment_time = game.tick - r_station.request_start_ticks[item_hash]
+				end
+				analytics.record_delivery_start(map_data, train_id, item_hash, fulfillment_time)
+			end
 			clear_request_tracking(r_station, item_hash)
 		end
 

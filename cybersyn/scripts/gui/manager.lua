@@ -9,9 +9,12 @@ local stations_tab = require("scripts.gui.stations")
 local trains_tab = require("scripts.gui.trains")
 --local depots_tab = require("scripts.gui.depots")
 local inventory_tab = require("scripts.gui.inventory")
---local history_tab = require("scripts.gui.history")
+local utilization_tab = require("scripts.gui.utilization")
+local delivery_breakdown_tab = require("scripts.gui.delivery-breakdown")
+local suggestions_tab = require("scripts.gui.suggestions")
 --local alerts_tab = require("scripts.gui.alerts")
 local util = require("scripts.gui.util")
+local analytics = require("scripts.analytics")
 
 local manager = {}
 
@@ -110,6 +113,9 @@ function manager.create(player)
 							trains_tab.create(widths),
 							stations_tab.create(widths),
 							inventory_tab.create(),
+							analytics.is_enabled() and utilization_tab.create() or nil,
+							analytics.is_enabled() and delivery_breakdown_tab.create() or nil,
+							analytics.is_enabled() and suggestions_tab.create() or nil,
 							selected_tab_index = 1,
 						},
 					},
@@ -178,12 +184,31 @@ function manager.update(map_data, player_data, query_limit)
 	if player_data.selected_tab ~= nil then
 		manager.build(player_data)
 	end
+
+	-- Handle analytics tab cleanup when switching away
+	local previous_tab = player_data.previous_tab
+	local current_tab = player_data.selected_tab
+	if previous_tab ~= current_tab then
+		if previous_tab == "utilization_tab" then
+			utilization_tab.cleanup(map_data, player_data)
+		elseif previous_tab == "delivery_breakdown_tab" then
+			delivery_breakdown_tab.cleanup(map_data, player_data)
+		end
+		player_data.previous_tab = current_tab
+	end
+
 	if player_data.selected_tab == "stations_tab" then
 		stations_tab.build(map_data, player_data, query_limit)
 	elseif player_data.selected_tab == "inventory_tab" then
 		inventory_tab.build(map_data, player_data)
 	elseif player_data.selected_tab == "trains_tab" then
 		trains_tab.build(map_data, player_data, query_limit)
+	elseif player_data.selected_tab == "utilization_tab" then
+		utilization_tab.build(map_data, player_data)
+	elseif player_data.selected_tab == "delivery_breakdown_tab" then
+		delivery_breakdown_tab.build(map_data, player_data)
+	elseif player_data.selected_tab == "suggestions_tab" then
+		suggestions_tab.build(map_data, player_data)
 	end
 end
 
@@ -229,6 +254,12 @@ end
 --- @param player_data PlayerData
 --- @param refs table<string, LuaGuiElement>
 function manager.handle.manager_close(player, player_data, refs)
+	-- Cleanup analytics tabs when closing GUI
+	if player_data.selected_tab == "utilization_tab" then
+		utilization_tab.cleanup(storage, player_data)
+	elseif player_data.selected_tab == "delivery_breakdown_tab" then
+		delivery_breakdown_tab.cleanup(storage, player_data)
+	end
 	util.close_manager_window(player, player_data, refs)
 end
 

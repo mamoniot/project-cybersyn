@@ -1,6 +1,7 @@
 --By Mami
 local manager = require("gui.main")
 local picker_dollies_compat = require("scripts.mod-compatibility.picker-dollies")
+local analytics = require("scripts.analytics")
 
 local ceil = math.ceil
 local table_remove = table.remove
@@ -823,6 +824,7 @@ local function register_tick()
 		local nth_tick = ceil(60 / mod_settings.tps) --[[@as uint]]
 		script.on_nth_tick(nth_tick, function()
 			tick(storage, mod_settings)
+			analytics.tick(storage)
 			manager.tick(storage)
 		end)
 	else
@@ -830,6 +832,7 @@ local function register_tick()
 			local nth_tick_main = ceil(60 / mod_settings.tps) --[[@as uint]]
 			script.on_nth_tick(nth_tick_main, function()
 				tick(storage, mod_settings)
+				analytics.tick(storage)
 			end)
 		end
 		if mod_settings.manager_ups > DELTA then
@@ -917,6 +920,9 @@ local function main()
 
 	script.on_init(function()
 		init_global()
+		if analytics.is_enabled() then
+			analytics.init(storage)
+		end
 		ElevatorTravel.setup_se_compat()
 		picker_dollies_compat.setup_picker_dollies_compat()
 		manager.on_init()

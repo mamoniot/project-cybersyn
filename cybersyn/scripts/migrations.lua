@@ -2,6 +2,7 @@
 local flib_migration = require("__flib__.migration")
 local manager_gui = require("gui.main")
 local debug_revision = require("info")
+local analytics = require("scripts.analytics")
 local check_debug_revision
 
 local migrations_table = {
@@ -394,6 +395,14 @@ local migrations_table = {
 				station.request_start_ticks = {}
 			end
 		end
+	end,
+	["2.0.38"] = function()
+		-- Initialize analytics for existing saves (only if enabled)
+		if analytics.is_enabled() then
+			---@type MapData
+			local map_data = storage
+			analytics.init(map_data)
+		end
 	end
 }
 
@@ -475,6 +484,11 @@ function on_config_changed(config_change_data)
 
 	if config_change_data.migration_applied then
 		sanitize_economy_names(config_change_data)
+	end
+
+	-- Ensure analytics is initialized if enabled (in case migration didn't run)
+	if analytics.is_enabled() and not storage.analytics then
+		analytics.init(storage)
 	end
 
 	retrigger_train_calculation(false)

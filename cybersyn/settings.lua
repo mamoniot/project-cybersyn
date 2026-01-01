@@ -121,6 +121,13 @@ data:extend({
 		default_value = false,
 	},
 	{
+		type = "bool-setting",
+		name = "cybersyn-enable-analytics",
+		order = "ce",
+		setting_type = "runtime-global",
+		default_value = false,
+	},
+	{
 		type = "double-setting",
 		name = "cybersyn-manager-updates-per-second",
 		order = "ad",
