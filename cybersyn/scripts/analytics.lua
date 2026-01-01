@@ -208,7 +208,7 @@ end
 
 ---Allocate a chunk for graph rendering
 ---@param map_data MapData
----@return table chunk {render_entity, coord}
+---@return table chunk {coord, light_ids}
 local function get_chunk(map_data)
 	local data = map_data.analytics
 	local chunk_coord
@@ -243,13 +243,6 @@ local function get_chunk(map_data)
 		data.surface.set_tiles(tiles)
 	end
 
-	-- Create anchor entity for line offsets
-	local render_entity = data.surface.create_entity{
-		name = "pipe",
-		position = chunk_coord,
-		force = "neutral",
-	}
-
 	-- Add multiple bright lights to illuminate the graph area
 	local light_ids = {}
 	for lx = 0, 2 do
@@ -266,7 +259,7 @@ local function get_chunk(map_data)
 		end
 	end
 
-	return {render_entity = render_entity, coord = chunk_coord, light_ids = light_ids}
+	return {coord = chunk_coord, light_ids = light_ids}
 end
 
 ---Free a chunk back to the pool
@@ -274,9 +267,6 @@ end
 ---@param chunk table
 local function free_chunk(map_data, chunk)
 	local data = map_data.analytics
-	if chunk.render_entity and chunk.render_entity.valid then
-		chunk.render_entity.destroy()
-	end
 	if chunk.light_ids then
 		for _, light_id in ipairs(chunk.light_ids) do
 			if light_id.valid then
@@ -406,9 +396,9 @@ function analytics.render_graph(map_data, intervals, interval_index, selected_se
 
 	local data = map_data.analytics
 	local surface = data.surface
-	local entity = interval.chunk.render_entity
-	if not entity or not entity.valid then
-		debug_log("render_graph: invalid entity for interval " .. interval_index)
+	local chunk = interval.chunk
+	if not chunk or not chunk.coord then
+		debug_log("render_graph: invalid chunk for interval " .. interval_index)
 		return
 	end
 
@@ -511,8 +501,8 @@ function analytics.render_graph(map_data, intervals, interval_index, selected_se
 	-- dy: vertical tiles per data unit
 	local dy = graph_height / y_range
 
-	-- Get entity position for absolute coordinate calculation
-	local entity_pos = entity.position
+	-- Get chunk origin for absolute coordinate calculation
+	local entity_pos = chunk.coord
 
 	-- Draw horizontal grid lines with Y-axis labels
 	local num_grid_lines = 5
@@ -907,8 +897,8 @@ function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phas
 
 	local data = map_data.analytics
 	local surface = data.surface
-	local entity = interval.chunk.render_entity
-	if not entity or not entity.valid then
+	local chunk = interval.chunk
+	if not chunk or not chunk.coord then
 		return
 	end
 
@@ -937,7 +927,7 @@ function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phas
 	local graph_width = graph_right - graph_left
 	local graph_height = graph_bottom - graph_top
 
-	local entity_pos = entity.position
+	local entity_pos = chunk.coord
 
 	-- Calculate max total time for Y-axis scaling
 	local max_total = 0

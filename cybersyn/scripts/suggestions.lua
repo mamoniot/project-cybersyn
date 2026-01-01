@@ -84,7 +84,7 @@ end
 ---@param item_hash string
 ---@return string
 local function get_item_sprite(item_hash)
-	local name = item_hash:match("^([^:]+)")
+	local name = item_hash:match("^([^|]+)")
 	if not name then
 		name = item_hash
 	end
@@ -104,7 +104,7 @@ end
 ---@param item_hash string
 ---@return string|table
 local function get_item_name(item_hash)
-	local name = item_hash:match("^([^:]+)")
+	local name = item_hash:match("^([^|]+)")
 	if not name then
 		name = item_hash
 	end

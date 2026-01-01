@@ -305,7 +305,7 @@ function suggestions_tab.handle.on_item_click(player, player_data, refs, e)
 	local item_name = element.tags.item_name
 	if not item_name then return end
 
-	local base_name = item_name:match("^([^:]+)") or item_name
+	local base_name = item_name:match("^([^|]+)") or item_name
 	player_data.search_item = base_name
 
 	if refs.manager_item_filter then
