@@ -1243,7 +1243,10 @@ function abort_to_depot(map_data, train_id)
         return
     end
 
-    -- 4. Build new schedule
+    -- 4. Clean the failed delivery (clean the manifests)
+    on_failed_delivery(map_data, train_id, train_data)
+
+    -- 5. Build new schedule
     ---@type WaitCondition
     local condition_wait_inactive = { type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME }
     local schedule = train.get_schedule()
@@ -1254,18 +1257,18 @@ function abort_to_depot(map_data, train_id)
     schedule.clear_records()
     schedule.add_record(depot_record)
 
-    -- 5. Update Cybersyn state
+    -- 6. Update Cybersyn state
     train_data.status = STATUS_TO_D
-    train_data.manifest = nil
     if not train_data.use_any_depot then
         -- train using same depot, coord. station was inserted -> we need to color
         color_train_by_stop(train_data.entity, map_data.depots[train_data.depot_id].entity_stop)
     end
     interface_raise_train_status_changed(train_id, STATUS_TO_P, STATUS_TO_D)
 
+    -- 7. Debug output to console
     local gps_tag = ""
     if (train.front_stock and train.front_stock.valid) then
-		local entity = train.front_stock
+        local entity = train.front_stock
         local pos = entity.position
         gps_tag = string.format("[gps=%f,%f,%s]", pos.x, pos.y, entity.surface.name)
     end
