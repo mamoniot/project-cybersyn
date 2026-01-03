@@ -248,6 +248,12 @@ function manager.handle.manager_open(player, player_data, refs)
 
 	player_data.is_manager_open = true
 	player.set_shortcut_toggled("cybersyn-toggle-gui", true)
+
+	-- Warn if analytics setting is enabled but library is missing
+	local analytics_setting = settings.global["cybersyn-enable-analytics"]
+	if analytics_setting and analytics_setting.value and not analytics.is_library_available() then
+		player.print({"cybersyn-gui.analytics-library-missing"})
+	end
 end
 
 --- @param player LuaPlayer

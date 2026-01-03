@@ -22,11 +22,19 @@ local PHASE_COLORS = {
 
 local PHASE_ORDER = {"wait", "travel_to_p", "loading", "travel_to_r", "unloading"}
 local PHASE_LABELS = {
-	wait = "Finding Train",
+	wait = "Matching",
 	travel_to_p = "Travel to P",
 	loading = "Loading",
 	travel_to_r = "Travel to R",
 	unloading = "Unloading",
+}
+
+local PHASE_TOOLTIPS = {
+	wait = "Time from request until a provider and train are matched",
+	travel_to_p = "Train traveling to provider station",
+	loading = "Loading cargo at provider station",
+	travel_to_r = "Train traveling to requester station",
+	unloading = "Unloading cargo at requester station",
 }
 
 function delivery_breakdown_tab.create()
@@ -60,6 +68,7 @@ function delivery_breakdown_tab.create()
 			{
 				type = "label",
 				caption = PHASE_LABELS[phase],
+				tooltip = PHASE_TOOLTIPS[phase],
 				style_mods = { font = "default-small" },
 			},
 		}

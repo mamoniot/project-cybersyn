@@ -8,6 +8,7 @@
     "dependencies": [
         "base >= 2.0.60",
         "flib >= 0.15.0",
+        "? factorio-charts >= 1.0.0",
         "? space-exploration >= 0.6.94",
         "? miniloader",
         "? nullius",
