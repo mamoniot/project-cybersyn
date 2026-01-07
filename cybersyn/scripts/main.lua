@@ -815,6 +815,7 @@ local function grab_all_settings()
 	mod_settings.track_request_wait_times = settings.global["cybersyn-track-request-wait-times"].value --[[@as boolean]]
 	mod_settings.allow_cargo_in_depot = settings.global["cybersyn-allow-cargo-in-depot"].value --[[@as boolean]]
 	mod_settings.manager_ups = settings.global["cybersyn-manager-updates-per-second"].value --[[@as double]]
+	mod_settings.abort_stuck_train_to_depot = settings.global["cybersyn-abort-stuck-train-to-depot"].value --[[@as boolean]]
 end
 local function register_tick()
 	script.on_nth_tick(nil)
