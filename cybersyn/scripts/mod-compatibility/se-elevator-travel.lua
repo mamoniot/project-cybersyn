@@ -1,33 +1,19 @@
 -- Code related to Space Exploration compatibility.
 
-local SE_ELEVATOR_ORBIT_SUFFIX = " ↓"
-local SE_ELEVATOR_PLANET_SUFFIX = " ↑"
-local SE_ELEVATOR_SUFFIX_LENGTH = #SE_ELEVATOR_ORBIT_SUFFIX
-local SE_ELEVATOR_PREFIX = "[img=entity/se-space-elevator]  "
-local SE_ELEVATOR_PREFIX_LENGTH = #SE_ELEVATOR_PREFIX
-
-local string_sub = string.sub
-
 ---Can be used as a predicate with find_next_cybersyn_stop
 ---@param record ScheduleRecord|AddRecordData
 ---@return string? elevator_stop_name
 ---@return boolean? is_ground_to_orbit
-local function se_is_elevator_schedule_record(record)
-	local name = record.station
-	if not name then return end
-
-	local prefix = string_sub(name, 1, SE_ELEVATOR_PREFIX_LENGTH)
-	if prefix == SE_ELEVATOR_PREFIX then
-		local suffix = string_sub(name, -SE_ELEVATOR_SUFFIX_LENGTH)
-		if suffix == SE_ELEVATOR_ORBIT_SUFFIX then
-			return name, false
-		elseif suffix == SE_ELEVATOR_PLANET_SUFFIX then
-			return name, true
-		end
+local function is_transit_schedule_record(record)
+	-- Cybersyn generates transit stops as temporary stops with no wait conditions.
+	-- This allows it to work with any intersurface connection, not just SE elevators.
+	if record.temporary and (not record.wait_conditions or #record.wait_conditions == 0) then
+		return record.station, nil
 	end
+	return nil
 end
 
-ElevatorTravel = {}
+IntersurfaceTravel = {}
 
 ---@param map_data MapData
 ---@param train Train
@@ -99,7 +85,7 @@ local function se_add_direct_to_station_orders(map_data, train)
 	---@type ScheduleSearchOptions
 	local options = {
 		search_index = schedule.current,
-		abort_condition = se_is_elevator_schedule_record, -- stop at the next elevator transition
+		abort_condition = is_transit_schedule_record, -- stop at the next elevator transition
 		include_depot = true,
 	}
 
@@ -113,7 +99,7 @@ local function se_add_direct_to_station_orders(map_data, train)
 	end
 end
 
-local function se_on_train_teleport_started(event)
+function IntersurfaceTravel.on_train_teleport_started(event)
 	---@type MapData
 	local map_data = storage
 	local old_id = event.old_train_id_1
@@ -126,7 +112,7 @@ local function se_on_train_teleport_started(event)
 	interface_raise_train_teleport_started(old_id)
 end
 
-local function se_on_train_teleport_finished(event)
+function IntersurfaceTravel.on_train_teleport_finished(event)
 	---@type MapData
 	local map_data = storage
 	---@type LuaTrain
@@ -176,12 +162,18 @@ local function se_on_train_teleport_finished(event)
 	interface_raise_train_teleported(new_id, old_id)
 end
 
-function ElevatorTravel.setup_se_compat()
+function IntersurfaceTravel.setup_se_compat()
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
-	if not IS_SE_PRESENT then return end
-
-	script.on_event(remote.call("space-exploration", "get_on_train_teleport_finished_event"), se_on_train_teleport_finished)
-	script.on_event(remote.call("space-exploration", "get_on_train_teleport_started_event"), se_on_train_teleport_started)
+	
+	-- Register SE specific events only if SE is present
+	if IS_SE_PRESENT then
+		script.on_event(remote.call("space-exploration", "get_on_train_teleport_finished_event"), IntersurfaceTravel.on_train_teleport_finished)
+		script.on_event(remote.call("space-exploration", "get_on_train_teleport_started_event"), IntersurfaceTravel.on_train_teleport_started)
+	end
+	
+	-- Note: Even if SE is not present, this module is now loaded and 
+	-- IntersurfaceTravel.on_train_teleport_* functions are available for 
+	-- direct calling via remote interface.
 end
 
 ---@param target { [string] : integer }? the network masks of the target
@@ -199,50 +191,49 @@ end
 
 ---@param surface_connections Cybersyn.SurfaceConnection[]
 ---@param network_masks { [string] : integer }?
----@return Cybersyn.ElevatorData[]?
+---@return Cybersyn.SurfaceConnection[]?
 local function se_get_elevators(surface_connections, network_masks)
 	local elevators, i = {}, 0
 	for _, connection in pairs(surface_connections) do
-		if connection.entity1.name == Elevators.name_stop then
-			local elevator = Elevators.from_unit_number(connection.entity1.unit_number)
-			if elevator and has_network_match(elevator.network_masks, network_masks) then
-				i = i + 1
-				elevators[i] = elevator
-			end
+		if has_network_match(connection, network_masks) then
+			i = i + 1
+			elevators[i] = connection
 		end
 	end
 	return i > 0 and elevators or nil
 end
 
----@param elevator_name string
----@param is_train_in_orbit boolean
----@return AddRecordData
-function ElevatorTravel.se_create_elevator_order(elevator_name, is_train_in_orbit)
-	return {
-		station = elevator_name .. (is_train_in_orbit and SE_ELEVATOR_ORBIT_SUFFIX or SE_ELEVATOR_PLANET_SUFFIX),
-		temporary = true,
-	}
-end
-
 ---Creates a schedule record for the elevator that is closest to the given entity
----@param elevators Cybersyn.ElevatorData[] must be elevators on the surface of the given entity
+---@param connections Cybersyn.SurfaceConnection[]
 ---@param from LuaEntity
 ---@return AddRecordData?
 ---@return LuaEntity?
-local function se_create_closest_elevator_travel(elevators, from)
-	local closest, elevator_stop = 2100000000, nil
+local function se_create_closest_elevator_travel(connections, from)
+	local closest_dist_sq = math.huge
+	local elevator_stop = nil
 	local f_surface = from.surface_index
+	local from_pos = from.position
 
-	for _, elevator in ipairs(elevators) do
-		local stop = elevator[f_surface].stop
-		local dist = get_dist(from, stop)
-		if dist < closest then
-			elevator_stop = stop
-			closest = dist
+	for _, conn in ipairs(connections) do
+		-- Directly index by surface for O(1) lookup
+		local stop = conn[f_surface]
+		if stop and stop.valid then
+			-- Calculate squared distance to avoid sqrt()
+			local dx = from_pos.x - stop.position.x
+			local dy = from_pos.y - stop.position.y
+			local dist_sq = dx * dx + dy * dy
+			
+			if dist_sq < closest_dist_sq then
+				elevator_stop = stop
+				closest_dist_sq = dist_sq
+			end
 		end
 	end
 
 	assert(elevator_stop, "travel_data had no elevators")
+	if not elevator_stop or not elevator_stop.valid then 
+		return nil, nil 
+	end
 	return {
 		station = elevator_stop.backer_name,
 		temporary = true,
@@ -250,11 +241,11 @@ local function se_create_closest_elevator_travel(elevators, from)
 end
 
 ---@class SeScheduleBuilder : ScheduleBuilder
----@field private elevators Cybersyn.ElevatorData[]
+---@field private elevators Cybersyn.SurfaceConnection[]
 local SeScheduleBuilder = ScheduleBuilder:derive()
 
 ---@protected
----@param elevators Cybersyn.ElevatorData[]
+---@param elevators Cybersyn.SurfaceConnection[]
 function SeScheduleBuilder:new(elevators)
 	local instance = self:derive(ScheduleBuilder:new())
 	instance.elevators = elevators
@@ -283,7 +274,7 @@ end
 ---@param surface_connections Cybersyn.SurfaceConnection[]
 ---@param start_at_depot boolean?
 ---@return ScheduleBuilder?
-function ElevatorTravel.se_set_manifest_schedule(
+function IntersurfaceTravel.set_intersurface_manifest_schedule(
 		train,
 		depot_stop,
 		same_depot,
@@ -324,7 +315,7 @@ end
 ---@param map_data MapData
 ---@param data RefuelSchedulingData
 ---@return ScheduleBuilder?
-function ElevatorTravel.se_add_refueler_schedule(map_data, data)
+function IntersurfaceTravel.add_intersurface_refueler_schedule(map_data, data)
 	local elevators = se_get_elevators(data.surface_connections)
 	if not elevators then return end -- surface_connections contained no elevators
 

@@ -339,6 +339,52 @@ function interface.remove_available_train(train_id)
 end
 
 ------------------------------------------------------------------
+--[[Intersurface API]]
+------------------------------------------------------------------
+
+---@param entity_1 LuaEntity
+---@param entity_2 LuaEntity
+---@param network_masks {[string]: integer}?
+function interface.register_surface_connection(entity_1, entity_2, network_masks)
+	-- Registers a bi-directional connection between two surfaces via the provided entities.
+	-- This enables pathfinding between these surfaces.
+	return Surfaces.connect_surfaces(entity_1, entity_2, network_masks)
+end
+
+---@param entity_1 LuaEntity
+---@param entity_2 LuaEntity
+function interface.remove_surface_connection(entity_1, entity_2)
+	-- Removes a connection between two surfaces.
+	return Surfaces.disconnect_surfaces(entity_1, entity_2)
+end
+
+---@param train_id uint
+function interface.on_train_teleport_started(train_id)
+	-- Marks a train as "being teleported". This prevents Cybersyn from treating the train as lost/invalid
+	-- during the tick(s) it is absent from the game world.
+	-- Note: We pass a table to mimic the SE event structure to reuse internal logic.
+	if IntersurfaceTravel and IntersurfaceTravel.on_train_teleport_started then
+		IntersurfaceTravel.on_train_teleport_started({old_train_id_1 = train_id})
+	end
+end
+
+---@param old_train_id uint
+---@param new_train_entity LuaTrain
+function interface.on_train_teleported(old_train_id, new_train_entity)
+	-- Handles logic after a train has arrived at the new surface:
+	-- 1. Clears the "being teleported" flag.
+	-- 2. Migrates Cybersyn train data from old_train_id to new_train_entity.id.
+	-- 3. Fixes the schedule (re-adds rail waypoints that Factorio removes during teleport).
+	-- Note: We pass a table to mimic the SE event structure to reuse internal logic.
+	if IntersurfaceTravel and IntersurfaceTravel.on_train_teleport_finished then
+		IntersurfaceTravel.on_train_teleport_finished({
+			train = new_train_entity,
+			old_train_id_1 = old_train_id
+		})
+	end
+end
+
+------------------------------------------------------------------
 --[[train schedule]]
 ------------------------------------------------------------------
 
