@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.39
+Date: 2026-01-08
+  Bugfixes:
+    - Fix crash when inventory contains items with invalid sprites
+    - Deleting a train assigned to a refueler now removes it from refueler train limit
+---------------------------------------------------------------------------------------------------
 Version: 2.0.38
 Date: 2025-12-23
   Changes:
