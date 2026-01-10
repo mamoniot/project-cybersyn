@@ -676,8 +676,10 @@ end
 ---@param phase_colors table
 ---@param phase_order string[]
 ---@param hatched_phases table? Phases to draw with diagonal stripes
----@return table? hit_regions Hit regions for interaction
-function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phase_colors, phase_order, hatched_phases, viewport_width, viewport_height)
+---@param overlay_options table? {camera_position, camera_zoom, widget_size, get_tooltip}
+---@return table? hit_regions Hit regions for interaction (if no overlay_options)
+---@return table? button_configs Button configs with tooltips (if overlay_options provided)
+function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phase_colors, phase_order, hatched_phases, viewport_width, viewport_height, overlay_options)
 	if not interval.chunk then
 		return nil
 	end
@@ -697,7 +699,31 @@ function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phas
 	end
 
 	local data = map_data.analytics
-	-- Use metadata-returning version for interaction support
+
+	-- If overlay options provided, use the combined render function
+	if overlay_options and overlay_options.camera_position and overlay_options.camera_zoom and overlay_options.widget_size then
+		local line_ids, button_configs, metadata = charts.render_stacked_bars_with_overlays(data.surface, interval.chunk, {
+			deliveries = deliveries,
+			phase_colors = phase_colors,
+			phase_order = phase_order,
+			hatched_phases = hatched_phases,
+			ttl = 360,
+			viewport_width = viewport_width,
+			viewport_height = viewport_height,
+			camera_position = overlay_options.camera_position,
+			camera_zoom = overlay_options.camera_zoom,
+			widget_size = overlay_options.widget_size,
+			get_tooltip = overlay_options.get_tooltip,
+		})
+
+		if line_ids then
+			interval.line_ids = line_ids
+		end
+
+		return button_configs
+	end
+
+	-- Legacy path: use metadata-returning version for interaction support
 	local line_ids, metadata = charts.render_stacked_bars_with_metadata(data.surface, interval.chunk, {
 		deliveries = deliveries,
 		phase_colors = phase_colors,

@@ -491,19 +491,7 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		refs.breakdown_camera.zoom = zoom
 	end
 
-	-- Only re-render chart on cache miss (data changed)
-	local hit_regions = nil
-	if not cache_hit then
-		hit_regions = analytics.render_stacked_bar_chart(map_data, data.breakdown_interval, filtered, PHASE_COLORS, PHASE_ORDER, HATCHED_PHASES, GRAPH_WIDTH, GRAPH_HEIGHT)
-		-- Store filtered deliveries for tooltip lookups
-		player_data.breakdown_deliveries = filtered
-		-- Store hit regions for interaction
-		player_data.breakdown_hit_regions = hit_regions
-	else
-		hit_regions = player_data.breakdown_hit_regions
-	end
-
-	-- Store camera info for hit-testing
+	-- Calculate camera info for rendering and hit-testing
 	local camera_info = nil
 	if chunk and chunk.coord and charts then
 		local camera_params = charts.get_camera_params(chunk, {
@@ -523,34 +511,14 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		player_data.breakdown_camera_info = camera_info
 	end
 
-	-- Create overlay buttons for hover interaction
-	if refs.breakdown_camera and hit_regions and camera_info and charts and not cache_hit then
-		-- Clear existing overlay buttons (skip the first elements which are camera settings)
-		local camera = refs.breakdown_camera
-		-- Remove all children (overlay buttons from previous render)
-		for _, child in pairs(camera.children) do
-			child.destroy()
-		end
-
-		-- Generate button configs
-		-- Use the ACTUAL camera display position (with offset) for button placement
-		-- The offset shifts what the camera shows, so button positions must match
-		local camera_pos = {x = camera_info.cam_x, y = camera_info.cam_y}
-		local widget_size = {width = camera_info.widget_width, height = camera_info.widget_height}
-		local button_configs = charts.generate_overlay_buttons(camera_pos, camera_info.zoom, widget_size, hit_regions)
-
-		-- Create buttons for each hit region
-		for _, config in ipairs(button_configs) do
-			local region = config.region
-			local bar_idx = region.data.bar_index
-			local phase_name = region.data.phase_name
-			local delivery = filtered[bar_idx]
-
-			-- Build tooltip text
+	-- Only re-render chart on cache miss (data changed)
+	local button_configs = nil
+	if not cache_hit and camera_info then
+		-- Tooltip generator function
+		local function get_tooltip(bar_idx, phase_name, duration, delivery)
 			local tooltip_lines = {}
 			tooltip_lines[#tooltip_lines + 1] = PHASE_LABELS[phase_name] or phase_name
 			if delivery then
-				local duration = delivery[phase_name] or 0
 				tooltip_lines[#tooltip_lines + 1] = format_time(duration)
 				if delivery.item_hash then
 					local item_name = unhash_signal and unhash_signal(delivery.item_hash) or delivery.item_hash
@@ -559,17 +527,48 @@ function delivery_breakdown_tab.build(map_data, player_data)
 					end
 				end
 			end
-			local tooltip = table.concat(tooltip_lines, "\n")
+			return table.concat(tooltip_lines, "\n")
+		end
 
-			-- Add button as child of camera
+		-- Render chart with overlay button configs
+		button_configs = analytics.render_stacked_bar_chart(
+			map_data, data.breakdown_interval, filtered,
+			PHASE_COLORS, PHASE_ORDER, HATCHED_PHASES,
+			GRAPH_WIDTH, GRAPH_HEIGHT,
+			{
+				camera_position = {x = camera_info.cam_x, y = camera_info.cam_y},
+				camera_zoom = camera_info.zoom,
+				widget_size = {width = camera_info.widget_width, height = camera_info.widget_height},
+				get_tooltip = get_tooltip,
+			}
+		)
+		-- Store filtered deliveries for tooltip lookups
+		player_data.breakdown_deliveries = filtered
+		-- Store button configs for later use
+		player_data.breakdown_button_configs = button_configs
+	else
+		button_configs = player_data.breakdown_button_configs
+	end
+
+	-- Create overlay buttons for hover interaction
+	if refs.breakdown_camera and button_configs and not cache_hit then
+		-- Clear existing overlay buttons
+		local camera = refs.breakdown_camera
+		for _, child in pairs(camera.children) do
+			child.destroy()
+		end
+
+		-- Create buttons from configs (tooltips already included)
+		for _, config in ipairs(button_configs) do
+			local region = config.region
 			local btn = camera.add{
 				type = "button",
 				style = "cybersyn_chart_overlay_button",
-				tooltip = tooltip,
+				tooltip = config.tooltip,
 				tags = {
 					breakdown_region = true,
-					bar_index = bar_idx,
-					phase_name = phase_name,
+					bar_index = region.data.bar_index,
+					phase_name = region.data.phase_name,
 				},
 			}
 			btn.style.left_margin = math.max(0, config.style_mods.left_margin)
@@ -642,7 +641,7 @@ function delivery_breakdown_tab.cleanup(map_data, player_data)
 
 	player_data.breakdown_registered = nil
 	player_data.breakdown_deliveries = nil
-	player_data.breakdown_hit_regions = nil
+	player_data.breakdown_button_configs = nil
 	player_data.breakdown_tooltip_ids = nil
 	player_data.breakdown_highlight_id = nil
 	player_data.breakdown_camera_info = nil
@@ -737,9 +736,10 @@ function delivery_breakdown_tab.handle.on_breakdown_hover(player, player_data, r
 
 	-- Create tooltip on the analytics surface
 	local data = map_data.analytics
-	if data and data.surface and player_data.breakdown_hit_regions and charts then
+	if data and data.surface and player_data.breakdown_button_configs and charts then
 		-- Find the hit region for this bar segment
-		for _, region in ipairs(player_data.breakdown_hit_regions) do
+		for _, config in ipairs(player_data.breakdown_button_configs) do
+			local region = config.region
 			if region.data.bar_index == bar_index and region.data.phase_name == phase_name then
 				-- Clear previous tooltip
 				if player_data.breakdown_tooltip_ids then
@@ -816,9 +816,15 @@ function delivery_breakdown_tab.handle.on_breakdown_chart_click(player, player_d
 	if not map_data or not map_data.analytics then return end
 	if not charts then return end
 
-	local hit_regions = player_data.breakdown_hit_regions
+	local button_configs = player_data.breakdown_button_configs
 	local camera_info = player_data.breakdown_camera_info
-	if not hit_regions or not camera_info then return end
+	if not button_configs or not camera_info then return end
+
+	-- Extract hit regions from button configs
+	local hit_regions = {}
+	for _, config in ipairs(button_configs) do
+		hit_regions[#hit_regions + 1] = config.region
+	end
 
 	-- Get the button element's screen position
 	local element = e.element
