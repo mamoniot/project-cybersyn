@@ -134,6 +134,12 @@ function analytics.init(map_data)
 		if not map_data.analytics.completed_deliveries then
 			map_data.analytics.completed_deliveries = {}
 		end
+		if not map_data.analytics.active_failures then
+			map_data.analytics.active_failures = {}
+		end
+		-- Clean up old data structures if present
+		map_data.analytics.failed_dispatches = nil
+		map_data.analytics.last_failure_tick = nil
 		return
 	end
 
@@ -149,6 +155,7 @@ function analytics.init(map_data)
 		delivery_counts = {},
 		delivery_phases = {},
 		completed_deliveries = {},
+		active_failures = {},
 		breakdown_interval = nil,
 	}
 	debug_log("Analytics initialized, surface index: " .. surface_data.surface.index)
@@ -261,15 +268,19 @@ end
 ---@param selected_series table?
 ---@param fixed_range table?
 ---@param label_format string?
-function analytics.render_graph(map_data, intervals, interval_index, selected_series, fixed_range, label_format)
+---@return table? ordered_sums Series ordered by sum
+---@return table? hit_regions Hit regions for interaction
+function analytics.render_graph(map_data, intervals, interval_index, selected_series, fixed_range, label_format, viewport_width, viewport_height)
 	local interval = intervals[interval_index]
 	if not interval.chunk then
 		debug_log("render_graph: no chunk for interval " .. interval_index)
-		return
+		return nil, nil
 	end
 
 	-- Avoid re-render on same tick
-	if interval.last_rendered_tick == game.tick then return end
+	if interval.last_rendered_tick == game.tick then
+		return interval.ordered_sums, interval.hit_regions
+	end
 	interval.last_rendered_tick = game.tick
 
 	-- Destroy old lines before drawing new ones
@@ -285,8 +296,8 @@ function analytics.render_graph(map_data, intervals, interval_index, selected_se
 	local data = map_data.analytics
 	local ttl = math.max(interval.ticks * 2, 360)
 
-	-- Use the library to render
-	local ordered_sums, line_ids = charts.render_line_graph(data.surface, interval.chunk, {
+	-- Use the metadata-returning version for interaction support
+	local ordered_sums, line_ids, metadata = charts.render_line_graph_with_metadata(data.surface, interval.chunk, {
 		data = interval.data,
 		index = interval.index,
 		length = interval.length,
@@ -296,13 +307,25 @@ function analytics.render_graph(map_data, intervals, interval_index, selected_se
 		label_format = label_format or "percent",
 		selected_series = selected_series,
 		ttl = ttl,
+		viewport_width = viewport_width,
+		viewport_height = viewport_height,
 	})
 
 	if line_ids then
 		interval.line_ids = line_ids
 	end
 
-	return ordered_sums
+	-- Generate hit regions from metadata
+	local hit_regions = nil
+	if metadata then
+		hit_regions = charts.create_line_graph_hit_regions(interval.chunk, metadata, {point_radius = 0.3})
+	end
+
+	-- Cache for re-render checks
+	interval.ordered_sums = ordered_sums
+	interval.hit_regions = hit_regions
+
+	return ordered_sums, hit_regions
 end
 
 ---Record delivery start for time tracking
@@ -310,7 +333,8 @@ end
 ---@param train_id uint
 ---@param item_hash string
 ---@param fulfillment_time uint?
-function analytics.record_delivery_start(map_data, train_id, item_hash, fulfillment_time)
+---@param r_station_id uint? Requester station ID (to clear active failure)
+function analytics.record_delivery_start(map_data, train_id, item_hash, fulfillment_time, r_station_id)
 	if not analytics.is_enabled() then return end
 	if not map_data.analytics then return end
 
@@ -332,6 +356,11 @@ function analytics.record_delivery_start(map_data, train_id, item_hash, fulfillm
 		leave_p_tick = nil,
 		arrive_r_tick = nil,
 	}
+
+	-- Clear any active failure for this item+station since delivery is now in progress
+	if r_station_id then
+		analytics.clear_active_failure(map_data, r_station_id, item_hash)
+	end
 end
 
 local EMA_ALPHA = 0.2
@@ -454,6 +483,107 @@ function analytics.record_phase_arrive_requester(map_data, train_id)
 	end
 end
 
+local FAILURE_WAIT_THRESHOLD = 30  -- Only record failures after 30s of waiting
+local FAILURE_STALE_TICKS = 3600   -- Consider failure resolved if not updated for 60 seconds
+
+---Record a failed dispatch attempt - tracks active (ongoing) failures
+---@param map_data MapData
+---@param r_station_id uint
+---@param item_hash string
+---@param failure_reason number 0=no provider stock, 1=no train, 2=capacity, 3=layout
+---@param wait_so_far number seconds the request has been waiting (cumulative)
+---@param p_station_id uint? provider station id if one was found
+function analytics.record_failed_dispatch(map_data, r_station_id, item_hash, failure_reason, wait_so_far, p_station_id)
+	if not analytics.is_enabled() then return end
+	if not map_data.analytics then return end
+
+	-- Only record if wait time exceeds threshold
+	if wait_so_far < FAILURE_WAIT_THRESHOLD then return end
+
+	local data = map_data.analytics
+	local current_tick = game.tick
+
+	-- Track active failures (one entry per item+station, grows over time)
+	if not data.active_failures then data.active_failures = {} end
+
+	local key = item_hash .. ":" .. r_station_id
+	local existing = data.active_failures[key]
+
+	if existing then
+		-- Update existing active failure
+		existing.last_tick = current_tick
+		existing.failure_reason = failure_reason  -- Reason might change
+		existing.p_station_id = p_station_id
+		-- Keep original request_start_tick so bar shows full wait time
+	else
+		-- New active failure - calculate when the request actually started
+		-- wait_so_far is in seconds, convert back to ticks to find original request time
+		local request_start_tick = current_tick - (wait_so_far * 60)
+		data.active_failures[key] = {
+			item_hash = item_hash,
+			r_station_id = r_station_id,
+			request_start_tick = request_start_tick,  -- When the request originally started
+			last_tick = current_tick,
+			failure_reason = failure_reason,
+			p_station_id = p_station_id,
+		}
+	end
+end
+
+---Clear an active failure when a delivery succeeds
+---@param map_data MapData
+---@param r_station_id uint
+---@param item_hash string
+function analytics.clear_active_failure(map_data, r_station_id, item_hash)
+	if not map_data.analytics then return end
+	local data = map_data.analytics
+	if not data.active_failures then return end
+
+	local key = item_hash .. ":" .. r_station_id
+	data.active_failures[key] = nil
+end
+
+---Get active failures for display, filtering out stale ones
+---@param map_data MapData
+---@param oldest_tick number Only used for stale check reference, not filtering (active failures always shown)
+---@return table[] Array of active failure info with calculated duration
+function analytics.get_active_failures(map_data, oldest_tick)
+	if not map_data.analytics then return {} end
+	local data = map_data.analytics
+	if not data.active_failures then return {} end
+
+	local current_tick = game.tick
+	local results = {}
+	local stale_keys = {}
+
+	for key, failure in pairs(data.active_failures) do
+		-- Check if stale (not updated recently) - consider resolved
+		if (current_tick - failure.last_tick) > FAILURE_STALE_TICKS then
+			stale_keys[#stale_keys + 1] = key
+		else
+			-- Active failure - always show regardless of time range filter
+			-- Use request_start_tick for full wait duration, fall back to last_tick for old entries
+			local start = failure.request_start_tick or failure.start_tick or failure.last_tick
+			local duration_seconds = (current_tick - start) / 60
+			results[#results + 1] = {
+				item_hash = failure.item_hash,
+				r_station_id = failure.r_station_id,
+				failure_reason = failure.failure_reason,
+				duration = duration_seconds,
+				request_start_tick = start,
+				last_tick = failure.last_tick,
+			}
+		end
+	end
+
+	-- Clean up stale entries
+	for _, key in ipairs(stale_keys) do
+		data.active_failures[key] = nil
+	end
+
+	return results
+end
+
 local WORKING_STATUSES = {
 	[1] = true, [2] = true, [3] = true, [4] = true,
 }
@@ -545,9 +675,11 @@ end
 ---@param deliveries table[]
 ---@param phase_colors table
 ---@param phase_order string[]
-function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phase_colors, phase_order)
+---@param hatched_phases table? Phases to draw with diagonal stripes
+---@return table? hit_regions Hit regions for interaction
+function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phase_colors, phase_order, hatched_phases, viewport_width, viewport_height)
 	if not interval.chunk then
-		return
+		return nil
 	end
 
 	-- Destroy old renders
@@ -561,20 +693,32 @@ function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phas
 	interval.line_ids = {}
 
 	if #deliveries == 0 then
-		return
+		return nil
 	end
 
 	local data = map_data.analytics
-	local line_ids = charts.render_stacked_bars(data.surface, interval.chunk, {
+	-- Use metadata-returning version for interaction support
+	local line_ids, metadata = charts.render_stacked_bars_with_metadata(data.surface, interval.chunk, {
 		deliveries = deliveries,
 		phase_colors = phase_colors,
 		phase_order = phase_order,
+		hatched_phases = hatched_phases,
 		ttl = 360,
+		viewport_width = viewport_width,
+		viewport_height = viewport_height,
 	})
 
 	if line_ids then
 		interval.line_ids = line_ids
 	end
+
+	-- Generate hit regions from metadata
+	if metadata then
+		local hit_regions = charts.create_bar_chart_hit_regions(interval.chunk, metadata)
+		return hit_regions
+	end
+
+	return nil
 end
 
 return analytics

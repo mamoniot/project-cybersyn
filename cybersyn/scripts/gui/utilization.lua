@@ -1,6 +1,12 @@
 local gui = require("__flib__.gui")
 local analytics = require("scripts.analytics")
 
+-- Try to load the factorio-charts library for interaction support
+local charts_available, charts = pcall(require, "__factorio-charts__.charts")
+if not charts_available then
+	charts = nil
+end
+
 local utilization_tab = {}
 
 local CACHE_DURATION_TICKS = 300  -- 5 seconds at 60 UPS
@@ -8,7 +14,7 @@ local CACHE_DURATION_TICKS = 300  -- 5 seconds at 60 UPS
 local interval_names = {"5s", "1m", "10m", "1h", "10h", "50h", "250h", "1000h"}
 
 -- Graph dimensions (pixels) - sized to fill the manager window
-local GRAPH_WIDTH = 900
+local GRAPH_WIDTH = 1100
 local GRAPH_HEIGHT = 700
 
 function utilization_tab.create()
@@ -91,16 +97,19 @@ function utilization_tab.create()
 						},
 					},
 				},
-				-- Right: large graph (stretchable to fill available space)
+				-- Right: large graph with hover overlay
 				{
 					name = "utilization_camera_frame",
 					type = "frame",
 					style = "deep_frame_in_shallow_frame",
 					style_mods = {
-						horizontally_stretchable = true,
-						vertically_stretchable = true,
+						-- Fixed size - lock with both min and max to prevent stretching
+						width = GRAPH_WIDTH,
+						height = GRAPH_HEIGHT,
 						minimal_width = GRAPH_WIDTH,
 						minimal_height = GRAPH_HEIGHT,
+						maximal_width = GRAPH_WIDTH,
+						maximal_height = GRAPH_HEIGHT,
 					},
 					ref = { "utilization", "camera_frame" },
 					{
@@ -111,10 +120,29 @@ function utilization_tab.create()
 						zoom = 1,
 						ref = { "utilization", "camera" },
 						style_mods = {
-							horizontally_stretchable = true,
-							vertically_stretchable = true,
+							width = GRAPH_WIDTH,
+							height = GRAPH_HEIGHT,
 							minimal_width = GRAPH_WIDTH,
 							minimal_height = GRAPH_HEIGHT,
+							maximal_width = GRAPH_WIDTH,
+							maximal_height = GRAPH_HEIGHT,
+						},
+						-- Overlay button as child of camera (children overlay on camera content)
+						{
+							name = "utilization_overlay_button",
+							type = "button",
+							style = "cybersyn_chart_overlay_button",
+							ref = { "utilization", "overlay_button" },
+							tags = { utilization_chart_click = true },
+							handler = utilization_tab.handle.on_utilization_chart_click,
+							style_mods = {
+								width = GRAPH_WIDTH,
+								height = GRAPH_HEIGHT,
+								minimal_width = GRAPH_WIDTH,
+								minimal_height = GRAPH_HEIGHT,
+								maximal_width = GRAPH_WIDTH,
+								maximal_height = GRAPH_HEIGHT,
+							},
 						},
 					},
 				},
@@ -212,12 +240,26 @@ function utilization_tab.build(map_data, player_data)
 	end
 
 	-- Update camera position to point at analytics surface
-	if refs.utilization_camera and chunk and chunk.coord then
-		local cam_x = chunk.coord.x + GRAPH_WIDTH / 2 / 32
-		local cam_y = chunk.coord.y + GRAPH_HEIGHT / 2 / 32
-		refs.utilization_camera.position = { cam_x, cam_y }
+	local display_scale = player.display_scale or 1.0
+	if refs.utilization_camera and chunk and chunk.coord and charts then
+		local camera_params = charts.get_camera_params(chunk, {
+			widget_width = GRAPH_WIDTH,
+			widget_height = GRAPH_HEIGHT,
+			left_margin = 0,
+		})
+
+		-- Correct zoom formula: display_scale / 2
+		local zoom = display_scale / 2
+
+		-- Apply calibrated position offsets
+		local final_position = {
+			x = camera_params.position.x + 3.9,
+			y = camera_params.position.y + 0.1,
+		}
+
+		refs.utilization_camera.position = final_position
 		refs.utilization_camera.surface_index = data.surface.index
-		refs.utilization_camera.zoom = 1
+		refs.utilization_camera.zoom = zoom
 	end
 
 	-- Get selected series
@@ -243,8 +285,30 @@ function utilization_tab.build(map_data, player_data)
 	end
 
 	-- Only render graph on cache miss
+	local hit_regions = nil
 	if not cache_hit then
-		analytics.render_graph(map_data, intervals, interval_index, selected_series, {0, 100})
+		local _, regions = analytics.render_graph(map_data, intervals, interval_index, selected_series, {0, 100}, nil, GRAPH_WIDTH, GRAPH_HEIGHT)
+		hit_regions = regions
+		player_data.utilization_hit_regions = hit_regions
+	else
+		hit_regions = player_data.utilization_hit_regions
+	end
+
+	-- Store camera info for click hit-testing
+	if chunk and chunk.coord and charts then
+		local camera_params = charts.get_camera_params(chunk, {
+			widget_width = GRAPH_WIDTH,
+			widget_height = GRAPH_HEIGHT,
+			left_margin = 0,
+		})
+		local zoom = display_scale / 2
+		player_data.utilization_camera_info = {
+			cam_x = camera_params.position.x + 3.9,
+			cam_y = camera_params.position.y + 0.1,
+			widget_width = GRAPH_WIDTH,
+			widget_height = GRAPH_HEIGHT,
+			zoom = zoom,
+		}
 	end
 
 	-- Build legend from cached series data
@@ -308,8 +372,20 @@ function utilization_tab.cleanup(map_data, player_data)
 		analytics.interval_unregister_gui(map_data, interval, player)
 	end
 
+	-- Clean up hover/click state
+	if player_data.utilization_tooltip_ids and charts then
+		charts.destroy_render_objects(player_data.utilization_tooltip_ids)
+	end
+	if player_data.utilization_highlight_id and player_data.utilization_highlight_id.valid then
+		player_data.utilization_highlight_id.destroy()
+	end
+
 	-- Clear registration flag so we re-register next time
 	player_data.utilization_registered = nil
+	player_data.utilization_hit_regions = nil
+	player_data.utilization_tooltip_ids = nil
+	player_data.utilization_highlight_id = nil
+	player_data.utilization_camera_info = nil
 end
 
 utilization_tab.handle = {}
@@ -381,6 +457,197 @@ function utilization_tab.handle.on_utilization_legend_checkbox_changed(player, p
 
 	-- Invalidate cache to re-render with new selection
 	player_data.utilization_cache = nil
+end
+
+---Handle hover on utilization chart data points
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_hover
+function utilization_tab.handle.on_utilization_hover(player, player_data, refs, e)
+	local element = e.element
+	if not element or not element.tags then return end
+	if not element.tags.utilization_region then return end
+
+	local map_data = storage
+	if not map_data or not map_data.analytics then return end
+
+	local series_name = element.tags.series_name
+	local value = element.tags.value
+	if not series_name or not value then return end
+
+	-- Get layout name from series (layout_id)
+	local layout_id = tonumber(series_name)
+	local layout = layout_id and map_data.layouts[layout_id]
+	local layout_name = analytics.format_layout_name(layout, layout_id)
+
+	-- Build tooltip lines
+	local lines = {}
+	lines[#lines + 1] = layout_name
+	lines[#lines + 1] = string.format("%.1f%% utilization", value)
+
+	-- Create tooltip on the analytics surface
+	local data = map_data.analytics
+	if data and data.surface and player_data.utilization_hit_regions and charts then
+		-- Find the hit region
+		local region_id = element.tags.region_id
+		for _, region in ipairs(player_data.utilization_hit_regions) do
+			if region.id == region_id then
+				-- Clear previous tooltip
+				if player_data.utilization_tooltip_ids then
+					charts.destroy_render_objects(player_data.utilization_tooltip_ids)
+				end
+
+				-- Create tooltip near the data point
+				local tooltip_pos = {
+					x = (region.tile_bounds.left + region.tile_bounds.right) / 2,
+					y = region.tile_bounds.top,
+				}
+				player_data.utilization_tooltip_ids = charts.create_tooltip(
+					data.surface,
+					tooltip_pos,
+					lines,
+					{
+						ttl = 120,  -- 2 seconds
+						scale = 0.7,
+						offset = {x = 0, y = -0.8},
+					}
+				)
+
+				-- Create highlight
+				if player_data.utilization_highlight_id and player_data.utilization_highlight_id.valid then
+					player_data.utilization_highlight_id.destroy()
+				end
+				player_data.utilization_highlight_id = charts.create_highlight(
+					data.surface,
+					region,
+					{
+						color = {r = 1, g = 1, b = 1, a = 0.5},
+						ttl = 120,
+						width = 2,
+					}
+				)
+				break
+			end
+		end
+	end
+end
+
+---Handle leaving a utilization chart data point
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_leave
+function utilization_tab.handle.on_utilization_leave(player, player_data, refs, e)
+	local element = e.element
+	if not element or not element.tags then return end
+	if not element.tags.utilization_region then return end
+
+	-- Destroy tooltip
+	if player_data.utilization_tooltip_ids and charts then
+		charts.destroy_render_objects(player_data.utilization_tooltip_ids)
+		player_data.utilization_tooltip_ids = nil
+	end
+
+	-- Destroy highlight
+	if player_data.utilization_highlight_id then
+		if player_data.utilization_highlight_id.valid then
+			player_data.utilization_highlight_id.destroy()
+		end
+		player_data.utilization_highlight_id = nil
+	end
+end
+
+---Handle click on utilization chart - uses cursor position for hit testing
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_click
+function utilization_tab.handle.on_utilization_chart_click(player, player_data, refs, e)
+	local map_data = storage
+	if not map_data or not map_data.analytics then return end
+	if not charts then return end
+
+	local hit_regions = player_data.utilization_hit_regions
+	local camera_info = player_data.utilization_camera_info
+	if not hit_regions or not camera_info then return end
+
+	-- Get the button element's screen position
+	local element = e.element
+	if not element or not element.valid then return end
+	local button_location = element.location
+	if not button_location then return end
+
+	-- Calculate click position relative to the button
+	local cursor = e.cursor_display_location
+	if not cursor then return end
+
+	local click_x = cursor.x - button_location.x
+	local click_y = cursor.y - button_location.y
+
+	-- Convert screen position to tile position
+	local widget_size = {width = camera_info.widget_width, height = camera_info.widget_height}
+	local camera_pos = {x = camera_info.cam_x, y = camera_info.cam_y}
+	local tile_pos = charts.screen_to_tile(camera_pos, camera_info.zoom, widget_size, {x = click_x, y = click_y})
+
+	-- Hit test against regions
+	local hit_region = charts.hit_test(hit_regions, tile_pos)
+
+	-- Clear any existing tooltip/highlight
+	if player_data.utilization_tooltip_ids then
+		charts.destroy_render_objects(player_data.utilization_tooltip_ids)
+		player_data.utilization_tooltip_ids = nil
+	end
+	if player_data.utilization_highlight_id and player_data.utilization_highlight_id.valid then
+		player_data.utilization_highlight_id.destroy()
+		player_data.utilization_highlight_id = nil
+	end
+
+	if not hit_region then return end
+
+	-- Get layout info for tooltip
+	local series_name = hit_region.data.series_name
+	local value = hit_region.data.value
+	if not series_name or not value then return end
+
+	local layout_id = tonumber(series_name)
+	local layout = layout_id and map_data.layouts and map_data.layouts[layout_id]
+	local layout_name = analytics.format_layout_name(layout, layout_id)
+
+	-- Build tooltip lines
+	local lines = {}
+	lines[#lines + 1] = layout_name
+	lines[#lines + 1] = string.format("%.1f%% utilization", value)
+
+	-- Create tooltip on the analytics surface
+	local data = map_data.analytics
+	if data and data.surface then
+		local tooltip_pos = {
+			x = (hit_region.tile_bounds.left + hit_region.tile_bounds.right) / 2,
+			y = hit_region.tile_bounds.top,
+		}
+		player_data.utilization_tooltip_ids = charts.create_tooltip(
+			data.surface,
+			tooltip_pos,
+			lines,
+			{
+				ttl = 180,  -- 3 seconds
+				scale = 0.8,
+				offset = {x = 0.5, y = -1.0},
+			}
+		)
+
+		-- Create highlight
+		player_data.utilization_highlight_id = charts.create_highlight(
+			data.surface,
+			hit_region,
+			{
+				color = {r = 1, g = 1, b = 1, a = 0.6},
+				ttl = 180,
+				width = 2,
+			}
+		)
+	end
 end
 
 gui.add_handlers(utilization_tab.handle, utilization_tab.wrapper)

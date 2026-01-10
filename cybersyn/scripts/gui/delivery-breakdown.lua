@@ -1,6 +1,12 @@
 local gui = require("__flib__.gui")
 local analytics = require("scripts.analytics")
 
+-- Try to load the factorio-charts library for interaction support
+local charts_available, charts = pcall(require, "__factorio-charts__.charts")
+if not charts_available then
+	charts = nil
+end
+
 local delivery_breakdown_tab = {}
 
 local CACHE_DURATION_TICKS = 300  -- 5 seconds at 60 UPS
@@ -8,25 +14,44 @@ local CACHE_DURATION_TICKS = 300  -- 5 seconds at 60 UPS
 local interval_names = {"5s", "1m", "10m", "1h", "10h", "50h", "250h", "1000h"}
 
 -- Graph dimensions (pixels) - sized to fill the manager window
-local GRAPH_WIDTH = 900
+local GRAPH_WIDTH = 1100
 local GRAPH_HEIGHT = 700
 
 -- Phase colors for stacked bars
 local PHASE_COLORS = {
+	-- Success phases (warm colors)
 	wait = {r = 0.8, g = 0.2, b = 0.2},        -- Red - waiting for train
 	travel_to_p = {r = 1.0, g = 0.6, b = 0.0}, -- Orange - traveling to provider
 	loading = {r = 1.0, g = 1.0, b = 0.0},     -- Yellow - loading
 	travel_to_r = {r = 0.0, g = 0.8, b = 0.2}, -- Green - traveling to requester
 	unloading = {r = 0.2, g = 0.6, b = 1.0},   -- Blue - unloading
+	-- Failed dispatch phases (vibrant, distinct colors)
+	fail_no_stock = {r = 1.0, g = 0.2, b = 0.6},    -- Hot pink - no provider stock
+	fail_no_train = {r = 0.2, g = 0.8, b = 0.8},    -- Cyan/teal - no train available
+	fail_capacity = {r = 0.9, g = 0.4, b = 0.1},    -- Deep orange - train capacity
+	fail_layout = {r = 0.6, g = 0.2, b = 0.9},      -- Violet - layout mismatch
 }
 
-local PHASE_ORDER = {"wait", "travel_to_p", "loading", "travel_to_r", "unloading"}
+-- Phases that should be drawn with diagonal stripe pattern
+local HATCHED_PHASES = {
+	fail_no_stock = true,
+	fail_no_train = true,
+	fail_capacity = true,
+	fail_layout = true,
+}
+
+local PHASE_ORDER = {"wait", "travel_to_p", "loading", "travel_to_r", "unloading",
+	"fail_no_stock", "fail_no_train", "fail_capacity", "fail_layout"}
 local PHASE_LABELS = {
 	wait = "Matching",
 	travel_to_p = "Travel to P",
 	loading = "Loading",
 	travel_to_r = "Travel to R",
 	unloading = "Unloading",
+	fail_no_stock = "No Stock (F)",
+	fail_no_train = "No Train (F)",
+	fail_capacity = "Capacity (F)",
+	fail_layout = "Layout (F)",
 }
 
 local PHASE_TOOLTIPS = {
@@ -35,6 +60,10 @@ local PHASE_TOOLTIPS = {
 	loading = "Loading cargo at provider station",
 	travel_to_r = "Train traveling to requester station",
 	unloading = "Unloading cargo at requester station",
+	fail_no_stock = "Failed: No provider had sufficient stock",
+	fail_no_train = "Failed: No train available on network",
+	fail_capacity = "Failed: Train capacity insufficient",
+	fail_layout = "Failed: Train layout mismatch",
 }
 
 function delivery_breakdown_tab.create()
@@ -154,16 +183,19 @@ function delivery_breakdown_tab.create()
 						style_mods = { single_line = false, font = "default-small" },
 					},
 				},
-				-- Right: large graph
+				-- Right: large graph with hover overlay
 				{
 					name = "breakdown_camera_frame",
 					type = "frame",
 					style = "deep_frame_in_shallow_frame",
 					style_mods = {
-						horizontally_stretchable = true,
-						vertically_stretchable = true,
+						-- Fixed size - lock with both min and max to prevent stretching
+						width = GRAPH_WIDTH,
+						height = GRAPH_HEIGHT,
 						minimal_width = GRAPH_WIDTH,
 						minimal_height = GRAPH_HEIGHT,
+						maximal_width = GRAPH_WIDTH,
+						maximal_height = GRAPH_HEIGHT,
 					},
 					ref = { "delivery_breakdown", "camera_frame" },
 					{
@@ -174,11 +206,14 @@ function delivery_breakdown_tab.create()
 						zoom = 1,
 						ref = { "delivery_breakdown", "camera" },
 						style_mods = {
-							horizontally_stretchable = true,
-							vertically_stretchable = true,
+							width = GRAPH_WIDTH,
+							height = GRAPH_HEIGHT,
 							minimal_width = GRAPH_WIDTH,
 							minimal_height = GRAPH_HEIGHT,
+							maximal_width = GRAPH_WIDTH,
+							maximal_height = GRAPH_HEIGHT,
 						},
+						-- Overlay buttons will be added dynamically as camera children
 					},
 				},
 			},
@@ -212,15 +247,24 @@ local function format_time(seconds)
 end
 
 ---Single-pass gather, filter by time range, and calculate stats
+---@param map_data MapData Map data containing analytics
 ---@param data table Analytics data
 ---@param oldest_tick number Minimum complete_tick to include
 ---@param search_item string? Optional item filter
 ---@return table filtered Filtered and sorted deliveries
 ---@return table stats Aggregated statistics
-local function gather_filter_and_stats(data, oldest_tick, search_item)
+local function gather_filter_and_stats(map_data, data, oldest_tick, search_item)
 	local filtered = {}
 	local total_wait, total_travel_p, total_loading = 0, 0, 0
 	local total_travel_r, total_unloading = 0, 0
+	-- Track MAX duration per failure type (not sum) so time progresses at real-time rate
+	local max_fail_no_stock, max_fail_no_train = 0, 0
+	local max_fail_capacity, max_fail_layout = 0, 0
+	-- Track counts per failure type
+	local count_fail_no_stock, count_fail_no_train = 0, 0
+	local count_fail_capacity, count_fail_layout = 0, 0
+	local fail_count = 0
+	local delivery_count = 0
 
 	for item_hash, deliveries in pairs(data.completed_deliveries) do
 		local include = true
@@ -232,7 +276,10 @@ local function gather_filter_and_stats(data, oldest_tick, search_item)
 		if include then
 			for _, delivery in ipairs(deliveries) do
 				if delivery.complete_tick >= oldest_tick then
+					-- Add item_hash to delivery for tooltip display
+					delivery.item_hash = item_hash
 					filtered[#filtered + 1] = delivery
+					delivery_count = delivery_count + 1
 					total_wait = total_wait + (delivery.wait or 0)
 					total_travel_p = total_travel_p + (delivery.travel_to_p or 0)
 					total_loading = total_loading + (delivery.loading or 0)
@@ -243,17 +290,79 @@ local function gather_filter_and_stats(data, oldest_tick, search_item)
 		end
 	end
 
-	-- Sort by complete_tick (oldest first for left-to-right display)
+	-- Gather active failures - each stuck request becomes its own bar
+	-- When the request is satisfied, this bar disappears and a completed delivery bar appears
+	local active_failures = analytics.get_active_failures(map_data, oldest_tick)
+	for _, failure in ipairs(active_failures) do
+		local include = true
+		if search_item then
+			local item_name = unhash_signal(failure.item_hash)
+			include = (item_name == search_item)
+		end
+
+		if include then
+			fail_count = fail_count + 1
+			local duration = failure.duration or 0
+
+			-- Track stats for display (max duration per type)
+			if failure.failure_reason == FAILURE_REASON_NO_PROVIDER_STOCK then
+				count_fail_no_stock = count_fail_no_stock + 1
+				if duration > max_fail_no_stock then
+					max_fail_no_stock = duration
+				end
+			elseif failure.failure_reason == FAILURE_REASON_NO_TRAIN_AVAILABLE then
+				count_fail_no_train = count_fail_no_train + 1
+				if duration > max_fail_no_train then
+					max_fail_no_train = duration
+				end
+			elseif failure.failure_reason == FAILURE_REASON_TRAIN_CAPACITY then
+				count_fail_capacity = count_fail_capacity + 1
+				if duration > max_fail_capacity then
+					max_fail_capacity = duration
+				end
+			else
+				count_fail_layout = count_fail_layout + 1
+				if duration > max_fail_layout then
+					max_fail_layout = duration
+				end
+			end
+
+			-- Add individual bar for this stuck request
+			local bar = { complete_tick = failure.last_tick }
+			if failure.failure_reason == FAILURE_REASON_NO_PROVIDER_STOCK then
+				bar.fail_no_stock = duration
+			elseif failure.failure_reason == FAILURE_REASON_NO_TRAIN_AVAILABLE then
+				bar.fail_no_train = duration
+			elseif failure.failure_reason == FAILURE_REASON_TRAIN_CAPACITY then
+				bar.fail_capacity = duration
+			else
+				bar.fail_layout = duration
+			end
+			filtered[#filtered + 1] = bar
+		end
+	end
+
+	-- Sort by complete_tick/failed_tick (oldest first for left-to-right display)
 	table.sort(filtered, function(a, b)
 		return a.complete_tick < b.complete_tick
 	end)
 
 	return filtered, {
+		delivery_count = delivery_count,
 		total_wait = total_wait,
 		total_travel_p = total_travel_p,
 		total_loading = total_loading,
 		total_travel_r = total_travel_r,
 		total_unloading = total_unloading,
+		max_fail_no_stock = max_fail_no_stock,
+		max_fail_no_train = max_fail_no_train,
+		max_fail_capacity = max_fail_capacity,
+		max_fail_layout = max_fail_layout,
+		count_fail_no_stock = count_fail_no_stock,
+		count_fail_no_train = count_fail_no_train,
+		count_fail_capacity = count_fail_capacity,
+		count_fail_layout = count_fail_layout,
+		fail_count = fail_count,
 	}
 end
 
@@ -312,7 +421,7 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		cache_hit = true
 	else
 		-- Cache miss - generate fresh data with single-pass function
-		filtered, stats = gather_filter_and_stats(data, oldest_tick, search_item)
+		filtered, stats = gather_filter_and_stats(map_data, data, oldest_tick, search_item)
 		player_data.breakdown_cache = {
 			tick = current_tick,
 			key = cache_key,
@@ -322,7 +431,8 @@ function delivery_breakdown_tab.build(map_data, player_data)
 	end
 
 	-- Check if there's any data
-	local has_data = #filtered > 0 or next(data.completed_deliveries) ~= nil
+	local has_data = #filtered > 0 or next(data.completed_deliveries) ~= nil or
+		(data.active_failures and next(data.active_failures) ~= nil)
 
 	-- Update visibility
 	if refs.breakdown_no_data_label then
@@ -362,33 +472,149 @@ function delivery_breakdown_tab.build(map_data, player_data)
 	end
 
 	-- Update camera position to point at analytics surface
-	if refs.breakdown_camera and chunk.coord then
-		local cam_x = chunk.coord.x + GRAPH_WIDTH / 2 / 32
-		local cam_y = chunk.coord.y + GRAPH_HEIGHT / 2 / 32
-		refs.breakdown_camera.position = { cam_x, cam_y }
+	local display_scale = player.display_scale or 1.0
+	if refs.breakdown_camera and chunk.coord and charts then
+		local camera_params = charts.get_camera_params(chunk, {
+			widget_width = GRAPH_WIDTH,
+			widget_height = GRAPH_HEIGHT,
+			left_margin = 0,
+		})
+		-- Correct zoom formula: display_scale / 2
+		local zoom = display_scale / 2
+		-- Apply calibrated position offsets
+		local final_position = {
+			x = camera_params.position.x + 3.5,
+			y = camera_params.position.y - 0.9,
+		}
+		refs.breakdown_camera.position = final_position
 		refs.breakdown_camera.surface_index = data.surface.index
-		refs.breakdown_camera.zoom = 1
+		refs.breakdown_camera.zoom = zoom
 	end
 
 	-- Only re-render chart on cache miss (data changed)
+	local hit_regions = nil
 	if not cache_hit then
-		analytics.render_stacked_bar_chart(map_data, data.breakdown_interval, filtered, PHASE_COLORS, PHASE_ORDER)
+		hit_regions = analytics.render_stacked_bar_chart(map_data, data.breakdown_interval, filtered, PHASE_COLORS, PHASE_ORDER, HATCHED_PHASES, GRAPH_WIDTH, GRAPH_HEIGHT)
+		-- Store filtered deliveries for tooltip lookups
+		player_data.breakdown_deliveries = filtered
+		-- Store hit regions for interaction
+		player_data.breakdown_hit_regions = hit_regions
+	else
+		hit_regions = player_data.breakdown_hit_regions
+	end
+
+	-- Store camera info for hit-testing
+	local camera_info = nil
+	if chunk and chunk.coord and charts then
+		local camera_params = charts.get_camera_params(chunk, {
+			widget_width = GRAPH_WIDTH,
+			widget_height = GRAPH_HEIGHT,
+			left_margin = 0,
+		})
+		-- Correct zoom formula: display_scale / 2
+		local zoom = display_scale / 2
+		camera_info = {
+			cam_x = camera_params.position.x + 3.5,
+			cam_y = camera_params.position.y - 0.9,
+			widget_width = GRAPH_WIDTH,
+			widget_height = GRAPH_HEIGHT,
+			zoom = zoom,
+		}
+		player_data.breakdown_camera_info = camera_info
+	end
+
+	-- Create overlay buttons for hover interaction
+	if refs.breakdown_camera and hit_regions and camera_info and charts and not cache_hit then
+		-- Clear existing overlay buttons (skip the first elements which are camera settings)
+		local camera = refs.breakdown_camera
+		-- Remove all children (overlay buttons from previous render)
+		for _, child in pairs(camera.children) do
+			child.destroy()
+		end
+
+		-- Generate button configs
+		-- Use the ACTUAL camera display position (with offset) for button placement
+		-- The offset shifts what the camera shows, so button positions must match
+		local camera_pos = {x = camera_info.cam_x, y = camera_info.cam_y}
+		local widget_size = {width = camera_info.widget_width, height = camera_info.widget_height}
+		local button_configs = charts.generate_overlay_buttons(camera_pos, camera_info.zoom, widget_size, hit_regions)
+
+		-- Create buttons for each hit region
+		for _, config in ipairs(button_configs) do
+			local region = config.region
+			local bar_idx = region.data.bar_index
+			local phase_name = region.data.phase_name
+			local delivery = filtered[bar_idx]
+
+			-- Build tooltip text
+			local tooltip_lines = {}
+			tooltip_lines[#tooltip_lines + 1] = PHASE_LABELS[phase_name] or phase_name
+			if delivery then
+				local duration = delivery[phase_name] or 0
+				tooltip_lines[#tooltip_lines + 1] = format_time(duration)
+				if delivery.item_hash then
+					local item_name = unhash_signal and unhash_signal(delivery.item_hash) or delivery.item_hash
+					if item_name then
+						tooltip_lines[#tooltip_lines + 1] = "Item: " .. tostring(item_name)
+					end
+				end
+			end
+			local tooltip = table.concat(tooltip_lines, "\n")
+
+			-- Add button as child of camera
+			local btn = camera.add{
+				type = "button",
+				style = "cybersyn_chart_overlay_button",
+				tooltip = tooltip,
+				tags = {
+					breakdown_region = true,
+					bar_index = bar_idx,
+					phase_name = phase_name,
+				},
+			}
+			btn.style.left_margin = math.max(0, config.style_mods.left_margin)
+			btn.style.top_margin = math.max(0, config.style_mods.top_margin)
+			btn.style.width = math.max(1, config.style_mods.width)
+			btn.style.height = math.max(1, config.style_mods.height)
+		end
 	end
 
 	-- Update stats display using cached stats
-	if refs.breakdown_stats_label and #filtered > 0 then
-		local count = #filtered
-		local avg_total = (stats.total_wait + stats.total_travel_p + stats.total_loading +
-			stats.total_travel_r + stats.total_unloading) / count
+	if refs.breakdown_stats_label then
+		local delivery_count = stats.delivery_count or 0
+		local fail_count = stats.fail_count or 0
+		local lines = {}
 
-		refs.breakdown_stats_label.caption = string.format(
-			"Deliveries: %d\nAvg total: %s\nAvg wait: %s\nAvg load: %s\nAvg unload: %s",
-			count,
-			format_time(avg_total),
-			format_time(stats.total_wait / count),
-			format_time(stats.total_loading / count),
-			format_time(stats.total_unloading / count)
-		)
+		if delivery_count > 0 then
+			local avg_total = (stats.total_wait + stats.total_travel_p + stats.total_loading +
+				stats.total_travel_r + stats.total_unloading) / delivery_count
+			lines[#lines + 1] = string.format("Deliveries: %d", delivery_count)
+			lines[#lines + 1] = string.format("Avg total: %s", format_time(avg_total))
+			lines[#lines + 1] = string.format("Avg wait: %s", format_time(stats.total_wait / delivery_count))
+			lines[#lines + 1] = string.format("Avg load: %s", format_time(stats.total_loading / delivery_count))
+			lines[#lines + 1] = string.format("Avg unload: %s", format_time(stats.total_unloading / delivery_count))
+		end
+
+		if fail_count > 0 then
+			if delivery_count > 0 then
+				lines[#lines + 1] = ""  -- Blank line separator
+			end
+			lines[#lines + 1] = string.format("Stuck: %d", fail_count)
+			if stats.count_fail_no_stock > 0 then
+				lines[#lines + 1] = string.format("  No stock: %s (%d)", format_time(stats.max_fail_no_stock), stats.count_fail_no_stock)
+			end
+			if stats.count_fail_no_train > 0 then
+				lines[#lines + 1] = string.format("  No train: %s (%d)", format_time(stats.max_fail_no_train), stats.count_fail_no_train)
+			end
+			if stats.count_fail_capacity > 0 then
+				lines[#lines + 1] = string.format("  Capacity: %s (%d)", format_time(stats.max_fail_capacity), stats.count_fail_capacity)
+			end
+			if stats.count_fail_layout > 0 then
+				lines[#lines + 1] = string.format("  Layout: %s (%d)", format_time(stats.max_fail_layout), stats.count_fail_layout)
+			end
+		end
+
+		refs.breakdown_stats_label.caption = table.concat(lines, "\n")
 	end
 end
 
@@ -406,7 +632,20 @@ function delivery_breakdown_tab.cleanup(map_data, player_data)
 		end
 	end
 
+	-- Clean up hover state
+	if player_data.breakdown_tooltip_ids and charts then
+		charts.destroy_render_objects(player_data.breakdown_tooltip_ids)
+	end
+	if player_data.breakdown_highlight_id and player_data.breakdown_highlight_id.valid then
+		player_data.breakdown_highlight_id.destroy()
+	end
+
 	player_data.breakdown_registered = nil
+	player_data.breakdown_deliveries = nil
+	player_data.breakdown_hit_regions = nil
+	player_data.breakdown_tooltip_ids = nil
+	player_data.breakdown_highlight_id = nil
+	player_data.breakdown_camera_info = nil
 end
 
 delivery_breakdown_tab.handle = {}
@@ -450,6 +689,228 @@ function delivery_breakdown_tab.handle.on_breakdown_interval_click(player, playe
 				button.style = button.tags.interval_index == interval_index and "flib_selected_tool_button" or "tool_button"
 			end
 		end
+	end
+end
+
+---Handle hover on breakdown chart bar segments
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_hover
+function delivery_breakdown_tab.handle.on_breakdown_hover(player, player_data, refs, e)
+	local element = e.element
+	if not element or not element.tags then return end
+	if not element.tags.breakdown_region then return end
+
+	local map_data = storage
+	if not map_data or not map_data.analytics then return end
+
+	local bar_index = element.tags.bar_index
+	local phase_name = element.tags.phase_name
+	if not bar_index or not phase_name then return end
+
+	-- Get delivery data
+	local deliveries = player_data.breakdown_deliveries
+	if not deliveries or not deliveries[bar_index] then return end
+
+	local delivery = deliveries[bar_index]
+	local duration = delivery[phase_name] or 0
+
+	-- Build tooltip lines
+	local lines = {}
+	lines[#lines + 1] = PHASE_LABELS[phase_name] or phase_name
+	lines[#lines + 1] = format_time(duration)
+
+	-- Add item info if available (from completed delivery or failure)
+	if delivery.item_hash then
+		local item_name = unhash_signal and unhash_signal(delivery.item_hash) or delivery.item_hash
+		lines[#lines + 1] = "Item: " .. item_name
+	end
+
+	-- Get station info if this is a completed delivery with station data
+	if delivery.r_station_id and map_data.stations then
+		local station = map_data.stations[delivery.r_station_id]
+		if station and station.entity and station.entity.valid then
+			lines[#lines + 1] = "→ " .. station.entity.backer_name
+		end
+	end
+
+	-- Create tooltip on the analytics surface
+	local data = map_data.analytics
+	if data and data.surface and player_data.breakdown_hit_regions and charts then
+		-- Find the hit region for this bar segment
+		for _, region in ipairs(player_data.breakdown_hit_regions) do
+			if region.data.bar_index == bar_index and region.data.phase_name == phase_name then
+				-- Clear previous tooltip
+				if player_data.breakdown_tooltip_ids then
+					charts.destroy_render_objects(player_data.breakdown_tooltip_ids)
+				end
+
+				-- Create tooltip near the bar segment
+				local tooltip_pos = {
+					x = (region.tile_bounds.left + region.tile_bounds.right) / 2,
+					y = region.tile_bounds.top,
+				}
+				player_data.breakdown_tooltip_ids = charts.create_tooltip(
+					data.surface,
+					tooltip_pos,
+					lines,
+					{
+						ttl = 120,  -- 2 seconds
+						scale = 0.7,
+						offset = {x = 0, y = -0.8},
+					}
+				)
+
+				-- Create highlight
+				if player_data.breakdown_highlight_id and player_data.breakdown_highlight_id.valid then
+					player_data.breakdown_highlight_id.destroy()
+				end
+				player_data.breakdown_highlight_id = charts.create_highlight(
+					data.surface,
+					region,
+					{
+						color = {r = 1, g = 1, b = 1, a = 0.5},
+						ttl = 120,
+						width = 2,
+					}
+				)
+				break
+			end
+		end
+	end
+end
+
+---Handle leaving a breakdown chart bar segment
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_leave
+function delivery_breakdown_tab.handle.on_breakdown_leave(player, player_data, refs, e)
+	local element = e.element
+	if not element or not element.tags then return end
+	if not element.tags.breakdown_region then return end
+
+	-- Destroy tooltip
+	if player_data.breakdown_tooltip_ids and charts then
+		charts.destroy_render_objects(player_data.breakdown_tooltip_ids)
+		player_data.breakdown_tooltip_ids = nil
+	end
+
+	-- Destroy highlight
+	if player_data.breakdown_highlight_id then
+		if player_data.breakdown_highlight_id.valid then
+			player_data.breakdown_highlight_id.destroy()
+		end
+		player_data.breakdown_highlight_id = nil
+	end
+end
+
+---Handle click on breakdown chart - uses cursor position for hit testing
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_click
+function delivery_breakdown_tab.handle.on_breakdown_chart_click(player, player_data, refs, e)
+	local map_data = storage
+	if not map_data or not map_data.analytics then return end
+	if not charts then return end
+
+	local hit_regions = player_data.breakdown_hit_regions
+	local camera_info = player_data.breakdown_camera_info
+	if not hit_regions or not camera_info then return end
+
+	-- Get the button element's screen position
+	local element = e.element
+	if not element or not element.valid then return end
+	local button_location = element.location
+	if not button_location then return end
+
+	-- Calculate click position relative to the button (widget-local coordinates)
+	local cursor = e.cursor_display_location
+	if not cursor then return end
+
+	local click_x = cursor.x - button_location.x
+	local click_y = cursor.y - button_location.y
+
+	-- Convert screen position to tile position
+	local widget_size = {width = camera_info.widget_width, height = camera_info.widget_height}
+	local camera_pos = {x = camera_info.cam_x, y = camera_info.cam_y}
+	local tile_pos = charts.screen_to_tile(camera_pos, camera_info.zoom, widget_size, {x = click_x, y = click_y})
+
+	-- Hit test against regions
+	local hit_region = charts.hit_test(hit_regions, tile_pos)
+
+	-- Clear any existing tooltip/highlight
+	if player_data.breakdown_tooltip_ids then
+		charts.destroy_render_objects(player_data.breakdown_tooltip_ids)
+		player_data.breakdown_tooltip_ids = nil
+	end
+	if player_data.breakdown_highlight_id and player_data.breakdown_highlight_id.valid then
+		player_data.breakdown_highlight_id.destroy()
+		player_data.breakdown_highlight_id = nil
+	end
+
+	if not hit_region then return end
+
+	-- Get delivery data for tooltip
+	local bar_index = hit_region.data.bar_index
+	local phase_name = hit_region.data.phase_name
+	local deliveries = player_data.breakdown_deliveries
+	if not deliveries or not deliveries[bar_index] then return end
+
+	local delivery = deliveries[bar_index]
+	local duration = delivery[phase_name] or 0
+
+	-- Build tooltip lines
+	local lines = {}
+	lines[#lines + 1] = PHASE_LABELS[phase_name] or phase_name
+	lines[#lines + 1] = format_time(duration)
+
+	-- Add item info if available
+	if delivery.item_hash then
+		local item_name = unhash_signal and unhash_signal(delivery.item_hash) or delivery.item_hash
+		if item_name then
+			lines[#lines + 1] = "Item: " .. tostring(item_name)
+		end
+	end
+
+	-- Get station info if available
+	if delivery.r_station_id and map_data.stations then
+		local station = map_data.stations[delivery.r_station_id]
+		if station and station.entity and station.entity.valid then
+			lines[#lines + 1] = "-> " .. station.entity.backer_name
+		end
+	end
+
+	-- Create tooltip on the analytics surface
+	local data = map_data.analytics
+	if data and data.surface then
+		local tooltip_pos = {
+			x = (hit_region.tile_bounds.left + hit_region.tile_bounds.right) / 2,
+			y = hit_region.tile_bounds.top,
+		}
+		player_data.breakdown_tooltip_ids = charts.create_tooltip(
+			data.surface,
+			tooltip_pos,
+			lines,
+			{
+				ttl = 180,  -- 3 seconds
+				scale = 0.8,
+				offset = {x = 0.5, y = -1.0},
+			}
+		)
+
+		-- Create highlight
+		player_data.breakdown_highlight_id = charts.create_highlight(
+			data.surface,
+			hit_region,
+			{
+				color = {r = 1, g = 1, b = 1, a = 0.6},
+				ttl = 180,
+				width = 2,
+			}
+		)
 	end
 end
 
