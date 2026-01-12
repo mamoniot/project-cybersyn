@@ -42,6 +42,9 @@ local HATCHED_PHASES = {
 
 local PHASE_ORDER = {"wait", "travel_to_p", "loading", "travel_to_r", "unloading",
 	"fail_no_stock", "fail_no_train", "fail_capacity", "fail_layout"}
+-- Legend order matches visual top-to-bottom appearance in stacked bars
+local LEGEND_ORDER = {"unloading", "travel_to_r", "loading", "travel_to_p", "wait",
+	"fail_no_stock", "fail_no_train", "fail_capacity", "fail_layout"}
 local PHASE_LABELS = {
 	wait = "Matching",
 	travel_to_p = "Travel to P",
@@ -78,9 +81,9 @@ function delivery_breakdown_tab.create()
 		}
 	end
 
-	-- Build phase legend items
+	-- Build phase legend items (in visual top-to-bottom order)
 	local legend_items = {}
-	for i, phase in ipairs(PHASE_ORDER) do
+	for i, phase in ipairs(LEGEND_ORDER) do
 		legend_items[i] = {
 			type = "flow",
 			direction = "horizontal",
@@ -462,7 +465,10 @@ function delivery_breakdown_tab.build(map_data, player_data)
 	end
 
 	if not player_data.breakdown_registered then
-		analytics.interval_register_gui(map_data, data.breakdown_interval, player, refs)
+		analytics.interval_register_gui(map_data, data.breakdown_interval, player, refs, {
+			viewport_width = GRAPH_WIDTH,
+			viewport_height = GRAPH_HEIGHT,
+		})
 		player_data.breakdown_registered = true
 	end
 

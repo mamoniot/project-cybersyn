@@ -182,16 +182,21 @@ end
 ---@param interval table
 ---@param player LuaPlayer
 ---@param gui table
+---@param options table? Optional {viewport_width, viewport_height}
 ---@return table chunk
-function analytics.interval_register_gui(map_data, interval, player, gui)
+function analytics.interval_register_gui(map_data, interval, player, gui, options)
 	interval.guis[player.index] = gui
 	interval.viewer_count = interval.viewer_count + 1
 
 	if interval.chunk then
+		-- Ensure existing chunk has sufficient tile coverage for the viewport
+		if options and (options.viewport_width or options.viewport_height) then
+			charts.ensure_tile_coverage(map_data.analytics.surface_data, interval.chunk, options)
+		end
 		return interval.chunk
 	end
 
-	local chunk = charts.allocate_chunk(map_data.analytics.surface_data)
+	local chunk = charts.allocate_chunk(map_data.analytics.surface_data, options)
 	interval.chunk = chunk
 	return chunk
 end
