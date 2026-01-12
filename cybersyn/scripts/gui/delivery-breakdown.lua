@@ -232,22 +232,7 @@ function delivery_breakdown_tab.create()
 	}
 end
 
----Format seconds into human readable time
----@param seconds number
----@return string
-local function format_time(seconds)
-	if seconds < 60 then
-		return string.format("%.1fs", seconds)
-	elseif seconds < 3600 then
-		local mins = math.floor(seconds / 60)
-		local secs = seconds % 60
-		return string.format("%dm %.0fs", mins, secs)
-	else
-		local hours = math.floor(seconds / 3600)
-		local mins = math.floor((seconds % 3600) / 60)
-		return string.format("%dh %dm", hours, mins)
-	end
-end
+-- Use charts.format_time_detailed() from factorio-charts library
 
 ---Single-pass gather, filter by time range, and calculate stats
 ---@param map_data MapData Map data containing analytics
@@ -525,7 +510,7 @@ function delivery_breakdown_tab.build(map_data, player_data)
 			local tooltip_lines = {}
 			tooltip_lines[#tooltip_lines + 1] = PHASE_LABELS[phase_name] or phase_name
 			if delivery then
-				tooltip_lines[#tooltip_lines + 1] = format_time(duration)
+				tooltip_lines[#tooltip_lines + 1] = charts.format_time_detailed(duration)
 				if delivery.item_hash then
 					local item_name = unhash_signal and unhash_signal(delivery.item_hash) or delivery.item_hash
 					if item_name then
@@ -594,10 +579,10 @@ function delivery_breakdown_tab.build(map_data, player_data)
 			local avg_total = (stats.total_wait + stats.total_travel_p + stats.total_loading +
 				stats.total_travel_r + stats.total_unloading) / delivery_count
 			lines[#lines + 1] = string.format("Deliveries: %d", delivery_count)
-			lines[#lines + 1] = string.format("Avg total: %s", format_time(avg_total))
-			lines[#lines + 1] = string.format("Avg wait: %s", format_time(stats.total_wait / delivery_count))
-			lines[#lines + 1] = string.format("Avg load: %s", format_time(stats.total_loading / delivery_count))
-			lines[#lines + 1] = string.format("Avg unload: %s", format_time(stats.total_unloading / delivery_count))
+			lines[#lines + 1] = string.format("Avg total: %s", charts.format_time_detailed(avg_total))
+			lines[#lines + 1] = string.format("Avg wait: %s", charts.format_time_detailed(stats.total_wait / delivery_count))
+			lines[#lines + 1] = string.format("Avg load: %s", charts.format_time_detailed(stats.total_loading / delivery_count))
+			lines[#lines + 1] = string.format("Avg unload: %s", charts.format_time_detailed(stats.total_unloading / delivery_count))
 		end
 
 		if fail_count > 0 then
@@ -606,16 +591,16 @@ function delivery_breakdown_tab.build(map_data, player_data)
 			end
 			lines[#lines + 1] = string.format("Stuck: %d", fail_count)
 			if stats.count_fail_no_stock > 0 then
-				lines[#lines + 1] = string.format("  No stock: %s (%d)", format_time(stats.max_fail_no_stock), stats.count_fail_no_stock)
+				lines[#lines + 1] = string.format("  No stock: %s (%d)", charts.format_time_detailed(stats.max_fail_no_stock), stats.count_fail_no_stock)
 			end
 			if stats.count_fail_no_train > 0 then
-				lines[#lines + 1] = string.format("  No train: %s (%d)", format_time(stats.max_fail_no_train), stats.count_fail_no_train)
+				lines[#lines + 1] = string.format("  No train: %s (%d)", charts.format_time_detailed(stats.max_fail_no_train), stats.count_fail_no_train)
 			end
 			if stats.count_fail_capacity > 0 then
-				lines[#lines + 1] = string.format("  Capacity: %s (%d)", format_time(stats.max_fail_capacity), stats.count_fail_capacity)
+				lines[#lines + 1] = string.format("  Capacity: %s (%d)", charts.format_time_detailed(stats.max_fail_capacity), stats.count_fail_capacity)
 			end
 			if stats.count_fail_layout > 0 then
-				lines[#lines + 1] = string.format("  Layout: %s (%d)", format_time(stats.max_fail_layout), stats.count_fail_layout)
+				lines[#lines + 1] = string.format("  Layout: %s (%d)", charts.format_time_detailed(stats.max_fail_layout), stats.count_fail_layout)
 			end
 		end
 
@@ -724,7 +709,7 @@ function delivery_breakdown_tab.handle.on_breakdown_hover(player, player_data, r
 	-- Build tooltip lines
 	local lines = {}
 	lines[#lines + 1] = PHASE_LABELS[phase_name] or phase_name
-	lines[#lines + 1] = format_time(duration)
+	lines[#lines + 1] = charts.format_time_detailed(duration)
 
 	-- Add item info if available (from completed delivery or failure)
 	if delivery.item_hash then
@@ -877,7 +862,7 @@ function delivery_breakdown_tab.handle.on_breakdown_chart_click(player, player_d
 	-- Build tooltip lines
 	local lines = {}
 	lines[#lines + 1] = PHASE_LABELS[phase_name] or phase_name
-	lines[#lines + 1] = format_time(duration)
+	lines[#lines + 1] = charts.format_time_detailed(duration)
 
 	-- Add item info if available
 	if delivery.item_hash then
