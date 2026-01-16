@@ -1,6 +1,6 @@
 {
     "name": "cybersyn",
-    "version": "2.0.38",
+    "version": "2.0.39",
     "title": "Project Cybersyn",
     "author": "Mami",
     "factorio_version": "2.0",
@@ -8,7 +8,7 @@
     "dependencies": [
         "base >= 2.0.60",
         "flib >= 0.15.0",
-        "? factorio-charts >= 1.0.0",
+        "? factorio-charts >= 1.0.4",
         "? space-exploration >= 0.6.94",
         "? miniloader",
         "? nullius",
