@@ -239,27 +239,17 @@ function utilization_tab.build(map_data, player_data)
 		return
 	end
 
-	-- Update camera position to point at analytics surface
+	-- Set up camera widget and get camera info for hit-testing
 	local display_scale = player.display_scale or 1.0
+	local camera_info = nil
 	if refs.utilization_camera and chunk and chunk.coord and charts then
-		local camera_params = charts.get_camera_params(chunk, {
+		camera_info = charts.setup_camera_widget(refs.utilization_camera, data.surface, chunk, {
 			widget_width = GRAPH_WIDTH,
 			widget_height = GRAPH_HEIGHT,
-			left_margin = 0,
+			display_scale = display_scale,
+			position_offset = {x = 3.9, y = 0.1},
 		})
-
-		-- Correct zoom formula: display_scale / 2
-		local zoom = display_scale / 2
-
-		-- Apply calibrated position offsets
-		local final_position = {
-			x = camera_params.position.x + 3.9,
-			y = camera_params.position.y + 0.1,
-		}
-
-		refs.utilization_camera.position = final_position
-		refs.utilization_camera.surface_index = data.surface.index
-		refs.utilization_camera.zoom = zoom
+		player_data.utilization_camera_info = camera_info
 	end
 
 	-- Get selected series
@@ -292,23 +282,6 @@ function utilization_tab.build(map_data, player_data)
 		player_data.utilization_hit_regions = hit_regions
 	else
 		hit_regions = player_data.utilization_hit_regions
-	end
-
-	-- Store camera info for click hit-testing
-	if chunk and chunk.coord and charts then
-		local camera_params = charts.get_camera_params(chunk, {
-			widget_width = GRAPH_WIDTH,
-			widget_height = GRAPH_HEIGHT,
-			left_margin = 0,
-		})
-		local zoom = display_scale / 2
-		player_data.utilization_camera_info = {
-			cam_x = camera_params.position.x + 3.9,
-			cam_y = camera_params.position.y + 0.1,
-			widget_width = GRAPH_WIDTH,
-			widget_height = GRAPH_HEIGHT,
-			zoom = zoom,
-		}
 	end
 
 	-- Build legend from cached series data
@@ -587,7 +560,7 @@ function utilization_tab.handle.on_utilization_chart_click(player, player_data, 
 
 	-- Convert screen position to tile position
 	local widget_size = {width = camera_info.widget_width, height = camera_info.widget_height}
-	local camera_pos = {x = camera_info.cam_x, y = camera_info.cam_y}
+	local camera_pos = camera_info.position
 	local tile_pos = charts.screen_to_tile(camera_pos, camera_info.zoom, widget_size, {x = click_x, y = click_y})
 
 	-- Hit test against regions

@@ -462,43 +462,16 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		return
 	end
 
-	-- Update camera position to point at analytics surface
+	-- Set up camera widget and get camera info for hit-testing (single call replaces duplicate code)
 	local display_scale = player.display_scale or 1.0
-	if refs.breakdown_camera and chunk.coord and charts then
-		local camera_params = charts.get_camera_params(chunk, {
-			widget_width = GRAPH_WIDTH,
-			widget_height = GRAPH_HEIGHT,
-			left_margin = 0,
-		})
-		-- Correct zoom formula: display_scale / 2
-		local zoom = display_scale / 2
-		-- Apply calibrated position offsets
-		local final_position = {
-			x = camera_params.position.x + 3.5,
-			y = camera_params.position.y - 0.9,
-		}
-		refs.breakdown_camera.position = final_position
-		refs.breakdown_camera.surface_index = data.surface.index
-		refs.breakdown_camera.zoom = zoom
-	end
-
-	-- Calculate camera info for rendering and hit-testing
 	local camera_info = nil
-	if chunk and chunk.coord and charts then
-		local camera_params = charts.get_camera_params(chunk, {
+	if refs.breakdown_camera and chunk.coord and charts then
+		camera_info = charts.setup_camera_widget(refs.breakdown_camera, data.surface, chunk, {
 			widget_width = GRAPH_WIDTH,
 			widget_height = GRAPH_HEIGHT,
-			left_margin = 0,
+			display_scale = display_scale,
+			position_offset = {x = 3.5, y = -0.9},
 		})
-		-- Correct zoom formula: display_scale / 2
-		local zoom = display_scale / 2
-		camera_info = {
-			cam_x = camera_params.position.x + 3.5,
-			cam_y = camera_params.position.y - 0.9,
-			widget_width = GRAPH_WIDTH,
-			widget_height = GRAPH_HEIGHT,
-			zoom = zoom,
-		}
 		player_data.breakdown_camera_info = camera_info
 	end
 
@@ -527,7 +500,7 @@ function delivery_breakdown_tab.build(map_data, player_data)
 			PHASE_COLORS, PHASE_ORDER, HATCHED_PHASES,
 			GRAPH_WIDTH, GRAPH_HEIGHT,
 			{
-				camera_position = {x = camera_info.cam_x, y = camera_info.cam_y},
+				camera_position = camera_info.position,
 				camera_zoom = camera_info.zoom,
 				widget_size = {width = camera_info.widget_width, height = camera_info.widget_height},
 				get_tooltip = get_tooltip,
@@ -832,7 +805,7 @@ function delivery_breakdown_tab.handle.on_breakdown_chart_click(player, player_d
 
 	-- Convert screen position to tile position
 	local widget_size = {width = camera_info.widget_width, height = camera_info.widget_height}
-	local camera_pos = {x = camera_info.cam_x, y = camera_info.cam_y}
+	local camera_pos = camera_info.position
 	local tile_pos = charts.screen_to_tile(camera_pos, camera_info.zoom, widget_size, {x = click_x, y = click_y})
 
 	-- Hit test against regions
