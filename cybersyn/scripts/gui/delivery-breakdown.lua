@@ -462,7 +462,7 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		return
 	end
 
-	-- Set up camera widget and get camera info for hit-testing (single call replaces duplicate code)
+	-- Set up camera widget
 	local display_scale = player.display_scale or 1.0
 	local camera_info = nil
 	if refs.breakdown_camera and chunk.coord and charts then
@@ -472,74 +472,15 @@ function delivery_breakdown_tab.build(map_data, player_data)
 			display_scale = display_scale,
 			position_offset = {x = 3.5, y = -0.9},
 		})
-		player_data.breakdown_camera_info = camera_info
 	end
 
 	-- Only re-render chart on cache miss (data changed)
-	local button_configs = nil
 	if not cache_hit and camera_info then
-		-- Tooltip generator function
-		local function get_tooltip(bar_idx, phase_name, duration, delivery)
-			local tooltip_lines = {}
-			tooltip_lines[#tooltip_lines + 1] = PHASE_LABELS[phase_name] or phase_name
-			if delivery then
-				tooltip_lines[#tooltip_lines + 1] = charts.format_time_detailed(duration)
-				if delivery.item_hash then
-					local item_name = unhash_signal and unhash_signal(delivery.item_hash) or delivery.item_hash
-					if item_name then
-						tooltip_lines[#tooltip_lines + 1] = "Item: " .. tostring(item_name)
-					end
-				end
-			end
-			return table.concat(tooltip_lines, "\n")
-		end
-
-		-- Render chart with overlay button configs
-		button_configs = analytics.render_stacked_bar_chart(
+		analytics.render_stacked_bar_chart(
 			map_data, data.breakdown_interval, filtered,
 			PHASE_COLORS, PHASE_ORDER, HATCHED_PHASES,
-			GRAPH_WIDTH, GRAPH_HEIGHT,
-			{
-				camera_position = camera_info.position,
-				camera_zoom = camera_info.zoom,
-				widget_size = {width = camera_info.widget_width, height = camera_info.widget_height},
-				get_tooltip = get_tooltip,
-			}
+			GRAPH_WIDTH, GRAPH_HEIGHT
 		)
-		-- Store filtered deliveries for tooltip lookups
-		player_data.breakdown_deliveries = filtered
-		-- Store button configs for later use
-		player_data.breakdown_button_configs = button_configs
-	else
-		button_configs = player_data.breakdown_button_configs
-	end
-
-	-- Create overlay buttons for hover interaction
-	if refs.breakdown_camera and button_configs and not cache_hit then
-		-- Clear existing overlay buttons
-		local camera = refs.breakdown_camera
-		for _, child in pairs(camera.children) do
-			child.destroy()
-		end
-
-		-- Create buttons from configs (tooltips already included)
-		for _, config in ipairs(button_configs) do
-			local region = config.region
-			local btn = camera.add{
-				type = "button",
-				style = "cybersyn_chart_overlay_button",
-				tooltip = config.tooltip,
-				tags = {
-					breakdown_region = true,
-					bar_index = region.data.bar_index,
-					phase_name = region.data.phase_name,
-				},
-			}
-			btn.style.left_margin = math.max(0, config.style_mods.left_margin)
-			btn.style.top_margin = math.max(0, config.style_mods.top_margin)
-			btn.style.width = math.max(1, config.style_mods.width)
-			btn.style.height = math.max(1, config.style_mods.height)
-		end
 	end
 
 	-- Update stats display using cached stats
@@ -595,20 +536,7 @@ function delivery_breakdown_tab.cleanup(map_data, player_data)
 		end
 	end
 
-	-- Clean up hover state
-	if player_data.breakdown_tooltip_ids and charts then
-		charts.destroy_render_objects(player_data.breakdown_tooltip_ids)
-	end
-	if player_data.breakdown_highlight_id and player_data.breakdown_highlight_id.valid then
-		player_data.breakdown_highlight_id.destroy()
-	end
-
 	player_data.breakdown_registered = nil
-	player_data.breakdown_deliveries = nil
-	player_data.breakdown_button_configs = nil
-	player_data.breakdown_tooltip_ids = nil
-	player_data.breakdown_highlight_id = nil
-	player_data.breakdown_camera_info = nil
 end
 
 delivery_breakdown_tab.handle = {}
@@ -652,235 +580,6 @@ function delivery_breakdown_tab.handle.on_breakdown_interval_click(player, playe
 				button.style = button.tags.interval_index == interval_index and "flib_selected_tool_button" or "tool_button"
 			end
 		end
-	end
-end
-
----Handle hover on breakdown chart bar segments
----@param player LuaPlayer
----@param player_data PlayerData
----@param refs table<string, LuaGuiElement>
----@param e EventData.on_gui_hover
-function delivery_breakdown_tab.handle.on_breakdown_hover(player, player_data, refs, e)
-	local element = e.element
-	if not element or not element.tags then return end
-	if not element.tags.breakdown_region then return end
-
-	local map_data = storage
-	if not map_data or not map_data.analytics then return end
-
-	local bar_index = element.tags.bar_index
-	local phase_name = element.tags.phase_name
-	if not bar_index or not phase_name then return end
-
-	-- Get delivery data
-	local deliveries = player_data.breakdown_deliveries
-	if not deliveries or not deliveries[bar_index] then return end
-
-	local delivery = deliveries[bar_index]
-	local duration = delivery[phase_name] or 0
-
-	-- Build tooltip lines
-	local lines = {}
-	lines[#lines + 1] = PHASE_LABELS[phase_name] or phase_name
-	lines[#lines + 1] = charts.format_time_detailed(duration)
-
-	-- Add item info if available (from completed delivery or failure)
-	if delivery.item_hash then
-		local item_name = unhash_signal and unhash_signal(delivery.item_hash) or delivery.item_hash
-		lines[#lines + 1] = "Item: " .. item_name
-	end
-
-	-- Get station info if this is a completed delivery with station data
-	if delivery.r_station_id and map_data.stations then
-		local station = map_data.stations[delivery.r_station_id]
-		if station and station.entity and station.entity.valid then
-			lines[#lines + 1] = "→ " .. station.entity.backer_name
-		end
-	end
-
-	-- Create tooltip on the analytics surface
-	local data = map_data.analytics
-	if data and data.surface and player_data.breakdown_button_configs and charts then
-		-- Find the hit region for this bar segment
-		for _, config in ipairs(player_data.breakdown_button_configs) do
-			local region = config.region
-			if region.data.bar_index == bar_index and region.data.phase_name == phase_name then
-				-- Clear previous tooltip
-				if player_data.breakdown_tooltip_ids then
-					charts.destroy_render_objects(player_data.breakdown_tooltip_ids)
-				end
-
-				-- Create tooltip near the bar segment
-				local tooltip_pos = {
-					x = (region.tile_bounds.left + region.tile_bounds.right) / 2,
-					y = region.tile_bounds.top,
-				}
-				player_data.breakdown_tooltip_ids = charts.create_tooltip(
-					data.surface,
-					tooltip_pos,
-					lines,
-					{
-						ttl = 120,  -- 2 seconds
-						scale = 0.7,
-						offset = {x = 0, y = -0.8},
-					}
-				)
-
-				-- Create highlight
-				if player_data.breakdown_highlight_id and player_data.breakdown_highlight_id.valid then
-					player_data.breakdown_highlight_id.destroy()
-				end
-				player_data.breakdown_highlight_id = charts.create_highlight(
-					data.surface,
-					region,
-					{
-						color = {r = 1, g = 1, b = 1, a = 0.5},
-						ttl = 120,
-						width = 2,
-					}
-				)
-				break
-			end
-		end
-	end
-end
-
----Handle leaving a breakdown chart bar segment
----@param player LuaPlayer
----@param player_data PlayerData
----@param refs table<string, LuaGuiElement>
----@param e EventData.on_gui_leave
-function delivery_breakdown_tab.handle.on_breakdown_leave(player, player_data, refs, e)
-	local element = e.element
-	if not element or not element.tags then return end
-	if not element.tags.breakdown_region then return end
-
-	-- Destroy tooltip
-	if player_data.breakdown_tooltip_ids and charts then
-		charts.destroy_render_objects(player_data.breakdown_tooltip_ids)
-		player_data.breakdown_tooltip_ids = nil
-	end
-
-	-- Destroy highlight
-	if player_data.breakdown_highlight_id then
-		if player_data.breakdown_highlight_id.valid then
-			player_data.breakdown_highlight_id.destroy()
-		end
-		player_data.breakdown_highlight_id = nil
-	end
-end
-
----Handle click on breakdown chart - uses cursor position for hit testing
----@param player LuaPlayer
----@param player_data PlayerData
----@param refs table<string, LuaGuiElement>
----@param e EventData.on_gui_click
-function delivery_breakdown_tab.handle.on_breakdown_chart_click(player, player_data, refs, e)
-	local map_data = storage
-	if not map_data or not map_data.analytics then return end
-	if not charts then return end
-
-	local button_configs = player_data.breakdown_button_configs
-	local camera_info = player_data.breakdown_camera_info
-	if not button_configs or not camera_info then return end
-
-	-- Extract hit regions from button configs
-	local hit_regions = {}
-	for _, config in ipairs(button_configs) do
-		hit_regions[#hit_regions + 1] = config.region
-	end
-
-	-- Get the button element's screen position
-	local element = e.element
-	if not element or not element.valid then return end
-	local button_location = element.location
-	if not button_location then return end
-
-	-- Calculate click position relative to the button (widget-local coordinates)
-	local cursor = e.cursor_display_location
-	if not cursor then return end
-
-	local click_x = cursor.x - button_location.x
-	local click_y = cursor.y - button_location.y
-
-	-- Convert screen position to tile position
-	local widget_size = {width = camera_info.widget_width, height = camera_info.widget_height}
-	local camera_pos = camera_info.position
-	local tile_pos = charts.screen_to_tile(camera_pos, camera_info.zoom, widget_size, {x = click_x, y = click_y})
-
-	-- Hit test against regions
-	local hit_region = charts.hit_test(hit_regions, tile_pos)
-
-	-- Clear any existing tooltip/highlight
-	if player_data.breakdown_tooltip_ids then
-		charts.destroy_render_objects(player_data.breakdown_tooltip_ids)
-		player_data.breakdown_tooltip_ids = nil
-	end
-	if player_data.breakdown_highlight_id and player_data.breakdown_highlight_id.valid then
-		player_data.breakdown_highlight_id.destroy()
-		player_data.breakdown_highlight_id = nil
-	end
-
-	if not hit_region then return end
-
-	-- Get delivery data for tooltip
-	local bar_index = hit_region.data.bar_index
-	local phase_name = hit_region.data.phase_name
-	local deliveries = player_data.breakdown_deliveries
-	if not deliveries or not deliveries[bar_index] then return end
-
-	local delivery = deliveries[bar_index]
-	local duration = delivery[phase_name] or 0
-
-	-- Build tooltip lines
-	local lines = {}
-	lines[#lines + 1] = PHASE_LABELS[phase_name] or phase_name
-	lines[#lines + 1] = charts.format_time_detailed(duration)
-
-	-- Add item info if available
-	if delivery.item_hash then
-		local item_name = unhash_signal and unhash_signal(delivery.item_hash) or delivery.item_hash
-		if item_name then
-			lines[#lines + 1] = "Item: " .. tostring(item_name)
-		end
-	end
-
-	-- Get station info if available
-	if delivery.r_station_id and map_data.stations then
-		local station = map_data.stations[delivery.r_station_id]
-		if station and station.entity and station.entity.valid then
-			lines[#lines + 1] = "-> " .. station.entity.backer_name
-		end
-	end
-
-	-- Create tooltip on the analytics surface
-	local data = map_data.analytics
-	if data and data.surface then
-		local tooltip_pos = {
-			x = (hit_region.tile_bounds.left + hit_region.tile_bounds.right) / 2,
-			y = hit_region.tile_bounds.top,
-		}
-		player_data.breakdown_tooltip_ids = charts.create_tooltip(
-			data.surface,
-			tooltip_pos,
-			lines,
-			{
-				ttl = 180,  -- 3 seconds
-				scale = 0.8,
-				offset = {x = 0.5, y = -1.0},
-			}
-		)
-
-		-- Create highlight
-		player_data.breakdown_highlight_id = charts.create_highlight(
-			data.surface,
-			hit_region,
-			{
-				color = {r = 1, g = 1, b = 1, a = 0.6},
-				ttl = 180,
-				width = 2,
-			}
-		)
 	end
 end
 
