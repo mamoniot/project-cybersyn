@@ -316,7 +316,7 @@ function utilization_tab.build(map_data, player_data)
 	if legend_table then
 		legend_table.clear()
 
-		local colors = analytics.get_colors()
+		local colors = charts.get_series_colors()
 		for i, entry in ipairs(all_series) do
 			local layout_id = tonumber(entry.name)
 			local layout = layout_id and map_data.layouts[layout_id]

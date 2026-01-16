@@ -1,6 +1,4 @@
 --Analytics module for Cybersyn
---Graph rendering technique inspired by factorio-timeseries by Kirk McDonald
---https://mods.factorio.com/mod/timeseries (MIT License)
 
 local analytics = {}
 
@@ -654,24 +652,6 @@ end
 ---@return number
 function analytics.get_interval_index(name)
 	return interval_map[name] or 1
-end
-
----Get colors from library
----@return table[]
-function analytics.get_colors()
-	return charts.get_series_colors()
-end
-
----Get viewport dimensions from library
----@return number, number
-function analytics.get_viewport_size()
-	return 900, 700  -- Default values
-end
-
----Get max lines from library
----@return number
-function analytics.get_max_lines()
-	return charts.get_max_series()
 end
 
 ---Render a stacked bar chart for delivery breakdown using the library
