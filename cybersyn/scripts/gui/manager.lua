@@ -11,7 +11,6 @@ local trains_tab = require("scripts.gui.trains")
 local inventory_tab = require("scripts.gui.inventory")
 local utilization_tab = require("scripts.gui.utilization")
 local delivery_breakdown_tab = require("scripts.gui.delivery-breakdown")
-local suggestions_tab = require("scripts.gui.suggestions")
 --local alerts_tab = require("scripts.gui.alerts")
 local util = require("scripts.gui.util")
 local analytics = require("scripts.analytics")
@@ -115,7 +114,6 @@ function manager.create(player)
 							inventory_tab.create(),
 							analytics.is_enabled() and utilization_tab.create() or nil,
 							analytics.is_enabled() and delivery_breakdown_tab.create() or nil,
-							analytics.is_enabled() and suggestions_tab.create() or nil,
 							selected_tab_index = 1,
 						},
 					},
@@ -207,8 +205,6 @@ function manager.update(map_data, player_data, query_limit)
 		utilization_tab.build(map_data, player_data)
 	elseif player_data.selected_tab == "delivery_breakdown_tab" then
 		delivery_breakdown_tab.build(map_data, player_data)
-	elseif player_data.selected_tab == "suggestions_tab" then
-		suggestions_tab.build(map_data, player_data)
 	end
 end
 
