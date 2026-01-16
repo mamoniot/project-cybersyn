@@ -200,61 +200,13 @@ end
 ---@return table? ordered_sums Series ordered by sum
 ---@return table? hit_regions Hit regions for interaction
 function analytics.render_graph(map_data, intervals, interval_index, selected_series, fixed_range, label_format, viewport_width, viewport_height)
-	local interval = intervals[interval_index]
-	if not interval.chunk then
-		debug_log("render_graph: no chunk for interval " .. interval_index)
-		return nil, nil
-	end
-
-	-- Avoid re-render on same tick
-	if interval.last_rendered_tick == game.tick then
-		return interval.ordered_sums, interval.hit_regions
-	end
-	interval.last_rendered_tick = game.tick
-
-	-- Destroy old lines before drawing new ones
-	if interval.line_ids then
-		for _, render_obj in ipairs(interval.line_ids) do
-			if render_obj.valid then
-				render_obj.destroy()
-			end
-		end
-	end
-	interval.line_ids = {}
-
-	local data = map_data.analytics
-	local ttl = math.max(interval.ticks * 2, 360)
-
-	-- Use the metadata-returning version for interaction support
-	local ordered_sums, line_ids, metadata = charts.render_line_graph_with_metadata(data.surface, interval.chunk, {
-		data = interval.data,
-		index = interval.index,
-		length = interval.length,
-		counts = interval.counts,
-		sum = interval.sum,
-		y_range = fixed_range,
-		label_format = label_format or "percent",
+	return charts.render_time_series(map_data.analytics.surface, intervals, interval_index, {
 		selected_series = selected_series,
-		ttl = ttl,
+		y_range = fixed_range,
+		label_format = label_format,
 		viewport_width = viewport_width,
 		viewport_height = viewport_height,
 	})
-
-	if line_ids then
-		interval.line_ids = line_ids
-	end
-
-	-- Generate hit regions from metadata
-	local hit_regions = nil
-	if metadata then
-		hit_regions = charts.create_line_graph_hit_regions(interval.chunk, metadata, {point_radius = 0.3})
-	end
-
-	-- Cache for re-render checks
-	interval.ordered_sums = ordered_sums
-	interval.hit_regions = hit_regions
-
-	return ordered_sums, hit_regions
 end
 
 ---Record delivery start for time tracking
