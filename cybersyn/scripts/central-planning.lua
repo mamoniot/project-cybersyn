@@ -9,6 +9,7 @@ local band = bit32.band
 local table_remove = table.remove
 local table_insert = table.insert
 local random = math.random
+
 local analytics = require("scripts.analytics")
 
 local HASH_STRING = "|"
@@ -497,11 +498,17 @@ local function tick_dispatch(map_data, mod_settings)
 				break
 			else
 				-- No matching pairs; update combinator display for all requesters to FAILED_REQUEST state.
+				local no_provider_item_hash = hash_signal(signal)
 				for i, id in ipairs(r_stations) do
 					local station = stations[id]
 					if station and band(station.display_state, 2) == 0 then
 						station.display_state = station.display_state + 2
 						update_display(map_data, station)
+					end
+					-- Record no-provider-stock failure for analytics
+					if station then
+						local wait_so_far = station.request_start_ticks and station.request_start_ticks[no_provider_item_hash] and (game.tick - station.request_start_ticks[no_provider_item_hash]) or 0
+						analytics.record_failed_dispatch(map_data, id, no_provider_item_hash, 0, wait_so_far, nil)
 					end
 				end
 			end
@@ -823,6 +830,10 @@ local function tick_dispatch(map_data, mod_settings)
 				elseif correctness == 4 then
 					send_alert_no_train_matches_p_layout(r_station.entity_stop, closest_to_correct_p_station.entity_stop)
 				end
+				-- Record failed dispatch for analytics (correctness: 1=no train, 2=capacity, 3/4=layout)
+				local failure_reason = correctness == 1 and 1 or (correctness == 2 and 2 or 3)
+				local wait_so_far = r_station.request_start_ticks and r_station.request_start_ticks[item_hash] and (game.tick - r_station.request_start_ticks[item_hash]) or 0
+				analytics.record_failed_dispatch(map_data, r_station_id, item_hash, failure_reason, wait_so_far, nil)
 			end
 			if band(r_station.display_state, 2) == 0 then
 				r_station.display_state = r_station.display_state + 2
