@@ -10,6 +10,7 @@ end
 local delivery_breakdown_tab = {}
 
 local CACHE_DURATION_TICKS = 300  -- 5 seconds at 60 UPS
+local MAX_BARS = 200  -- Limit bars rendered for performance
 
 local interval_names = {"5s", "1m", "10m", "1h", "10h", "50h", "250h", "1000h"}
 
@@ -334,6 +335,16 @@ local function gather_filter_and_stats(map_data, data, oldest_tick, search_item)
 	table.sort(filtered, function(a, b)
 		return a.complete_tick < b.complete_tick
 	end)
+
+	-- Limit to most recent bars for performance (keep rightmost/newest)
+	if #filtered > MAX_BARS then
+		local trimmed = {}
+		local start_idx = #filtered - MAX_BARS + 1
+		for i = start_idx, #filtered do
+			trimmed[#trimmed + 1] = filtered[i]
+		end
+		filtered = trimmed
+	end
 
 	return filtered, {
 		delivery_count = delivery_count,
