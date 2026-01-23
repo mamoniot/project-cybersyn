@@ -313,6 +313,11 @@ local function on_combinator_built(map_data, comb, tags)
 	map_data.to_output[unit_number] = out
 	map_data.to_stop[unit_number] = stop
 
+	-- Set unpaired display if combinator has no train stop (except wagon mode which pairs with rails)
+	if not stop and op ~= MODE_WAGON then
+		set_comb_operation(comb, MODE_UNPAIRED)
+	end
+
 	if op == MODE_WAGON then
 		if rail then
 			update_stop_from_rail(map_data, rail, nil, true)

@@ -23,6 +23,7 @@ MODE_SECONDARY_IO = "%"
 MODE_DEPOT = "+"
 MODE_WAGON = "-"
 MODE_REFUELER = ">>"
+MODE_UNPAIRED = "*"  -- Combinator not paired with train stop (uses multiply operation)
 
 SETTING_DISABLE_ALLOW_LIST = 2
 SETTING_IS_STACK = 3

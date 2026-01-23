@@ -926,6 +926,8 @@ function get_comb_gui_settings(comb)
 		selected_index = 4
 	elseif op == MODE_WAGON then
 		selected_index = 5
+	elseif op == MODE_UNPAIRED then
+		selected_index = 0  -- Unpaired state, no valid mode selected
 	end
 	return selected_index --[[@as uint]], params.first_signal, switch_state, bits
 end

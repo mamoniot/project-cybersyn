@@ -54,7 +54,7 @@ combinator_entity.modulo_symbol_sprites = create_combinator_display(CYBERSYN_DIS
 combinator_entity.power_symbol_sprites = create_combinator_display(CYBERSYN_DISPLAYS, 0, 1)
 combinator_entity.left_shift_symbol_sprites = create_combinator_display(FACTORIO_DISPLAYS, 1, 1)  -- green '>'
 combinator_entity.right_shift_symbol_sprites = create_combinator_display(CYBERSYN_DISPLAYS, 2, 1)
-combinator_entity.multiply_symbol_sprites = combinator_entity.divide_symbol_sprites
+combinator_entity.multiply_symbol_sprites = create_combinator_display(FACTORIO_DISPLAYS, 0, 0)  -- unlit/blank for unpaired state
 
 combinator_out_entity = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"], COMBINATOR_OUT_NAME) --[[@as data.ConstantCombinatorPrototype]]
 combinator_out_entity.icon = nil
