@@ -139,3 +139,43 @@ If a combinator set to station control mode receives a priority signal, for each
 ### Train limits
 
 Works based off of the train limit set on the train stop in the same way it does in vanilla Factorio. Only a number of trains up to the train limit will be allowed to dispatch to the station by the central planner. Useful to reduce the need for train stackers and to prevent deadlocks.
+
+## Status and Debugging
+
+### Combinator Display States
+
+The cybernetic combinator displays different symbols and colors to indicate its current mode and status. These visual indicators help you quickly identify the state of your stations and diagnose issues.
+
+#### Normal Operating Modes
+
+| Icon | Symbol | Mode | Description |
+|------|--------|------|-------------|
+| ![Depot](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/combinator_d.png) | **D** | Depot | Train parking and storage. Trains wait here for delivery orders. |
+| ![Station Idle](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/combinator_s.png) | **S** (Blue) | Station (Idle) | Station is operational but has no active deliveries scheduled. |
+| ![Station Active](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/combinator_s_green.png) | **S** (Green) | Station (Active) | Station has an active delivery in progress - train is en route or loading/unloading. |
+| ![Refueler](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/combinator_r.png) | **R** | Refueler | Fuel station where trains restock fuel between deliveries. |
+
+#### Advanced Control Modes
+
+| Icon | Symbol | Mode | Description |
+|------|--------|------|-------------|
+| ![Station Control](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/combinator_c.png) | **C**           | Station Control | Secondary combinator for per-cargo thresholds and priority overrides. |
+| ![Wagon Control](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/combinator_w.png) | **W** (Blue) | Wagon Control | Per-wagon cargo configuration for precise loading control. |
+
+#### Error States
+
+| Icon | Symbol | Status | Description |
+|------|--------|--------|-------------|
+| ![Station Failed](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/combinator_s_red.png) | **S** (Red) | Request Failed | Station is requesting cargo but no provider can fulfill it (threshold not met, no matching provider, or insufficient supply). |
+| ![Unpaired](https://raw.githubusercontent.com/mamoniot/project-cybersyn/main/previews/combinator_unpaired.png) | **(Unlit)** | Unpaired | **ERROR**: Combinator is not within range of a train stop. Place the combinator within 2 tiles of a train stop to fix. |
+
+### Debugging Tips
+
+- **Red S (Failed Request)**: Check that:
+  - A provider station exists with sufficient cargo
+  - Request threshold is not set too high for available train capacity
+  - Provider and requester are on the same network
+
+- **Unlit (Unpaired)**: The combinator must be placed within 2 tiles of a train stop (except Wagon Control mode which pairs with rails). Move the combinator closer to a train stop.
+
+- **Use `/cybersyn-find-problems`**: This console command scans your entire network for configuration issues including duplicate combinators, name conflicts, and unpaired combinators.
