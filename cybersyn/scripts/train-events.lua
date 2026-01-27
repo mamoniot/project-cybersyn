@@ -547,6 +547,14 @@ function on_train_changed(event)
 								on_train_arrives_refueler(map_data, station, train_id, train)
 							end
 						elseif is_station ~= nil then -- STATUS_TO_(P|R|F) but station is gone
+							local record = schedule.get_record({schedule_index = schedule.current})
+							if record and record.temporary and not record.station then
+								-- Allow temporary stops without removing the train from the network.
+								-- This is required for mods like Space Exploration, which insert temporary
+								-- waypoints when elevator exits are blocked.
+								-- If the train waits here too long, the standard 'stuck train' timeout will still trigger.
+								return
+							end
 							remove_train(map_data, train_id, train)
 							lock_train(train_e)
 							if is_station then
