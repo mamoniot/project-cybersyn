@@ -27,7 +27,7 @@ local PHASE_COLORS = {
 	travel_to_r = {r = 0.45, g = 0.72, b = 0.45}, -- Muted green
 	unloading = {r = 0.40, g = 0.65, b = 0.75},   -- Soft teal
 	-- Failed dispatch phases (distinct but still Factorio-style)
-	fail_no_stock = {r = 0.68, g = 0.40, b = 0.70},    -- Soft purple
+	fail_no_stock = {r = 0.80, g = 0.40, b = 0.55},    -- Muted pink
 	fail_no_train = {r = 0.25, g = 0.68, b = 0.95},    -- Sky blue
 	fail_capacity = {r = 0.90, g = 0.30, b = 0.10},    -- Deep orange
 	fail_layout = {r = 0.60, g = 0.38, b = 0.72},      -- Soft violet
