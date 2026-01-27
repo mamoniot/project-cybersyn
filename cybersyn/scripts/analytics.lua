@@ -311,7 +311,7 @@ function analytics.record_delivery_complete(map_data, train_id)
 		local completed_list = data.completed_deliveries[item_hash]
 		table.insert(completed_list, completed)
 
-		while #completed_list > 100 do
+		while #completed_list > 50 do
 			table.remove(completed_list, 1)
 		end
 
