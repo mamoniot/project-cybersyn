@@ -12,25 +12,25 @@ local delivery_breakdown_tab = {}
 local CACHE_DURATION_TICKS = 300  -- 5 seconds at 60 UPS
 local MAX_BARS = 200  -- Limit bars rendered for performance
 
-local interval_names = {"5s", "1m", "10m", "1h", "10h", "50h", "250h", "1000h"}
+local interval_names = {"5s", "1m", "10m", "1h", "10h", "50h"}
 
 -- Graph dimensions (pixels) - sized to fill the manager window
 local GRAPH_WIDTH = 1100
 local GRAPH_HEIGHT = 700
 
--- Phase colors for stacked bars
+-- Phase colors for stacked bars (Factorio-style colors, brightened for visibility)
 local PHASE_COLORS = {
-	-- Success phases (warm colors)
-	wait = {r = 0.8, g = 0.2, b = 0.2},        -- Red - waiting for train
-	travel_to_p = {r = 1.0, g = 0.6, b = 0.0}, -- Orange - traveling to provider
-	loading = {r = 1.0, g = 1.0, b = 0.0},     -- Yellow - loading
-	travel_to_r = {r = 0.0, g = 0.8, b = 0.2}, -- Green - traveling to requester
-	unloading = {r = 0.2, g = 0.6, b = 1.0},   -- Blue - unloading
-	-- Failed dispatch phases (vibrant, distinct colors)
-	fail_no_stock = {r = 1.0, g = 0.2, b = 0.6},    -- Hot pink - no provider stock
-	fail_no_train = {r = 0.2, g = 0.8, b = 0.8},    -- Cyan/teal - no train available
-	fail_capacity = {r = 0.9, g = 0.4, b = 0.1},    -- Deep orange - train capacity
-	fail_layout = {r = 0.6, g = 0.2, b = 0.9},      -- Violet - layout mismatch
+	-- Success phases (follow delivery timeline progression: warm→cool)
+	wait = {r = 0.70, g = 0.35, b = 0.35},        -- Muted red
+	travel_to_p = {r = 0.80, g = 0.60, b = 0.50}, -- Warm orange-brown
+	loading = {r = 0.85, g = 0.75, b = 0.45},     -- Visible gold/yellow
+	travel_to_r = {r = 0.45, g = 0.72, b = 0.45}, -- Muted green
+	unloading = {r = 0.40, g = 0.65, b = 0.75},   -- Soft teal
+	-- Failed dispatch phases (distinct but still Factorio-style)
+	fail_no_stock = {r = 0.68, g = 0.40, b = 0.70},    -- Soft purple
+	fail_no_train = {r = 0.25, g = 0.68, b = 0.95},    -- Sky blue
+	fail_capacity = {r = 0.90, g = 0.30, b = 0.10},    -- Deep orange
+	fail_layout = {r = 0.60, g = 0.38, b = 0.72},      -- Soft violet
 }
 
 -- Phases that should be drawn with diagonal stripe pattern
