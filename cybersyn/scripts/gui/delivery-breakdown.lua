@@ -12,7 +12,7 @@ local delivery_breakdown_tab = {}
 local CACHE_DURATION_TICKS = 300  -- 5 seconds at 60 UPS
 local MAX_BARS = 200  -- Limit bars rendered for performance
 
-local interval_names = {"5s", "1m", "10m", "1h", "10h", "50h"}
+local interval_names = {"1m", "10m", "1h", "10h", "50h"}
 
 -- Graph dimensions (pixels) - sized to fill the manager window
 local GRAPH_WIDTH = 1100
@@ -441,10 +441,6 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		refs.breakdown_main_flow.visible = has_data
 	end
 
-	if #filtered == 0 then
-		return
-	end
-
 	-- Register chunk for this graph if not already registered
 	local player = game.get_player(player_data.player_index)
 	if not player then return end
@@ -473,7 +469,7 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		return
 	end
 
-	-- Set up camera widget
+	-- Set up camera widget (must happen before early return so camera points at correct surface)
 	local display_scale = player.display_scale or 1.0
 	local camera_info = nil
 	if refs.breakdown_camera and chunk.coord and charts then
@@ -483,6 +479,11 @@ function delivery_breakdown_tab.build(map_data, player_data)
 			display_scale = display_scale,
 			position_offset = {x = 3.5, y = -0.9},
 		})
+	end
+
+	-- Early return if no data to render (camera is already set up above)
+	if #filtered == 0 then
+		return
 	end
 
 	-- Only re-render chart on cache miss (data changed)
@@ -540,6 +541,13 @@ function delivery_breakdown_tab.cleanup(map_data, player_data)
 	if not player_data.player_index then return end
 
 	local data = map_data.analytics
+
+	-- Destroy chart render objects immediately to prevent overlap when switching tabs
+	if data.breakdown_interval and data.breakdown_interval.line_ids and charts then
+		charts.destroy_render_objects(data.breakdown_interval.line_ids)
+		data.breakdown_interval.line_ids = {}
+	end
+
 	if data.breakdown_interval then
 		local player = game.get_player(player_data.player_index)
 		if player then
