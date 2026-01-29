@@ -207,6 +207,11 @@ function utilization_tab.build(map_data, player_data)
 	local player = game.get_player(player_data.player_index)
 	if not player then return end
 
+	-- Always ensure camera points at the correct surface (prevents showing wrong surface if chunk allocation fails)
+	if refs.utilization_camera and data.surface then
+		refs.utilization_camera.surface_index = data.surface.index
+	end
+
 	-- Only register once per tab open, not every GUI update
 	if not player_data.utilization_registered then
 		analytics.interval_register_gui(map_data, interval, player, refs)

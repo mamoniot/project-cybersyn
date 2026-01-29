@@ -445,6 +445,11 @@ function delivery_breakdown_tab.build(map_data, player_data)
 	local player = game.get_player(player_data.player_index)
 	if not player then return end
 
+	-- Always ensure camera points at the correct surface (prevents showing wrong surface if chunk allocation fails)
+	if refs.breakdown_camera and data.surface then
+		refs.breakdown_camera.surface_index = data.surface.index
+	end
+
 	-- Allocate or reuse chunk for breakdown chart
 	if not data.breakdown_interval then
 		data.breakdown_interval = {
