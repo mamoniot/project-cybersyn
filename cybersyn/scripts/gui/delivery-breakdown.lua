@@ -471,13 +471,20 @@ function delivery_breakdown_tab.build(map_data, player_data)
 
 	-- Set up camera widget (must happen before early return so camera points at correct surface)
 	local display_scale = player.display_scale or 1.0
+	-- Resolution-independent zoom formula derived from testing:
+	-- 1080p (scale=1.0): zoom=1.0, 4K (scale=2.0): zoom=1.1
+	-- Position offsets are constant across resolutions
+	local zoom = 1.0 + (display_scale - 1.0) * 0.1
+	local xoffset = 3.0
+	local yoffset = -1.0
 	local camera_info = nil
 	if refs.breakdown_camera and chunk.coord and charts then
 		camera_info = charts.setup_camera_widget(refs.breakdown_camera, data.surface, chunk, {
 			widget_width = GRAPH_WIDTH,
 			widget_height = GRAPH_HEIGHT,
 			display_scale = display_scale,
-			position_offset = {x = 3.5, y = -0.9},
+			position_offset = {x = xoffset, y = yoffset},
+			zoom_override = zoom,
 		})
 	end
 

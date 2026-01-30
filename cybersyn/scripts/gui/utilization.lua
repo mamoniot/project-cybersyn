@@ -220,13 +220,19 @@ function utilization_tab.build(map_data, player_data)
 
 	-- Set up camera widget (must happen before early return so camera points at correct surface)
 	local display_scale = player.display_scale or 1.0
+	-- Resolution-independent zoom and position formulas derived from testing:
+	-- 1080p (scale=1.0): zoom=1.05, x=3.0
+	-- 4K (scale=2.0): zoom=1.20, x=3.2
+	local zoom = 1.05 + (display_scale - 1.0) * 0.15
+	local xoffset = 3.0 + (display_scale - 1.0) * 0.2
 	local camera_info = nil
 	if refs.utilization_camera and chunk and chunk.coord and charts then
 		camera_info = charts.setup_camera_widget(refs.utilization_camera, data.surface, chunk, {
 			widget_width = GRAPH_WIDTH,
 			widget_height = GRAPH_HEIGHT,
 			display_scale = display_scale,
-			position_offset = {x = 3.9, y = 0.1},
+			position_offset = {x = xoffset, y = 0.1},
+			zoom_override = zoom,
 		})
 	end
 
