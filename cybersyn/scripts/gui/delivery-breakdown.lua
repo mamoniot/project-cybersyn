@@ -137,6 +137,85 @@ function delivery_breakdown_tab.create()
 					ref = { "delivery_breakdown", "interval_buttons" },
 					table.unpack(interval_buttons),
 				},
+				-- Spacer
+				{ type = "empty-widget", style_mods = { horizontally_stretchable = true } },
+				-- Debug sliders
+				{
+					type = "label",
+					caption = "Zoom:",
+					style = "caption_label",
+				},
+				{
+					type = "slider",
+					name = "breakdown_zoom_slider",
+					minimum_value = 0.25,
+					maximum_value = 2.0,
+					value = 1.0,
+					value_step = 0.05,
+					style_mods = { width = 80 },
+					ref = { "delivery_breakdown", "zoom_slider" },
+					handler = delivery_breakdown_tab.handle.on_breakdown_zoom_changed,
+				},
+				{
+					type = "label",
+					name = "breakdown_zoom_label",
+					caption = "1.00",
+					ref = { "delivery_breakdown", "zoom_label" },
+					style_mods = { width = 35 },
+				},
+				{
+					type = "label",
+					caption = "X:",
+					style = "caption_label",
+				},
+				{
+					type = "slider",
+					name = "breakdown_xoffset_slider",
+					minimum_value = 0,
+					maximum_value = 8,
+					value = 3.0,
+					value_step = 0.1,
+					style_mods = { width = 80 },
+					ref = { "delivery_breakdown", "xoffset_slider" },
+					handler = delivery_breakdown_tab.handle.on_breakdown_xoffset_changed,
+				},
+				{
+					type = "label",
+					name = "breakdown_xoffset_label",
+					caption = "3.0",
+					ref = { "delivery_breakdown", "xoffset_label" },
+					style_mods = { width = 30 },
+				},
+				{
+					type = "label",
+					caption = "Y:",
+					style = "caption_label",
+				},
+				{
+					type = "slider",
+					name = "breakdown_yoffset_slider",
+					minimum_value = -3,
+					maximum_value = 3,
+					value = -1.0,
+					value_step = 0.1,
+					style_mods = { width = 80 },
+					ref = { "delivery_breakdown", "yoffset_slider" },
+					handler = delivery_breakdown_tab.handle.on_breakdown_yoffset_changed,
+				},
+				{
+					type = "label",
+					name = "breakdown_yoffset_label",
+					caption = "-1.0",
+					ref = { "delivery_breakdown", "yoffset_label" },
+					style_mods = { width = 30 },
+				},
+				-- Display info
+				{
+					type = "label",
+					name = "breakdown_display_info_label",
+					caption = "",
+					ref = { "delivery_breakdown", "display_info_label" },
+				},
 			},
 			-- Main content: legend + graph
 			{
@@ -476,12 +555,16 @@ function delivery_breakdown_tab.build(map_data, player_data)
 
 	-- Set up camera widget (must happen before early return so camera points at correct surface)
 	local display_scale = player.display_scale or 1.0
+	local resolution = player.display_resolution
 	-- Resolution-independent zoom formula derived from testing:
 	-- 1080p (scale=1.0): zoom=1.0, 4K (scale=2.0): zoom=1.1
 	-- Position offsets are constant across resolutions
-	local zoom = 1.0 + (display_scale - 1.0) * 0.1
-	local xoffset = 3.0
-	local yoffset = -1.0
+	local default_zoom = 1.0 + (display_scale - 1.0) * 0.1
+	local default_xoffset = 3.0
+	local default_yoffset = -1.0
+	local zoom = player_data.breakdown_zoom or default_zoom
+	local xoffset = player_data.breakdown_xoffset or default_xoffset
+	local yoffset = player_data.breakdown_yoffset or default_yoffset
 	local camera_info = nil
 	if refs.breakdown_camera and chunk.coord and charts then
 		camera_info = charts.setup_camera_widget(refs.breakdown_camera, data.surface, chunk, {
@@ -491,6 +574,32 @@ function delivery_breakdown_tab.build(map_data, player_data)
 			position_offset = {x = xoffset, y = yoffset},
 			zoom_override = zoom,
 		})
+	end
+
+	-- Update sliders and display info
+	if refs.breakdown_zoom_slider then
+		refs.breakdown_zoom_slider.slider_value = zoom
+		if refs.breakdown_zoom_label then
+			refs.breakdown_zoom_label.caption = string.format("%.2f", zoom)
+		end
+	end
+	if refs.breakdown_xoffset_slider then
+		refs.breakdown_xoffset_slider.slider_value = xoffset
+		if refs.breakdown_xoffset_label then
+			refs.breakdown_xoffset_label.caption = string.format("%.1f", xoffset)
+		end
+	end
+	if refs.breakdown_yoffset_slider then
+		refs.breakdown_yoffset_slider.slider_value = yoffset
+		if refs.breakdown_yoffset_label then
+			refs.breakdown_yoffset_label.caption = string.format("%.1f", yoffset)
+		end
+	end
+	if refs.breakdown_display_info_label then
+		refs.breakdown_display_info_label.caption = string.format(
+			"| Scale:%.2f Res:%dx%d",
+			display_scale, resolution.width, resolution.height
+		)
 	end
 
 	-- Early return if no data to render (camera is already set up above)
@@ -610,6 +719,86 @@ function delivery_breakdown_tab.handle.on_breakdown_interval_click(player, playe
 			if button.tags and button.tags.interval_index then
 				button.style = button.tags.interval_index == interval_index and "flib_selected_tool_button" or "tool_button"
 			end
+		end
+	end
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_value_changed
+function delivery_breakdown_tab.handle.on_breakdown_zoom_changed(player, player_data, refs, e)
+	local element = e.element
+	if not element then return end
+
+	local zoom_value = element.slider_value
+	player_data.breakdown_zoom = zoom_value
+
+	if refs.breakdown_zoom_label then
+		refs.breakdown_zoom_label.caption = string.format("%.2f", zoom_value)
+	end
+
+	if refs.breakdown_camera then
+		refs.breakdown_camera.zoom = zoom_value
+	end
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_value_changed
+function delivery_breakdown_tab.handle.on_breakdown_xoffset_changed(player, player_data, refs, e)
+	local element = e.element
+	if not element then return end
+
+	local xoffset_value = element.slider_value
+	player_data.breakdown_xoffset = xoffset_value
+
+	if refs.breakdown_xoffset_label then
+		refs.breakdown_xoffset_label.caption = string.format("%.1f", xoffset_value)
+	end
+
+	if refs.breakdown_camera and storage.analytics then
+		local data = storage.analytics
+		if data.breakdown_interval and data.breakdown_interval.chunk and data.breakdown_interval.chunk.coord then
+			local chunk = data.breakdown_interval.chunk
+			local base_x = chunk.coord.x + (900 / 32) / 2
+			local base_y = chunk.coord.y + (GRAPH_HEIGHT / 32) / 2
+			local y_offset = player_data.breakdown_yoffset or -1.0
+			refs.breakdown_camera.position = {
+				x = base_x + xoffset_value,
+				y = base_y + y_offset,
+			}
+		end
+	end
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_value_changed
+function delivery_breakdown_tab.handle.on_breakdown_yoffset_changed(player, player_data, refs, e)
+	local element = e.element
+	if not element then return end
+
+	local yoffset_value = element.slider_value
+	player_data.breakdown_yoffset = yoffset_value
+
+	if refs.breakdown_yoffset_label then
+		refs.breakdown_yoffset_label.caption = string.format("%.1f", yoffset_value)
+	end
+
+	if refs.breakdown_camera and storage.analytics then
+		local data = storage.analytics
+		if data.breakdown_interval and data.breakdown_interval.chunk and data.breakdown_interval.chunk.coord then
+			local chunk = data.breakdown_interval.chunk
+			local base_x = chunk.coord.x + (900 / 32) / 2
+			local base_y = chunk.coord.y + (GRAPH_HEIGHT / 32) / 2
+			local x_offset = player_data.breakdown_xoffset or 3.0
+			refs.breakdown_camera.position = {
+				x = base_x + x_offset,
+				y = base_y + yoffset_value,
+			}
 		end
 	end
 end
