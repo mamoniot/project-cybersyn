@@ -603,9 +603,10 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		end
 	end
 	if refs.breakdown_display_info_label then
+		local density_scale = player.display_density_scale or 1.0
 		refs.breakdown_display_info_label.caption = string.format(
-			"| Scale:%.2f Res:%dx%d",
-			display_scale, resolution.width, resolution.height
+			"| Scale:%.2f Density:%.2f Res:%dx%d",
+			display_scale, density_scale, resolution.width, resolution.height
 		)
 	end
 
