@@ -59,62 +59,6 @@ function utilization_tab.create()
 					ref = { "utilization", "interval_buttons" },
 					table.unpack(interval_buttons),
 				},
-				-- Spacer
-				{ type = "empty-widget", style_mods = { horizontally_stretchable = true } },
-				-- Debug sliders
-				{
-					type = "label",
-					caption = "Zoom:",
-					style = "caption_label",
-				},
-				{
-					type = "slider",
-					name = "utilization_zoom_slider",
-					minimum_value = 0.25,
-					maximum_value = 2.0,
-					value = 1.0,
-					value_step = 0.05,
-					style_mods = { width = 80 },
-					ref = { "utilization", "zoom_slider" },
-					handler = utilization_tab.handle.on_utilization_zoom_changed,
-				},
-				{
-					type = "label",
-					name = "utilization_zoom_label",
-					caption = "1.00",
-					ref = { "utilization", "zoom_label" },
-					style_mods = { width = 35 },
-				},
-				{
-					type = "label",
-					caption = "X:",
-					style = "caption_label",
-				},
-				{
-					type = "slider",
-					name = "utilization_xoffset_slider",
-					minimum_value = 0,
-					maximum_value = 8,
-					value = 3.0,
-					value_step = 0.1,
-					style_mods = { width = 80 },
-					ref = { "utilization", "xoffset_slider" },
-					handler = utilization_tab.handle.on_utilization_xoffset_changed,
-				},
-				{
-					type = "label",
-					name = "utilization_xoffset_label",
-					caption = "3.0",
-					ref = { "utilization", "xoffset_label" },
-					style_mods = { width = 30 },
-				},
-				-- Display info
-				{
-					type = "label",
-					name = "utilization_display_info_label",
-					caption = "",
-					ref = { "utilization", "display_info_label" },
-				},
 			},
 			-- Main content: sidebar + graph
 			{
@@ -282,13 +226,10 @@ function utilization_tab.build(map_data, player_data)
 	-- Set up camera widget (must happen before early return so camera points at correct surface)
 	local display_scale = player.display_scale or 1.0
 	local display_density = player.display_density_scale or 1.0
-	local resolution = player.display_resolution
 	-- Resolution-independent zoom formula: zoom = scale / density + 0.05
 	-- Works across Windows (density 1.0-1.75) and Mac (density 2.0)
-	local default_zoom = display_scale / display_density + 0.05
-	local default_xoffset = 3.0 + (display_scale - 1.0) * 0.2
-	local zoom = player_data.utilization_zoom or default_zoom
-	local xoffset = player_data.utilization_xoffset or default_xoffset
+	local zoom = display_scale / display_density + 0.05
+	local xoffset = 3.0 + (display_scale - 1.0) * 0.2
 	local camera_info = nil
 	if refs.utilization_camera and chunk and chunk.coord and charts then
 		camera_info = charts.setup_camera_widget(refs.utilization_camera, data.surface, chunk, {
@@ -298,27 +239,6 @@ function utilization_tab.build(map_data, player_data)
 			position_offset = {x = xoffset, y = 0.1},
 			zoom_override = zoom,
 		})
-	end
-
-	-- Update sliders and display info
-	if refs.utilization_zoom_slider then
-		refs.utilization_zoom_slider.slider_value = zoom
-		if refs.utilization_zoom_label then
-			refs.utilization_zoom_label.caption = string.format("%.2f", zoom)
-		end
-	end
-	if refs.utilization_xoffset_slider then
-		refs.utilization_xoffset_slider.slider_value = xoffset
-		if refs.utilization_xoffset_label then
-			refs.utilization_xoffset_label.caption = string.format("%.1f", xoffset)
-		end
-	end
-	if refs.utilization_display_info_label then
-		local density_scale = player.display_density_scale or 1.0
-		refs.utilization_display_info_label.caption = string.format(
-			"| Scale:%.2f Density:%.2f Res:%dx%d",
-			display_scale, density_scale, resolution.width, resolution.height
-		)
 	end
 
 	-- Early return if no data to render (camera is already set up above)
@@ -493,56 +413,6 @@ function utilization_tab.handle.on_utilization_legend_checkbox_changed(player, p
 
 	-- Invalidate cache to re-render with new selection
 	player_data.utilization_cache = nil
-end
-
----@param player LuaPlayer
----@param player_data PlayerData
----@param refs table<string, LuaGuiElement>
----@param e EventData.on_gui_value_changed
-function utilization_tab.handle.on_utilization_zoom_changed(player, player_data, refs, e)
-	local element = e.element
-	if not element then return end
-
-	local zoom_value = element.slider_value
-	player_data.utilization_zoom = zoom_value
-
-	if refs.utilization_zoom_label then
-		refs.utilization_zoom_label.caption = string.format("%.2f", zoom_value)
-	end
-
-	if refs.utilization_camera then
-		refs.utilization_camera.zoom = zoom_value
-	end
-end
-
----@param player LuaPlayer
----@param player_data PlayerData
----@param refs table<string, LuaGuiElement>
----@param e EventData.on_gui_value_changed
-function utilization_tab.handle.on_utilization_xoffset_changed(player, player_data, refs, e)
-	local element = e.element
-	if not element then return end
-
-	local xoffset_value = element.slider_value
-	player_data.utilization_xoffset = xoffset_value
-
-	if refs.utilization_xoffset_label then
-		refs.utilization_xoffset_label.caption = string.format("%.1f", xoffset_value)
-	end
-
-	if refs.utilization_camera and storage.analytics then
-		local interval_index = player_data.utilization_interval or 1
-		local interval = storage.analytics.train_utilization[interval_index]
-		if interval and interval.chunk and interval.chunk.coord then
-			local chunk = interval.chunk
-			local base_x = chunk.coord.x + (900 / 32) / 2
-			local base_y = chunk.coord.y + (GRAPH_HEIGHT / 32) / 2
-			refs.utilization_camera.position = {
-				x = base_x + xoffset_value,
-				y = base_y + 0.1,
-			}
-		end
-	end
 end
 
 gui.add_handlers(utilization_tab.handle, utilization_tab.wrapper)
