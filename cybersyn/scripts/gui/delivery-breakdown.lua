@@ -555,18 +555,11 @@ function delivery_breakdown_tab.build(map_data, player_data)
 
 	-- Set up camera widget (must happen before early return so camera points at correct surface)
 	local display_scale = player.display_scale or 1.0
+	local display_density = player.display_density_scale or 1.0
 	local resolution = player.display_resolution
-	-- Resolution-independent zoom formula derived from cross-platform testing:
-	-- Use logical_width (resolution / scale) to distinguish Mac vs Windows displays
-	local logical_width = resolution.width / display_scale
-	local default_zoom
-	if logical_width > 1950 then
-		-- Mac displays (higher logical resolution)
-		default_zoom = display_scale / 2
-	else
-		-- Windows displays
-		default_zoom = 1.0 + (display_scale - 1.0) * 0.1
-	end
+	-- Resolution-independent zoom formula: zoom = scale / density
+	-- Works across Windows (density 1.0-1.75) and Mac (density 2.0)
+	local default_zoom = display_scale / display_density
 	local default_xoffset = 3.0
 	local default_yoffset = -1.0
 	local zoom = player_data.breakdown_zoom or default_zoom

@@ -281,18 +281,11 @@ function utilization_tab.build(map_data, player_data)
 
 	-- Set up camera widget (must happen before early return so camera points at correct surface)
 	local display_scale = player.display_scale or 1.0
+	local display_density = player.display_density_scale or 1.0
 	local resolution = player.display_resolution
-	-- Resolution-independent zoom and position formulas derived from cross-platform testing:
-	-- Use logical_width (resolution / scale) to distinguish Mac vs Windows displays
-	local logical_width = resolution.width / display_scale
-	local default_zoom
-	if logical_width > 1950 then
-		-- Mac displays (higher logical resolution)
-		default_zoom = display_scale / 2 + 0.025
-	else
-		-- Windows displays
-		default_zoom = 0.15 * display_scale + 0.9
-	end
+	-- Resolution-independent zoom formula: zoom = scale / density + 0.05
+	-- Works across Windows (density 1.0-1.75) and Mac (density 2.0)
+	local default_zoom = display_scale / display_density + 0.05
 	local default_xoffset = 3.0 + (display_scale - 1.0) * 0.2
 	local zoom = player_data.utilization_zoom or default_zoom
 	local xoffset = player_data.utilization_xoffset or default_xoffset
