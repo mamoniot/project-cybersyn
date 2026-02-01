@@ -62,6 +62,11 @@ STATUS_TO_F = 7
 STATUS_F = 8
 STATUS_CUSTOM = 256 --this status and any status greater than it can be used by other mods (I've reserved the lower integers for myself in case I want to add more statuses)
 
+FAILURE_REASON_NO_PROVIDER_STOCK = 0
+FAILURE_REASON_NO_TRAIN_AVAILABLE = 1
+FAILURE_REASON_TRAIN_CAPACITY = 2
+FAILURE_REASON_LAYOUT_MISMATCH = 3
+
 LONGEST_INSERTER_REACH = 2
 
 STATE_INIT = 0

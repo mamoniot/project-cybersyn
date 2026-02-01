@@ -8,6 +8,7 @@ local manager = require("scripts.gui.manager")
 --- @field item_order table<string, int>
 
 --- @class PlayerData
+--- @field player_index uint
 --- @field is_manager_open boolean
 --- @field refs {[string]: LuaGuiElement}
 --- @field search_query string?
@@ -19,6 +20,12 @@ local manager = require("scripts.gui.manager")
 --- @field trains_orderings_invert boolean[]
 --- @field pinning boolean
 --- @field selected_tab string?
+--- @field previous_tab string?
+--- @field delivery_times_interval uint?
+--- @field delivery_times_mode string?
+--- @field delivery_times_selected {[string]: boolean}?
+--- @field utilization_interval uint?
+--- @field utilization_selected {[string]: boolean}?
 
 local function top_left_button_update(player, player_data)
 	local button_flow = mod_gui.get_button_flow(player)
@@ -67,6 +74,7 @@ local function create_player(player_index)
 	if not player then return end
 
 	local player_data = {
+		player_index = player_index,
 		search_network_mask = -1,
 		trains_orderings = {},
 		trains_orderings_invert = {},
@@ -103,6 +111,18 @@ function manager_gui.on_runtime_mod_setting_changed(e)
 		local player_data = storage.manager.players[e.player_index]
 		player_data.disable_top_left_button = player.mod_settings["cybersyn-disable-top-left-button"].value
 		top_left_button_update(player, player_data)
+	elseif e.setting == "cybersyn-enable-analytics" then
+		-- Rebuild all GUIs when analytics setting changes to show/hide tabs
+		local manager_data = storage.manager
+		if manager_data then
+			for i, v in pairs(manager_data.players) do
+				local player = game.get_player(i)
+				if player ~= nil then
+					v.refs.manager_window.destroy()
+					v.refs = manager.create(player)
+				end
+			end
+		end
 	end
 end
 
@@ -182,6 +202,10 @@ function manager_gui.tick(storage)
 	local manager_data = storage.manager
 	if manager_data then
 		for i, v in pairs(manager_data.players) do
+			-- Ensure player_index is set (for saves created before this field was added)
+			if not v.player_index then
+				v.player_index = i
+			end
 			if v.is_manager_open then
 				local query_limit = settings.get_player_settings(i)["cybersyn-manager-result-limit"].value
 				manager.update(storage, v, query_limit)

@@ -27,6 +27,7 @@
 ---@field public se_elevators {[uint]: Cybersyn.ElevatorData} maps relevant entities on both surfaces to one shared data structure for the whole space elevator; the key can be the unit_number of the elevator's main assembler or its train stop
 ---@field public connected_surfaces {[string]: {[string]: Cybersyn.SurfaceConnection}} maps pairs of surfaces to the pairs of entities connecting them
 ---@field public perf_cache PerfCache -- This gets reset to an empty table on migration change
+---@field public analytics Cybersyn.AnalyticsData? Analytics data for train utilization and delivery times
 
 ---@class PerfCache
 ---@field public se_get_space_elevator_name {}?
@@ -135,6 +136,35 @@
 ---@field public all_p_stations {[Cybersyn.Economy.ItemNetworkName]: uint[]} Maps item network names to lists of provider station IDs having matching items.
 ---@field public all_names (Cybersyn.Economy.ItemNetworkName|SignalID)[] A flattened list of pairs. Each pair is of the form `[item_network_name, item_signal]` where `item_signal` is the signal for the named item. The dispatch logic iterates over these pairs to brute-force match providers to requesters.
 
+---@class Cybersyn.AnalyticsInterval
+---@field public name string Interval name ("5s", "1m", "10m", etc.)
+---@field public data table[] Circular buffer of {[series_name]: value}
+---@field public index uint Next write position (0-indexed)
+---@field public sum {[string]: number} Running sums by series name
+---@field public counts {[string]: uint} Sample counts by series name
+---@field public ticks uint Game ticks per datapoint
+---@field public steps uint? Datapoints per cascade (nil for last interval)
+---@field public length uint Buffer capacity
+---@field public chunk table? {render_entity, coord} when being viewed
+---@field public viewer_count uint Number of players viewing this graph
+---@field public guis {[uint]: table} Player GUIs viewing this interval
+---@field public last_rendered_tick uint?
+
+---@class Cybersyn.AnalyticsData
+---@field public surface LuaSurface Hidden rendering surface
+---@field public train_utilization Cybersyn.AnalyticsInterval[] 8 intervals for utilization graph
+---@field public fulfillment_times Cybersyn.AnalyticsInterval[] 8 intervals: request → delivery
+---@field public total_delivery_times Cybersyn.AnalyticsInterval[] 8 intervals: dispatch → completion
+---@field public train_status_ticks {[uint]: {[uint]: uint}} layout_id -> {status -> ticks}
+---@field public train_status_totals {[uint]: uint} layout_id -> total ticks
+---@field public delivery_starts {[uint]: {item_hash: string, dispatch_tick: uint}} train_id -> info
+---@field public fulfillment_ema {[string]: number} item_hash -> EMA of fulfillment time in seconds
+---@field public total_time_ema {[string]: number} item_hash -> EMA of total delivery time in seconds
+---@field public chunk_freelist table[] Reusable chunk coordinates
+---@field public next_chunk_x uint
+---@field public next_chunk_y uint
+---@field public enabled boolean
+
 --NOTE: any setting labeled as an "interface setting" can only be changed through the remote-interface, these settings are not save and have to be set at initialization
 --As a modder using the remote-interface, you may override any of these settings, including user settings. They will have to be overriden at initialization and whenever a user tries to change one.
 ---@class CybersynModSettings
@@ -158,6 +188,7 @@
 ---@field public react_to_train_early_to_depot boolean --interface setting
 ---@field public enable_manager boolean
 ---@field public manager_ups double
+---@field public enable_analytics boolean
 
 --if this is uncommented it means there are migrations to write
 
