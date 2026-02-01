@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.40
+Date: 2026-02-01
+  Changes:
+    - CS is now optionally dependent on Factorio Charts
+  Features:
+    - New tab in CS Manager - Utilisation
+    - New tab in CS Manager - Breakdown
+    - New map setting - Enable analytics (TURNED OFF BY DEFAULT)
+---------------------------------------------------------------------------------------------------
 Version: 2.0.39
 Date: 2026-01-08
   Bugfixes:
