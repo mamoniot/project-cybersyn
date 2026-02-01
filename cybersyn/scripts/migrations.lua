@@ -491,6 +491,13 @@ function on_config_changed(config_change_data)
 		analytics.init(storage)
 	end
 
+	-- Ensure analytics surface is hidden from map view for all forces
+	if storage.analytics and storage.analytics.surface then
+		for _, force in pairs(game.forces) do
+			force.set_surface_hidden(storage.analytics.surface, true)
+		end
+	end
+
 	retrigger_train_calculation(false)
 end
 
