@@ -2,6 +2,7 @@
 local min = math.min
 local INF = math.huge
 local band = bit32.band
+local analytics = require("scripts.analytics")
 
 ---@param map_data MapData
 ---@param station Station
@@ -223,11 +224,15 @@ local function on_train_arrives_station(map_data, station, train_id, train)
 		train.status = STATUS_P
 		set_comb1(map_data, station, train.manifest, -1)
 		set_p_wagon_combs(map_data, station, train)
+		-- Record phase: arrived at provider
+		analytics.record_phase_arrive_provider(map_data, train_id)
 		interface_raise_train_status_changed(train_id, STATUS_TO_P, STATUS_P)
 	elseif train.status == STATUS_TO_R then
 		train.status = STATUS_R
 		set_comb1(map_data, station, train.manifest, 1)
 		set_r_wagon_combs(map_data, station, train)
+		-- Record phase: arrived at requester
+		analytics.record_phase_arrive_requester(map_data, train_id)
 		interface_raise_train_status_changed(train_id, STATUS_TO_R, STATUS_R)
 	end
 end
@@ -269,6 +274,8 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 			end
 		end
 		color_train_by_stop(train.entity, map_data.stations[train.r_station_id].entity_stop)
+		-- Record phase: left provider (loading complete)
+		analytics.record_phase_leave_provider(map_data, train_id)
 		interface_raise_train_status_changed(train_id, STATUS_P, STATUS_TO_R)
 	elseif train.status == STATUS_R then
 		local station = map_data.stations[train.r_station_id]
@@ -276,6 +283,8 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 		set_comb1(map_data, station, nil)
 		unset_wagon_combs(map_data, station)
 		--complete delivery
+		-- Record delivery completion for analytics (after unloading)
+		analytics.record_delivery_complete(map_data, train_id)
 		train.p_station_id = nil
 		train.r_station_id = nil
 		train.manifest = nil

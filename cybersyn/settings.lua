@@ -122,8 +122,15 @@ data:extend({
 	},
 	{
 		type = "bool-setting",
-		name = "cybersyn-abort-stuck-train-to-depot",
+		name = "cybersyn-enable-analytics",
 		order = "ce",
+		setting_type = "runtime-global",
+		default_value = false,
+	},
+	{
+		type = "bool-setting",
+		name = "cybersyn-abort-stuck-train-to-depot",
+		order = "cf",
 		setting_type = "runtime-global",
 		default_value = false,
 	},
