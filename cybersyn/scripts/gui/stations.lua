@@ -24,18 +24,12 @@ function stations_tab.create(widths)
 			{
 				type = "frame",
 				style = "ltnm_table_toolbar_frame",
-				templates.sort_checkbox(widths, "stations", "name", true),
-				templates.sort_checkbox(widths, "stations", "status", false), --repurposed status column, description no longer necessary
-				templates.sort_checkbox(widths, "stations", "network_id", false),
-				templates.sort_checkbox(
-					widths,
-					"stations",
-					"provided_requested",
-					false
-				),
-				templates.sort_checkbox(widths, "stations", "shipments", false),
-				templates.sort_checkbox({ stations = { control_signals = widths.stations.control_signals - 50 } }, "stations",
-					"control_signals", false),
+				templates.sort_checkbox(widths, "stations", "name", true, nil, false, stations_tab.handle.on_sort_checkbox_changed),
+				templates.sort_checkbox(widths, "stations", "status", false, nil, false, stations_tab.handle.on_sort_checkbox_changed), --repurposed for network signal
+				templates.sort_checkbox(widths, "stations", "network_id", false, nil, false, stations_tab.handle.on_sort_checkbox_changed),
+				templates.column_label(widths, "stations", "provided_requested"),
+				templates.column_label(widths, "stations", "shipments"),
+				templates.column_label({ stations = { control_signals = widths.stations.control_signals - 50 } }, "stations", "control_signals"),
 			},
 			{
 				name = "manager_stations_tab_scroll_pane",
@@ -162,61 +156,50 @@ function stations_tab.build(map_data, player_data, query_limit)
 	table.sort(stations_sorted, function(a, b)
 		local station1 = map_data.stations[a]
 		local station2 = map_data.stations[b]
-		for i, v in ipairs(player_data.trains_orderings) do
-			local invert = player_data.trains_orderings_invert[i]
-			if v == ORDER_LAYOUT then
-				if not station1.allows_all_trains and not station2.allows_all_trains then
-					local layout1 = station1.layout_pattern --[[@as uint[] ]]
-					local layout2 = station2.layout_pattern --[[@as uint[] ]]
-					for j, c1 in ipairs(layout1) do
-						local c2 = layout2[j]
-						if c1 ~= c2 then
-							return invert ~= (c2 and c1 < c2)
-						end
-					end
-					if layout2[#layout1 + 1] then
-						return invert ~= true
-					end
-				elseif station1.allows_all_trains ~= station2.allows_all_trains then
-					return invert ~= station2.allows_all_trains
-				end
-			elseif v == ORDER_NAME then
-				local name1 = station1.entity_stop.valid and station1.entity_stop.backer_name
-				local name2 = station2.entity_stop.valid and station2.entity_stop.backer_name
-				if name1 ~= name2 then
-					return invert ~= (name1 and (name2 and name1 < name2 or true) or false)
-				end
-			elseif v == ORDER_TOTAL_TRAINS then
-				if station1.deliveries_total ~= station2.deliveries_total then
-					return invert ~= (station1.deliveries_total < station2.deliveries_total)
-				end
-			elseif v == ORDER_MANIFEST then
-				if not next(station1.deliveries) then
-					if next(station2.deliveries) then
-						return invert ~= true
-					end
-				elseif not next(station2.deliveries) then
-					return invert ~= false
-				else
-					local first_item = nil
-					local first_direction = nil
-					for item_hash in dual_pairs(station1.deliveries, station2.deliveries) do
-						if not first_item or item_lt(map_data.manager, item_hash, first_item) then
-							local count1 = station1.deliveries[item_hash] or 0
-							local count2 = station2.deliveries[item_hash] or 0
-							if count1 ~= count2 then
-								first_item = item_hash
-								first_direction = count1 < count2
-							end
-						end
-					end
-					if first_direction ~= nil then
-						return invert ~= first_direction
-					end
-				end
+
+		-- Safety check
+		if not station1 or not station2 then
+			return a < b
+		end
+
+		local sort = player_data.stations_sort or { active = "name", ascending = {} }
+		local column = sort.active or "name"
+		local descending = sort.ascending[column] == true
+
+		local less_than = nil  -- Will be set to true/false if we can determine order
+
+		if column == "name" then
+			local name1 = (station1.entity_stop and station1.entity_stop.valid) and station1.entity_stop.backer_name or ""
+			local name2 = (station2.entity_stop and station2.entity_stop.valid) and station2.entity_stop.backer_name or ""
+			if name1 ~= name2 then
+				less_than = name1 < name2
+			end
+		elseif column == "status" then
+			-- Sort by network name (status column is repurposed for network signal)
+			local net1 = station1.network_name or ""
+			local net2 = station2.network_name or ""
+			if net1 ~= net2 then
+				less_than = net1 < net2
+			end
+		elseif column == "network_id" then
+			local mask1 = get_network_mask(station1, station1.network_name) or 0
+			local mask2 = get_network_mask(station2, station2.network_name) or 0
+			if mask1 ~= mask2 then
+				less_than = mask1 < mask2
 			end
 		end
-		return (not player_data.trains_orderings_invert[#player_data.trains_orderings_invert]) == (a < b)
+
+		-- Apply sort direction and return
+		if less_than ~= nil then
+			if descending then
+				return not less_than
+			else
+				return less_than
+			end
+		end
+
+		-- Fallback to station ID for stable sorting
+		return a < b
 	end)
 
 	local scroll_pane = refs.manager_stations_tab_scroll_pane
@@ -340,6 +323,45 @@ end
 ---@param player_data PlayerData
 function stations_tab.handle.on_stations_tab_selected(player, player_data)
 	player_data.selected_tab = "stations_tab"
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_checked_state_changed
+function stations_tab.handle.on_sort_checkbox_changed(player, player_data, refs, e)
+	local element = e.element
+	if not element or not element.tags then return end
+
+	local column = element.tags.column
+	if not column then return end
+
+	-- Initialize sort state if needed
+	if not player_data.stations_sort then
+		player_data.stations_sort = { active = "name", ascending = {} }
+	end
+
+	local sort = player_data.stations_sort
+	if sort.active == column then
+		-- Toggle ascending/descending
+		sort.ascending[column] = element.state
+	else
+		-- Switch to new column
+		local old_column = sort.active
+		sort.active = column
+		sort.ascending[column] = element.state
+
+		-- Update checkbox styles via parent's children
+		for _, child in pairs(element.parent.children) do
+			if child.type == "checkbox" and child ~= element and child.tags and child.tags.column == old_column then
+				child.style = "ltnm_sort_checkbox"
+				if child.tags.width then child.style.width = child.tags.width end
+				break
+			end
+		end
+		element.style = "ltnm_selected_sort_checkbox"
+		if element.tags.width then element.style.width = element.tags.width end
+	end
 end
 
 gui.add_handlers(stations_tab.handle, stations_tab.wrapper)

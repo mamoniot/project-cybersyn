@@ -75,7 +75,9 @@ end
 --- @param column string
 --- @param selected boolean
 --- @param tooltip LocalisedString
-function templates.sort_checkbox(widths, tab, column, selected, tooltip, state)
+--- @param state boolean?
+--- @param handler GuiElemHandler?
+function templates.sort_checkbox(widths, tab, column, selected, tooltip, state, handler)
 	if state == nil then
 		state = false
 	end
@@ -87,9 +89,21 @@ function templates.sort_checkbox(widths, tab, column, selected, tooltip, state)
 		tooltip = tooltip,
 		state = state,
 		ref = { tab, "toolbar", column .. "_checkbox" },
-		actions = {
-			on_checked_state_changed = { gui = "main", tab = tab, action = "toggle_sort", column = column },
-		},
+		handler = handler,
+		tags = { tab = tab, column = column, width = widths and widths[tab][column] or nil },
+	}
+end
+
+--- Creates a column header label (no sorting).
+--- @param widths table
+--- @param tab string
+--- @param column string
+function templates.column_label(widths, tab, column)
+	return {
+		type = "label",
+		style = "ltnm_column_label",
+		style_mods = { width = widths and widths[tab][column] or nil, horizontally_stretchable = not widths },
+		caption = { "cybersyn-gui." .. string.gsub(column, "_", "-") },
 	}
 end
 
