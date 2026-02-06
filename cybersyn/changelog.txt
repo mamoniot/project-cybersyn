@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.42
+Date: 2026-02-06
+  Changes:
+    - Breakdown tab in manager now requires item filter to display chart and inform user if not filtered
+---------------------------------------------------------------------------------------------------
 Version: 2.0.41
 Date: 2026-02-03
   Bugfixes:
