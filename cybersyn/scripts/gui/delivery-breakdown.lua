@@ -227,6 +227,14 @@ function delivery_breakdown_tab.create()
 				type = "label",
 				caption = { "cybersyn-gui.no-breakdown-data" },
 				ref = { "delivery_breakdown", "no_data_label" },
+				visible = false,
+			},
+			-- No item filter message
+			{
+				name = "breakdown_select_item_label",
+				type = "label",
+				caption = { "cybersyn-gui.breakdown-select-item" },
+				ref = { "delivery_breakdown", "select_item_label" },
 				visible = true,
 			},
 		},
@@ -398,8 +406,24 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		end
 	end
 
-	-- Use item filter from manager toolbar (optional - if empty, show all items)
+	-- Use item filter from manager toolbar (required for breakdown chart)
 	local search_item = player_data.search_item
+
+	-- Check if item filter is set - breakdown chart requires an item filter
+	local has_item_filter = search_item and search_item ~= ""
+	if refs.breakdown_select_item_label then
+		refs.breakdown_select_item_label.visible = not has_item_filter
+	end
+	if not has_item_filter then
+		-- Hide chart and no-data message when no item filter
+		if refs.breakdown_main_flow then
+			refs.breakdown_main_flow.visible = false
+		end
+		if refs.breakdown_no_data_label then
+			refs.breakdown_no_data_label.visible = false
+		end
+		return
+	end
 
 	-- Calculate time range based on interval (needed for cache key)
 	local interval_defs = analytics.get_interval_defs()
