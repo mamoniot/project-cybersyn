@@ -132,7 +132,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 
 		local sort = player_data.trains_sort or { active = "train_id", ascending = {} }
 		local column = sort.active or "train_id"
-		local descending = sort.ascending[column] == true
+		local ascending = sort.ascending[column] ~= false  -- default to ascending
 
 		local less_than = nil
 
@@ -178,10 +178,10 @@ function trains_tab.build(map_data, player_data, query_limit)
 		end
 
 		if less_than ~= nil then
-			if descending then
-				return not less_than
-			else
+			if ascending then
 				return less_than
+			else
+				return not less_than
 			end
 		end
 

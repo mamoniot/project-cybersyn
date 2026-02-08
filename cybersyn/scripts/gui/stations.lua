@@ -164,7 +164,7 @@ function stations_tab.build(map_data, player_data, query_limit)
 
 		local sort = player_data.stations_sort or { active = "name", ascending = {} }
 		local column = sort.active or "name"
-		local descending = sort.ascending[column] == true
+		local ascending = sort.ascending[column] ~= false  -- default to ascending
 
 		local less_than = nil  -- Will be set to true/false if we can determine order
 
@@ -191,10 +191,10 @@ function stations_tab.build(map_data, player_data, query_limit)
 
 		-- Apply sort direction and return
 		if less_than ~= nil then
-			if descending then
-				return not less_than
-			else
+			if ascending then
 				return less_than
+			else
+				return not less_than
 			end
 		end
 
