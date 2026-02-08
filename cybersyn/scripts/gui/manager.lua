@@ -371,7 +371,6 @@ function manager.handle.manager_update_network_mask(player, player_data, refs, e
 	player_data.search_network_mask = tonumber(e.text) or -1
 	local normalized_text = tostring(player_data.search_network_mask)
 	if e.text ~= normalized_text then
-		log("Network mask mismatch: e.text='" .. e.text .. "', normalized='" .. normalized_text .. "'")
 		e.text = normalized_text
 	end
 end
