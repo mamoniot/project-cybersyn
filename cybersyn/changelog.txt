@@ -1,8 +1,9 @@
 ---------------------------------------------------------------------------------------------------
-Version: 2.0.43
+Version: 2.0.44
 Date: 2026-02-06
   Bugfixes:
     - Fix schedule generation for requester stations: ensure circuit condition is applied
+    - Fix sorting columns in manager
 ---------------------------------------------------------------------------------------------------
 Version: 2.0.42
 Date: 2026-02-06
