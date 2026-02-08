@@ -442,11 +442,10 @@ function ScheduleBuilder:add_loading_order(p_stop, manifest, p_schedule_settings
 end
 
 ---@param r_stop LuaEntity
----@param manifest Manifest
 ---@param r_schedule_settings Cybersyn.StationScheduleSettings
-function ScheduleBuilder:add_unloading_order(r_stop, manifest, r_schedule_settings)
+function ScheduleBuilder:add_unloading_order(r_stop, r_schedule_settings)
 	self:add_direct_to_stop(r_stop)
-	self:add(create_unloading_order(r_stop, manifest, self.include_ids), r_stop)
+	self:add(create_unloading_order(r_stop, r_schedule_settings, self.include_ids), r_stop)
 end
 
 ---@param f_stop LuaEntity
@@ -576,7 +575,7 @@ function set_manifest_schedule(
 	if all_same_surface then
 		new_schedule = ScheduleBuilder:new()
 		new_schedule:add_loading_order(p_stop, manifest, p_schedule_settings)
-		new_schedule:add_unloading_order(r_stop, manifest, r_schedule_settings)
+		new_schedule:add_unloading_order(r_stop, r_schedule_settings)
 		if same_depot then
 			new_schedule:add_direct_to_stop(depot_stop)
 		end
