@@ -89,7 +89,7 @@ function templates.sort_checkbox(widths, tab, column, selected, tooltip, state, 
 		tooltip = tooltip,
 		state = state,
 		ref = { tab, "toolbar", column .. "_checkbox" },
-		handler = handler,
+		handler = handler and { [defines.events.on_gui_checked_state_changed] = handler } or nil,
 		tags = { tab = tab, column = column, width = widths and widths[tab][column] or nil },
 	}
 end
