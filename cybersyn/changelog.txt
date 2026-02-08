@@ -1,6 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.45
+Date: 2026-02-08
+  Bugfixes:
+    - Fix manager filter fields (text search and network mask) not reflecting active filters when opening an already-filtered window
+    - Fix manager filter fields (text search and network mask) jumping cursor to end while editing
+---------------------------------------------------------------------------------------------------
 Version: 2.0.44
-Date: 2026-02-06
+Date: 2026-02-08
   Bugfixes:
     - Fix schedule generation for requester stations: ensure circuit condition is applied
     - Fix sorting columns in manager
