@@ -357,6 +357,12 @@ styles.ltnm_semibold_label = {
 	font = "default-semibold",
 }
 
+styles.ltnm_column_label = {
+	type = "label_style",
+	font = "default-bold",
+	left_padding = 8,
+}
+
 -- MINIMAP STYLES
 
 styles.ltnm_train_minimap = {

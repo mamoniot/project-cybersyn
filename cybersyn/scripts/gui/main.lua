@@ -16,8 +16,8 @@ local manager = require("scripts.gui.manager")
 --- @field search_network_mask int
 --- @field search_surface_idx uint?
 --- @field search_item string?
---- @field trains_orderings uint[]
---- @field trains_orderings_invert boolean[]
+--- @field stations_sort {active: string, ascending: {[string]: boolean}}
+--- @field trains_sort {active: string, ascending: {[string]: boolean}}
 --- @field pinning boolean
 --- @field selected_tab string?
 --- @field previous_tab string?
@@ -76,8 +76,8 @@ local function create_player(player_index)
 	local player_data = {
 		player_index = player_index,
 		search_network_mask = -1,
-		trains_orderings = {},
-		trains_orderings_invert = {},
+		stations_sort = { active = "name", ascending = {} },
+		trains_sort = { active = "train_id", ascending = {} },
 		pinning = false,
 		refs = manager.create(player),
 		selected_tab = "stations_tab",
