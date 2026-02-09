@@ -35,6 +35,14 @@ SETTING_ENABLE_TRAIN_COUNT = 9
 SETTING_ENABLE_MANUAL_INVENTORY = 10
 SETTING_DISABLE_MANIFEST_CONDITION = 11
 
+-- Default second_constant bits for newly placed combinators (bit flags).
+-- Build a mask with set_flag(n) to make adding/removing defaults clear and safe.
+local function set_flag(n) return bit32.lshift(1, n) end
+COMBINATOR_DEFAULT_SECOND_CONSTANT = bit32.bor(
+	set_flag(SETTING_ENABLE_TRAIN_COUNT),
+	set_flag(SETTING_USE_ANY_DEPOT)
+)
+
 NETWORK_SIGNAL_DEFAULT = { name = "signal-A", type = "virtual" }
 NETWORK_SIGNAL_GUI_DEFAULT = { name = "signal-each", type = "virtual" }
 NETWORK_ANYTHING = "signal-anything"

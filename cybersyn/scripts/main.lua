@@ -236,6 +236,12 @@ function combinator_build_init(map_data, comb, tags)
 		op = MODE_PRIMARY_IO
 		params.operation = op
 		params.first_signal = NETWORK_SIGNAL_DEFAULT
+		
+		-- Apply defaults to freshly placed combinators only
+		-- use centralized constant so defaults are changed in one place
+		if (params.second_constant or 0) == 0 then
+			params.second_constant = COMBINATOR_DEFAULT_SECOND_CONSTANT
+		end
 		control.parameters = params
 	elseif op ~= MODE_PRIMARY_IO and op ~= MODE_SECONDARY_IO and op ~= MODE_DEPOT and op ~= MODE_REFUELER and op ~= MODE_WAGON then
 		op = MODE_PRIMARY_IO

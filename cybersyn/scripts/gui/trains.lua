@@ -69,12 +69,24 @@ function trains_tab.build(map_data, player_data, query_limit)
 			goto continue
 		end
 		if search_network_name then
-			if search_network_name ~= train.network_name then
-				goto continue
-			end
-			local train_flag = get_network_mask(train, search_network_name)
-			if not bit32.btest(search_network_mask, train_flag) then
-				goto continue
+			if train.network_name == NETWORK_EACH then
+				-- NETWORK_EACH trains can have any network, check if this one exists
+				local network_mask = train.network_mask[search_network_name]
+				if not network_mask then
+					goto continue
+				end
+				if not bit32.btest(search_network_mask, network_mask) then
+					goto continue
+				end
+			else
+				-- Regular trains must match the network name
+				if search_network_name ~= train.network_name then
+					goto continue
+				end
+				local train_flag = get_network_mask(train, search_network_name)
+				if not bit32.btest(search_network_mask, train_flag) then
+					goto continue
+				end
 			end
 		elseif search_network_mask ~= -1 then
 			if train.network_name == NETWORK_EACH then
