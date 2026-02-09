@@ -317,6 +317,23 @@ local function on_combinator_built(map_data, comb, tags)
 	if op == MODE_WAGON then
 		if rail then
 			update_stop_from_rail(map_data, rail, nil, true)
+		else
+			-- If no rail was found in the immediate vicinity, search for nearby train stops
+			-- This handles the case where the wagon combinator is placed after the station combinator
+			local reach = LONGEST_INSERTER_REACH + 1 -- Same reach as used in reset_stop_layout
+			local wagon_search_area = {
+				{ pos_x - reach, pos_y - reach },
+				{ pos_x + reach, pos_y + reach },
+			}
+			local nearby_stops = comb.surface.find_entities_filtered({
+				area = wagon_search_area,
+				name = "train-stop"
+			})
+			for _, nearby_stop in pairs(nearby_stops) do
+				if nearby_stop.valid and nearby_stop.connected_rail then
+					update_stop_from_rail(map_data, nearby_stop.connected_rail, nil, true)
+				end
+			end
 		end
 	elseif stop then
 		local id = stop.unit_number --[[@as uint]]
