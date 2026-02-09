@@ -228,13 +228,82 @@ function trains_tab.build(map_data, player_data, query_limit)
 			local network_name = train.network_name
 			---@type int?
 			local network_id = nil
+			---@type {name: string, sprite: string, mask: int?}[]
+			local network_entries = {}
 			if network_name then
 				if network_name == NETWORK_EACH then
-					network_id = train.network_mask[search_network_name] --[[@as int?]]
+					local each_sprite = util.generate_item_references(NETWORK_EACH)
+					if not each_sprite then
+						each_sprite = "utility/close_black"
+					end
+					network_entries[#network_entries + 1] = { name = NETWORK_EACH, sprite = each_sprite, mask = nil }
+
+					---@type {name: string, sprite: string, mask: int}[]
+					local mask_entries = {}
+					for name, mask in pairs(train.network_mask or {}) do
+						local sprite = util.generate_item_references(name)
+						if sprite then
+							mask_entries[#mask_entries + 1] = { name = name, sprite = sprite, mask = mask }
+						end
+					end
+					table.sort(mask_entries, function(a, b)
+						return a.name < b.name
+					end)
+					for _, entry in ipairs(mask_entries) do
+						network_entries[#network_entries + 1] = entry
+					end
+					if #mask_entries == 0 then
+						network_entries[#network_entries + 1] = {
+							name = "utility/close_black",
+							sprite = "utility/close_black",
+							mask = nil,
+						}
+					end
 				else
 					network_id = train.network_mask --[[@as int]]
+					network_sprite, _, _ = util.generate_item_references(network_name)
 				end
-				network_sprite, _, _ = util.generate_item_references(network_name)
+			end
+
+			local network_children = {}
+			if network_name == NETWORK_EACH and #network_entries > 0 then
+				for _, entry in ipairs(network_entries) do
+					network_children[#network_children + 1] = {
+						type = "sprite-button",
+						style = "ltnm_small_slot_button_default",
+						enabled = true,
+						ignored_by_interaction = true,
+						sprite = entry.sprite,
+						number = entry.mask,
+					}
+				end
+			else
+				network_children[1] = {
+					type = "sprite-button",
+					style = "ltnm_small_slot_button_default",
+					enabled = true,
+					ignored_by_interaction = true,
+					sprite = network_sprite,
+					number = network_id,
+				}
+			end
+
+			local network_widget
+			if network_name == NETWORK_EACH and #network_entries > 6 then
+				network_widget = {
+					type = "table",
+					style = "slot_table",
+					column_count = 6,
+					style_mods = { horizontal_align = "center" },
+					children = network_children,
+				}
+			else
+				network_widget = {
+					type = "flow",
+					direction = "horizontal",
+					style_mods = { horizontal_align = "center" },
+					children = network_children,
+				}
 			end
 			local color = idx % 2 == 0 and "dark" or "light"
 			gui.add(scroll_pane, {
@@ -262,14 +331,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 					type = "frame",
 					style = "ltnm_table_row_frame_" .. color,
 					style_mods = { width = widths.trains.status },
-					{
-						type = "sprite-button",
-						style = "ltnm_small_slot_button_default",
-						enabled = true,
-						ignored_by_interaction = true,
-						sprite = network_sprite,
-						number = network_id
-					},
+					network_widget,
 				},
 				{
 					type = "label",
