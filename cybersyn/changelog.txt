@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.46
+Date: 2026-02-09
+  Changes:
+    - Change default value for new Depot combinators to NOT require same depot
+    - Change default value for new Station Control combinators to output train count
+  Bugfixes:
+    - Fix NETWORK_EACH stations/trains not showing when filtering by specific network name
+---------------------------------------------------------------------------------------------------
 Version: 2.0.45
 Date: 2026-02-08
   Bugfixes:
