@@ -70,6 +70,87 @@ local PHASE_TOOLTIPS = {
 	fail_layout = "Failed: Train layout mismatch",
 }
 
+---Generate tooltip text for a bar segment
+---@param bar_idx number Bar index
+---@param phase string Phase name
+---@param duration number Duration in seconds
+---@param delivery table Delivery data
+---@return string tooltip Formatted tooltip text
+local function get_segment_tooltip(bar_idx, phase, duration, delivery)
+	local label = PHASE_LABELS[phase] or phase
+	local desc = PHASE_TOOLTIPS[phase] or ""
+	local time = charts and charts.format_time_detailed(duration) or string.format("%.1fs", duration)
+	return string.format("%s\n%s\nDuration: %s", label, desc, time)
+end
+
+---Clear existing overlay buttons from the camera container
+---@param refs table GUI refs containing camera
+local function clear_overlay_buttons(refs)
+	if refs.breakdown_camera then
+		-- Find and destroy the overlay container if it exists
+		local overlay = refs.breakdown_camera.breakdown_overlay_container
+		if overlay and overlay.valid then
+			overlay.destroy()
+		end
+	end
+end
+
+---Create overlay buttons for bar segments
+---@param refs table GUI refs
+---@param button_configs table[] Array of button configurations
+local function create_overlay_buttons(refs, button_configs)
+	if not refs.breakdown_camera or not refs.breakdown_camera.valid then
+		return
+	end
+
+	-- Clear any existing overlay buttons
+	clear_overlay_buttons(refs)
+
+	if not button_configs or #button_configs == 0 then
+		return
+	end
+
+	-- Create a container flow inside the camera for overlay buttons
+	-- Uses vertical flow with zero spacing for the negative margin trick
+	local container = refs.breakdown_camera.add{
+		type = "flow",
+		name = "breakdown_overlay_container",
+		direction = "vertical",
+	}
+	container.style.width = GRAPH_WIDTH
+	container.style.height = GRAPH_HEIGHT
+	container.style.padding = 0
+	container.style.vertical_spacing = 0
+
+	-- Calibration offsets for button alignment
+	local OFFSET_X = 0
+	local OFFSET_Y = 0
+
+	-- Create buttons using the negative bottom_margin trick
+	for _, config in ipairs(button_configs) do
+		local left = config.style_mods.left_margin + OFFSET_X
+		local top = config.style_mods.top_margin + OFFSET_Y
+		local width = config.style_mods.width
+		local height = config.style_mods.height
+
+		-- Skip buttons that would be completely off-screen
+		if left + width > 0 and left < GRAPH_WIDTH and
+		   top + height > 0 and top < GRAPH_HEIGHT then
+			local btn = container.add{
+				type = "button",
+				style = "cybersyn_chart_overlay_button",
+				tooltip = config.tooltip,
+			}
+			btn.style.left_margin = left
+			btn.style.top_margin = top
+			-- Negative bottom_margin makes button take zero vertical space
+			btn.style.bottom_margin = -top - height
+			btn.style.width = width
+			btn.style.height = height
+		end
+	end
+end
+
 function delivery_breakdown_tab.create()
 	local interval_buttons = {}
 	for i, name in ipairs(interval_names) do
@@ -519,16 +600,33 @@ function delivery_breakdown_tab.build(map_data, player_data)
 
 	-- Early return if no data to render (camera is already set up above)
 	if #filtered == 0 then
+		-- Clear overlay buttons when no data
+		clear_overlay_buttons(refs)
 		return
 	end
 
 	-- Only re-render chart on cache miss (data changed)
 	if not cache_hit and camera_info then
-		analytics.render_stacked_bar_chart(
+		-- Build overlay options for tooltip generation
+		local overlay_options = {
+			camera_position = camera_info.position,
+			camera_zoom = camera_info.zoom,
+			widget_size = {width = GRAPH_WIDTH, height = GRAPH_HEIGHT},
+			get_tooltip = get_segment_tooltip,
+		}
+
+		local button_configs = analytics.render_stacked_bar_chart(
 			map_data, data.breakdown_interval, filtered,
 			PHASE_COLORS, PHASE_ORDER, HATCHED_PHASES,
-			GRAPH_WIDTH, GRAPH_HEIGHT
+			GRAPH_WIDTH, GRAPH_HEIGHT, overlay_options
 		)
+
+		-- Create overlay buttons for tooltips
+		if button_configs then
+			create_overlay_buttons(refs, button_configs)
+		else
+			clear_overlay_buttons(refs)
+		end
 	end
 
 	-- Update stats display using cached stats
@@ -577,6 +675,12 @@ function delivery_breakdown_tab.cleanup(map_data, player_data)
 	if not player_data.player_index then return end
 
 	local data = map_data.analytics
+	local refs = player_data.refs
+
+	-- Clear overlay buttons
+	if refs then
+		clear_overlay_buttons(refs)
+	end
 
 	-- Destroy chart render objects immediately to prevent overlap when switching tabs
 	if data.breakdown_interval and data.breakdown_interval.line_ids and charts then
