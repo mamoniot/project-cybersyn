@@ -87,10 +87,11 @@ end
 ---@param refs table GUI refs containing camera
 local function clear_overlay_buttons(refs)
 	if refs.breakdown_camera then
-		-- Find and destroy the overlay container if it exists
-		local overlay = refs.breakdown_camera.breakdown_overlay_container
-		if overlay and overlay.valid then
-			overlay.destroy()
+		-- Destroy all children of the camera (the overlay buttons)
+		for _, child in pairs(refs.breakdown_camera.children) do
+			if child.valid then
+				child.destroy()
+			end
 		end
 	end
 end
@@ -110,40 +111,34 @@ local function create_overlay_buttons(refs, button_configs)
 		return
 	end
 
-	-- Create a container flow inside the camera for overlay buttons
-	-- Uses vertical flow with zero spacing for the negative margin trick
-	local container = refs.breakdown_camera.add{
-		type = "flow",
-		name = "breakdown_overlay_container",
-		direction = "vertical",
-	}
-	container.style.width = GRAPH_WIDTH
-	container.style.height = GRAPH_HEIGHT
-	container.style.padding = 0
-	container.style.vertical_spacing = 0
-
-	-- Calibration offsets for button alignment
-	local OFFSET_X = 0
-	local OFFSET_Y = 0
-
-	-- Create buttons using the negative bottom_margin trick
+	-- Create each button in its own flow container for independent positioning
 	for _, config in ipairs(button_configs) do
-		local left = config.style_mods.left_margin + OFFSET_X
-		local top = config.style_mods.top_margin + OFFSET_Y
+		local left = config.style_mods.left_margin
+		local top = config.style_mods.top_margin
 		local width = config.style_mods.width
 		local height = config.style_mods.height
 
 		-- Skip buttons that would be completely off-screen
 		if left + width > 0 and left < GRAPH_WIDTH and
 		   top + height > 0 and top < GRAPH_HEIGHT then
-			local btn = container.add{
+			-- Each button gets its own container for independent positioning
+			local wrapper = refs.breakdown_camera.add{
+				type = "flow",
+				direction = "vertical",
+			}
+			wrapper.style.width = GRAPH_WIDTH
+			wrapper.style.height = 0  -- Take no space
+			wrapper.style.padding = 0
+			wrapper.style.vertical_spacing = 0
+
+			local btn = wrapper.add{
 				type = "button",
-				style = "cybersyn_chart_overlay_button",
+				style = "button",  -- DEBUG: visible
 				tooltip = config.tooltip,
+				caption = "X",  -- DEBUG: visible marker
 			}
 			btn.style.left_margin = left
 			btn.style.top_margin = top
-			-- Negative bottom_margin makes button take zero vertical space
 			btn.style.bottom_margin = -top - height
 			btn.style.width = width
 			btn.style.height = height
@@ -608,9 +603,10 @@ function delivery_breakdown_tab.build(map_data, player_data)
 	-- Only re-render chart on cache miss (data changed)
 	if not cache_hit and camera_info then
 		-- Build overlay options for tooltip generation
+		-- Use zoom=1 for button position calculation - GUI margins don't scale with camera zoom
 		local overlay_options = {
 			camera_position = camera_info.position,
-			camera_zoom = camera_info.zoom,
+			camera_zoom = 1.0,  -- Always calculate positions for zoom=1
 			widget_size = {width = GRAPH_WIDTH, height = GRAPH_HEIGHT},
 			get_tooltip = get_segment_tooltip,
 		}
