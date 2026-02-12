@@ -1281,6 +1281,14 @@ function abort_to_depot(map_data, train_id)
         return
     end
 
+	-- SE specific: Ensure the train is on the same entity with the depot (no need to interact with the elevator)
+	local rolling_stock = get_any_train_entity(train)
+	if not rolling_stock or rolling_stock.surface_index ~= depot.entity_stop.surface_index then
+        -- Debug output
+        game.print("Cybersyn Warning: Train stuck, managed by the Cybersyn, but has depot on another surface. Skipping for now.")
+		return
+	end
+
     -- 4. Clean the failed delivery (clean the manifests)
     on_failed_delivery(map_data, train_id, train_data)
 
