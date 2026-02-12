@@ -70,6 +70,181 @@ local PHASE_TOOLTIPS = {
 	fail_layout = "Failed: Train layout mismatch",
 }
 
+---Compute statistics (min, max, avg, median, stddev) for each phase
+---@param filtered table[] Array of delivery data
+---@return table phase_stats Table mapping phase name to stats
+local function compute_phase_stats(filtered)
+	-- Collect durations per phase
+	local phase_durations = {}
+	for _, phase in ipairs(PHASE_ORDER) do
+		phase_durations[phase] = {}
+	end
+
+	for _, delivery in ipairs(filtered) do
+		for _, phase in ipairs(PHASE_ORDER) do
+			local duration = delivery[phase]
+			if duration and duration > 0 then
+				phase_durations[phase][#phase_durations[phase] + 1] = duration
+			end
+		end
+	end
+
+	-- Compute stats for each phase
+	local phase_stats = {}
+	for phase, durations in pairs(phase_durations) do
+		local count = #durations
+		if count > 0 then
+			-- Sort for median
+			table.sort(durations)
+
+			-- Min/Max
+			local min_val = durations[1]
+			local max_val = durations[count]
+
+			-- Average
+			local sum = 0
+			for _, d in ipairs(durations) do sum = sum + d end
+			local avg = sum / count
+
+			-- Median
+			local median
+			if count % 2 == 0 then
+				median = (durations[count/2] + durations[count/2 + 1]) / 2
+			else
+				median = durations[math.ceil(count/2)]
+			end
+
+			-- Standard deviation
+			local variance_sum = 0
+			for _, d in ipairs(durations) do
+				variance_sum = variance_sum + (d - avg)^2
+			end
+			local stddev = math.sqrt(variance_sum / count)
+
+			phase_stats[phase] = {
+				min = min_val,
+				max = max_val,
+				avg = avg,
+				median = median,
+				stddev = stddev,
+				count = count,
+			}
+		end
+	end
+
+	return phase_stats
+end
+
+---Generate tooltip text for a bar segment
+---@param bar_idx number Bar index
+---@param phase string Phase name
+---@param duration number Duration in seconds
+---@param delivery table Delivery data
+---@param phase_stats table? Optional phase statistics
+---@return string tooltip Formatted tooltip text
+local function get_segment_tooltip(bar_idx, phase, duration, delivery, phase_stats)
+	local label = PHASE_LABELS[phase] or phase
+	local fmt_time = charts and charts.format_time_detailed or function(d) return string.format("%.1fs", d) end
+
+	local lines = {label, "Duration: " .. fmt_time(duration)}
+
+	local stats = phase_stats and phase_stats[phase]
+	if stats then
+		lines[#lines + 1] = ""
+		lines[#lines + 1] = string.format("Min: %s", fmt_time(stats.min))
+		lines[#lines + 1] = string.format("Max: %s", fmt_time(stats.max))
+		lines[#lines + 1] = string.format("Avg: %s", fmt_time(stats.avg))
+		lines[#lines + 1] = string.format("Median: %s", fmt_time(stats.median))
+		lines[#lines + 1] = string.format("StdDev: %s", fmt_time(stats.stddev))
+	end
+
+	return table.concat(lines, "\n")
+end
+
+---Clear existing overlay buttons from the camera container
+---@param refs table GUI refs containing camera
+local function clear_overlay_buttons(refs)
+	if refs.breakdown_camera then
+		-- Destroy all children of the camera (the overlay buttons)
+		for _, child in pairs(refs.breakdown_camera.children) do
+			if child.valid then
+				child.destroy()
+			end
+		end
+	end
+end
+
+---Create overlay buttons for bar segments
+---@param refs table GUI refs
+---@param button_configs table[] Array of button configurations
+local function create_overlay_buttons(refs, button_configs)
+	if not refs.breakdown_camera or not refs.breakdown_camera.valid then
+		return
+	end
+
+	-- Clear any existing overlay buttons
+	clear_overlay_buttons(refs)
+
+	if not button_configs or #button_configs == 0 then
+		return
+	end
+
+	-- Sort buttons by right edge (descending), then by bottom edge (descending)
+	-- This ensures correct z-ordering: when wrappers overlap, the topmost one
+	-- contains the button that's actually at the hover position
+	-- Secondary sort by bottom edge handles stacked segments in the same bar
+	local sorted_configs = {}
+	for _, config in ipairs(button_configs) do
+		sorted_configs[#sorted_configs + 1] = config
+	end
+	table.sort(sorted_configs, function(a, b)
+		local right_a = a.style_mods.left_margin + a.style_mods.width
+		local right_b = b.style_mods.left_margin + b.style_mods.width
+		if right_a ~= right_b then
+			return right_a > right_b  -- Descending by right edge
+		end
+		-- Same right edge (same bar) - sort by bottom edge descending
+		-- Lower segments added first, higher segments on top
+		local bottom_a = a.style_mods.top_margin + a.style_mods.height
+		local bottom_b = b.style_mods.top_margin + b.style_mods.height
+		return bottom_a > bottom_b
+	end)
+
+	for _, config in ipairs(sorted_configs) do
+		local left = config.style_mods.left_margin
+		local top = config.style_mods.top_margin
+		local width = config.style_mods.width
+		local height = config.style_mods.height
+		local right_edge = left + width
+
+		-- Skip buttons that would be completely off-screen
+		if right_edge > 0 and left < GRAPH_WIDTH and
+		   top + height > 0 and top < GRAPH_HEIGHT then
+			local wrapper = refs.breakdown_camera.add{
+				type = "flow",
+				direction = "vertical",
+			}
+			-- Wrapper only extends to the button's right edge, not full width
+			-- Combined with descending sort order, this ensures correct z-ordering
+			wrapper.style.width = right_edge
+			wrapper.style.height = 0
+			wrapper.style.padding = 0
+			wrapper.style.vertical_spacing = 0
+
+			local btn = wrapper.add{
+				type = "button",
+				style = "cybersyn_chart_overlay_button",
+				tooltip = config.tooltip,
+			}
+			btn.style.left_margin = left
+			btn.style.top_margin = top
+			btn.style.bottom_margin = -top - height
+			btn.style.width = width
+			btn.style.height = height
+		end
+	end
+end
+
 function delivery_breakdown_tab.create()
 	local interval_buttons = {}
 	for i, name in ipairs(interval_names) do
@@ -519,16 +694,39 @@ function delivery_breakdown_tab.build(map_data, player_data)
 
 	-- Early return if no data to render (camera is already set up above)
 	if #filtered == 0 then
+		-- Clear overlay buttons when no data
+		clear_overlay_buttons(refs)
 		return
 	end
 
 	-- Only re-render chart on cache miss (data changed)
 	if not cache_hit and camera_info then
-		analytics.render_stacked_bar_chart(
+		-- Compute phase statistics for tooltips
+		local phase_stats = compute_phase_stats(filtered)
+
+		-- Build overlay options for tooltip generation
+		-- Use zoom=1 for button position calculation - GUI margins don't scale with camera zoom
+		local overlay_options = {
+			camera_position = camera_info.position,
+			camera_zoom = 1.0,  -- Always calculate positions for zoom=1
+			widget_size = {width = GRAPH_WIDTH, height = GRAPH_HEIGHT},
+			get_tooltip = function(bar_idx, phase, duration, delivery)
+				return get_segment_tooltip(bar_idx, phase, duration, delivery, phase_stats)
+			end,
+		}
+
+		local button_configs = analytics.render_stacked_bar_chart(
 			map_data, data.breakdown_interval, filtered,
 			PHASE_COLORS, PHASE_ORDER, HATCHED_PHASES,
-			GRAPH_WIDTH, GRAPH_HEIGHT
+			GRAPH_WIDTH, GRAPH_HEIGHT, overlay_options
 		)
+
+		-- Create overlay buttons for tooltips
+		if button_configs then
+			create_overlay_buttons(refs, button_configs)
+		else
+			clear_overlay_buttons(refs)
+		end
 	end
 
 	-- Update stats display using cached stats
@@ -577,6 +775,12 @@ function delivery_breakdown_tab.cleanup(map_data, player_data)
 	if not player_data.player_index then return end
 
 	local data = map_data.analytics
+	local refs = player_data.refs
+
+	-- Clear overlay buttons
+	if refs then
+		clear_overlay_buttons(refs)
+	end
 
 	-- Destroy chart render objects immediately to prevent overlap when switching tabs
 	if data.breakdown_interval and data.breakdown_interval.line_ids and charts then
