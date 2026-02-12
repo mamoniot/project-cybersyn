@@ -313,7 +313,7 @@ function ElevatorTravel.se_set_manifest_schedule(
 	builder:add_loading_order(p_stop, manifest, p_schedule_settings)
 
 	builder:add_elevator_if_necessary(p_surface, r_surface, p_stop)
-	builder:add_unloading_order(r_stop, manifest, r_schedule_settings)
+	builder:add_unloading_order(r_stop, r_schedule_settings)
 
 	builder:add_elevator_if_necessary(r_surface, d_surface, r_stop)
 	-- there must be at least one surface travel, no need to deal with require_same_depot here

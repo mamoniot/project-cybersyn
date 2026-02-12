@@ -1,4 +1,44 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.48
+Date: 2026-02-12
+  Changes:
+    - Add interactive tooltips with statistics to Breakdown chart
+---------------------------------------------------------------------------------------------------
+Version: 2.0.47
+Date: 2026-02-09
+  Changes:
+    - Explicitly show networks in Manager's Trains tab for dynamically assigned networks (NETWORK_EACH)
+---------------------------------------------------------------------------------------------------
+Version: 2.0.46
+Date: 2026-02-09
+  Changes:
+    - Change default value for new Depot combinators to NOT require same depot
+    - Change default value for new Station Control combinators to output train count
+  Bugfixes:
+    - Fix NETWORK_EACH stations/trains not showing when filtering by specific network name
+---------------------------------------------------------------------------------------------------
+Version: 2.0.45
+Date: 2026-02-08
+  Bugfixes:
+    - Fix manager filter fields (text search and network mask) not reflecting active filters when opening an already-filtered window
+    - Fix manager filter fields (text search and network mask) jumping cursor to end while editing
+---------------------------------------------------------------------------------------------------
+Version: 2.0.44
+Date: 2026-02-08
+  Bugfixes:
+    - Fix schedule generation for requester stations: ensure circuit condition is applied
+    - Fix sorting columns in manager
+---------------------------------------------------------------------------------------------------
+Version: 2.0.42
+Date: 2026-02-06
+  Changes:
+    - Breakdown tab in manager now requires item filter to display chart and inform user if not filtered
+---------------------------------------------------------------------------------------------------
+Version: 2.0.41
+Date: 2026-02-03
+  Bugfixes:
+    - Hide analytics surface from map view
+---------------------------------------------------------------------------------------------------
 Version: 2.0.40
 Date: 2026-02-01
   Changes:

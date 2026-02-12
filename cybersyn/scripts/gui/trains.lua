@@ -28,11 +28,11 @@ function trains_tab.create(widths)
 				{
 					type = "frame",
 					style = "ltnm_table_toolbar_frame",
-					templates.sort_checkbox(widths, "trains", "train_id", false),
-					templates.sort_checkbox(widths, "trains", "status", false),
-					templates.sort_checkbox(widths, "trains", "layout", false),
-					templates.sort_checkbox(widths, "trains", "depot", false),
-					templates.sort_checkbox({ trains = { shipment = widths.trains.shipment - 50 } }, "trains", "shipment", false),
+					templates.sort_checkbox(widths, "trains", "train_id", true, nil, false, trains_tab.handle.on_trains_sort_checkbox_changed),
+					templates.sort_checkbox(widths, "trains", "status", false, nil, false, trains_tab.handle.on_trains_sort_checkbox_changed),
+					templates.sort_checkbox(widths, "trains", "layout", false, nil, false, trains_tab.handle.on_trains_sort_checkbox_changed),
+					templates.sort_checkbox(widths, "trains", "depot", false, nil, false, trains_tab.handle.on_trains_sort_checkbox_changed),
+					templates.column_label({ trains = { shipment = widths.trains.shipment - 50 } }, "trains", "shipment"),
 				},
 				{ name = "manager_trains_tab_scroll_pane", type = "scroll-pane", style = "ltnm_table_scroll_pane" },
 				{
@@ -69,12 +69,24 @@ function trains_tab.build(map_data, player_data, query_limit)
 			goto continue
 		end
 		if search_network_name then
-			if search_network_name ~= train.network_name then
-				goto continue
-			end
-			local train_flag = get_network_mask(train, search_network_name)
-			if not bit32.btest(search_network_mask, train_flag) then
-				goto continue
+			if train.network_name == NETWORK_EACH then
+				-- NETWORK_EACH trains can have any network, check if this one exists
+				local network_mask = train.network_mask[search_network_name]
+				if not network_mask then
+					goto continue
+				end
+				if not bit32.btest(search_network_mask, network_mask) then
+					goto continue
+				end
+			else
+				-- Regular trains must match the network name
+				if search_network_name ~= train.network_name then
+					goto continue
+				end
+				local train_flag = get_network_mask(train, search_network_name)
+				if not bit32.btest(search_network_mask, train_flag) then
+					goto continue
+				end
 			end
 		elseif search_network_mask ~= -1 then
 			if train.network_name == NETWORK_EACH then
@@ -125,53 +137,66 @@ function trains_tab.build(map_data, player_data, query_limit)
 	table.sort(trains_sorted, function(a, b)
 		local train1 = map_data.trains[a]
 		local train2 = map_data.trains[b]
-		for i, v in ipairs(player_data.trains_orderings) do
-			local invert = player_data.trains_orderings_invert[i]
-			if v == ORDER_LAYOUT then
-				if train1.layout_id ~= train2.layout_id then
-					local layout1 = map_data.layouts[train1.layout_id]
-					local layout2 = map_data.layouts[train2.layout_id]
+
+		if not train1 or not train2 then
+			return a < b
+		end
+
+		local sort = player_data.trains_sort or { active = "train_id", ascending = {} }
+		local column = sort.active or "train_id"
+		local ascending = sort.ascending[column] ~= false  -- default to ascending
+
+		local less_than = nil
+
+		if column == "train_id" then
+			if a ~= b then
+				less_than = a < b
+			end
+		elseif column == "status" then
+			local s1 = train1.status or 0
+			local s2 = train2.status or 0
+			if s1 ~= s2 then
+				less_than = s1 < s2
+			end
+		elseif column == "layout" then
+			if train1.layout_id ~= train2.layout_id then
+				local layout1 = map_data.layouts[train1.layout_id]
+				local layout2 = map_data.layouts[train2.layout_id]
+				if layout1 and layout2 then
 					for j, c1 in ipairs(layout1) do
 						local c2 = layout2[j]
+						if c2 == nil then
+							less_than = false
+							break
+						end
 						if c1 ~= c2 then
-							return invert ~= (c2 and c1 < c2)
+							less_than = c1 < c2
+							break
 						end
 					end
-					if layout2[#layout1 + 1] then
-						return invert ~= true
-					end
-				end
-			elseif v == ORDER_DEPOT then
-				local depot1 = map_data.depots[train1.depot_id]
-				local depot2 = map_data.depots[train2.depot_id]
-				local name1 = depot1.entity_stop.valid and depot1.entity_stop.backer_name
-				local name2 = depot2.entity_stop.valid and depot2.entity_stop.backer_name
-				if name1 ~= name2 then
-					return invert ~= (name1 and (name2 and name1 < name2 or true) or false)
-				end
-			elseif v == ORDER_STATUS then
-				if train1.status ~= train2.status then
-					return invert ~= (train1.status < train2.status)
-				end
-			elseif v == ORDER_MANIFEST then
-				if not train1.manifest then
-					if train2.manifest then
-						return invert ~= true
-					end
-				elseif not train2.manifest then
-					return invert ~= false
-				else
-					local primary_item1 = train1.manifest[1]
-					local primary_item2 = train2.manifest[1]
-					if primary_item1.name ~= primary_item2.name then
-						return invert ~=
-						(primary_item1.type == primary_item2.type and primary_item1.name < primary_item2.name or (not primary_item1.type or primary_item1.type == "item"))
-					elseif primary_item1.count ~= primary_item2.count then
-						return invert ~= (primary_item1.count < primary_item2.count)
+					if less_than == nil and layout2[#layout1 + 1] then
+						less_than = true
 					end
 				end
 			end
+		elseif column == "depot" then
+			local depot1 = map_data.depots[train1.depot_id]
+			local depot2 = map_data.depots[train2.depot_id]
+			local name1 = (depot1 and depot1.entity_stop and depot1.entity_stop.valid) and depot1.entity_stop.backer_name or ""
+			local name2 = (depot2 and depot2.entity_stop and depot2.entity_stop.valid) and depot2.entity_stop.backer_name or ""
+			if name1 ~= name2 then
+				less_than = name1 < name2
+			end
 		end
+
+		if less_than ~= nil then
+			if ascending then
+				return less_than
+			else
+				return not less_than
+			end
+		end
+
 		return a < b
 	end)
 
@@ -203,13 +228,82 @@ function trains_tab.build(map_data, player_data, query_limit)
 			local network_name = train.network_name
 			---@type int?
 			local network_id = nil
+			---@type {name: string, sprite: string, mask: int?}[]
+			local network_entries = {}
 			if network_name then
 				if network_name == NETWORK_EACH then
-					network_id = train.network_mask[search_network_name] --[[@as int?]]
+					local each_sprite = util.generate_item_references(NETWORK_EACH)
+					if not each_sprite then
+						each_sprite = "utility/close_black"
+					end
+					network_entries[#network_entries + 1] = { name = NETWORK_EACH, sprite = each_sprite, mask = nil }
+
+					---@type {name: string, sprite: string, mask: int}[]
+					local mask_entries = {}
+					for name, mask in pairs(train.network_mask or {}) do
+						local sprite = util.generate_item_references(name)
+						if sprite then
+							mask_entries[#mask_entries + 1] = { name = name, sprite = sprite, mask = mask }
+						end
+					end
+					table.sort(mask_entries, function(a, b)
+						return a.name < b.name
+					end)
+					for _, entry in ipairs(mask_entries) do
+						network_entries[#network_entries + 1] = entry
+					end
+					if #mask_entries == 0 then
+						network_entries[#network_entries + 1] = {
+							name = "utility/close_black",
+							sprite = "utility/close_black",
+							mask = nil,
+						}
+					end
 				else
 					network_id = train.network_mask --[[@as int]]
+					network_sprite, _, _ = util.generate_item_references(network_name)
 				end
-				network_sprite, _, _ = util.generate_item_references(network_name)
+			end
+
+			local network_children = {}
+			if network_name == NETWORK_EACH and #network_entries > 0 then
+				for _, entry in ipairs(network_entries) do
+					network_children[#network_children + 1] = {
+						type = "sprite-button",
+						style = "ltnm_small_slot_button_default",
+						enabled = true,
+						ignored_by_interaction = true,
+						sprite = entry.sprite,
+						number = entry.mask,
+					}
+				end
+			else
+				network_children[1] = {
+					type = "sprite-button",
+					style = "ltnm_small_slot_button_default",
+					enabled = true,
+					ignored_by_interaction = true,
+					sprite = network_sprite,
+					number = network_id,
+				}
+			end
+
+			local network_widget
+			if network_name == NETWORK_EACH and #network_entries > 6 then
+				network_widget = {
+					type = "table",
+					style = "slot_table",
+					column_count = 6,
+					style_mods = { horizontal_align = "center" },
+					children = network_children,
+				}
+			else
+				network_widget = {
+					type = "flow",
+					direction = "horizontal",
+					style_mods = { horizontal_align = "center" },
+					children = network_children,
+				}
 			end
 			local color = idx % 2 == 0 and "dark" or "light"
 			gui.add(scroll_pane, {
@@ -237,14 +331,7 @@ function trains_tab.build(map_data, player_data, query_limit)
 					type = "frame",
 					style = "ltnm_table_row_frame_" .. color,
 					style_mods = { width = widths.trains.status },
-					{
-						type = "sprite-button",
-						style = "ltnm_small_slot_button_default",
-						enabled = true,
-						ignored_by_interaction = true,
-						sprite = network_sprite,
-						number = network_id
-					},
+					network_widget,
 				},
 				{
 					type = "label",
@@ -305,6 +392,41 @@ end
 ---@param player_data PlayerData
 function trains_tab.handle.on_trains_tab_selected(player, player_data)
 	player_data.selected_tab = "trains_tab"
+end
+
+---@param player LuaPlayer
+---@param player_data PlayerData
+---@param refs table<string, LuaGuiElement>
+---@param e EventData.on_gui_checked_state_changed
+function trains_tab.handle.on_trains_sort_checkbox_changed(player, player_data, refs, e)
+	local element = e.element
+	if not element or not element.tags then return end
+
+	local column = element.tags.column
+	if not column then return end
+
+	if not player_data.trains_sort then
+		player_data.trains_sort = { active = "train_id", ascending = {} }
+	end
+
+	local sort = player_data.trains_sort
+	if sort.active == column then
+		sort.ascending[column] = element.state
+	else
+		local old_column = sort.active
+		sort.active = column
+		sort.ascending[column] = element.state
+
+		for _, child in pairs(element.parent.children) do
+			if child.type == "checkbox" and child ~= element and child.tags and child.tags.column == old_column then
+				child.style = "ltnm_sort_checkbox"
+				if child.tags.width then child.style.width = child.tags.width end
+				break
+			end
+		end
+		element.style = "ltnm_selected_sort_checkbox"
+		if element.tags.width then element.style.width = element.tags.width end
+	end
 end
 
 gui.add_handlers(trains_tab.handle, trains_tab.wrapper)

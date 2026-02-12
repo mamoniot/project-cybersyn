@@ -174,6 +174,23 @@ function manager.build(player_data)
 		local network_filter_elem = refs.network
 		network_filter_elem.elem_value = util.signalid_from_name(player_data.search_network_name)
 	end
+
+	-- restore text search field so GUI reflects active filter
+	if player_data.search_query then
+		local text_field = refs.manager_text_search_field
+		if text_field.text ~= player_data.search_query then
+			text_field.text = player_data.search_query
+		end
+	end
+
+	-- restore network mask field so GUI reflects active filter
+	if player_data.search_network_mask ~= nil then
+		local mask_field = refs.manager_network_mask_field
+		local normalized_text = tostring(player_data.search_network_mask)
+		if mask_field.text ~= normalized_text then
+			mask_field.text = normalized_text
+		end
+	end
 end
 
 --- @param map_data MapData
@@ -244,6 +261,9 @@ function manager.handle.manager_open(player, player_data, refs)
 
 	player_data.is_manager_open = true
 	player.set_shortcut_toggled("cybersyn-toggle-gui", true)
+
+	-- Ensure GUI controls reflect current filters immediately
+	manager.build(player_data)
 
 	-- Warn if analytics setting is enabled but library is missing
 	local analytics_setting = settings.global["cybersyn-enable-analytics"]
@@ -349,7 +369,10 @@ end
 --- @param e GuiEventData
 function manager.handle.manager_update_network_mask(player, player_data, refs, e)
 	player_data.search_network_mask = tonumber(e.text) or -1
-	e.text = tostring(player_data.search_network_mask)
+	local normalized_text = tostring(player_data.search_network_mask)
+	if e.text ~= normalized_text then
+		e.text = normalized_text
+	end
 end
 --- @param player LuaPlayer
 --- @param player_data PlayerData

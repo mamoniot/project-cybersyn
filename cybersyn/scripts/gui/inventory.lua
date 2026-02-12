@@ -64,12 +64,24 @@ function inventory_tab.build(map_data, player_data)
 			end
 		end
 		if search_network_name then
-			if search_network_name ~= station.network_name then
-				goto continue
-			end
-			local train_flag = get_network_mask(station, station.network_name)
-			if not bit32.btest(search_network_mask, train_flag) then
-				goto continue
+			if station.network_name == NETWORK_EACH then
+				-- NETWORK_EACH stations can have any network, check if this one exists
+				local network_mask = station.network_mask[search_network_name]
+				if not network_mask then
+					goto continue
+				end
+				if not bit32.btest(search_network_mask, network_mask) then
+					goto continue
+				end
+			else
+				-- Regular stations must match the network name
+				if search_network_name ~= station.network_name then
+					goto continue
+				end
+				local train_flag = get_network_mask(station, station.network_name)
+				if not bit32.btest(search_network_mask, train_flag) then
+					goto continue
+				end
 			end
 		elseif search_network_mask ~= -1 then
 			if station.network_name == NETWORK_EACH then
