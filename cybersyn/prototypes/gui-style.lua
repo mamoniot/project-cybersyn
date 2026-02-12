@@ -370,6 +370,19 @@ styles.ltnm_train_minimap = {
 	size = 90,
 }
 
+-- CHART OVERLAY BUTTON STYLE
+
+styles.cybersyn_chart_overlay_button = {
+	type = "button_style",
+	parent = "button",
+	default_graphical_set = {},
+	hovered_graphical_set = {},
+	clicked_graphical_set = {},
+	padding = 0,
+	minimal_width = 1,
+	minimal_height = 1,
+}
+
 -- SCROLL PANE STYLES
 
 styles.ltnm_table_scroll_pane = {
