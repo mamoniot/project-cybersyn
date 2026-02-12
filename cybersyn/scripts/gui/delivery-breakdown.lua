@@ -111,31 +111,52 @@ local function create_overlay_buttons(refs, button_configs)
 		return
 	end
 
-	-- Create each button in its own flow container for independent positioning
+	-- Sort buttons by right edge (descending), then by bottom edge (descending)
+	-- This ensures correct z-ordering: when wrappers overlap, the topmost one
+	-- contains the button that's actually at the hover position
+	-- Secondary sort by bottom edge handles stacked segments in the same bar
+	local sorted_configs = {}
 	for _, config in ipairs(button_configs) do
+		sorted_configs[#sorted_configs + 1] = config
+	end
+	table.sort(sorted_configs, function(a, b)
+		local right_a = a.style_mods.left_margin + a.style_mods.width
+		local right_b = b.style_mods.left_margin + b.style_mods.width
+		if right_a ~= right_b then
+			return right_a > right_b  -- Descending by right edge
+		end
+		-- Same right edge (same bar) - sort by bottom edge descending
+		-- Lower segments added first, higher segments on top
+		local bottom_a = a.style_mods.top_margin + a.style_mods.height
+		local bottom_b = b.style_mods.top_margin + b.style_mods.height
+		return bottom_a > bottom_b
+	end)
+
+	for _, config in ipairs(sorted_configs) do
 		local left = config.style_mods.left_margin
 		local top = config.style_mods.top_margin
 		local width = config.style_mods.width
 		local height = config.style_mods.height
+		local right_edge = left + width
 
 		-- Skip buttons that would be completely off-screen
-		if left + width > 0 and left < GRAPH_WIDTH and
+		if right_edge > 0 and left < GRAPH_WIDTH and
 		   top + height > 0 and top < GRAPH_HEIGHT then
-			-- Each button gets its own container for independent positioning
 			local wrapper = refs.breakdown_camera.add{
 				type = "flow",
 				direction = "vertical",
 			}
-			wrapper.style.width = GRAPH_WIDTH
-			wrapper.style.height = 0  -- Take no space
+			-- Wrapper only extends to the button's right edge, not full width
+			-- Combined with descending sort order, this ensures correct z-ordering
+			wrapper.style.width = right_edge
+			wrapper.style.height = 0
 			wrapper.style.padding = 0
 			wrapper.style.vertical_spacing = 0
 
 			local btn = wrapper.add{
 				type = "button",
-				style = "button",  -- DEBUG: visible
+				style = "cybersyn_chart_overlay_button",
 				tooltip = config.tooltip,
-				caption = "X",  -- DEBUG: visible marker
 			}
 			btn.style.left_margin = left
 			btn.style.top_margin = top
