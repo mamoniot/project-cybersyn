@@ -70,17 +70,95 @@ local PHASE_TOOLTIPS = {
 	fail_layout = "Failed: Train layout mismatch",
 }
 
+---Compute statistics (min, max, avg, median, stddev) for each phase
+---@param filtered table[] Array of delivery data
+---@return table phase_stats Table mapping phase name to stats
+local function compute_phase_stats(filtered)
+	-- Collect durations per phase
+	local phase_durations = {}
+	for _, phase in ipairs(PHASE_ORDER) do
+		phase_durations[phase] = {}
+	end
+
+	for _, delivery in ipairs(filtered) do
+		for _, phase in ipairs(PHASE_ORDER) do
+			local duration = delivery[phase]
+			if duration and duration > 0 then
+				phase_durations[phase][#phase_durations[phase] + 1] = duration
+			end
+		end
+	end
+
+	-- Compute stats for each phase
+	local phase_stats = {}
+	for phase, durations in pairs(phase_durations) do
+		local count = #durations
+		if count > 0 then
+			-- Sort for median
+			table.sort(durations)
+
+			-- Min/Max
+			local min_val = durations[1]
+			local max_val = durations[count]
+
+			-- Average
+			local sum = 0
+			for _, d in ipairs(durations) do sum = sum + d end
+			local avg = sum / count
+
+			-- Median
+			local median
+			if count % 2 == 0 then
+				median = (durations[count/2] + durations[count/2 + 1]) / 2
+			else
+				median = durations[math.ceil(count/2)]
+			end
+
+			-- Standard deviation
+			local variance_sum = 0
+			for _, d in ipairs(durations) do
+				variance_sum = variance_sum + (d - avg)^2
+			end
+			local stddev = math.sqrt(variance_sum / count)
+
+			phase_stats[phase] = {
+				min = min_val,
+				max = max_val,
+				avg = avg,
+				median = median,
+				stddev = stddev,
+				count = count,
+			}
+		end
+	end
+
+	return phase_stats
+end
+
 ---Generate tooltip text for a bar segment
 ---@param bar_idx number Bar index
 ---@param phase string Phase name
 ---@param duration number Duration in seconds
 ---@param delivery table Delivery data
+---@param phase_stats table? Optional phase statistics
 ---@return string tooltip Formatted tooltip text
-local function get_segment_tooltip(bar_idx, phase, duration, delivery)
+local function get_segment_tooltip(bar_idx, phase, duration, delivery, phase_stats)
 	local label = PHASE_LABELS[phase] or phase
-	local desc = PHASE_TOOLTIPS[phase] or ""
-	local time = charts and charts.format_time_detailed(duration) or string.format("%.1fs", duration)
-	return string.format("%s\n%s\nDuration: %s", label, desc, time)
+	local fmt_time = charts and charts.format_time_detailed or function(d) return string.format("%.1fs", d) end
+
+	local lines = {label, "Duration: " .. fmt_time(duration)}
+
+	local stats = phase_stats and phase_stats[phase]
+	if stats then
+		lines[#lines + 1] = ""
+		lines[#lines + 1] = string.format("Min: %s", fmt_time(stats.min))
+		lines[#lines + 1] = string.format("Max: %s", fmt_time(stats.max))
+		lines[#lines + 1] = string.format("Avg: %s", fmt_time(stats.avg))
+		lines[#lines + 1] = string.format("Median: %s", fmt_time(stats.median))
+		lines[#lines + 1] = string.format("StdDev: %s", fmt_time(stats.stddev))
+	end
+
+	return table.concat(lines, "\n")
 end
 
 ---Clear existing overlay buttons from the camera container
@@ -623,13 +701,18 @@ function delivery_breakdown_tab.build(map_data, player_data)
 
 	-- Only re-render chart on cache miss (data changed)
 	if not cache_hit and camera_info then
+		-- Compute phase statistics for tooltips
+		local phase_stats = compute_phase_stats(filtered)
+
 		-- Build overlay options for tooltip generation
 		-- Use zoom=1 for button position calculation - GUI margins don't scale with camera zoom
 		local overlay_options = {
 			camera_position = camera_info.position,
 			camera_zoom = 1.0,  -- Always calculate positions for zoom=1
 			widget_size = {width = GRAPH_WIDTH, height = GRAPH_HEIGHT},
-			get_tooltip = get_segment_tooltip,
+			get_tooltip = function(bar_idx, phase, duration, delivery)
+				return get_segment_tooltip(bar_idx, phase, duration, delivery, phase_stats)
+			end,
 		}
 
 		local button_configs = analytics.render_stacked_bar_chart(
