@@ -161,89 +161,12 @@ local function get_segment_tooltip(bar_idx, phase, duration, delivery, phase_sta
 	return table.concat(lines, "\n")
 end
 
----Clear existing overlay buttons from the camera container
----@param refs table GUI refs containing camera
-local function clear_overlay_buttons(refs)
-	if refs.breakdown_camera then
-		-- Destroy all children of the camera (the overlay buttons)
-		for _, child in pairs(refs.breakdown_camera.children) do
-			if child.valid then
-				child.destroy()
-			end
-		end
-	end
-end
-
----Create overlay buttons for bar segments
----@param refs table GUI refs
----@param button_configs table[] Array of button configurations
-local function create_overlay_buttons(refs, button_configs)
-	if not refs.breakdown_camera or not refs.breakdown_camera.valid then
-		return
-	end
-
-	-- Clear any existing overlay buttons
-	clear_overlay_buttons(refs)
-
-	if not button_configs or #button_configs == 0 then
-		return
-	end
-
-	-- Sort buttons by right edge (descending), then by bottom edge (descending)
-	-- This ensures correct z-ordering: when wrappers overlap, the topmost one
-	-- contains the button that's actually at the hover position
-	-- Secondary sort by bottom edge handles stacked segments in the same bar
-	local sorted_configs = {}
-	for _, config in ipairs(button_configs) do
-		sorted_configs[#sorted_configs + 1] = config
-	end
-	table.sort(sorted_configs, function(a, b)
-		local right_a = a.style_mods.left_margin + a.style_mods.width
-		local right_b = b.style_mods.left_margin + b.style_mods.width
-		if right_a ~= right_b then
-			return right_a > right_b  -- Descending by right edge
-		end
-		-- Same right edge (same bar) - sort by bottom edge descending
-		-- Lower segments added first, higher segments on top
-		local bottom_a = a.style_mods.top_margin + a.style_mods.height
-		local bottom_b = b.style_mods.top_margin + b.style_mods.height
-		return bottom_a > bottom_b
-	end)
-
-	for _, config in ipairs(sorted_configs) do
-		local left = config.style_mods.left_margin
-		local top = config.style_mods.top_margin
-		local width = config.style_mods.width
-		local height = config.style_mods.height
-		local right_edge = left + width
-
-		-- Skip buttons that would be completely off-screen
-		if right_edge > 0 and left < GRAPH_WIDTH and
-		   top + height > 0 and top < GRAPH_HEIGHT then
-			local wrapper = refs.breakdown_camera.add{
-				type = "flow",
-				direction = "vertical",
-			}
-			-- Wrapper only extends to the button's right edge, not full width
-			-- Combined with descending sort order, this ensures correct z-ordering
-			wrapper.style.width = right_edge
-			wrapper.style.height = 0
-			wrapper.style.padding = 0
-			wrapper.style.vertical_spacing = 0
-
-			local btn = wrapper.add{
-				type = "button",
-				style = "cybersyn_chart_overlay_button",
-				tooltip = config.tooltip,
-			}
-			btn.style.left_margin = left
-			btn.style.top_margin = top
-			btn.style.bottom_margin = -top - height
-			btn.style.width = width
-			btn.style.height = height
-		end
-	end
-end
+---Overlay button options for charts library
+local OVERLAY_BUTTON_OPTIONS = {
+	button_style = "cybersyn_chart_overlay_button",
+	widget_width = GRAPH_WIDTH,
+	widget_height = GRAPH_HEIGHT,
+}
 
 function delivery_breakdown_tab.create()
 	local interval_buttons = {}
@@ -695,7 +618,7 @@ function delivery_breakdown_tab.build(map_data, player_data)
 	-- Early return if no data to render (camera is already set up above)
 	if #filtered == 0 then
 		-- Clear overlay buttons when no data
-		clear_overlay_buttons(refs)
+		charts.create_overlay_buttons(refs.breakdown_camera, {}, OVERLAY_BUTTON_OPTIONS)
 		return
 	end
 
@@ -722,11 +645,7 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		)
 
 		-- Create overlay buttons for tooltips
-		if button_configs then
-			create_overlay_buttons(refs, button_configs)
-		else
-			clear_overlay_buttons(refs)
-		end
+		charts.create_overlay_buttons(refs.breakdown_camera, button_configs or {}, OVERLAY_BUTTON_OPTIONS)
 	end
 
 	-- Update stats display using cached stats
@@ -778,8 +697,8 @@ function delivery_breakdown_tab.cleanup(map_data, player_data)
 	local refs = player_data.refs
 
 	-- Clear overlay buttons
-	if refs then
-		clear_overlay_buttons(refs)
+	if refs and refs.breakdown_camera then
+		charts.create_overlay_buttons(refs.breakdown_camera, {}, OVERLAY_BUTTON_OPTIONS)
 	end
 
 	-- Destroy chart render objects immediately to prevent overlap when switching tabs
