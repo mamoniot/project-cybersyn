@@ -1120,6 +1120,9 @@ function tick_poll_entities(map_data, mod_settings)
 						send_alert_stuck_train(map_data, train.entity)
 					end
 					interface_raise_train_stuck(train_id)
+					if mod_settings.abort_stuck_train_to_depot then
+						abort_to_depot(map_data, train_id)
+					end
 				elseif train.status == STATUS_TO_D_BYPASS and tick >= (train.skip_path_checks_until or 0) then
 					add_available_train(map_data, train_id, train)
 				end
@@ -1246,4 +1249,74 @@ function tick(map_data, mod_settings)
 	else
 		map_data.tick_state = STATE_INIT
 	end
+end
+---@param map_data MapData
+---@param train_id uint
+function abort_to_depot(map_data, train_id)
+    local train_data = map_data.trains[train_id]
+    if not train_data then return end
+
+    -- 1. Only trains going to provider
+    if train_data.status ~= STATUS_TO_P then
+        return
+    end
+
+    local train = train_data.entity
+    if not (train and train.valid) then return end
+    if train.manual_mode then return end
+
+    -- 2. Must be empty
+    local is_train_empty = next(train.get_contents()) == nil and next(train.get_fluid_contents()) == nil
+    if not is_train_empty then
+        -- Debug output
+        -- game.print("Cybersyn Warning: Train stuck, going to provider, but not empty?")
+        return
+    end
+
+    -- 3. Extract depot from existing schedule
+    local depot = map_data.depots[train_data.depot_id]
+    if not (depot and depot.entity_stop and depot.entity_stop.valid) then
+        -- Debug output
+        -- game.print("Cybersyn Warning: Train stuck, managed by the Cybersyn, but has no depot?")
+        return
+    end
+
+	-- SE specific: Ensure the train is on the same entity with the depot (no need to interact with the elevator)
+	local rolling_stock = get_any_train_entity(train)
+	if not rolling_stock or rolling_stock.surface_index ~= depot.entity_stop.surface_index then
+        -- Debug output
+        game.print("Cybersyn Warning: Train stuck, managed by the Cybersyn, but has depot on another surface. Skipping for now.")
+		return
+	end
+
+    -- 4. Clean the failed delivery (clean the manifests)
+    on_failed_delivery(map_data, train_id, train_data)
+
+    -- 5. Build new schedule
+    ---@type WaitCondition
+    local condition_wait_inactive = { type = "inactivity", compare_type = "and", ticks = INACTIVITY_TIME }
+    local schedule = train.get_schedule()
+    local depot_record = {
+        station = depot.entity_stop.backer_name,
+        wait_conditions = { condition_wait_inactive }
+    }
+    schedule.clear_records()
+    schedule.add_record(depot_record)
+
+    -- 6. Update Cybersyn state
+    train_data.status = STATUS_TO_D
+    if not train_data.use_any_depot then
+        -- train using same depot, coord. station was inserted -> we need to color
+        color_train_by_stop(train_data.entity, map_data.depots[train_data.depot_id].entity_stop)
+    end
+    interface_raise_train_status_changed(train_id, STATUS_TO_P, STATUS_TO_D)
+
+    -- 7. Debug output to console
+    local gps_tag = ""
+    if (train.front_stock and train.front_stock.valid) then
+        local entity = train.front_stock
+        local pos = entity.position
+        gps_tag = string.format("[gps=%f,%f,%s]", pos.x, pos.y, entity.surface.name)
+    end
+    game.print("Cybersyn Info: Train stuck - sent to the depot successfully " .. gps_tag)
 end
