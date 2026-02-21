@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.49
+Date: 2026-02-11
+  Bugfixes:
+    - Train leaving provider while there was no path was causing some of the missing manifests output at requester and "train unexpectedly returned to depot" alerts
+---------------------------------------------------------------------------------------------------
 Version: 2.0.48
 Date: 2026-02-12
   Changes:

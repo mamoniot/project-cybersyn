@@ -587,8 +587,21 @@ function on_train_changed(event)
 				end
 
 				on_train_leaves_stop(map_data, mod_settings, train_id, train)
+			elseif not path and train_e.state == defines.train_state.no_path then
+				-- There is no path to the next stop because path is broken or blocked
+				-- This will mark train for now and do the cleanup later when its unblocked
+				train.no_path_departure = true
 			elseif train_e.get_schedule().get_record_count() == 0 then
 				-- There is no path when the schedule runs empty
+				on_train_leaves_stop(map_data, mod_settings, train_id, train)
+			end
+		end
+	elseif event.old_state == defines.train_state.no_path then
+		local train = map_data.trains[train_id]
+		if train and train.no_path_departure then
+			if train_e.state == defines.train_state.on_the_path or train_e.state == defines.train_state.manual_control then
+				-- finish delayed cleanup
+				train.no_path_departure = nil
 				on_train_leaves_stop(map_data, mod_settings, train_id, train)
 			end
 		end
