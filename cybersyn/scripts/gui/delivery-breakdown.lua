@@ -206,7 +206,8 @@ function delivery_breakdown_tab.create()
 				value = 1,
 				style_mods = {
 					width = 24,
-					height = 16,
+					height = 18,
+					bar_width = 18,
 					color = PHASE_COLORS[phase],
 				},
 			},

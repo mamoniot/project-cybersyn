@@ -70,7 +70,7 @@ function manager.create(player)
 									clear_and_focus_on_right_click = true,
 									handler = { [defines.events.on_gui_text_changed] = manager.handle.manager_update_text_search },
 								},
-								{ type = "label", style = "subheader_caption_label", caption = { "cybersyn-gui.search-item-label" } },
+								{ type = "label", name = "manager_item_filter_label", style = "subheader_caption_label", caption = { "cybersyn-gui.search-item-label" } },
 								{
 									type = "choose-elem-button",
 									name = "manager_item_filter",
@@ -210,6 +210,16 @@ function manager.update(map_data, player_data, query_limit)
 			delivery_breakdown_tab.cleanup(map_data, player_data)
 		end
 		player_data.previous_tab = current_tab
+	end
+
+	-- Hide item filter on tabs that don't use it (utilization filters by layout, not item)
+	local refs = player_data.refs
+	local show_item_filter = current_tab ~= "utilization_tab"
+	if refs.manager_item_filter_label then
+		refs.manager_item_filter_label.visible = show_item_filter
+	end
+	if refs.manager_item_filter then
+		refs.manager_item_filter.visible = show_item_filter
 	end
 
 	if player_data.selected_tab == "stations_tab" then
