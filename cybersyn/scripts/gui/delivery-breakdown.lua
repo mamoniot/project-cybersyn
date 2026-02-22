@@ -205,8 +205,8 @@ function delivery_breakdown_tab.create()
 				type = "progressbar",
 				value = 1,
 				style_mods = {
-					width = 16,
-					height = 12,
+					width = 24,
+					height = 16,
 					color = PHASE_COLORS[phase],
 				},
 			},
