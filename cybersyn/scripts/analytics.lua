@@ -570,6 +570,7 @@ function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phas
 			phase_colors = phase_colors,
 			phase_order = phase_order,
 			hatched_phases = hatched_phases,
+			bar_icons = overlay_options.bar_icons,
 			ttl = 360,
 			viewport_width = viewport_width,
 			viewport_height = viewport_height,

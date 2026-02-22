@@ -146,7 +146,21 @@ local function get_segment_tooltip(bar_idx, phase, duration, delivery, phase_sta
 	local label = PHASE_LABELS[phase] or phase
 	local fmt_time = charts and charts.format_time_detailed or function(d) return string.format("%.1fs", d) end
 
-	local lines = {label, "Duration: " .. fmt_time(duration)}
+	local lines = {}
+
+	-- Show item icon and name when available (most useful when no item filter is set)
+	if delivery.item_hash then
+		local item_name = unhash_signal(delivery.item_hash)
+		if item_name then
+			local item_type = prototypes.item[item_name] and "item" or
+				prototypes.fluid[item_name] and "fluid" or "item"
+			lines[#lines + 1] = "[img=" .. item_type .. "/" .. item_name .. "] " .. item_name
+			lines[#lines + 1] = ""
+		end
+	end
+
+	lines[#lines + 1] = label
+	lines[#lines + 1] = "Duration: " .. fmt_time(duration)
 
 	local stats = phase_stats and phase_stats[phase]
 	if stats then
@@ -327,14 +341,6 @@ function delivery_breakdown_tab.create()
 				ref = { "delivery_breakdown", "no_data_label" },
 				visible = false,
 			},
-			-- No item filter message
-			{
-				name = "breakdown_select_item_label",
-				type = "label",
-				caption = { "cybersyn-gui.breakdown-select-item" },
-				ref = { "delivery_breakdown", "select_item_label" },
-				visible = true,
-			},
 		},
 	}
 end
@@ -385,55 +391,54 @@ local function gather_filter_and_stats(map_data, data, oldest_tick, search_item)
 		end
 	end
 
-	-- Gather active failures - each stuck request becomes its own bar
-	-- When the request is satisfied, this bar disappears and a completed delivery bar appears
-	local active_failures = analytics.get_active_failures(map_data, oldest_tick)
-	for _, failure in ipairs(active_failures) do
-		local include = true
-		if search_item then
+	-- Gather active failures only when an item filter is set
+	-- Without a filter, showing failures for all items would be noisy and confusing
+	if search_item then
+		local active_failures = analytics.get_active_failures(map_data, oldest_tick)
+		for _, failure in ipairs(active_failures) do
 			local item_name = unhash_signal(failure.item_hash)
-			include = (item_name == search_item)
-		end
+			local include = (item_name == search_item)
 
-		if include then
-			fail_count = fail_count + 1
-			local duration = failure.duration or 0
+			if include then
+				fail_count = fail_count + 1
+				local duration = failure.duration or 0
 
-			-- Track stats for display (max duration per type)
-			if failure.failure_reason == FAILURE_REASON_NO_PROVIDER_STOCK then
-				count_fail_no_stock = count_fail_no_stock + 1
-				if duration > max_fail_no_stock then
-					max_fail_no_stock = duration
+				-- Track stats for display (max duration per type)
+				if failure.failure_reason == FAILURE_REASON_NO_PROVIDER_STOCK then
+					count_fail_no_stock = count_fail_no_stock + 1
+					if duration > max_fail_no_stock then
+						max_fail_no_stock = duration
+					end
+				elseif failure.failure_reason == FAILURE_REASON_NO_TRAIN_AVAILABLE then
+					count_fail_no_train = count_fail_no_train + 1
+					if duration > max_fail_no_train then
+						max_fail_no_train = duration
+					end
+				elseif failure.failure_reason == FAILURE_REASON_TRAIN_CAPACITY then
+					count_fail_capacity = count_fail_capacity + 1
+					if duration > max_fail_capacity then
+						max_fail_capacity = duration
+					end
+				else
+					count_fail_layout = count_fail_layout + 1
+					if duration > max_fail_layout then
+						max_fail_layout = duration
+					end
 				end
-			elseif failure.failure_reason == FAILURE_REASON_NO_TRAIN_AVAILABLE then
-				count_fail_no_train = count_fail_no_train + 1
-				if duration > max_fail_no_train then
-					max_fail_no_train = duration
+
+				-- Add individual bar for this stuck request
+				local bar = { complete_tick = failure.last_tick }
+				if failure.failure_reason == FAILURE_REASON_NO_PROVIDER_STOCK then
+					bar.fail_no_stock = duration
+				elseif failure.failure_reason == FAILURE_REASON_NO_TRAIN_AVAILABLE then
+					bar.fail_no_train = duration
+				elseif failure.failure_reason == FAILURE_REASON_TRAIN_CAPACITY then
+					bar.fail_capacity = duration
+				else
+					bar.fail_layout = duration
 				end
-			elseif failure.failure_reason == FAILURE_REASON_TRAIN_CAPACITY then
-				count_fail_capacity = count_fail_capacity + 1
-				if duration > max_fail_capacity then
-					max_fail_capacity = duration
-				end
-			else
-				count_fail_layout = count_fail_layout + 1
-				if duration > max_fail_layout then
-					max_fail_layout = duration
-				end
+				filtered[#filtered + 1] = bar
 			end
-
-			-- Add individual bar for this stuck request
-			local bar = { complete_tick = failure.last_tick }
-			if failure.failure_reason == FAILURE_REASON_NO_PROVIDER_STOCK then
-				bar.fail_no_stock = duration
-			elseif failure.failure_reason == FAILURE_REASON_NO_TRAIN_AVAILABLE then
-				bar.fail_no_train = duration
-			elseif failure.failure_reason == FAILURE_REASON_TRAIN_CAPACITY then
-				bar.fail_capacity = duration
-			else
-				bar.fail_layout = duration
-			end
-			filtered[#filtered + 1] = bar
 		end
 	end
 
@@ -504,23 +509,11 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		end
 	end
 
-	-- Use item filter from manager toolbar (required for breakdown chart)
+	-- Use item filter from manager toolbar (optional - shows all items when not set)
 	local search_item = player_data.search_item
-
-	-- Check if item filter is set - breakdown chart requires an item filter
 	local has_item_filter = search_item and search_item ~= ""
-	if refs.breakdown_select_item_label then
-		refs.breakdown_select_item_label.visible = not has_item_filter
-	end
 	if not has_item_filter then
-		-- Hide chart and no-data message when no item filter
-		if refs.breakdown_main_flow then
-			refs.breakdown_main_flow.visible = false
-		end
-		if refs.breakdown_no_data_label then
-			refs.breakdown_no_data_label.visible = false
-		end
-		return
+		search_item = nil
 	end
 
 	-- Calculate time range based on interval (needed for cache key)
@@ -627,6 +620,22 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		-- Compute phase statistics for tooltips
 		local phase_stats = compute_phase_stats(filtered)
 
+		-- Build bar_icons array when no item filter is set so users can identify items
+		local bar_icons = nil
+		if not has_item_filter then
+			bar_icons = {}
+			for i, delivery in ipairs(filtered) do
+				if delivery.item_hash then
+					local item_name = unhash_signal(delivery.item_hash)
+					if item_name then
+						local item_type = prototypes.item[item_name] and "item" or
+							prototypes.fluid[item_name] and "fluid" or "item"
+						bar_icons[i] = item_type .. "/" .. item_name
+					end
+				end
+			end
+		end
+
 		-- Build overlay options for tooltip generation
 		-- Use zoom=1 for button position calculation - GUI margins don't scale with camera zoom
 		local overlay_options = {
@@ -636,6 +645,7 @@ function delivery_breakdown_tab.build(map_data, player_data)
 			get_tooltip = function(bar_idx, phase, duration, delivery)
 				return get_segment_tooltip(bar_idx, phase, duration, delivery, phase_stats)
 			end,
+			bar_icons = bar_icons,
 		}
 
 		local button_configs = analytics.render_stacked_bar_chart(
