@@ -273,7 +273,10 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 				end
 			end
 		end
-		color_train_by_stop(train.entity, map_data.stations[train.r_station_id].entity_stop)
+		local r_station = map_data.stations[train.r_station_id]
+		if r_station then
+			color_train_by_stop(train.entity, r_station.entity_stop)
+		end
 		-- Record phase: left provider (loading complete)
 		analytics.record_phase_leave_provider(map_data, train_id)
 		interface_raise_train_status_changed(train_id, STATUS_P, STATUS_TO_R)
