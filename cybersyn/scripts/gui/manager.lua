@@ -50,6 +50,12 @@ function manager.create(player)
 						},
 						--templates.frame_action_button("manager_pin_button", "ltnm_pin", { "cybersyn-gui.keep-open" }, manager.handle.manager_pin),--on_gui_clicked
 						--templates.frame_action_button("manager_refresh_button", "ltnm_refresh", { "cybersyn-gui.refresh-tooltip" }, manager.handle.manager_refresh_click),--on_gui_clicked
+						{
+							name = "cybersyn_recent_items_flow",
+							type = "flow",
+							direction = "horizontal",
+							style_mods = { horizontal_spacing = 2 },
+						},
 						templates.frame_action_button(nil, "utility/close", { "gui.close-instruction" }, manager.handle
 						.manager_close),                                                                                          --on_gui_clicked
 					},
@@ -212,14 +218,16 @@ function manager.update(map_data, player_data, query_limit)
 		player_data.previous_tab = current_tab
 	end
 
-	-- Hide item filter on tabs that don't use it (utilization filters by layout, not item)
+	-- Disable item filter on tabs that don't use it (utilization filters by layout, not item)
 	local refs = player_data.refs
-	local show_item_filter = current_tab ~= "utilization_tab"
+	local item_filter_enabled = current_tab ~= "utilization_tab"
 	if refs.manager_item_filter_label then
-		refs.manager_item_filter_label.visible = show_item_filter
+		refs.manager_item_filter_label.enabled = item_filter_enabled
 	end
 	if refs.manager_item_filter then
-		refs.manager_item_filter.visible = show_item_filter
+		refs.manager_item_filter.enabled = item_filter_enabled
+		refs.manager_item_filter.tooltip = not item_filter_enabled
+			and {"cybersyn-gui.item-filter-disabled-tooltip"} or ""
 	end
 
 	if player_data.selected_tab == "stations_tab" then
@@ -274,6 +282,9 @@ function manager.handle.manager_open(player, player_data, refs)
 
 	-- Ensure GUI controls reflect current filters immediately
 	manager.build(player_data)
+
+	-- Show recent external items panel
+	manager.build_recent_panel(player, player_data)
 
 	-- Warn if analytics setting is enabled but library is missing
 	local analytics_setting = settings.global["cybersyn-enable-analytics"]
@@ -354,6 +365,7 @@ function manager.handle.manager_update_item_search(player, player_data, refs, e)
 	local signal = e.element.elem_value
 	if signal then
 		player_data.search_item = signal.name
+		interface_raise_item_selected(e.player_index, signal.name)
 	else
 		player_data.search_item = nil
 	end
@@ -404,6 +416,61 @@ function manager.handle.manager_update_surface(player, player_data, refs, e)
 	end
 
 	player_data.search_surface_idx = surface_id
+end
+
+--- @param player LuaPlayer
+--- @param player_data PlayerData
+--- @param refs table<string, LuaGuiElement>
+--- @param e GuiEventData
+function manager.handle.recent_item_click(player, player_data, refs, e)
+	local element = e.element
+	if not element then return end
+	local tags = element.tags
+	if tags and tags.item_name then
+		player_data.search_item = tags.item_name
+		-- Update the item filter chooser to reflect the selection
+		if refs.manager_item_filter then
+			refs.manager_item_filter.elem_value = util.signalid_from_name(tags.item_name)
+		end
+		interface_raise_item_selected(e.player_index, tags.item_name)
+	end
+end
+
+--- Update the recent items buttons in the titlebar.
+--- @param player LuaPlayer
+--- @param player_data PlayerData
+function manager.build_recent_panel(player, player_data)
+	local flow = player_data.refs.cybersyn_recent_items_flow
+	if not flow then return end
+
+	flow.clear()
+
+	local items = storage.recent_external_items and storage.recent_external_items[player.index]
+	if not items or #items == 0 then return end
+
+	for i, entry in ipairs(items) do
+		local sprite_path
+		if prototypes.item[entry.item_name] then
+			sprite_path = "item/" .. entry.item_name
+		elseif prototypes.fluid[entry.item_name] then
+			sprite_path = "fluid/" .. entry.item_name
+		end
+
+		if sprite_path then
+			local proto = prototypes.item[entry.item_name] or prototypes.fluid[entry.item_name]
+			local tooltip = proto and proto.localised_name or entry.item_name
+			gui.add(flow, {
+				{
+					type = "sprite-button",
+					sprite = sprite_path,
+					tooltip = tooltip,
+					style = "frame_action_button",
+					tags = { item_name = entry.item_name },
+					handler = { [defines.events.on_gui_click] = manager.handle.recent_item_click },
+				},
+			})
+		end
+	end
 end
 
 gui.add_handlers(manager.handle, manager.wrapper)
