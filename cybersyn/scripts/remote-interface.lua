@@ -119,7 +119,7 @@ function interface.get_on_item_selected()
 	if not on_item_selected then on_item_selected = script_generate_event_name() end
 	return on_item_selected
 end
-function interface.version()
+function interface.interop_version()
 	return 1
 end
 
