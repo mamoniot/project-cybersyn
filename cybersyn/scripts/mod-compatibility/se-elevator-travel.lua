@@ -163,7 +163,10 @@ local function se_on_train_teleport_finished(event)
 	train.entity = train_entity
 
 	if train.se_awaiting_removal then
-		remove_train(map_data, train.se_awaiting_removal, train)
+		train.se_awaiting_removal = nil
+		if map_data.trains[new_id] == train then
+			remove_train(map_data, new_id, train)
+		end
 		lock_train(train.entity)
 		send_alert_station_of_train_broken(map_data, train.entity)
 		return
