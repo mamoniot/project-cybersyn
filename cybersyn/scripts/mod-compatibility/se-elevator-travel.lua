@@ -129,14 +129,25 @@ end
 local function se_on_train_teleport_finished(event)
 	---@type MapData
 	local map_data = storage
-	---@type LuaTrain
+	---@type LuaTrain?
 	local train_entity = event.train
-	---@type uint
-	local new_id = train_entity.id
 
 	local old_id = event.old_train_id_1
 	local train = map_data.trains[old_id]
 	if not train then return end
+
+	-- If the train entity is nil (e.g. a modded carriage prototype was removed
+	-- between save and reload, splitting/destroying the train mid-teleport),
+	-- treat it as a total loss: abort any active delivery and clean up.
+	if not train_entity then
+		train.se_is_being_teleported = nil
+		game.print({"cybersyn-messages.train-lost-in-teleport"})
+		remove_train(map_data, old_id, train)
+		return
+	end
+
+	---@type uint
+	local new_id = train_entity.id
 
 	if train.is_available then
 		local f, a
