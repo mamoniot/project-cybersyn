@@ -121,7 +121,7 @@
 ---@field public se_awaiting_removal any? --se only
 ---@field public se_awaiting_rename any? --se only
 ---@field public skip_path_checks_until int?
----@field public no_path_departure true?
+---@field public stuck_departure true?
 
 ---@alias Manifest ManifestEntry[]
 ---@class ManifestEntry
