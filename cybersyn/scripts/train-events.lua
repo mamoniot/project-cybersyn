@@ -38,7 +38,7 @@ function on_failed_delivery(map_data, train_id, train)
 	local is_r_in_progress = is_p_in_progress or train.status == STATUS_TO_R or train.status == STATUS_R
 	if is_p_in_progress then
 		local station = map_data.stations[p_station_id]
-		if station.entity_comb1.valid and (not station.entity_comb2 or station.entity_comb2.valid) then
+		if station and station.entity_comb1.valid and (not station.entity_comb2 or station.entity_comb2.valid) then
 			remove_manifest(map_data, station, manifest, 1)
 			if train.status == STATUS_P then
 				set_comb1(map_data, station, nil)
@@ -256,10 +256,12 @@ end
 local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 	if train.status == STATUS_P then
 		train.status = STATUS_TO_R
-		local station = map_data.stations[train.p_station_id]
-		remove_manifest(map_data, station, train.manifest, 1)
-		set_comb1(map_data, station, nil)
-		unset_wagon_combs(map_data, station)
+		local p_station = map_data.stations[train.p_station_id]
+		if p_station then
+			remove_manifest(map_data, p_station, train.manifest, 1)
+			set_comb1(map_data, p_station, nil)
+			unset_wagon_combs(map_data, p_station)
+		end
 		if train.has_filtered_wagon then
 			train.has_filtered_wagon = nil
 			for carriage_i, carriage in ipairs(train.entity.cargo_wagons) do
@@ -273,15 +275,25 @@ local function on_train_leaves_stop(map_data, mod_settings, train_id, train)
 				end
 			end
 		end
-		color_train_by_stop(train.entity, map_data.stations[train.r_station_id].entity_stop)
+		local r_station = map_data.stations[train.r_station_id]
+		if not r_station then
+			-- Requester station removed, delivery cannot continue
+			remove_train(map_data, train_id, train)
+			lock_train(train.entity)
+			send_alert_station_of_train_broken(map_data, train.entity)
+			return
+		end
+		color_train_by_stop(train.entity, r_station.entity_stop)
 		-- Record phase: left provider (loading complete)
 		analytics.record_phase_leave_provider(map_data, train_id)
 		interface_raise_train_status_changed(train_id, STATUS_P, STATUS_TO_R)
 	elseif train.status == STATUS_R then
 		local station = map_data.stations[train.r_station_id]
-		remove_manifest(map_data, station, train.manifest, -1)
-		set_comb1(map_data, station, nil)
-		unset_wagon_combs(map_data, station)
+		if station then
+			remove_manifest(map_data, station, train.manifest, -1)
+			set_comb1(map_data, station, nil)
+			unset_wagon_combs(map_data, station)
+		end
 		--complete delivery
 		-- Record delivery completion for analytics (after unloading)
 		analytics.record_delivery_complete(map_data, train_id)
