@@ -637,13 +637,6 @@ function interop_subscribe_to_events()
 					if not player then return end
 					local item_name = e.item_name
 					if item_name and (prototypes.item[item_name] or prototypes.fluid[item_name]) then
-						handling_external = true
-						-- Update Cybersyn's item filter if manager is open
-						local player_data = storage.manager and storage.manager.players[e.player_index]
-						if player_data then
-							player_data.search_item = item_name
-						end
-						handling_external = false
 						interop_add_recent_item(e.player_index, item_name, source_iface)
 						if interop_on_external_item_callback then
 							interop_on_external_item_callback(e.player_index, item_name, source_iface)
