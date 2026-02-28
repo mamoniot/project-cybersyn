@@ -2,7 +2,10 @@
 Version: 2.0.50
 Date: ????
   Bugfixes:
-    - - Fixed Space Exploration elevator teleport using a stale train ID for deferred removal, which caused layout train counts to silently corrupt over time and eventually crash.
+    - Fixed Space Exploration elevator teleport using a stale train ID for deferred removal, which caused layout train counts to silently corrupt over time and eventually crash.
+    - Fix crash when train is in delayed cleanup state and target station is no longer avaliable
+    - Train leaving requester while there was destination full was causing some of the "train unexpectedly returned to depot" alerts
+    - Prevent crash if train is lost during elevator teleportation (train entity is nil because a modded carriage prototype was removed between save/reload)
 ---------------------------------------------------------------------------------------------------
 Version: 2.0.49
 Date: 2026-02-11
