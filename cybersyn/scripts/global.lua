@@ -118,10 +118,10 @@
 ---@field public priority int
 ---@field public refueler_id uint?
 ---@field public se_is_being_teleported true? --se only
----@field public se_awaiting_removal any? --se only
+---@field public se_awaiting_removal boolean? --se only
 ---@field public se_awaiting_rename any? --se only
 ---@field public skip_path_checks_until int?
----@field public no_path_departure true?
+---@field public stuck_departure true?
 
 ---@alias Manifest ManifestEntry[]
 ---@class ManifestEntry
