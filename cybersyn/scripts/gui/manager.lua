@@ -70,7 +70,7 @@ function manager.create(player)
 									clear_and_focus_on_right_click = true,
 									handler = { [defines.events.on_gui_text_changed] = manager.handle.manager_update_text_search },
 								},
-								{ type = "label", style = "subheader_caption_label", caption = { "cybersyn-gui.search-item-label" } },
+								{ type = "label", name = "manager_item_filter_label", style = "subheader_caption_label", caption = { "cybersyn-gui.search-item-label" } },
 								{
 									type = "choose-elem-button",
 									name = "manager_item_filter",
@@ -211,6 +211,8 @@ function manager.update(map_data, player_data, query_limit)
 		end
 		player_data.previous_tab = current_tab
 	end
+
+	local refs = player_data.refs
 
 	if player_data.selected_tab == "stations_tab" then
 		stations_tab.build(map_data, player_data, query_limit)

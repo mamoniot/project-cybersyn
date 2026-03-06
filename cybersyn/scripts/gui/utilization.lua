@@ -42,6 +42,11 @@ function utilization_tab.create()
 			type = "flow",
 			direction = "vertical",
 			ref = { "utilization", "content_frame" },
+			{
+				type = "label",
+				caption = { "cybersyn-gui.utilization-item-filter-note" },
+				style_mods = { single_line = false, bottom_margin = 4 },
+			},
 			-- Time range selector at top
 			{
 				type = "flow",
