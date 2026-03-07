@@ -73,7 +73,7 @@ function remove_train(map_data, train_id, train)
 
 	local layout_id = train.layout_id
 	local count = storage.layout_train_count[layout_id]
-	if count <= 1 then
+	if not count or count <= 1 then
 		storage.layout_train_count[layout_id] = nil
 		storage.layouts[layout_id] = nil
 		for _, stop in pairs(storage.stations) do

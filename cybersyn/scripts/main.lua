@@ -91,7 +91,7 @@ function on_refueler_broken(map_data, refueler_id, refueler)
 					lock_train(train.entity)
 					send_alert_refueler_of_train_broken(map_data, train.entity)
 				else
-					train.se_awaiting_removal = train_id
+					train.se_awaiting_removal = true
 				end
 			end
 		end
@@ -190,7 +190,7 @@ function on_station_broken(map_data, station_id, station)
 						lock_train(train.entity)
 						send_alert_station_of_train_broken(map_data, train.entity)
 					else
-						train.se_awaiting_removal = train_id
+						train.se_awaiting_removal = true
 					end
 				end
 			end

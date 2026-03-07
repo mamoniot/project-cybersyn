@@ -218,17 +218,7 @@ function manager.update(map_data, player_data, query_limit)
 		player_data.previous_tab = current_tab
 	end
 
-	-- Disable item filter on tabs that don't use it (utilization filters by layout, not item)
 	local refs = player_data.refs
-	local item_filter_enabled = current_tab ~= "utilization_tab"
-	if refs.manager_item_filter_label then
-		refs.manager_item_filter_label.enabled = item_filter_enabled
-	end
-	if refs.manager_item_filter then
-		refs.manager_item_filter.enabled = item_filter_enabled
-		refs.manager_item_filter.tooltip = not item_filter_enabled
-			and {"cybersyn-gui.item-filter-disabled-tooltip"} or ""
-	end
 
 	if player_data.selected_tab == "stations_tab" then
 		stations_tab.build(map_data, player_data, query_limit)

@@ -1,4 +1,21 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.50
+Date: 2026-03-07
+  Changes:
+    - (Manager) Removes filter requirment from breakdown tab and removes unfinished deliveries which previously broke that chart.
+    - (Manager) Breakdown tab legend color swatches are now bigger and easier to read
+    - (Manager) Utilisation tab now shows disclaimer about not using filtering by item 
+  Bugfixes:
+    - Fixed Space Exploration elevator teleport using a stale train ID for deferred removal, which caused layout train counts to silently corrupt over time and eventually crash.
+    - Fix crash when train is in delayed cleanup state and target station is no longer avaliable
+    - Train leaving requester while there was destination full was causing some of the "train unexpectedly returned to depot" alerts
+    - Prevent crash if train is lost during elevator teleportation (train entity is nil because a modded carriage prototype was removed between save/reload)
+---------------------------------------------------------------------------------------------------
+Version: 2.0.49
+Date: 2026-02-11
+  Bugfixes:
+    - Train leaving provider while there was no path was causing some of the missing manifests output at requester and "train unexpectedly returned to depot" alerts
+---------------------------------------------------------------------------------------------------
 Version: 2.0.48
 Date: 2026-02-12
   Changes:
