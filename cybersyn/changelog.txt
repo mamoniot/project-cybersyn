@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.52
+Date: 2026-03-13
+  Bugfixes:
+    - (Manager) Add quality badges on inventory tabs
+    - Bandaid fix for crash related to improperly initialised station
+---------------------------------------------------------------------------------------------------
 Version: 2.0.51
 Date: 2026-03-09
   Bugfixes:
