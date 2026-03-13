@@ -973,7 +973,7 @@ end
 ---@param signals LogisticFilter[]?
 function set_combinator_output(map_data, comb, signals)
 	local out = map_data.to_output[comb.unit_number]
-	if out.valid then
+	if out and out.valid then
 		-- out is a non-interactable, invisible combinator which means players cannot change the number of sections
 		out.get_or_create_control_behavior().get_section(1).filters = signals or {}
 	end
