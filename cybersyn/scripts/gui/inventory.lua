@@ -205,6 +205,7 @@ function inventory_tab.build(map_data, player_data)
 		provided_children[#provided_children + 1] = {
 			type = "sprite-button",
 			sprite = sprite_path,
+			quality = quality,
 			style = "flib_slot_button_green",
 			tags = { item_name = item, item_hash = item_hash },
 			handler = inventory_tab.handle.on_inventory_item_click,
@@ -322,6 +323,7 @@ function inventory_tab.build(map_data, player_data)
 		return {
 			type = "sprite-button",
 			sprite = sprite_path,
+			quality = quality,
 			style = button_style,
 			tags = { item_name = item, item_hash = item_hash },
 			handler = inventory_tab.handle.on_inventory_item_click,
@@ -366,6 +368,7 @@ function inventory_tab.build(map_data, player_data)
 		in_transit_children[#in_transit_children + 1] = {
 			type = "sprite-button",
 			sprite = sprite_path,
+			quality = quality,
 			style = "flib_slot_button_blue",
 			tags = { item_name = item, item_hash = item_hash },
 			handler = inventory_tab.handle.on_inventory_item_click,
