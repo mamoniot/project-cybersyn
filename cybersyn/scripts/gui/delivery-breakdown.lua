@@ -671,7 +671,9 @@ function delivery_breakdown_tab.build(map_data, player_data)
 			lines[#lines + 1] = string.format("Deliveries: %d", delivery_count)
 			lines[#lines + 1] = string.format("Avg total: %s", charts.format_time_detailed(avg_total))
 			lines[#lines + 1] = string.format("Avg wait: %s", charts.format_time_detailed(stats.total_wait / delivery_count))
+			lines[#lines + 1] = string.format("Avg travel to P: %s", charts.format_time_detailed(stats.total_travel_p / delivery_count))
 			lines[#lines + 1] = string.format("Avg load: %s", charts.format_time_detailed(stats.total_loading / delivery_count))
+			lines[#lines + 1] = string.format("Avg travel to R: %s", charts.format_time_detailed(stats.total_travel_r / delivery_count))
 			lines[#lines + 1] = string.format("Avg unload: %s", charts.format_time_detailed(stats.total_unloading / delivery_count))
 		end
 

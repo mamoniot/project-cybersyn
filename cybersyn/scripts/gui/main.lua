@@ -175,6 +175,9 @@ function manager_gui.on_migration()
 	if not storage.manager then
 		manager_gui.on_init()
 	end
+	if not storage.recent_external_items then
+		storage.recent_external_items = {}
+	end
 
 	for i, p in pairs(game.players) do
 		if storage.manager.players[i] == nil then
@@ -193,6 +196,7 @@ function manager_gui.on_init()
 	storage.manager = {
 		players = {},
 	}
+	storage.recent_external_items = {}
 	init_items(storage.manager)
 end
 --gui.handle_events()
@@ -209,6 +213,14 @@ function manager_gui.tick(storage)
 			if v.is_manager_open then
 				local query_limit = settings.get_player_settings(i)["cybersyn-manager-result-limit"].value
 				manager.update(storage, v, query_limit)
+				-- Rebuild recent panel if new external items arrived
+				if v.recent_panel_dirty then
+					v.recent_panel_dirty = nil
+					local player = game.get_player(i)
+					if player then
+						manager.build_recent_panel(player, v)
+					end
+				end
 			end
 		end
 	end

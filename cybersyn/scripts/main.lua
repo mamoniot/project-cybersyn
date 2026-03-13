@@ -924,6 +924,14 @@ local function main()
 
 	register_gui_actions()
 
+	-- Wire up cross-mod interop: when an external item arrives, mark player panels dirty
+	interop_on_external_item_callback = function(player_index, item_name, source)
+		local player_data = storage.manager and storage.manager.players[player_index]
+		if player_data and player_data.is_manager_open then
+			player_data.recent_panel_dirty = true
+		end
+	end
+
 	script.on_init(function()
 		init_global()
 		if analytics.is_enabled() then
@@ -932,16 +940,26 @@ local function main()
 		ElevatorTravel.setup_se_compat()
 		picker_dollies_compat.setup_picker_dollies_compat()
 		manager.on_init()
+		interop_subscribe_to_events()
 	end)
 
 	script.on_configuration_changed(function(e)
 		on_config_changed(e)
 		manager.on_migration()
+		interop_subscribe_to_events()
 	end)
 
 	script.on_load(function()
 		ElevatorTravel.setup_se_compat()
 		picker_dollies_compat.setup_picker_dollies_compat()
+		interop_subscribe_to_events()
+	end)
+
+	-- Ensure on_gui_elem_changed is dispatched through flib (may have been skipped
+	-- if another handler was registered first). We wrap to also call flib dispatch.
+	local flib_gui = require("__flib__.gui")
+	script.on_event(defines.events.on_gui_elem_changed, function(e)
+		flib_gui.dispatch(e)
 	end)
 
 	script.on_event(defines.events.on_player_removed, manager.on_player_removed)

@@ -28,6 +28,10 @@ local on_train_teleported = nil
 local on_tick_init = nil
 local on_mod_settings_changed = nil
 
+-- Cross-mod interop spec v1
+local on_item_selected = nil
+local handling_external = false
+
 local interface = {}
 ------------------------------------------------------------------
 --[[get event id functions]]
@@ -108,6 +112,15 @@ end
 function interface.get_on_mod_settings_changed()
 	if not on_mod_settings_changed then on_mod_settings_changed = script_generate_event_name() end
 	return on_mod_settings_changed
+end
+
+-- Cross-mod interop spec v1
+function interface.get_on_item_selected()
+	if not on_item_selected then on_item_selected = script_generate_event_name() end
+	return on_item_selected
+end
+function interface.interop_version()
+	return 1
 end
 
 ------------------------------------------------------------------
@@ -562,5 +575,78 @@ end
 function interface_raise_on_mod_settings_changed(e)
 	if on_mod_settings_changed then
 		raise_event(on_mod_settings_changed, e)
+	end
+end
+
+------------------------------------------------------------------
+--[[cross-mod interop spec v1]]
+------------------------------------------------------------------
+
+---@param player_index uint
+---@param item_name string
+function interface_raise_item_selected(player_index, item_name)
+	if handling_external then return end
+	if on_item_selected then
+		raise_event(on_item_selected, {
+			player_index = player_index,
+			item_name = item_name,
+		})
+	end
+end
+
+--- Callback for when an external item arrives (set by main.lua)
+--- @type fun(player_index: uint, item_name: string, source: string)|nil
+interop_on_external_item_callback = nil
+
+--- Add an externally-selected item to the recent items list for a player.
+function interop_add_recent_item(player_index, item_name, source)
+	if not storage.recent_external_items then
+		storage.recent_external_items = {}
+	end
+	local list = storage.recent_external_items[player_index]
+	if not list then
+		list = {}
+		storage.recent_external_items[player_index] = list
+	end
+
+	-- Deduplicate: remove existing entry
+	for i = #list, 1, -1 do
+		if list[i].item_name == item_name then
+			table.remove(list, i)
+		end
+	end
+
+	-- Insert at front, cap at 5
+	table.insert(list, 1, { item_name = item_name, source = source })
+	while #list > 5 do
+		list[#list] = nil
+	end
+end
+
+--- Subscribe to other mods' interop spec events.
+function interop_subscribe_to_events()
+	for iface, functions in pairs(remote.interfaces) do
+		if iface == "cybersyn" then goto continue end
+
+		if functions["get_on_item_selected"] then
+			local event_id = remote.call(iface, "get_on_item_selected")
+			if event_id then
+				local source_iface = iface
+				script.on_event(event_id, function(e)
+					local player = game.get_player(e.player_index)
+					if not player then return end
+					local item_name = e.item_name
+					if item_name and (prototypes.item[item_name] or prototypes.fluid[item_name]) then
+						interop_add_recent_item(e.player_index, item_name, source_iface)
+						if interop_on_external_item_callback then
+							interop_on_external_item_callback(e.player_index, item_name, source_iface)
+						end
+					end
+				end)
+				log("Cybersyn: subscribed to " .. iface .. ".get_on_item_selected")
+			end
+		end
+
+		::continue::
 	end
 end
