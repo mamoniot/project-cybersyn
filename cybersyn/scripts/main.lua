@@ -554,9 +554,13 @@ function combinator_update(map_data, comb, reset_display)
 			local train_id = depot.available_train_id
 			if train_id then
 				local train = map_data.trains[train_id]
-				remove_available_train(map_data, train_id, train)
-				add_available_train_to_depot(map_data, mod_settings, train_id, train, id, depot)
-				interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
+				if train then
+					remove_available_train(map_data, train_id, train)
+					add_available_train_to_depot(map_data, mod_settings, train_id, train, id, depot)
+					interface_raise_train_status_changed(train_id, STATUS_D, STATUS_D)
+				else
+					depot.available_train_id = nil
+				end
 			end
 		elseif type == 4 then
 			set_refueler_from_comb(map_data, mod_settings, id, entity --[[@as Refueler]])

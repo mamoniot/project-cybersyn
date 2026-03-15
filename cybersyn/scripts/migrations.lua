@@ -448,7 +448,16 @@ function sanitize_economy_names(config_change_data)
 	for train_id, train in pairs(map_data.trains) do
 		if train.manifest then
 			for _, entry in pairs(train.manifest) do
-				local new_name = migrations[entry.type][entry.name]
+				local type_migrations = migrations[entry.type]
+				if not type_migrations then
+					local msg = string.format(
+						"[Cybersyn] Economy sanitization: no migration data for prototype type '%s' (name: '%s')",
+						entry.type, entry.name
+					)
+					log(msg)
+					game.print(msg)
+				end
+				local new_name = type_migrations and type_migrations[entry.name]
 				local new_quality = entry.quality and migrations.quality[entry.quality]
 				if new_name == "" or new_quality == "" then
 					local msg = string.format("%s delivery aborted: %s/%s no longer exists", train_richtext(train.entity), entry.name, entry.quality or "normal")
