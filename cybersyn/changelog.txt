@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.0.53
+Date: 2026-03-15
+  Bugfixes:
+    - Fix crash related to broken trains not registering correctly on depot update
+    - Fix crash during economy sanitasation when there is nil type data in economy
+---------------------------------------------------------------------------------------------------
 Version: 2.0.52
 Date: 2026-03-13
   Bugfixes:
