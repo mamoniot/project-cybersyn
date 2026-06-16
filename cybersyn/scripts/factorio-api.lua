@@ -425,12 +425,21 @@ end
 ---Adds a temporary rail record for the given train stop if there was no previous surface travel.
 ---@param stop LuaEntity? invalid stops are skipped
 function ScheduleBuilder:add_direct_to_stop(stop)
-	if self.same_surface and stop and stop.valid then
-		local i = self.i + 1
-		self.records[i] = create_direct_to_station_order(stop)
-		self.stops[i] = stop
-		self.i = i
-	end
+    if self.same_surface and stop and stop.valid then
+        local i = self.i + 1
+        -- UI visibility record: named stop with instant pass condition
+        self.records[i] = {
+            station = stop.backer_name,
+            wait_conditions = {{ type = "time", compare_type = "and", ticks = 0 }},
+            temporary = true,
+            tags = { cybersyn_ui_only = true },
+        }
+        self.stops[i] = stop
+        self.i = i + 1
+        -- Actual coordinate stop for routing
+        self.records[self.i] = create_direct_to_station_order(stop)
+        self.stops[self.i] = stop
+    end
 end
 
 ---@param p_stop LuaEntity
