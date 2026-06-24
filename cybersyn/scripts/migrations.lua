@@ -1,9 +1,58 @@
 --By Mami
-local flib_migration = require("__flib__.migration")
 local manager_gui = require("gui.main")
 local debug_revision = require("info")
 local analytics = require("scripts.analytics")
 local check_debug_revision
+
+local version_pattern = "%d+"
+local version_format = "%03d"
+
+---@param version string?
+---@param format string?
+---@return string?
+local function format_version(version, format)
+	if version then
+		format = format or version_format
+		local parts = {}
+		for part in string.gmatch(version, version_pattern) do
+			parts[#parts + 1] = string.format(format, part)
+		end
+		if next(parts) then
+			return table.concat(parts, ".")
+		end
+	end
+	return nil
+end
+
+---@param old_version string?
+---@param current_version string?
+---@return boolean
+local function is_newer_version(old_version, current_version)
+	local old_normalized = format_version(old_version)
+	local current_normalized = format_version(current_version)
+	return old_normalized ~= nil and current_normalized ~= nil and current_normalized > old_normalized
+end
+
+---@param config_change_data ConfigurationChangedData
+---@param migrations table<string, fun()>
+local function run_versioned_migrations(config_change_data, migrations)
+	local mod_change = config_change_data.mod_changes and config_change_data.mod_changes["cybersyn"]
+	local old_version = mod_change and mod_change.old_version
+	local new_version = mod_change and mod_change.new_version
+	if not old_version or not new_version then return end
+
+	local migration_versions = {}
+	for version, _ in pairs(migrations) do
+		migration_versions[#migration_versions + 1] = version
+	end
+	table.sort(migration_versions, is_newer_version)
+
+	for _, version in ipairs(migration_versions) do
+		if is_newer_version(old_version, version) and not is_newer_version(new_version, version) then
+			migrations[version]()
+		end
+	end
+end
 
 local migrations_table = {
 	["1.0.6"] = function()
@@ -480,7 +529,7 @@ function on_config_changed(config_change_data)
 	storage.tick_data = {}
 	storage.perf_cache = {}
 
-	flib_migration.on_config_changed(config_change_data, migrations_table)
+	run_versioned_migrations(config_change_data, migrations_table)
 
 	IS_SE_PRESENT = remote.interfaces["space-exploration"] ~= nil
 

@@ -38,7 +38,7 @@ if mods["nullius"] then
 	-- Enable recipe and place it just after regular station
 	combinator_recipe.order = "nullius-eca"
 	-- In Nullius, most combinators are tiny crafts
-	combinator_recipe.category = "tiny-crafting"
+	combinator_recipe.categories = { "tiny-crafting" }
 	combinator_recipe.always_show_made_in = true
 	combinator_recipe.energy_required = 3
 	combinator_recipe.ingredients = {

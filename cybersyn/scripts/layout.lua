@@ -657,7 +657,9 @@ function reset_stop_layout(map_data, stop, is_station_or_refueler, forbidden_ent
 							end
 						end
 					elseif entity.type == "pump" then
-						if not supports_fluid and entity.pump_rail_target then
+						local input_targets = entity["pump_input_rail_targets"]
+						local output_targets = entity["pump_output_rail_targets"]
+						if not supports_fluid and ((input_targets and next(input_targets)) or (output_targets and next(output_targets))) then
 							local direction = entity.direction
 							if is_ver then
 								if direction == defines.direction.east or direction == defines.direction.west then
@@ -765,8 +767,23 @@ end
 ---@param pump LuaEntity
 ---@param forbidden_entity LuaEntity?
 function update_stop_from_pump(map_data, pump, forbidden_entity)
-	if pump.pump_rail_target then
-		update_stop_from_rail(map_data, pump.pump_rail_target, forbidden_entity)
+	local input_targets = pump["pump_input_rail_targets"]
+	if input_targets then
+		for _, rail in pairs(input_targets) do
+			if rail and rail.valid then
+				update_stop_from_rail(map_data, rail, forbidden_entity)
+				return
+			end
+		end
+	end
+	local output_targets = pump["pump_output_rail_targets"]
+	if output_targets then
+		for _, rail in pairs(output_targets) do
+			if rail and rail.valid then
+				update_stop_from_rail(map_data, rail, forbidden_entity)
+				return
+			end
+		end
 	end
 end
 ---@param map_data MapData
