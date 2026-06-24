@@ -4,6 +4,7 @@ Date: 2026-06-24
   Features:
     - Updated to Factorio 2.1
     - Now requires Factorio 2.1.7 or higher
+    - Now requires flib 0.17.1 or higher
 ---------------------------------------------------------------------------------------------------
 Version: 2.0.54
 Date: 2026-03-30
