@@ -1,10 +1,15 @@
 ---------------------------------------------------------------------------------------------------
-Version: 2.1.1
+Version: 2.1.2
 Date: 2026-06-24
   Features:
     - Updated to Factorio 2.1
     - Now requires Factorio 2.1.7 or higher
     - Now requires flib 0.17.1 or higher
+    - Actually contains things listed in changelog for 2.0.54 which were never released on mod portal despite discord announcement
+  Bugfixes:
+    - Auto allow list detects non-cursed configurations of new pumps without crashing.
+    - Quality wagon fluid size is now correctly used when calculating train capacity without crashing.
+    - Trains upgraded by upgrade planner have their capacity updated properly.
 ---------------------------------------------------------------------------------------------------
 Version: 2.0.54
 Date: 2026-03-30

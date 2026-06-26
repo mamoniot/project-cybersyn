@@ -32,12 +32,6 @@
 ---@class PerfCache
 ---@field public se_get_space_elevator_name {}?
 ---@field public se_get_zone_from_surface_index {}?
----@field public size_fluidwagon_cache {[string]: FluidWagonSize} -- name of fluid wagon
----@field public fluid_name_test string -- name of the fluid to test quality fluid wagon
-
----@class FluidWagonSize
----@field public fluid_normal_size uint -- size of wagon in normal quality
----@field public quality_size {[uint] : uint} -- level of quality : size of wagon with this level of quality
 
 ---@class Cybersyn.SurfaceConnection
 ---@field entity1 LuaEntity the entity that represents the conneciton on the first surface; will eventually discard the connection if invalid
