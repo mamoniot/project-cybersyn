@@ -517,7 +517,9 @@ function on_train_changed(event)
 		if stop and stop.valid and stop.name == "train-stop" then
 			-- Arrived at explicitly named stop
 			local train = map_data.trains[train_id]
-			train.prime_departure_event = true
+			if train then
+				train.prime_departure_event = true
+			end
 			local id = stop.unit_number --[[@as uint]]
 			local depot = map_data.depots[id]
 			if depot then
