@@ -452,8 +452,27 @@ local migrations_table = {
 			local map_data = storage
 			analytics.init(map_data)
 		end
+	end,
+
+	["2.1.3"] = function()
+		---@type MapData
+		local map_data = storage
+		prime_departure_events(map_data)
 	end
 }
+
+---@param map_data MapData
+function prime_departure_events(map_data)
+	for _, cybersyn_train in pairs(map_data.trains) do
+		local train = cybersyn_train.entity
+		if train and train.valid and train.state == defines.train_state.wait_station then
+			local stop = train.station
+			if stop and stop.valid and stop.name then
+				cybersyn_train.prime_departure_event = true
+			end
+		end
+	end
+end
 
 ---@param config_change_data ConfigurationChangedData
 function sanitize_economy_names(config_change_data)
