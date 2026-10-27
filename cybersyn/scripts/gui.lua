@@ -385,6 +385,11 @@ local function on_gui_closed(e)
 	end
 end
 
+---@param e EventData.on_gui_closed
+function dispatch_entity_gui_closed(e)
+	on_entity_gui_opened_closed(e)
+end
+
 function register_gui_actions()
 	add_entity_opened_handler(COMBINATOR_NAME, gui_opened) -- fully custom GUI, closes via flib handler
 	add_entity_opened_handler(Elevators.name_elevator, Elevators.on_entity_gui_opened)

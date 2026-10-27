@@ -248,11 +248,9 @@ function Elevators.on_entity_gui_opened(event, player, entity, is_ghost)
 	if not elevator_data then return end
 
 	local frame = player.gui.relative[Elevators.ui_name] --[[@as LuaGuiElement?]]
-	if frame then
-		frame.flow.connect_switch.switch_state = elevator_data.cs_enabled and "right" or "left"
-	else
-		create_frame(player, entity, elevator_data)
-	end
+	-- Frames persisted in a save can carry stale flib handler tags (keyed by event id).
+	if frame then frame.destroy() end
+	create_frame(player, entity, elevator_data)
 end
 
 ---@param event EventData.on_gui_closed
