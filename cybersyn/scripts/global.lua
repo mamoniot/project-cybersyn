@@ -116,6 +116,7 @@
 ---@field public se_awaiting_rename any? --se only
 ---@field public skip_path_checks_until int?
 ---@field public stuck_departure true?
+---@field public prime_departure_event boolean?
 
 ---@alias Manifest ManifestEntry[]
 ---@class ManifestEntry

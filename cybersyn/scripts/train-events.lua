@@ -516,6 +516,10 @@ function on_train_changed(event)
 		local stop = train_e.station
 		if stop and stop.valid and stop.name == "train-stop" then
 			-- Arrived at explicitly named stop
+			local train = map_data.trains[train_id]
+			if train then
+				train.prime_departure_event = true
+			end
 			local id = stop.unit_number --[[@as uint]]
 			local depot = map_data.depots[id]
 			if depot then
@@ -592,22 +596,41 @@ function on_train_changed(event)
 		local train = map_data.trains[train_id]
 		if train then
 			local path = train_e.path
-			if path and path.total_distance > 4 then
-				-- Check if train has been misdirected along a long rail path due to
-				-- the priority of the station at the end.
-				local last_rail = path.rails[#path.rails]
-				local to_stop = (last_rail and last_rail.valid) and
-						(last_rail.get_rail_segment_stop(defines.rail_direction.front) or last_rail.get_rail_segment_stop(defines.rail_direction.back))
-				if to_stop and to_stop.train_stop_priority ~= 50 then
-					send_alert_station_non_default_priority(to_stop)
-					-- Fallthrough: still executing normal cybersyn behavior here even
-					-- though it will probably cause a wrong delivery. (This may be
-					-- a case where we want to lock the train or give it an invalid
-					-- schedule as is done elsewhere in the code.)
+			local last_rail = path.rails[#path.rails]
+			local to_stop = (last_rail and last_rail.valid) and
+					(last_rail.get_rail_segment_stop(defines.rail_direction.front) or last_rail.get_rail_segment_stop(defines.rail_direction.back))
+
+			if train.prime_departure_event then
+				train.prime_departure_event = false
+				on_train_leaves_stop(map_data, mod_settings, train_id, train)
+			else
+				-- if the train wasn't primed for a departure event then the stop we just left was a coordinate stop
+				-- check that the stop we are pathing to is the one we intended to go to when the schedule was made
+				local intended_stop_id
+				if train.status == STATUS_P then
+					intended_stop_id = train.p_station_id
+				elseif train.status == STATUS_R then
+					intended_stop_id = train.r_station_id
+				elseif train.status == STATUS_F then
+					intended_stop_id = train.refueler_id
 				end
 
-				on_train_leaves_stop(map_data, mod_settings, train_id, train)
-			elseif not path and (train_e.state == defines.train_state.no_path or train_e.state == defines.train_state.destination_full) then
+				if intended_stop_id and to_stop then
+					local to_stop_id = to_stop.unit_number --[[@as uint]]
+					if to_stop_id ~= intended_stop_id then
+						-- train was about to leave towards the incorrect station, stop it right here
+						lock_train(train_e)
+						on_failed_delivery(map_data, train_id, train)
+					end
+				end
+			end
+
+			if to_stop and to_stop.train_stop_priority ~= 50 then
+				send_alert_station_non_default_priority(to_stop)
+			end
+
+
+			if not path and (train_e.state == defines.train_state.no_path or train_e.state == defines.train_state.destination_full) then
 				-- There is no path to the next stop because path is broken/blocked
 				-- or all candidate stops are full. Mark train and do cleanup later
 				-- when the train becomes unblocked.
