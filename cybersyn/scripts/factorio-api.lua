@@ -1116,13 +1116,7 @@ end
 local function send_alert_for_train(train, icon, message, ...)
 	local loco = train.front_stock or train.back_stock
 	if loco then
-		for _, player in pairs(loco.force.players) do
-			player.add_custom_alert(
-				loco,
-				icon,
-				{ message, ... },
-				true)
-		end
+		loco.force.add_custom_alert(loco, icon, { message, ... }, true)
 	end
 end
 
@@ -1131,14 +1125,8 @@ end
 ---@param icon {}
 ---@param message string
 local function send_alert_for_station(station, icon, message)
-	for _, player in pairs(station.force.players) do
-		player.add_custom_alert(
-			station,
-			icon,
-			{ message },
-			true)
-		player.play_sound({ path = ALERT_SOUND })
-	end
+	station.force.add_custom_alert(station, icon, { message }, true)
+	station.force.play_sound({ path = ALERT_SOUND })
 end
 
 
@@ -1166,9 +1154,7 @@ end
 function send_alert_sounds(train)
 	local loco = get_any_train_entity(train)
 	if loco then
-		for _, player in pairs(loco.force.players) do
-			player.play_sound({ path = ALERT_SOUND })
-		end
+		loco.force.play_sound({ path = ALERT_SOUND })
 	end
 end
 
