@@ -1,4 +1,5 @@
 --By Mami
+local manager_gui = require("gui.main")
 local raise_event = script.raise_event
 local script_generate_event_name = script.generate_event_name
 
@@ -7,6 +8,8 @@ local script_generate_event_name = script.generate_event_name
 ------------------------------------------------------------------
 --NOTE: events only start to be raised when a mod has called its associated "get" function
 --NOTE: if there is a useful event missing you may submit a request for it to be added on the mod portal.
+--NOTE: rotating a combinator so it reaches another stop rebuilds it, so the station, depot or refueler at the old
+--stop raises its removed event and the one at the new stop its created event.
 
 local on_combinator_changed = nil
 local on_station_created = nil
@@ -30,7 +33,6 @@ local on_mod_settings_changed = nil
 
 -- Cross-mod interop spec v1
 local on_item_selected = nil
-local handling_external = false
 
 local interface = {}
 ------------------------------------------------------------------
@@ -204,29 +206,15 @@ end
 function interface.update_train_layout(train_id)
 	local train = storage.trains[train_id]
 	assert(train)
-	local old_layout_id = train.layout_id
-	local count = storage.layout_train_count[old_layout_id]
-	if count <= 1 then
-		storage.layout_train_count[old_layout_id] = nil
-		storage.layouts[old_layout_id] = nil
-		for _, stop in pairs(storage.stations) do
-			stop.accepted_layouts[old_layout_id] = nil
-		end
-		for _, stop in pairs(storage.refuelers) do
-			stop.accepted_layouts[old_layout_id] = nil
-		end
-	else
-		storage.layout_train_count[old_layout_id] = count - 1
-	end
-	set_train_layout(storage, train)
+	update_train_layout(storage, train)
 end
----@param layout_pattern (0|1|2|3)[]
----@param layout (0|1|2)[]
+---@param layout_pattern StopWagonSupport[]
+---@param layout TrainWagonKind[]
 function interface.is_layout_accepted(layout_pattern, layout)
 	return is_layout_accepted(layout_pattern, layout)
 end
----@param layout_pattern (0|1|2|3)[]
----@param layout (0|1|2)[]
+---@param layout_pattern StopWagonSupport[]
+---@param layout TrainWagonKind[]
 function interface.is_refuel_layout_accepted(layout_pattern, layout)
 	return is_refuel_layout_accepted(layout_pattern, layout)
 end
@@ -290,8 +278,13 @@ end
 ---@param train_id uint
 function interface.create_manifest(r_station_id, p_station_id, train_id)
 	local train = storage.trains[train_id]
-	assert(storage.stations[r_station_id] and storage.stations[p_station_id] and train and train.is_available)
-	return create_manifest(storage, r_station_id, p_station_id, train_id)
+	local r_station = storage.stations[r_station_id]
+	local p_station = storage.stations[p_station_id]
+	assert(r_station and p_station and train and train.is_available)
+	-- Nil before the station's first poll, or while its combinator reads no signals.
+	local r_stop, p_stop = r_station.primary_stop, p_station.primary_stop
+	assert(r_stop and p_stop, "station not polled yet")
+	return create_manifest(storage, r_stop, p_stop, train_id)
 end
 ---@param r_station_id uint
 ---@param p_station_id uint
@@ -315,7 +308,7 @@ end
 function interface.fail_delivery(train_id)
 	local train = storage.trains[train_id]
 	assert(train)
-	return on_failed_delivery(storage, train_id, train)
+	return on_failed_delivery(storage, train_id, train, DIAG_FAIL_REMOTE)
 end
 ---@param train_id uint
 function interface.remove_train(train_id)
@@ -379,7 +372,198 @@ interface.send_alert_refueler_of_train_broken = send_alert_refueler_of_train_bro
 interface.send_alert_station_of_train_broken = send_alert_station_of_train_broken
 interface.send_alert_train_at_incorrect_station = send_alert_train_at_incorrect_station
 
+------------------------------------------------------------------
+--[[manager window]]
+------------------------------------------------------------------
+
+--- Whether the player has the Cybersyn manager window open.
+---@param player_index uint
+---@return boolean
+function interface.is_gui_open(player_index)
+	local m = storage.manager
+	local pd = m and m.players[player_index]
+	return pd ~= nil and pd.is_manager_open == true
+end
+
+--- Opens the manager for the player, or closes it when it is open (the same as the shortcut).
+---@param player_index uint
+---@return boolean open after the call
+function interface.toggle_gui(player_index)
+	manager_gui.toggle(player_index)
+	return interface.is_gui_open(player_index)
+end
+
 remote.add_interface("cybersyn", interface)
+
+------------------------------------------------------------------
+--[[read-only queries for HUD and overlay mods]]
+------------------------------------------------------------------
+-- Plain tables only (copies, never references into storage), so a caller can keep or change what it receives. The
+-- unserved data needs `cybersyn-diagnostics` on (basic or full); the counters work either way.
+
+local query_diag = require("scripts.diag")
+local query_stats = require("scripts.stats")
+local query_lint = require("scripts.lint")
+local query_hud = require("scripts.gui.extras-logic")
+
+local QUERY_STATUS = {
+	[STATUS_D] = "depot", [STATUS_TO_P] = "to_provider", [STATUS_P] = "at_provider", [STATUS_TO_R] = "to_requester",
+	[STATUS_R] = "at_requester", [STATUS_TO_D] = "to_depot", [STATUS_TO_D_BYPASS] = "to_depot_bypass",
+	[STATUS_TO_F] = "to_refueler", [STATUS_F] = "at_refueler",
+}
+local QUERY_LIMIT = 100
+
+local function query_stop_name(id)
+	local record = storage.stations[id] or storage.depots[id] or storage.refuelers[id]
+	local stop = record and record.entity_stop
+	return stop and stop.valid and stop.backer_name or nil
+end
+
+local function query_network(name, mask)
+	if name == NETWORK_EACH then
+		local out = {}
+		each_network(name, mask, function(n, m) out[n] = m end)
+		return { each = true, masks = out }
+	end
+	return { name = name, mask = type(mask) == "number" and mask or nil }
+end
+
+local function query_reason(filter_reason)
+	if type(filter_reason) == "string" then
+		for code, name in pairs(REASON_NAMES) do
+			if name == filter_reason or string.lower(name) == filter_reason then return code end
+		end
+		return -1
+	end
+	return filter_reason
+end
+
+local function query_row(row)
+	local e = row.entry
+	local now = game.tick
+	return {
+		requester = row.r_station_id,
+		requester_name = query_stop_name(row.r_station_id),
+		item = row.hash,
+		reason = REASON_NAMES[e.reason],
+		reason_code = e.reason,
+		a = e.a,
+		b = e.b,
+		first_tick = e.first_tick,
+		wait_ticks = now - e.first_tick,
+		evaluations = e.n,
+		provider = e.p_station_id,
+		lost_to = e.lost_to,
+		acknowledged = query_diag.is_acked("request", row.r_station_id, row.hash) ~= nil,
+	}
+end
+
+local query = {}
+
+--- The longest-waiting unserved requests (oldest first), at most `filter.limit` (default 20, at most 100).
+---@param filter {item: string?, reason: (int|string)?, requester: uint?, limit: int?}?
+---@return table[]
+function query.query_unserved(filter)
+	filter = filter or {}
+	local limit = math.min(math.max(tonumber(filter.limit) or 20, 1), QUERY_LIMIT)
+	local rows = query_diag.unserved_rows({ item = filter.item, reason = query_reason(filter.reason),
+		requester = filter.requester, limit = limit })
+	local out = {}
+	for i, row in ipairs(rows) do out[i] = query_row(row) end
+	return out
+end
+
+--- Totals: unserved entries per reason, available trains per network and the fewest free trains on any network now
+--- (the HUD's "free trains"; not the Overview's Fleet headroom, which is the lowest over a period). Writes nothing.
+---@return table
+function query.query_counts()
+	local d = storage.diag
+	local by_reason, total = {}, 0
+	local counts = query_diag.counts_by_reason()
+	for code, n in pairs(counts) do
+		by_reason[REASON_NAMES[code] or tostring(code)] = n
+		total = total + n
+	end
+	local s = query_stats.get()
+	local available = {}
+	for name, n in pairs(s.available_count) do available[name] = n end
+	local v = query_hud.hud_values(counts, s.available_count, s.trains_by_network)
+	return {
+		diagnostics = d and d.mode or "off",
+		unserved = total,
+		by_reason = by_reason,
+		available = available,
+		free_trains = v.headroom,
+		free_trains_network = v.network,
+		tick = game.tick,
+	}
+end
+
+--- One station, depot or refueler by its stop's unit number; nil when Cybersyn does not know it.
+---@param id uint
+---@return table?
+function query.query_station(id)
+	local record, kind = storage.stations[id], "station"
+	if not record then record, kind = storage.depots[id], "depot" end
+	if not record then record, kind = storage.refuelers[id], "refueler" end
+	if not record then return nil end
+	local stop = record.entity_stop
+	local out = {
+		id = id,
+		kind = kind,
+		name = stop and stop.valid and stop.backer_name or nil,
+		position = stop and stop.valid and { x = stop.position.x, y = stop.position.y } or nil,
+		surface = stop and stop.valid and stop.surface.name or nil,
+		network = query_network(record.network_name, record.network_mask),
+	}
+	if kind == "station" then
+		out.provider = record.is_p == true
+		out.requester = record.is_r == true
+		out.priority = record.priority
+		out.deliveries = record.deliveries_total
+		out.trains_limit = record.trains_limit
+		out.unserved = query.query_unserved({ requester = id, limit = QUERY_LIMIT })
+	end
+	local lint_findings = {}
+	local bits = query_lint.bits_of(id)
+	if bits and bits ~= 0 then
+		for check, name in pairs(LINT_NAMES) do
+			if query_lint.has(bits, check) then lint_findings[#lint_findings + 1] = name end
+		end
+		table.sort(lint_findings)
+	end
+	out.setup_findings = lint_findings
+	return out
+end
+
+--- One Cybersyn train by its LuaTrain id; nil when Cybersyn does not know it.
+---@param id uint
+---@return table?
+function query.query_train(id)
+	local train = storage.trains[id]
+	if not train then return nil end
+	local manifest = {}
+	for i, item in ipairs(train.manifest or {}) do
+		manifest[i] = { type = item.type, name = item.name, quality = item.quality, count = item.count }
+	end
+	return {
+		id = id,
+		status = QUERY_STATUS[train.status] or tostring(train.status),
+		status_code = train.status,
+		network = query_network(train.network_name, train.network_mask),
+		depot = train.depot_id and query_stop_name(train.depot_id) or nil,
+		depot_id = train.depot_id,
+		provider = train.p_station_id,
+		requester = train.r_station_id,
+		manifest = manifest,
+		layout_id = train.layout_id,
+		item_slot_capacity = train.item_slot_capacity,
+		fluid_capacity = train.fluid_capacity,
+		available = train.is_available == true,
+	}
+end
+
+remote.add_interface("cybersyn-query", query)
 
 ------------------------------------------------------------------
 --[[internal event calls]]
@@ -585,68 +769,10 @@ end
 ---@param player_index uint
 ---@param item_name string
 function interface_raise_item_selected(player_index, item_name)
-	if handling_external then return end
 	if on_item_selected then
 		raise_event(on_item_selected, {
 			player_index = player_index,
 			item_name = item_name,
 		})
-	end
-end
-
---- Callback for when an external item arrives (set by main.lua)
---- @type fun(player_index: uint, item_name: string, source: string)|nil
-interop_on_external_item_callback = nil
-
---- Add an externally-selected item to the recent items list for a player.
-function interop_add_recent_item(player_index, item_name, source)
-	if not storage.recent_external_items then
-		storage.recent_external_items = {}
-	end
-	local list = storage.recent_external_items[player_index]
-	if not list then
-		list = {}
-		storage.recent_external_items[player_index] = list
-	end
-
-	-- Deduplicate: remove existing entry
-	for i = #list, 1, -1 do
-		if list[i].item_name == item_name then
-			table.remove(list, i)
-		end
-	end
-
-	-- Insert at front, cap at 5
-	table.insert(list, 1, { item_name = item_name, source = source })
-	while #list > 5 do
-		list[#list] = nil
-	end
-end
-
---- Subscribe to other mods' interop spec events.
-function interop_subscribe_to_events()
-	for iface, functions in pairs(remote.interfaces) do
-		if iface == "cybersyn" then goto continue end
-
-		if functions["get_on_item_selected"] then
-			local event_id = remote.call(iface, "get_on_item_selected")
-			if event_id then
-				local source_iface = iface
-				script.on_event(event_id, function(e)
-					local player = game.get_player(e.player_index)
-					if not player then return end
-					local item_name = e.item_name
-					if item_name and (prototypes.item[item_name] or prototypes.fluid[item_name]) then
-						interop_add_recent_item(e.player_index, item_name, source_iface)
-						if interop_on_external_item_callback then
-							interop_on_external_item_callback(e.player_index, item_name, source_iface)
-						end
-					end
-				end)
-				log("Cybersyn: subscribed to " .. iface .. ".get_on_item_selected")
-			end
-		end
-
-		::continue::
 	end
 end

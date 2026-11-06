@@ -1,5 +1,9 @@
 local gui = require("__flib__.gui")
 local analytics = require("scripts.analytics")
+local util = require("scripts.gui.util")
+local filters = require("scripts.gui.utils.filters")
+local logic = require("scripts.gui.tab-logic")
+local utext = require("scripts.gui.unserved-text")
 
 -- Try to load the factorio-charts library for interaction support
 local charts_available, charts = pcall(require, "__factorio-charts__.charts")
@@ -12,11 +16,34 @@ local delivery_breakdown_tab = {}
 local CACHE_DURATION_TICKS = 300  -- 5 seconds at 60 UPS
 local MAX_BARS = 200  -- Limit bars rendered for performance
 
-local interval_names = {"1m", "10m", "1h", "10h", "50h"}
+local RANGES = analytics.BREAKDOWN_RANGES
 
--- Graph dimensions (pixels) - sized to fill the manager window
+-- Graph size in logical px before the first layout is known; build() sizes it to the tab (graph_size).
 local GRAPH_WIDTH = 1100
 local GRAPH_HEIGHT = 700
+-- The legend and stats column left of the graph, and the stats table's value column inside it.
+local SIDEBAR_WIDTH = 200
+local STAT_VALUE_WIDTH = 64
+-- Above the graph: the tab subheader 36, the time range row 32, the gaps between them; below it the frame's padding.
+local GRAPH_CHROME = 80
+local GRAPH_MIN_WIDTH, GRAPH_MIN_HEIGHT = 400, 300
+-- factorio-charts draws its bar chart's y-axis first: five gridlines, each a line then its label, at evenly spaced
+-- fractions of the axis top, labelled with rounded minutes ("1m" for 73 s). The tab replaces them with gridlines on
+-- whole durations (logic.duration_ticks), in the library's colours, line width, label style and position.
+local LIBRARY_GRID_LINES = 5
+local AXIS_TTL = 360
+
+--- The graph's size for the player's window: the tab's width beside the legend and its height below the time range.
+--- @param player_data PlayerData
+--- @return int width
+--- @return int height
+local function graph_size(player_data)
+	local layout = player_data.layout
+	if not layout then return GRAPH_WIDTH, GRAPH_HEIGHT end
+	return math.max(GRAPH_MIN_WIDTH, layout.content_width - SIDEBAR_WIDTH - 8),
+		math.max(GRAPH_MIN_HEIGHT, layout.content_height - GRAPH_CHROME)
+end
+delivery_breakdown_tab.graph_size = graph_size
 
 -- Phase colors for stacked bars (Factorio-style colors, brightened for visibility)
 local PHASE_COLORS = {
@@ -46,29 +73,27 @@ local PHASE_ORDER = {"wait", "travel_to_p", "loading", "travel_to_r", "unloading
 -- Legend order matches visual top-to-bottom appearance in stacked bars
 local LEGEND_ORDER = {"unloading", "travel_to_r", "loading", "travel_to_p", "wait",
 	"fail_no_stock", "fail_no_train", "fail_capacity", "fail_layout"}
-local PHASE_LABELS = {
-	wait = "Matching",
-	travel_to_p = "Travel to P",
-	loading = "Loading",
-	travel_to_r = "Travel to R",
-	unloading = "Unloading",
-	fail_no_stock = "No Stock (F)",
-	fail_no_train = "No Train (F)",
-	fail_capacity = "Capacity (F)",
-	fail_layout = "Layout (F)",
-}
+--- @param phase string
+--- @return LocalisedString
+local function phase_label(phase)
+	return { "cybersyn-gui.breakdown-phase-" .. string.gsub(phase, "_", "-") }
+end
 
-local PHASE_TOOLTIPS = {
-	wait = "Time from request until a provider and train are matched",
-	travel_to_p = "Train traveling to provider station",
-	loading = "Loading cargo at provider station",
-	travel_to_r = "Train traveling to requester station",
-	unloading = "Unloading cargo at requester station",
-	fail_no_stock = "Failed: No provider had sufficient stock",
-	fail_no_train = "Failed: No train available on network",
-	fail_capacity = "Failed: Train capacity insufficient",
-	fail_layout = "Failed: Train layout mismatch",
-}
+--- @param phase string
+--- @return LocalisedString
+local function phase_tooltip(phase)
+	return { "cybersyn-gui.breakdown-phase-" .. string.gsub(phase, "_", "-") .. "-tooltip" }
+end
+
+--- The item line of a bar's tooltip: the icon, the localised name and the quality, from the hash.
+--- @param hash string
+--- @return LocalisedString head
+local function item_head(hash)
+	local sprite, quality, tooltip = util.item_sprite_and_tooltip(hash)
+	if not sprite then return { "", (unhash_signal(hash)) } end
+	if quality then return { "", tooltip, " · ", prototypes.quality[quality].localised_name } end
+	return tooltip
+end
 
 ---Compute statistics (min, max, avg, median, stddev) for each phase
 ---@param filtered table[] Array of delivery data
@@ -135,61 +160,102 @@ local function compute_phase_stats(filtered)
 	return phase_stats
 end
 
+--- The short name of the reason the dispatcher recorded for a stuck request, the same caption as the Unserved chip
+--- and the Log, or "unknown" when none was recorded (a provider-side failure with diagnostics off).
+--- @param reason int?
+--- @return LocalisedString
+local function failure_label(reason)
+	if not (reason and REASON_KEYS[reason]) then return { "cybersyn-gui.unserved-unknown-reason" } end
+	return utext.chip_caption(reason)
+end
+
+--- The reason's full name, for the tooltip under the short caption.
+--- @param reason int?
+--- @return LocalisedString?
+local function failure_name(reason)
+	local key = reason and REASON_KEYS[reason]
+	return key and { "cybersyn-diag.reason-" .. key } or nil
+end
+
 ---Generate tooltip text for a bar segment
 ---@param bar_idx number Bar index
 ---@param phase string Phase name
 ---@param duration number Duration in seconds
 ---@param delivery table Delivery data
 ---@param phase_stats table? Optional phase statistics
----@return string tooltip Formatted tooltip text
+---@return LocalisedString tooltip Formatted tooltip text
 local function get_segment_tooltip(bar_idx, phase, duration, delivery, phase_stats)
-	local label = PHASE_LABELS[phase] or phase
 	local fmt_time = charts and charts.format_time_detailed or function(d) return string.format("%.1fs", d) end
-
-	local lines = {}
-
 	-- Show item icon and name when available (most useful when no item filter is set)
-	if delivery.item_hash then
-		local item_name = unhash_signal(delivery.item_hash)
-		if item_name then
-			local item_type = prototypes.item[item_name] and "item" or
-				prototypes.fluid[item_name] and "fluid" or "item"
-			lines[#lines + 1] = "[img=" .. item_type .. "/" .. item_name .. "] " .. item_name
-			lines[#lines + 1] = ""
-		end
+	local head = delivery.item_hash and item_head(delivery.item_hash) or nil
+	-- A stuck request's bar is labelled with the reason the dispatcher recorded for it.
+	local label
+	if HATCHED_PHASES[phase] then
+		local full = failure_name(delivery.reason)
+		label = { "", failure_label(delivery.reason), full and { "", " · ", full } or "" }
+	else
+		label = phase_label(phase)
 	end
-
-	lines[#lines + 1] = label
-	lines[#lines + 1] = "Duration: " .. fmt_time(duration)
-
+	-- Nested, so no level holds more than the engine's 20 parameters.
+	local body = { "", label, "\n", { "cybersyn-gui.breakdown-duration", fmt_time(duration) } }
 	local stats = phase_stats and phase_stats[phase]
 	if stats then
-		lines[#lines + 1] = ""
-		lines[#lines + 1] = string.format("Min: %s", fmt_time(stats.min))
-		lines[#lines + 1] = string.format("Max: %s", fmt_time(stats.max))
-		lines[#lines + 1] = string.format("Avg: %s", fmt_time(stats.avg))
-		lines[#lines + 1] = string.format("Median: %s", fmt_time(stats.median))
-		lines[#lines + 1] = string.format("StdDev: %s", fmt_time(stats.stddev))
+		body = { "", body, "\n\n", { "cybersyn-gui.breakdown-phase-stats", fmt_time(stats.min), fmt_time(stats.max),
+			fmt_time(stats.avg), fmt_time(stats.median), fmt_time(stats.stddev) } }
 	end
-
-	return table.concat(lines, "\n")
+	if head then return { "", head, "\n\n", body } end
+	return body
 end
 
 ---Overlay button options for charts library
-local OVERLAY_BUTTON_OPTIONS = {
-	button_style = "cybersyn_chart_overlay_button",
-	widget_width = GRAPH_WIDTH,
-	widget_height = GRAPH_HEIGHT,
-}
+---@param width int
+---@param height int
+local function overlay_button_options(width, height)
+	return { button_style = "cybersyn_chart_overlay_button", widget_width = width, widget_height = height }
+end
+local OVERLAY_BUTTON_OPTIONS = overlay_button_options(GRAPH_WIDTH, GRAPH_HEIGHT)
+
+--- Replaces the library's y-axis (its first LIBRARY_GRID_LINES line/label pairs in interval.line_ids) with gridlines
+--- on whole durations. Leaves the chart as drawn when the objects are not laid out as factorio-charts draws them.
+--- @param interval table
+--- @param surface LuaSurface
+--- @param chunk table
+--- @param meta table? the library's metadata: graph_left/right/bottom/height and max_total
+local function replace_axis(interval, surface, chunk, meta)
+	local ids = interval.line_ids
+	if not (meta and meta.max_total and meta.max_total > 0 and ids and #ids >= 2 * LIBRARY_GRID_LINES and chunk.coord) then
+		return
+	end
+	for i = 1, 2 * LIBRARY_GRID_LINES do
+		local o = ids[i]
+		if not (o and o.valid and o.type == (i % 2 == 1 and "line" or "text")) then return end
+	end
+	local line_color, line_width, text_color = ids[1].color, ids[1].width, ids[2].color
+	for i = 1, 2 * LIBRARY_GRID_LINES do ids[i].destroy() end
+	local kept = {}
+	for i = 2 * LIBRARY_GRID_LINES + 1, #ids do kept[#kept + 1] = ids[i] end
+	local pos = chunk.coord
+	local ticks = logic.duration_ticks(meta.max_total)
+	for _, t in ipairs(ticks) do
+		local y = pos.y + meta.graph_bottom - (t.value / meta.max_total) * meta.graph_height
+		kept[#kept + 1] = rendering.draw_line({ surface = surface, color = line_color, width = line_width,
+			from = { pos.x + meta.graph_left, y }, to = { pos.x + meta.graph_right, y }, time_to_live = AXIS_TTL })
+		kept[#kept + 1] = charts.style.draw_label({ text = t.label, surface = surface,
+			target = { pos.x + meta.graph_left - 0.2, y }, color = text_color,
+			alignment = "right", vertical_alignment = "middle", time_to_live = AXIS_TTL })
+	end
+	interval.line_ids = kept
+end
 
 function delivery_breakdown_tab.create()
 	local interval_buttons = {}
-	for i, name in ipairs(interval_names) do
+	for i, range in ipairs(RANGES) do
 		interval_buttons[i] = {
 			type = "button",
-			caption = name,
+			caption = { "cybersyn-gui.breakdown-range-" .. range.key },
+			tooltip = { "cybersyn-gui.breakdown-range-tooltip-" .. range.key },
 			style = i == 1 and "flib_selected_tool_button" or "tool_button",
-			tags = { interval_name = name, interval_index = i },
+			tags = { interval_name = range.key, interval_index = i },
 			handler = delivery_breakdown_tab.handle.on_breakdown_interval_click,
 		}
 	end
@@ -213,8 +279,8 @@ function delivery_breakdown_tab.create()
 			},
 			{
 				type = "label",
-				caption = PHASE_LABELS[phase],
-				tooltip = PHASE_TOOLTIPS[phase],
+				caption = phase_label(phase),
+				tooltip = phase_tooltip(phase),
 				style_mods = { font = "default-small" },
 			},
 		}
@@ -226,7 +292,6 @@ function delivery_breakdown_tab.create()
 			type = "tab",
 			caption = { "cybersyn-gui.delivery-breakdown-tab" },
 			ref = { "delivery_breakdown", "tab" },
-			handler = delivery_breakdown_tab.handle.on_breakdown_tab_selected,
 		},
 		content = {
 			name = "manager_delivery_breakdown_content_frame",
@@ -268,7 +333,7 @@ function delivery_breakdown_tab.create()
 					name = "breakdown_legend_flow",
 					type = "flow",
 					direction = "vertical",
-					style_mods = { width = 120, vertically_stretchable = true },
+					style_mods = { width = SIDEBAR_WIDTH, vertically_stretchable = true },
 					ref = { "delivery_breakdown", "legend_flow" },
 					{
 						type = "label",
@@ -292,12 +357,12 @@ function delivery_breakdown_tab.create()
 						caption = { "cybersyn-gui.stats" },
 						style = "caption_label",
 					},
+					-- Label / value rows, the values on one right edge (stats_rows).
 					{
-						name = "breakdown_stats_label",
-						type = "label",
-						ref = { "delivery_breakdown", "stats_label" },
-						caption = "",
-						style_mods = { single_line = false, font = "default-small" },
+						name = "breakdown_stats_table",
+						type = "table",
+						column_count = 2,
+						style_mods = { horizontal_spacing = 0, vertical_spacing = 2, top_margin = 4 },
 					},
 				},
 				-- Right: large graph with hover overlay
@@ -352,7 +417,7 @@ end
 ---@param map_data MapData Map data containing analytics
 ---@param data table Analytics data
 ---@param oldest_tick number Minimum complete_tick to include
----@param search_item string? Optional item filter
+---@param search_item string? the item filter's hash
 ---@return table filtered Filtered and sorted deliveries
 ---@return table stats Aggregated statistics
 local function gather_filter_and_stats(map_data, data, oldest_tick, search_item)
@@ -367,15 +432,10 @@ local function gather_filter_and_stats(map_data, data, oldest_tick, search_item)
 	local count_fail_capacity, count_fail_layout = 0, 0
 	local fail_count = 0
 	local delivery_count = 0
+	local fail_by_reason, fail_reasons = {}, {}
 
 	for item_hash, deliveries in pairs(data.completed_deliveries) do
-		local include = true
-		if search_item then
-			local item_name = unhash_signal(item_hash)
-			include = (item_name == search_item)
-		end
-
-		if include then
+		if not search_item or item_hash == search_item then
 			for _, delivery in ipairs(deliveries) do
 				if delivery.complete_tick >= oldest_tick then
 					-- Add item_hash to delivery for tooltip display
@@ -397,10 +457,7 @@ local function gather_filter_and_stats(map_data, data, oldest_tick, search_item)
 	if search_item then
 		local active_failures = analytics.get_active_failures(map_data, oldest_tick)
 		for _, failure in ipairs(active_failures) do
-			local item_name = unhash_signal(failure.item_hash)
-			local include = (item_name == search_item)
-
-			if include then
+			if failure.item_hash == search_item then
 				fail_count = fail_count + 1
 				local duration = failure.duration or 0
 
@@ -428,7 +485,17 @@ local function gather_filter_and_stats(map_data, data, oldest_tick, search_item)
 				end
 
 				-- Add individual bar for this stuck request
-				local bar = { complete_tick = failure.last_tick }
+				local reason = failure.reason or -1
+				local by = fail_by_reason[reason]
+				if not by then
+					by = { reason = failure.reason, count = 0, max = 0 }
+					fail_by_reason[reason] = by
+					fail_reasons[#fail_reasons + 1] = by
+				end
+				by.count = by.count + 1
+				if duration > by.max then by.max = duration end
+
+				local bar = { complete_tick = failure.last_tick, reason = failure.reason }
 				if failure.failure_reason == FAILURE_REASON_NO_PROVIDER_STOCK then
 					bar.fail_no_stock = duration
 				elseif failure.failure_reason == FAILURE_REASON_NO_TRAIN_AVAILABLE then
@@ -474,7 +541,67 @@ local function gather_filter_and_stats(map_data, data, oldest_tick, search_item)
 		count_fail_capacity = count_fail_capacity,
 		count_fail_layout = count_fail_layout,
 		fail_count = fail_count,
+		fail_reasons = fail_reasons,
 	}
+end
+
+--- The Stats rows beside the graph: {label, value} pairs (a stuck reason's label is indented under "Stuck").
+--- @param stats table gather_filter_and_stats
+--- @return {[1]: LocalisedString, [2]: string, indent: boolean?}[]
+local function stats_rows(stats)
+	local rows = {}
+	local delivery_count = stats.delivery_count or 0
+	local fail_count = stats.fail_count or 0
+	local t = charts and charts.format_time_detailed or function(d) return string.format("%.1fs", d) end
+	if delivery_count > 0 then
+		local avg_total = (stats.total_wait + stats.total_travel_p + stats.total_loading +
+			stats.total_travel_r + stats.total_unloading) / delivery_count
+		rows[#rows + 1] = { { "cybersyn-gui.breakdown-stat-deliveries" }, tostring(delivery_count) }
+		rows[#rows + 1] = { { "cybersyn-gui.breakdown-stat-total" }, t(avg_total) }
+		rows[#rows + 1] = { { "cybersyn-gui.breakdown-stat-matching" }, t(stats.total_wait / delivery_count) }
+		rows[#rows + 1] = { { "cybersyn-gui.breakdown-stat-travel-to-p" }, t(stats.total_travel_p / delivery_count) }
+		rows[#rows + 1] = { { "cybersyn-gui.breakdown-stat-loading" }, t(stats.total_loading / delivery_count) }
+		rows[#rows + 1] = { { "cybersyn-gui.breakdown-stat-travel-to-r" }, t(stats.total_travel_r / delivery_count) }
+		rows[#rows + 1] = { { "cybersyn-gui.breakdown-stat-unloading" }, t(stats.total_unloading / delivery_count) }
+	end
+	if fail_count > 0 then
+		rows[#rows + 1] = { { "cybersyn-gui.breakdown-stuck" }, tostring(fail_count) }
+		-- One row per reason code the dispatcher recorded, longest-waiting first.
+		local reasons = stats.fail_reasons or {}
+		table.sort(reasons, function(a, b)
+			if a.max ~= b.max then return a.max > b.max end
+			return (a.reason or -1) < (b.reason or -1)
+		end)
+		for _, by in ipairs(reasons) do
+			rows[#rows + 1] = { failure_label(by.reason), string.format("%s (%d)", t(by.max), by.count), indent = true }
+		end
+	end
+	return rows
+end
+delivery_breakdown_tab.stats_rows = stats_rows
+
+--- Writes the Stats rows into their table when the stats they come from changed (a new cache entry).
+--- @param tbl LuaGuiElement?
+--- @param stats table? gather_filter_and_stats, nil for none
+--- @param player_data PlayerData
+local function write_stats(tbl, stats, player_data)
+	if not (tbl and tbl.valid) then return end
+	if stats and player_data.cache.breakdown_stats_of == stats and #tbl.children > 0 then return end
+	if not stats and player_data.cache.breakdown_stats_of == false then return end
+	player_data.cache.breakdown_stats_of = stats or false
+	local rows = stats and stats_rows(stats) or {}
+	tbl.clear()
+	for _, r in ipairs(rows) do
+		-- A long reason caption is cut at the sidebar's width; its tooltip keeps it whole.
+		local label = tbl.add({ type = "label", caption = r[1], tooltip = r[1],
+			style = r.indent and "cybersyn_subheader_note" or nil })
+		label.style.font = "default-small"
+		label.style.width = SIDEBAR_WIDTH - STAT_VALUE_WIDTH
+		if r.indent then label.style.left_padding = 8 end
+		local value = tbl.add({ type = "label", caption = r[2], style = "cybersyn_cell_value" })
+		value.style.font = "default-small"
+		value.style.width = STAT_VALUE_WIDTH
+	end
 end
 
 ---@param map_data MapData
@@ -498,7 +625,8 @@ function delivery_breakdown_tab.build(map_data, player_data)
 	end
 
 	-- Get selected interval
-	local interval_index = player_data.breakdown_interval or 1
+	local interval_index = player_data.tabs.delivery_breakdown_tab.interval or 1
+	if not RANGES[interval_index] then interval_index = 1 end
 
 	-- Update button styles to match current interval
 	local interval_buttons = refs.breakdown_interval_buttons
@@ -511,22 +639,20 @@ function delivery_breakdown_tab.build(map_data, player_data)
 	end
 
 	-- Use item filter from manager toolbar (optional - shows all items when not set)
-	local search_item = player_data.search_item
-	local has_item_filter = search_item and search_item ~= ""
-	if not has_item_filter then
-		search_item = nil
-	end
+	local search_item = filters.get(player_data, "delivery_breakdown_tab").item
 
 	-- Calculate time range based on interval (needed for cache key)
-	local interval_defs = analytics.get_interval_defs()
-	local interval_def = interval_defs[interval_index]
-	local interval_ticks = interval_def.ticks * interval_def.length
+	local interval_ticks = RANGES[interval_index].ticks
 	local current_tick = game.tick
 	local oldest_tick = current_tick - interval_ticks
 
+	-- The graph fills the tab: its size follows the window's layout.
+	local gw, gh = graph_size(player_data)
+	local overlay_button_opts = overlay_button_options(gw, gh)
+
 	-- Check cache - use cached data if still valid
-	local cache_key = string.format("%d:%s", interval_index, search_item or "")
-	local cache = player_data.breakdown_cache
+	local cache_key = string.format("%d:%s:%dx%d", interval_index, search_item or "", gw, gh)
+	local cache = player_data.cache.breakdown
 	local filtered, stats
 	local cache_hit = false
 
@@ -537,7 +663,7 @@ function delivery_breakdown_tab.build(map_data, player_data)
 	else
 		-- Cache miss - generate fresh data with single-pass function
 		filtered, stats = gather_filter_and_stats(map_data, data, oldest_tick, search_item)
-		player_data.breakdown_cache = {
+		player_data.cache.breakdown = {
 			tick = current_tick,
 			key = cache_key,
 			filtered = filtered,
@@ -557,14 +683,8 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		refs.breakdown_main_flow.visible = has_data
 	end
 
-	-- Register chunk for this graph if not already registered
 	local player = game.get_player(player_data.player_index)
 	if not player then return end
-
-	-- Always ensure camera points at the correct surface (prevents showing wrong surface if chunk allocation fails)
-	if refs.breakdown_camera and data.surface then
-		refs.breakdown_camera.surface_index = data.surface.index
-	end
 
 	-- Allocate or reuse chunk for breakdown chart
 	if not data.breakdown_interval then
@@ -577,42 +697,18 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		}
 	end
 
-	if not player_data.breakdown_registered then
-		analytics.interval_register_gui(map_data, data.breakdown_interval, player, refs, {
-			viewport_width = GRAPH_WIDTH,
-			viewport_height = GRAPH_HEIGHT,
-		})
-		player_data.breakdown_registered = true
-	end
-
+	-- The constant y term, tuned by eye (-1.0 at 1100x700), moves the camera a tile up as the axis labels sit low.
+	local _, camera_info = analytics.sync_chart_view(map_data, data.breakdown_interval, player, refs,
+		refs.breakdown_camera_frame, refs.breakdown_camera, gw, gh, -1.0)
 	local chunk = data.breakdown_interval.chunk
-	if not chunk then
-		return
-	end
-
-	-- Set up camera widget (must happen before early return so camera points at correct surface)
-	local display_scale = player.display_scale or 1.0
-	local display_density = player.display_density_scale or 1.0
-	-- Resolution-independent zoom formula: zoom = scale / density
-	-- Works across Windows (density 1.0-1.75) and Mac (density 2.0)
-	local zoom = display_scale / display_density
-	local xoffset = 3.0
-	local yoffset = -1.0
-	local camera_info = nil
-	if refs.breakdown_camera and chunk.coord and charts then
-		camera_info = charts.setup_camera_widget(refs.breakdown_camera, data.surface, chunk, {
-			widget_width = GRAPH_WIDTH,
-			widget_height = GRAPH_HEIGHT,
-			display_scale = display_scale,
-			position_offset = {x = xoffset, y = yoffset},
-			zoom_override = zoom,
-		})
-	end
+	if not chunk then return end
 
 	-- Early return if no data to render (camera is already set up above)
 	if #filtered == 0 then
 		-- Clear overlay buttons when no data
-		charts.create_overlay_buttons(refs.breakdown_camera, {}, OVERLAY_BUTTON_OPTIONS)
+		charts.create_overlay_buttons(refs.breakdown_camera, {}, overlay_button_opts)
+		-- The stats of another range must not stay beside an empty one.
+		write_stats(refs.breakdown_stats_table, nil, player_data)
 		return
 	end
 
@@ -623,16 +719,11 @@ function delivery_breakdown_tab.build(map_data, player_data)
 
 		-- Build bar_icons array when no item filter is set so users can identify items
 		local bar_icons = nil
-		if not has_item_filter then
+		if not search_item then
 			bar_icons = {}
 			for i, delivery in ipairs(filtered) do
 				if delivery.item_hash then
-					local item_name = unhash_signal(delivery.item_hash)
-					if item_name then
-						local item_type = prototypes.item[item_name] and "item" or
-							prototypes.fluid[item_name] and "fluid" or "item"
-						bar_icons[i] = item_type .. "/" .. item_name
-					end
+					bar_icons[i] = util.item_sprite_and_tooltip(delivery.item_hash)
 				end
 			end
 		end
@@ -642,62 +733,25 @@ function delivery_breakdown_tab.build(map_data, player_data)
 		local overlay_options = {
 			camera_position = camera_info.position,
 			camera_zoom = 1.0,  -- Always calculate positions for zoom=1
-			widget_size = {width = GRAPH_WIDTH, height = GRAPH_HEIGHT},
+			widget_size = {width = gw, height = gh},
 			get_tooltip = function(bar_idx, phase, duration, delivery)
 				return get_segment_tooltip(bar_idx, phase, duration, delivery, phase_stats)
 			end,
 			bar_icons = bar_icons,
 		}
 
-		local button_configs = analytics.render_stacked_bar_chart(
+		local button_configs, meta = analytics.render_stacked_bar_chart(
 			map_data, data.breakdown_interval, filtered,
 			PHASE_COLORS, PHASE_ORDER, HATCHED_PHASES,
-			GRAPH_WIDTH, GRAPH_HEIGHT, overlay_options
+			gw, gh, overlay_options
 		)
+		replace_axis(data.breakdown_interval, data.surface, chunk, meta)
 
 		-- Create overlay buttons for tooltips
-		charts.create_overlay_buttons(refs.breakdown_camera, button_configs or {}, OVERLAY_BUTTON_OPTIONS)
+		charts.create_overlay_buttons(refs.breakdown_camera, button_configs or {}, overlay_button_opts)
 	end
 
-	-- Update stats display using cached stats
-	if refs.breakdown_stats_label then
-		local delivery_count = stats.delivery_count or 0
-		local fail_count = stats.fail_count or 0
-		local lines = {}
-
-		if delivery_count > 0 then
-			local avg_total = (stats.total_wait + stats.total_travel_p + stats.total_loading +
-				stats.total_travel_r + stats.total_unloading) / delivery_count
-			lines[#lines + 1] = string.format("Deliveries: %d", delivery_count)
-			lines[#lines + 1] = string.format("Avg total: %s", charts.format_time_detailed(avg_total))
-			lines[#lines + 1] = string.format("Avg wait: %s", charts.format_time_detailed(stats.total_wait / delivery_count))
-			lines[#lines + 1] = string.format("Avg travel to P: %s", charts.format_time_detailed(stats.total_travel_p / delivery_count))
-			lines[#lines + 1] = string.format("Avg load: %s", charts.format_time_detailed(stats.total_loading / delivery_count))
-			lines[#lines + 1] = string.format("Avg travel to R: %s", charts.format_time_detailed(stats.total_travel_r / delivery_count))
-			lines[#lines + 1] = string.format("Avg unload: %s", charts.format_time_detailed(stats.total_unloading / delivery_count))
-		end
-
-		if fail_count > 0 then
-			if delivery_count > 0 then
-				lines[#lines + 1] = ""  -- Blank line separator
-			end
-			lines[#lines + 1] = string.format("Stuck: %d", fail_count)
-			if stats.count_fail_no_stock > 0 then
-				lines[#lines + 1] = string.format("  No stock: %s (%d)", charts.format_time_detailed(stats.max_fail_no_stock), stats.count_fail_no_stock)
-			end
-			if stats.count_fail_no_train > 0 then
-				lines[#lines + 1] = string.format("  No train: %s (%d)", charts.format_time_detailed(stats.max_fail_no_train), stats.count_fail_no_train)
-			end
-			if stats.count_fail_capacity > 0 then
-				lines[#lines + 1] = string.format("  Capacity: %s (%d)", charts.format_time_detailed(stats.max_fail_capacity), stats.count_fail_capacity)
-			end
-			if stats.count_fail_layout > 0 then
-				lines[#lines + 1] = string.format("  Layout: %s (%d)", charts.format_time_detailed(stats.max_fail_layout), stats.count_fail_layout)
-			end
-		end
-
-		refs.breakdown_stats_label.caption = table.concat(lines, "\n")
-	end
+	write_stats(refs.breakdown_stats_table, stats, player_data)
 end
 
 ---@param map_data MapData
@@ -727,24 +781,12 @@ function delivery_breakdown_tab.cleanup(map_data, player_data)
 		end
 	end
 
-	player_data.breakdown_registered = nil
+	player_data.cache.breakdown_stats_of = nil
 end
 
 delivery_breakdown_tab.handle = {}
 
---- @param e {player_index: uint}
-function delivery_breakdown_tab.wrapper(e, handler)
-	local player = game.get_player(e.player_index)
-	if not player then return end
-	local player_data = storage.manager.players[e.player_index]
-	handler(player, player_data, player_data.refs, e)
-end
-
----@param player LuaPlayer
----@param player_data PlayerData
-function delivery_breakdown_tab.handle.on_breakdown_tab_selected(player, player_data)
-	player_data.selected_tab = "delivery_breakdown_tab"
-end
+delivery_breakdown_tab.wrapper = util.wrapper
 
 ---@param player LuaPlayer
 ---@param player_data PlayerData
@@ -758,10 +800,10 @@ function delivery_breakdown_tab.handle.on_breakdown_interval_click(player, playe
 	if not interval_index then return end
 
 	-- Update selected interval
-	player_data.breakdown_interval = interval_index
+	player_data.tabs.delivery_breakdown_tab.interval = interval_index
 
 	-- Invalidate cache for immediate refresh with new interval
-	player_data.breakdown_cache = nil
+	player_data.cache.breakdown = nil
 
 	-- Update button styles
 	local interval_buttons = refs.breakdown_interval_buttons

@@ -1,5 +1,6 @@
 --By Mami
 local get_distance = require("__flib__.position").distance
+local diag = require("scripts.diag")
 local bit_extract = bit32.extract
 local bit_replace = bit32.replace
 
@@ -7,10 +8,18 @@ local DEFINES_WORKING = defines.entity_status.working
 local DEFINES_LOW_POWER = defines.entity_status.low_power
 --local DEFINES_COMBINATOR_INPUT = defines.circuit_connector_id.combinator_input
 
+--Stack sizes never change at runtime, and prototypes.item lookups are hot enough in
+--the dispatch loop to be worth paying for once at load.
+local stack_size_cache = {}
+
+for name, prototype in pairs(prototypes.item) do
+	stack_size_cache[name] = prototype.stack_size
+end
+
 ---@param map_data MapData
 ---@param item_name string
 function get_stack_size(map_data, item_name)
-	return prototypes.item[item_name].stack_size
+	return stack_size_cache[item_name]
 end
 
 ---@param item_order table<string, int>
@@ -37,7 +46,7 @@ function get_any_train_entity(train)
 	return train.valid and (train.front_stock or train.back_stock or train.carriages[1]) or nil
 end
 
----@param e Station|Refueler|Train
+---@param e Station|Refueler|Train|StopInfo
 ---@param network_name string
 ---@return int
 function get_network_mask(e, network_name)
@@ -455,8 +464,12 @@ function ScheduleBuilder:add_refuel_order(f_stop)
 end
 
 ---@param train LuaTrain
----@return boolean
-function ScheduleBuilder:is_path_available(train)
+---@param probe boolean? on a failure, ask once more ignoring the chain-signal start rule, to name the cause; this
+---costs a second pathfinder search, since the engine's result carries no reason for a failure
+---@return boolean found
+---@return boolean? blocked with probe and not found: a route exists, its start cannot be reserved now. A heuristic:
+---the looser search succeeding suggests the chain-signal start is the obstacle, it does not prove it
+function ScheduleBuilder:is_path_available(train, probe)
 	---@type TrainPathFinderGoal?
 	local goal = nil
 	for i = 1, self.i do
@@ -472,16 +485,18 @@ function ScheduleBuilder:is_path_available(train)
 	end
 	if not goal then return false end
 
-	local path_result = game.train_manager.request_train_path({
+	local request = {
 		type = "any-goal-accessible",
 		train = train,
 		goals = { goal },
 		search_direction = "any-direction-with-locomotives",
 		in_chain_signal_section = true,
 		shortest_path = true,
-	})
-
-	return path_result.found_path
+	}
+	if game.train_manager.request_train_path(request).found_path then return true end
+	if not probe then return false end
+	request.in_chain_signal_section = false
+	return false, game.train_manager.request_train_path(request).found_path
 end
 
 ---Inserts the given records before the first non-interrupt record in the schedule
@@ -523,6 +538,8 @@ end
 ---@param manifest Manifest
 ---@param surface_connections Cybersyn.SurfaceConnection[]
 ---@param start_at_depot boolean?
+---@return boolean dispatched
+---@return DiagDispatch? why DIAG_DISPATCH_* when not dispatched
 function set_manifest_schedule(
 		map_data,
 		train,
@@ -600,10 +617,13 @@ function set_manifest_schedule(
 
 	if new_schedule and next(new_schedule.records) then
 		-- only available trains that are mid-travel can run into a situation where the train will have no path
-		if train.status == STATUS_TO_D_BYPASS and not new_schedule:is_path_available(train_e) then
-			-- give the train some time to travel and avoid expensive path checks for a while
-			train.skip_path_checks_until = game.tick + NO_PATH_SKIP_TIME
-			return false
+		if train.status == STATUS_TO_D_BYPASS then
+			local found, blocked = new_schedule:is_path_available(train_e, map_data.diag and map_data.diag.full)
+			if not found then
+				-- give the train some time to travel and avoid expensive path checks for a while
+				train.skip_path_checks_until = game.tick + NO_PATH_SKIP_TIME
+				return false, blocked and DIAG_DISPATCH_PATH_BLOCKED or DIAG_DISPATCH_NO_PATH
+			end
 		end
 		clean_temporary_records(schedule)
 
@@ -613,7 +633,8 @@ function set_manifest_schedule(
 		elseif schedule.current > insert_index then
 			schedule.go_to_station(insert_index)
 		end
-		return train_e.has_path
+		if train_e.has_path then return true end
+		return false, DIAG_DISPATCH_NO_PATH_AFTER_WRITE
 	end
 
 	train_stuck()
@@ -793,33 +814,21 @@ function set_train_from_comb(mod_settings, train, comb)
 		end
 	end
 end
----@param map_data MapData
+--- A refueler combinator's network, mask and priority as its parameters and circuit signals say now.
+---@param comb LuaEntity
+---@param params ArithmeticCombinatorParameters get_comb_params(comb)
 ---@param mod_settings CybersynModSettings
----@param id uint
----@param refueler Refueler
-function set_refueler_from_comb(map_data, mod_settings, id, refueler)
-	--NOTE: this does nothing to update currently active deliveries
-	local params = get_comb_params(refueler.entity_comb)
-	local bits = params.second_constant or 0
+---@return string? network_name
+---@return int|{[string]: int} network_mask
+---@return int priority
+function read_refueler_network(comb, params, mod_settings)
 	local signal = params.first_signal
-	local old_network = refueler.network_name
-	local old_network_mask = refueler.network_mask
+	local network_name = signal and signal.name or nil
+	local is_each = network_name == NETWORK_EACH
+	local network_mask = is_each and {} or mod_settings.network_mask
+	local priority = mod_settings.priority
 
-	refueler.network_name = signal and signal.name or nil
-	refueler.allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
-	refueler.priority = mod_settings.priority
-
-	local is_each = refueler.network_name == NETWORK_EACH
-	if is_each then
-		map_data.each_refuelers[id] = true
-		refueler.network_mask = {}
-	else
-		map_data.each_refuelers[id] = nil
-		refueler.network_mask = mod_settings.network_mask
-	end
-
-	local signals = refueler.entity_comb.get_signals(defines.wire_connector_id.circuit_red,
-		defines.wire_connector_id.circuit_green)
+	local signals = comb.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 	if signals then
 		for k, v in pairs(signals) do
 			local item_name = v.signal.name
@@ -828,19 +837,37 @@ function set_refueler_from_comb(map_data, mod_settings, id, refueler)
 			if item_name then
 				if item_type == "virtual" then
 					if item_name == SIGNAL_PRIORITY then
-						refueler.priority = item_count
+						priority = item_count
 					elseif is_each then
 						if item_name ~= REQUEST_THRESHOLD and item_name ~= REQUEST_FLUID_THRESHOLD and  item_name ~= LOCKED_SLOTS then
-							refueler.network_mask[item_name] = item_count
+							network_mask[item_name] = item_count
 						end
 					end
 				end
-				if item_name == refueler.network_name then
-					refueler.network_mask = item_count
+				if item_name == network_name then
+					network_mask = item_count
 				end
 			end
 		end
 	end
+	return network_name, network_mask, priority
+end
+
+---@param map_data MapData
+---@param mod_settings CybersynModSettings
+---@param id uint
+---@param refueler Refueler
+function set_refueler_from_comb(map_data, mod_settings, id, refueler)
+	--NOTE: this does nothing to update currently active deliveries
+	local params = get_comb_params(refueler.entity_comb)
+	local bits = params.second_constant or 0
+	local old_network = refueler.network_name
+	local old_network_mask = refueler.network_mask
+
+	refueler.network_name, refueler.network_mask, refueler.priority =
+		read_refueler_network(refueler.entity_comb, params, mod_settings)
+	refueler.allows_all_trains = bit_extract(bits, SETTING_DISABLE_ALLOW_LIST) > 0
+	map_data.each_refuelers[id] = refueler.network_name == NETWORK_EACH or nil
 
 	local f, a
 	if old_network == NETWORK_EACH then
@@ -885,7 +912,8 @@ function update_display(map_data, station)
 		local control = get_comb_control(comb)
 		local params = control.parameters
 		--NOTE: the following check can cause a bug where the display desyncs if the player changes the operation of the combinator and then changes it back before the mod can notice, however removing it causes a bug where the user's change is overwritten and ignored. Everything's bad we need an event to catch copy-paste by blueprint.
-		if params.operation == MODE_PRIMARY_IO or params.operation == MODE_PRIMARY_IO_ACTIVE or params.operation == MODE_PRIMARY_IO_FAILED_REQUEST then
+		if is_station_op(params.operation) then
+			local old_operation = params.operation
 			if station.display_state == 0 then
 				params.operation = MODE_PRIMARY_IO
 			elseif station.display_state % 2 == 1 then
@@ -893,17 +921,41 @@ function update_display(map_data, station)
 			else
 				params.operation = MODE_PRIMARY_IO_FAILED_REQUEST
 			end
-			control.parameters = params
+			if params.operation ~= old_operation then
+				control.parameters = params
+			end
 		end
 	end
 end
 
+--- Shows an inventory combinator's red I while its own request goes unserved (`station.inv_failed`), else the cyan I.
+--- A combinator showing another mode is left alone, as `update_display` leaves a station combinator alone.
+---@param map_data MapData
+---@param station Station
+---@param unit uint
+function update_inv_display(map_data, station, unit)
+	local comb = station.secondary_inv_combs[unit]
+	if comb and comb.valid then
+		local control = get_comb_control(comb)
+		local params = control.parameters
+		if is_secondary_inventory_op(params.operation) then
+			local failed = station.inv_failed
+			local op = failed and failed[unit] and MODE_SECONDARY_INVENTORY_FAILED or MODE_SECONDARY_INVENTORY
+			if params.operation ~= op then
+				params.operation = op
+				control.parameters = params
+			end
+		end
+	end
+end
+
+--- The mode is the combinator's operation with the display variants of the primary and the secondary inventory
+--- folded into their mode.
 ---@param comb LuaEntity
 function get_comb_gui_settings(comb)
 	local params = get_comb_params(comb)
 	local op = params.operation
 
-	local selected_index = 0
 	local switch_state = "none"
 	local bits = params.second_constant or 0
 	local is_pr_state = bit_extract(bits, 0, 2)
@@ -915,18 +967,13 @@ function get_comb_gui_settings(comb)
 		switch_state = "right"
 	end
 
-	if op == MODE_PRIMARY_IO or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
-		selected_index = 1
-	elseif op == MODE_DEPOT then
-		selected_index = 2
-	elseif op == MODE_REFUELER then
-		selected_index = 3
-	elseif op == MODE_SECONDARY_IO then
-		selected_index = 4
-	elseif op == MODE_WAGON then
-		selected_index = 5
+	local mode = op
+	if op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST then
+		mode = MODE_PRIMARY_IO
+	elseif is_secondary_inventory_op(op) then
+		mode = MODE_SECONDARY_INVENTORY
 	end
-	return selected_index --[[@as uint]], params.first_signal, switch_state, bits
+	return mode, params.first_signal, switch_state, bits
 end
 ---@param comb LuaEntity
 ---@param is_pr_state 0|1|2
@@ -959,7 +1006,7 @@ function set_comb_network_name(comb, signal)
 	control.parameters = param
 end
 ---@param comb LuaEntity
----@param op string
+---@param op ArithmeticCombinatorParameterOperation
 function set_comb_operation(comb, op)
 	local control = get_comb_control(comb)
 	local params = control.parameters
@@ -980,6 +1027,10 @@ function set_combinator_output(map_data, comb, signals)
 end
 
 ---@param station Station
+---@return Signal[]? comb1_signals
+---@return Signal[]? comb2_signals
+---@return {[uint]: Signal[]}? secondary_inv_signals by combinator unit number; nil when none is working
+---@return boolean comb1_working the station combinator is working or on low power (the planner reads it only then)
 function get_signals(station)
 	local comb1 = station.entity_comb1
 	local status1 = comb1.status
@@ -987,9 +1038,13 @@ function get_signals(station)
 	local comb1_signals = nil
 	---@type Signal[]?
 	local comb2_signals = nil
+	---@type {[uint]: Signal[]}?
+	local secondary_inv_signals = nil
+
 	if status1 == DEFINES_WORKING or status1 == DEFINES_LOW_POWER then
 		comb1_signals = comb1.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 	end
+
 	local comb2 = station.entity_comb2
 	if comb2 then
 		local status2 = comb2.status
@@ -997,14 +1052,26 @@ function get_signals(station)
 			comb2_signals = comb2.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
 		end
 	end
-	return comb1_signals, comb2_signals
+
+	-- Read signals from secondary inventory combinators
+	for unit_number, sec_comb in pairs(station.secondary_inv_combs) do
+		if sec_comb and sec_comb.valid then
+			local status = sec_comb.status
+			if status == DEFINES_WORKING or status == DEFINES_LOW_POWER then
+				secondary_inv_signals = secondary_inv_signals or {}
+				secondary_inv_signals[unit_number] = sec_comb.get_signals(defines.wire_connector_id.circuit_red, defines.wire_connector_id.circuit_green)
+			end
+		end
+	end
+
+	return comb1_signals, comb2_signals, secondary_inv_signals, status1 == DEFINES_WORKING or status1 == DEFINES_LOW_POWER
 end
 
 --- Update the station control combinator at the given station if it exists.
 ---@param map_data MapData
 ---@param station Station
 function set_comb2(map_data, station)
-	if station.entity_comb2 then
+	if station.entity_comb2 and station.entity_comb2.valid then
 		local deliveries = station.deliveries
 		---@type LogisticFilter[]
 		local signals = {}
@@ -1049,13 +1116,7 @@ end
 local function send_alert_for_train(train, icon, message, ...)
 	local loco = train.front_stock or train.back_stock
 	if loco then
-		for _, player in pairs(loco.force.players) do
-			player.add_custom_alert(
-				loco,
-				icon,
-				{ message, ... },
-				true)
-		end
+		loco.force.add_custom_alert(loco, icon, { message, ... }, true)
 	end
 end
 
@@ -1064,14 +1125,8 @@ end
 ---@param icon {}
 ---@param message string
 local function send_alert_for_station(station, icon, message)
-	for _, player in pairs(station.force.players) do
-		player.add_custom_alert(
-			station,
-			icon,
-			{ message },
-			true)
-		player.play_sound({ path = ALERT_SOUND })
-	end
+	station.force.add_custom_alert(station, icon, { message }, true)
+	station.force.play_sound({ path = ALERT_SOUND })
 end
 
 
@@ -1079,23 +1134,27 @@ local send_alert_about_missing_train_icon = { name = MISSING_TRAIN_NAME, type = 
 ---@param r_stop LuaEntity
 ---@param p_stop LuaEntity
 ---@param message string
+---@return LocalisedString message as sent, for remove_alert_about_missing_train
 function send_alert_about_missing_train(r_stop, p_stop, message)
-	for _, player in pairs(r_stop.force.players) do
-		player.add_custom_alert(
-			r_stop,
-			send_alert_about_missing_train_icon,
-			{ message, r_stop.backer_name, p_stop.backer_name },
-			true)
-	end
+	local text = { message, r_stop.backer_name, p_stop.backer_name }
+	r_stop.force.add_custom_alert(r_stop, send_alert_about_missing_train_icon, text, true)
+	return text
+end
+
+---Removes a requester alert sent by send_alert_about_missing_train, matched by its exact message; without a message,
+---every such alert on the stop, leaving other alerts on it alone.
+---@param stop LuaEntity
+---@param message LocalisedString? as it was sent
+function remove_alert_about_missing_train(stop, message)
+	stop.force.remove_alert({ entity = stop, type = defines.alert_type.custom, icon = send_alert_about_missing_train_icon,
+		message = message })
 end
 
 ---@param train LuaTrain
 function send_alert_sounds(train)
 	local loco = get_any_train_entity(train)
 	if loco then
-		for _, player in pairs(loco.force.players) do
-			player.play_sound({ path = ALERT_SOUND })
-		end
+		loco.force.play_sound({ path = ALERT_SOUND })
 	end
 end
 
@@ -1103,21 +1162,7 @@ end
 ---@param p_stop LuaEntity
 function send_alert_missing_train(r_stop, p_stop)
 	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.missing-train")
-end
----@param r_stop LuaEntity
----@param p_stop LuaEntity
-function send_alert_no_train_has_capacity(r_stop, p_stop)
-	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-has-capacity")
-end
----@param r_stop LuaEntity
----@param p_stop LuaEntity
-function send_alert_no_train_matches_r_layout(r_stop, p_stop)
-	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-matches-r-layout")
-end
----@param r_stop LuaEntity
----@param p_stop LuaEntity
-function send_alert_no_train_matches_p_layout(r_stop, p_stop)
-	send_alert_about_missing_train(r_stop, p_stop, "cybersyn-messages.no-train-matches-p-layout")
+	diag.alert(DIAG_ALERT_MISSING_TRAIN, nil, r_stop, p_stop)
 end
 
 local send_stuck_train_alert_icon = { name = LOST_TRAIN_NAME, type = "fluid" }
@@ -1127,6 +1172,7 @@ function send_alert_stuck_train(map_data, train)
 	send_alert_for_train(train, send_stuck_train_alert_icon, "cybersyn-messages.stuck-train")
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = { train, 1, map_data.total_ticks }
+	diag.alert(DIAG_ALERT_STUCK, train)
 end
 
 local send_nonempty_train_in_depot_alert_icon = { name = NONEMPTY_TRAIN_NAME, type = "fluid" }
@@ -1137,6 +1183,7 @@ function send_alert_nonempty_train_in_depot(map_data, train)
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = { train, 2, map_data.total_ticks }
+	diag.alert(DIAG_ALERT_NONEMPTY_IN_DEPOT, train)
 end
 
 local send_lost_train_alert_icon = { name = LOST_TRAIN_NAME, type = "fluid" }
@@ -1147,6 +1194,7 @@ function send_alert_depot_of_train_broken(map_data, train)
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = { train, 3, map_data.total_ticks }
+	diag.alert(DIAG_ALERT_DEPOT_BROKEN, train)
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -1155,6 +1203,7 @@ function send_alert_station_of_train_broken(map_data, train)
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = { train, 4, map_data.total_ticks }
+	diag.alert(DIAG_ALERT_STATION_BROKEN, train)
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -1163,6 +1212,7 @@ function send_alert_refueler_of_train_broken(map_data, train)
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = { train, 5, map_data.total_ticks }
+	diag.alert(DIAG_ALERT_REFUELER_BROKEN, train)
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -1171,6 +1221,7 @@ function send_alert_train_at_incorrect_station(map_data, train)
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = { train, 6, map_data.total_ticks }
+	diag.alert(DIAG_ALERT_AT_INCORRECT_STATION, train)
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -1179,6 +1230,7 @@ function send_alert_cannot_path_between_surfaces(map_data, train)
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = { train, 7, map_data.total_ticks }
+	diag.alert(DIAG_ALERT_CANNOT_PATH_BETWEEN_SURFACES, train)
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -1188,6 +1240,7 @@ function send_alert_train_group_base_schedule_broken(map_data, train, group)
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = { train, 8, map_data.total_ticks }
+	diag.alert(DIAG_ALERT_GROUP_SCHEDULE_BROKEN, train)
 end
 ---@param map_data MapData
 ---@param train LuaTrain
@@ -1196,6 +1249,7 @@ function send_alert_train_base_schedule_broken(map_data, train)
 	send_alert_sounds(train)
 	map_data.active_alerts = map_data.active_alerts or {}
 	map_data.active_alerts[train.id] = { train, 9, map_data.total_ticks }
+	diag.alert(DIAG_ALERT_SCHEDULE_BROKEN, train)
 end
 
 --- Alert user when a Cybersyn train arrives at a station with non-default
@@ -1203,11 +1257,32 @@ end
 ---@param station LuaEntity Must be a train stop.
 function send_alert_station_non_default_priority(station)
 	send_alert_for_station(station, send_lost_train_alert_icon, "cybersyn-messages.station-non-default-priority")
+	diag.alert(DIAG_ALERT_NON_DEFAULT_PRIORITY, nil, station)
 end
 
 ---@param train LuaTrain
 function send_alert_unexpected_train(train)
 	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.unexpected-train")
+	diag.alert(DIAG_ALERT_UNEXPECTED_TRAIN, train)
+end
+
+---@param map_data MapData
+---@param train LuaTrain
+---@param stop LuaEntity? the stop the train loaded at
+function send_alert_unexpected_cargo(map_data, train, stop)
+	send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.unexpected-cargo")
+	send_alert_sounds(train)
+	map_data.active_alerts = map_data.active_alerts or {}
+	map_data.active_alerts[train.id] = { train, 10, map_data.total_ticks }
+	-- Logged by the departure's unexpected_cargo event, which names the item and amount (one row, not two).
+
+	-- Only the owning force, like the alert: other forces must not learn where its stops are.
+	if stop and stop.valid then
+		stop.force.print({ "cybersyn-messages.unexpected-cargo-at", stop.backer_name or "", gps_text(stop) } --[[@as LocalisedString]])
+	else
+		local loco = get_any_train_entity(train)
+		if loco then loco.force.print({ "cybersyn-messages.unexpected-cargo" }) end
+	end
 end
 
 ---@param map_data MapData
@@ -1237,6 +1312,8 @@ function process_active_alerts(map_data)
 				send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.train-at-incorrect")
 			elseif id == 7 then
 				send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.cannot-path-between-surfaces")
+			elseif id == 10 then
+				send_alert_for_train(train, send_lost_train_alert_icon, "cybersyn-messages.unexpected-cargo")
 			end
 		else
 			map_data.active_alerts[train_id] = nil

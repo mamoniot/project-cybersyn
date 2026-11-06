@@ -1,5 +1,39 @@
 local util = require "__core__.lualib.util"
 
+--- A station combinator in any of its displays (plain, active, failed request).
+---@param op ArithmeticCombinatorParameterOperation?
+---@return boolean
+function is_station_op(op)
+	return op == MODE_PRIMARY_IO or op == MODE_PRIMARY_IO_ACTIVE or op == MODE_PRIMARY_IO_FAILED_REQUEST
+end
+
+--- An inventory combinator in either of its displays (plain, failed request).
+---@param op ArithmeticCombinatorParameterOperation?
+---@return boolean
+function is_secondary_inventory_op(op)
+	return op == MODE_SECONDARY_INVENTORY or op == MODE_SECONDARY_INVENTORY_FAILED
+end
+
+--- A station's threshold for one item, in items: its per-item override, else the stop's fluid or item threshold (a
+--- nil fluid threshold means the item one). A stack station counts in stacks, fluids have none. Without bases it is
+--- the override alone, or nil: how a provider's override is read.
+---@param map_data MapData?
+---@param station Station
+---@param item_hash string
+---@param item_name string
+---@param item_type string
+---@param base_item int?
+---@param base_fluid int?
+---@return int?
+function get_item_threshold(map_data, station, item_hash, item_name, item_type, base_item, base_fluid)
+	local thresholds = station.item_thresholds
+	local threshold = thresholds and thresholds[item_hash] or item_type == "fluid" and base_fluid or base_item
+	if threshold and station.is_stack and item_type == "item" then
+		return threshold * get_stack_size(map_data, item_name)
+	end
+	return threshold
+end
+
 --By Mami
 ---@param v string
 ---@param h string?
@@ -141,10 +175,35 @@ function gps_text(entity)
 	return ""
 end
 
+---Creates a richtext link to the given entity: a stop tag (which shows the stop's name) for a train stop, otherwise
+---a GPS tag followed by the entity's name
+---@param entity LuaEntity
+---@return LocalisedString
+function entity_richtext(entity)
+	if entity.type == "train-stop" then
+		return "[train-stop=" .. entity.unit_number .. "]"
+	end
+	return { "", gps_text(entity), " ", entity.localised_name }
+end
+
 ---Formats the given integer with prefix `0x` followed by exactly 8 hexadecimal digits
 ---@param network_id integer
 function network_text(network_id)
 	return string.format("0x%08X", bit32.band(network_id)) -- band ensures 32bits (the parameter might have more)
+end
+
+--- Networks of a station, refueler or train as (name, mask) pairs.
+--- @param network_name string?
+--- @param network_mask int|{[string]: int}?
+--- @param fn fun(name: string, mask: int)
+function each_network(network_name, network_mask, fn)
+	if network_name == NETWORK_EACH then
+		if type(network_mask) == "table" then
+			for name, mask in pairs(network_mask) do fn(name, mask) end
+		end
+	elseif network_name then
+		fn(network_name, type(network_mask) == "number" and network_mask or 0)
+	end
 end
 
 

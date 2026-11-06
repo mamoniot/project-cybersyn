@@ -1,4 +1,89 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.2.2
+Date: 2026-10-29
+  Changes:
+    - Train and station alerts and their sound are sent to the force once instead of to each of its players, so players who are offline no longer collect them
+  Bugfixes:
+    - Includes upstream 2.1.3: the Space Exploration elevator connect switch works again, and an elevator window left open in a save is closed once so its frame is rebuilt
+---------------------------------------------------------------------------------------------------
+Version: 2.2.1
+Date: 2026-10-29
+  Features:
+    - (Manager) Stations tab: a Control signals column between Priority and Provided / requested, on the station combinator's row: the station combinator's signals, then the control combinator's (priority, request thresholds, locked slots and the like), then its per-item request thresholds; clicking an item sets the item filter
+    - (Manager) A toggle at the right of the Stations subheader shows or hides the Control signals column; until you choose, it shows whenever the window is wide enough for it beside the station name
+    - (Manager) Item drill-down: the Providers table has a Priority column with the priority the dispatcher compares, including the control combinator's per-item override
+---------------------------------------------------------------------------------------------------
+Version: 2.2.0
+Date: 2026-10-23
+  Features:
+    - New combinator mode Secondary inventory: another inventory at a station's train stop, provided or requested under its own network mask, priority and thresholds; the planner matches it as a stop of its own and the train still drives to the one stop; a station can have any number of them
+    - The secondary inventory combinator shows an I on its display, red while one of its own requests could not be dispatched
+    - Each combinator mode has a short description under the Mode drop-down
+    - New map setting "Reserve locked slots per item type" (off by default): when on, a provider's locked slots are reserved once for each item type in the manifest, so a multi-item delivery keeps room for every item; fluids do not count
+    - Optional alert when a train leaves a provider carrying an item type its manifest did not name (map setting "Alert for unexpected cargo pickup", off by default)
+    - New command /cybersyn-refresh-allow-lists re-reads the layout of every train, up to 50 trains every 10 ticks (fewer on large bases, where a train with a unique layout is checked against every station), so every station's allow list knows them
+    - New command /cybersyn-reset-gui centers the manager window, sizes it for your screen again and closes the filter row
+    - (Manager) Rebuilt Cybersyn Manager for large bases: Overview, Inventory, Stations, Trains and Log tabs, each list paged to fit the window, with data gathered a few stations per update and only while a window is open
+    - (Manager) Overview tab, shown first: four tiles (Unserved stations, Fleet headroom, Stations failing, Throughput) above an Unserved requests table that lists each waiting request with its reason, best provider, stock against what it needs, the requester it lost to and how long it has waited; each tile opens the list it counts; period selector Last 10 min / Last hour / Last 24 h
+    - (Manager) Diagnostics record why each request waits (No provider, Provider low, Provider held, Requester full, No free train, Trains filtered, Train too small, Network mask, No route and more) and count requests skipped at a train limit or beaten by a higher-priority station (map setting "Diagnostics": Off, Basic or Full)
+    - (Manager) Clicking the reason of an Unserved row opens Explain beside the window: the recorded reason with its numbers, the best provider, recent reason changes and the stop's setup findings
+    - (Manager) Acknowledge an unserved request or a setup finding to grey it out and stop counting it: click for 24 h, shift+click for 1 h, ctrl+click until the reason changes or the finding clears; Show acknowledged lists them again
+    - (Manager) Log tab: the diagnostics event log, filtered by kind, severity, train and time window, with Pause and Newest, a Summary of the busiest stations and items, a badge for unread errors, CSV export to script-output/cybersyn and a Print button that posts a row to chat with clickable train, stop and map tags
+    - (Manager) Setup checks run while the manager is open and flag configurations that keep requests from being served: a threshold no train can carry, an allow list that rejects every train, no network bit, the same item provided and requested, a phantom delivery, a train group spanning depot names, a schedule naming a missing stop, and more; combinators on the wrong side, doubled or still a ghost are tracked by the build handlers at all times; the Stations tab's Problems chip lists them worst first
+    - (Manager) Stations tab: one row per combinator (the station combinator first, then each secondary inventory in the order it was built) with its own network and mask, priority and items; Status (No power, Disabled, Warming up, Starved, Setup, Saturated, Idle, OK), Priority, Wait and Last dispatch columns; status chips with counts plus Unserved, With stuck train, Failing and Problems; every column sortable from its header
+    - (Manager) Trains tab: status with destination and cargo, composition, depot, state, time in state, last refuel and fuel; chips for each train state plus In interrupt, Not refueled > 1 h, In vanilla group, In trouble and Problems; group by depot name; a detail pane with a camera following the selected train
+    - (Manager) Inventory tab: Provided, In transit and Requested grids in crafting-menu order or sorted by amount, stations, wait time or deficit, updated in place; dim the items nobody on the network requests
+    - (Manager) Clicking an item anywhere sets the item filter and shows its drill-down on the Inventory tab: providers, requesters in the dispatcher's order (approximate) with priority and why each one waits, and the trains carrying it; Back clears the filter
+    - (Manager) Cybersyn panels beside the vanilla train stop, locomotive and cargo wagon windows (player setting "Manager: Panels beside train stop and train windows", on by default): role, network and mask, status, one Advertised block per combinator, unserved requests with their reasons, deliveries in flight, setup findings, the effective config (thresholds, matching trains, largest eligible train, allow list) and the last log events
+    - (Manager) Train panel actions Send home, Path trace (draws the rest of the train's path for 10 s), Pin and Open in manager; the Trains pane has Send home, Locate, Path trace and Pin; stop panel action Recount deliveries repairs a delivery counter that a failed delivery left too high
+    - (Manager) Station chip: "Open in manager" in the stop panel limits the Stations and Inventory tabs, the Trains list and the Log to that station until the chip is removed
+    - (Manager) Optional on-screen line with the unserved requests, the free trains and the most common reason, refreshed every 5 s (player setting "Manager: Unserved line on screen")
+    - (Manager) Pause and Pin toggles in the title bar; a pinned window stays open while you play
+    - (Manager) Open Cybersyn Manager button in the vanilla trains window
+    - (Manager) Utilization chart: each train layout has a checkbox and its average in the Train types legend, and the chart has a time axis and a crosshair tooltip
+  Changes:
+    - New map setting "Manager actions allowed for" (Admins, Everyone, Nobody) gates /cybersyn-fix-priorities, /cybersyn-abolish-same-depot, /cybersyn-recalculate-train-size, /cybersyn-refresh-allow-lists, Send home and Recount deliveries; single player is always allowed, and every action is printed to the force and logged
+    - "Enable analytics" turns on both the Utilization and the Breakdown tabs; both need factorio-charts 1.3.0 or newer
+    - The Utilization chart's intervals run from 1 minute to 1000 hours; upgrading starts its history again
+    - Removed the "Track request wait times" setting: wait tracking is always on
+    - Removed the "Max entities displayed on GUI pages" setting: the window pages by what fits on screen, because the limit cut the list before sorting
+    - (Manager) Removed the Alerts, Depots and History tabs: the Overview and the Log cover alerts and past deliveries, and the Trains tab groups trains by depot
+    - (Manager) Removed the filter history bar and the subscription to other mods' interop events
+    - Missing-train alerts are merged into one per item and network, placed on the longest-waiting requester's stop; the other requesters starved of the same item no longer get an alert of their own
+    - When the network has trains but none can serve a request (network mask, manual mode, schedule or surface), the alert says so instead of reporting that no train exists
+    - Each warming-up station finishes on its own timer instead of queueing behind the oldest one, and a station stays in warm-up until its stop has connected rail
+    - Rotating a combinator so it reaches another stop rebuilds it, as building it there would: deliveries in flight to that station fail
+    - The two stations of a new delivery now move to the end of the polling queue; the code for this was there but never ran
+    - /cybersyn-find-problems reads the setup registry kept by the build handlers instead of scanning every surface, also reports combinators that are still ghosts, combinators on the wrong side of their stop and stops whose combinators make no station, depot or refueler, prints only to the player who ran it (their force only), and checks only Cybersyn's own stops for a non-default train stop priority
+    - /cybersyn-recalculate-train-size also drops the layouts no train has any more, together with their allow-list entries
+    - (Manager) Item buttons share one click scheme: click opens the drill-down, shift+click lists the stations with that item, right-click clears the item filter
+    - (Manager) Shift+click on a station, depot, refueler or train shows it on the map and closes the window; Locate keeps the window with a Back button; ctrl+shift+click pins it on the map
+    - (Manager) The window sizes itself to the screen and shows as many whole rows as fit; a saved position that is off the screen is moved back onto it
+    - (Manager) E and Escape close the top layer first (search, Explain, train pane) and then the window, as in the game's own windows; a pinned window ignores them; Ctrl+F searches station names
+    - (Manager) Breakdown names stuck reasons the same way as the Unserved table
+    - (Manager) The "Dispatcher Disabled" label is now a Dispatch paused banner on every tab, naming who turned central planning off
+  Optimizations:
+    - Item stack sizes are cached at load instead of looked up inside the dispatch loop
+    - The combinator display is written only when it changed
+    - The dispatcher reads a cached interrupt flag instead of each candidate train's schedule
+    - Utilization samples on a fixed 6-tick cadence, independent of the dispatcher rate
+    - (Manager) Nothing is collected while every window is closed, or paused after its first data; the data is kept for 2 minutes after the last close so a quick reopen is instant
+    - (Manager) Rows are reused and only changed cells are rewritten; the log keeps fixed-size rings, so neither UPS nor the save grows with time
+  Bugfixes:
+    - A request whose usable trains are all inside interrupts is reported as such instead of as a layout mismatch
+    - /cybersyn-recalculate-train-size no longer inflates the layout train counts on every run
+    - (Manager) Text search is case-insensitive plain text with space-separated terms, and applies to trains through their depot and station names
+    - (Manager) Item filter matches quality items
+    - (Manager) Sorting no longer flips direction on the first click of a new column, and sorts the whole list instead of a truncated subset
+    - (Manager) Opening a station or train from the manager no longer closes an unpinned manager, and closing that window returns to it
+    - (Manager) Opening a train without a locomotive shows a message instead of doing nothing
+  Scripting:
+    - New read-only remote interface cybersyn-query (query_unserved, query_counts, query_station, query_train) that returns plain tables for HUD and overlay mods; query_unserved walks the diagnostics table, so poll it every second or less often, not every tick
+    - New interface functions is_gui_open and toggle_gui report and toggle a player's manager window
+    - set_manifest_schedule also returns the reason a schedule was rejected
+    - Storage read through read_global changed shape: economy.all_r_stations and all_p_stations are now all_r_stops and all_p_stops, lists of stop records (one per station combinator and secondary inventory) that carry the tick_signals and item_p_counts which used to be station fields; warmup_station_ids is removed in favour of warmup_station_cycles
+    - analytics.train_utilization has 7 intervals, and analytics.fulfillment_times and total_delivery_times are removed
+---------------------------------------------------------------------------------------------------
 Version: 2.1.3
 Date: 2026-10-27
   Bugfixes:
@@ -47,7 +132,7 @@ Date: 2026-03-07
   Changes:
     - (Manager) Removes filter requirment from breakdown tab and removes unfinished deliveries which previously broke that chart.
     - (Manager) Breakdown tab legend color swatches are now bigger and easier to read
-    - (Manager) Utilisation tab now shows disclaimer about not using filtering by item 
+    - (Manager) Utilisation tab now shows disclaimer about not using filtering by item
   Bugfixes:
     - Fixed Space Exploration elevator teleport using a stale train ID for deferred removal, which caused layout train counts to silently corrupt over time and eventually crash.
     - Fix crash when train is in delayed cleanup state and target station is no longer avaliable

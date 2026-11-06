@@ -81,7 +81,6 @@ constants.gui = {
 	},
 }
 
-constants.gui_content_frame_height = 744
 constants.gui_inventory_table_height = 40 * 18
 
 constants.gui_translations = {

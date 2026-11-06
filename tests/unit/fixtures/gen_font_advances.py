@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Writes font_advances.lua: the glyph advances Factorio lays a button caption out with (default-semibold, the font
+of the filter chips) at every UI scale the test covers, for every locale the mod ships. chip_width_test.lua measures
+the filter chip captions with it.
+
+How the engine lays out the text, measured in game from probe buttons at UI scales 1.0, 1.25, 1.5, 1.75 and 2.0
+(about 150 buttons per scale; the model is never short and at most 1 px long on real captions):
+- the font is drawn at floor(14 * scale) px, from glyphs rasterised at RASTER[scale] px with FreeType's default
+  hinting; each glyph advances by its hinted advance at the raster size times size / raster, and the caption is the
+  sum of those, rounded up. So the scaled advances are neither the 1.0 ones times the scale nor hinted at the
+  scaled size (at 1.5 a "0" is 17 * 21/30 = 11.9 px, not 12).
+- a font further down the chain is rasterised at the raster size times the first font's hhea height over its own
+  (NotoSansCJKtc: 31 px beside Titillium's 30), so its glyphs keep the first font's line height.
+FreeType here hints M and U at the raster size 1 px wider than the game's, and b, p and x at 14 px; the test only
+errs long for them.
+
+usage: python -m venv /tmp/ftvenv && /tmp/ftvenv/bin/pip install freetype-py
+       /tmp/ftvenv/bin/python gen_font_advances.py [factorio-data-dir] [mod-root]
+Rerun after a Factorio update or when a translation brings characters the table lacks (the test names them).
+"""
+import json
+import math
+import os
+import re
+import struct
+import sys
+import freetype
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+DATA = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser("~/factorio/data")
+MOD = sys.argv[2] if len(sys.argv) > 2 else os.path.join(HERE, "..", "..", "..", "cybersyn")
+FONT = "default-semibold"
+SIZE = 14
+# The raster size per UI scale, measured: 1.0 draws the font at its own size, the larger scales from 30 px glyphs.
+RASTER = {1.0: 14, 1.25: 30, 1.5: 30, 1.75: 30, 2.0: 30}
+# The chip captions' locale keys (station-status-<status>, stations-chip-<key>, trains-chip-<key>; not their
+# tooltips), plus everything the code puts around them: counts, separators, the dash placeholder, hours.
+CHIP_KEY = re.compile(r"^(station-status|stations-chip|trains-chip)-[a-z-]+$")
+EXTRA = [chr(c) for c in range(0x20, 0x7F)] + ["–"]
+
+
+def core_chain(locale):
+    for name in (locale, "en"):
+        path = os.path.join(DATA, "core", "locale", name, "info.json")
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                fonts = json.load(f).get("font")
+            if fonts and FONT in fonts:
+                return name, [p.replace("__core__", os.path.join(DATA, "core")) for p in fonts[FONT]]
+    raise SystemExit("no %s font chain for %s" % (FONT, locale))
+
+
+def hhea_height(path):
+    with open(path, "rb") as f:
+        data = f.read()
+    count = struct.unpack(">H", data[4:6])[0]
+    for i in range(count):
+        tag, _, offset, _ = struct.unpack(">4sIII", data[12 + 16 * i:28 + 16 * i])
+        if tag == b"hhea":
+            ascent, descent = struct.unpack(">hh", data[offset + 4:offset + 8])
+            return ascent - descent
+    raise SystemExit("no hhea table in " + path)
+
+
+def chip_chars(path):
+    chars = set(EXTRA)
+    for root, _, files in os.walk(path):
+        for name in files:
+            if name.endswith(".cfg"):
+                with open(os.path.join(root, name), encoding="utf-8") as f:
+                    for line in f:
+                        key, sep, value = line.rstrip("\n").partition("=")
+                        if sep and CHIP_KEY.match(key):
+                            chars.update(c for c in value if c >= " ")
+    return sorted(ord(c) for c in chars)
+
+
+def main():
+    locales = sorted(d for d in os.listdir(os.path.join(MOD, "locale")) if os.path.isdir(os.path.join(MOD, "locale", d)))
+    cps = chip_chars(os.path.join(MOD, "locale"))
+    faces = {}
+
+    def face(path, px):
+        if path not in faces:
+            faces[path] = freetype.Face(path)
+        f = faces[path]
+        f.set_pixel_sizes(0, px)
+        return f
+
+    scales = sorted(RASTER)
+    chains, chain_of = {}, {}
+    for loc in locales:
+        source, paths = core_chain(loc)
+        chain_of[loc] = source
+        if source in chains:
+            continue
+        first = hhea_height(paths[0])
+        per_scale = []
+        for scale in scales:
+            raster = RASTER[scale]
+            adv = {}
+            for cp in cps:
+                for p in paths:
+                    if face(p, raster).get_char_index(cp):
+                        f = face(p, round(raster * first / hhea_height(p)))
+                        f.load_char(cp, freetype.FT_LOAD_DEFAULT)
+                        adv[cp] = f.glyph.advance.x // 64
+                        break
+            per_scale.append(adv)
+        chains[source] = ([os.path.basename(p) for p in paths], per_scale)
+
+    out = ["-- Generated by gen_font_advances.py from Factorio's %s fonts; do not edit." % FONT,
+           "-- scales[i]: the font is drawn at `size` px from glyphs rasterised at `raster` px. chains[name].advance[i]",
+           "-- [codepoint] = the glyph's advance in raster px at scales[i], from the first font of the chain that has it,",
+           "-- as Factorio falls back; a caption is ceil(sum * size / raster) px. locales maps each mod locale to the",
+           "-- core locale whose chain it renders with (its own when Factorio ships one with a font list, else en's).",
+           "return {", "\tscales = {"]
+    for scale in scales:
+        out.append("\t\t{ scale = %s, size = %d, raster = %d }," % (scale, math.floor(SIZE * scale + 1e-9), RASTER[scale]))
+    out.append("\t},")
+    out.append("\tlocales = {")
+    for loc in locales:
+        out.append('\t\t["%s"] = "%s",' % (loc, chain_of[loc]))
+    out.append("\t},")
+    out.append("\tchains = {")
+    for name, (files, per_scale) in sorted(chains.items()):
+        out.append('\t\t["%s"] = {' % name)
+        out.append("\t\t\tfonts = { %s }," % ", ".join('"%s"' % f for f in files))
+        out.append("\t\t\tadvance = {")
+        for scale, adv in zip(scales, per_scale):
+            out.append("\t\t\t\t{ -- %s" % scale)
+            row = []
+            for cp, a in sorted(adv.items()):
+                row.append("[%d]=%d" % (cp, a))
+                if len(row) == 14:
+                    out.append("\t\t\t\t\t" + ", ".join(row) + ",")
+                    row = []
+            if row:
+                out.append("\t\t\t\t\t" + ", ".join(row) + ",")
+            out.append("\t\t\t\t},")
+        out.append("\t\t\t},")
+        out.append("\t\t},")
+    out.append("\t},")
+    out.append("}")
+    with open(os.path.join(HERE, "font_advances.lua"), "w", encoding="utf-8") as f:
+        f.write("\n".join(out) + "\n")
+
+
+main()

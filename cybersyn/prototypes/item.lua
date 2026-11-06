@@ -12,7 +12,7 @@ if mods["nullius"] then
 	combinator_item.order = "nullius-eca"
 end
 
----@type data.ItemPrototype
+---@type ItemPrototype
 provider_id_item = {
 	type = "item",
 	name = PROVIDER_ID_ITEM,

@@ -21,51 +21,38 @@ local function debug_log(msg)
 	end
 end
 
----Format a layout into a human-readable description
----@param layout table? The layout array (0=loco, 1=cargo, 2=fluid)
----@param layout_id number? Optional layout_id for fallback display
+---The Utilization legend's name for a layout: locomotives, cargo and fluid wagons counted ("2L-4C-1F"); "#id"
+---when the layout record is gone.
+---@param layout int[]? the layout array (0 = locomotive, 1 = cargo wagon, 2 = fluid wagon)
+---@param layout_id uint?
 ---@return string
 function analytics.format_layout_name(layout, layout_id)
-	if not layout then
-		if layout_id then
-			return "Layout #" .. layout_id
-		end
-		return "Unknown"
+	if not layout or #layout == 0 then
+		return "#" .. tostring(layout_id or "?")
 	end
-
-	local locos = 0
-	local cargo = 0
-	local fluid = 0
+	local locos, cargo, fluid = 0, 0, 0
 	for i = 1, #layout do
-		if layout[i] == 0 then
+		local c = layout[i]
+		if c == WAGON_LOCO then
 			locos = locos + 1
-		elseif layout[i] == 1 then
+		elseif c == WAGON_CARGO then
 			cargo = cargo + 1
-		elseif layout[i] == 2 then
+		elseif c == WAGON_FLUID then
 			fluid = fluid + 1
 		end
 	end
-
 	local parts = {}
-	if locos > 0 then
-		parts[#parts + 1] = locos .. "L"
-	end
-	if cargo > 0 then
-		parts[#parts + 1] = cargo .. "C"
-	end
-	if fluid > 0 then
-		parts[#parts + 1] = fluid .. "F"
-	end
-
-	if #parts == 0 then
-		return "No wagons"
-	end
+	if locos > 0 then parts[#parts + 1] = locos .. "L" end
+	if cargo > 0 then parts[#parts + 1] = cargo .. "C" end
+	if fluid > 0 then parts[#parts + 1] = fluid .. "F" end
 	return table.concat(parts, "-")
 end
 
--- Interval definitions for time series data
+-- The Utilization chart's resolutions, one per range button: each interval keeps `length` samples taken `ticks` game
+-- ticks apart, so it spans exactly the time its name says (ticks x length), and every `steps` of them are averaged
+-- into one sample of the next. analytics.tick runs on its own nth tick (SAMPLE_TICKS = the first interval's `ticks`),
+-- not the planner's, so the spans do not depend on the dispatcher rate.
 local interval_defs = {
-	{name = "5s",    ticks = 1,      steps = 6,   length = 300},
 	{name = "1m",    ticks = 6,      steps = 10,  length = 600},
 	{name = "10m",   ticks = 60,     steps = 6,   length = 600},
 	{name = "1h",    ticks = 360,    steps = 10,  length = 600},
@@ -74,65 +61,84 @@ local interval_defs = {
 	{name = "250h",  ticks = 90000,  steps = 4,   length = 600},
 	{name = "1000h", ticks = 360000, steps = nil, length = 600},
 }
+analytics.UTILIZATION_INTERVALS = interval_defs
+analytics.SAMPLE_TICKS = interval_defs[1].ticks
 
-local interval_map = {
-	["5s"] = 1, ["1m"] = 2, ["10m"] = 3, ["1h"] = 4,
-	["10h"] = 5, ["50h"] = 6, ["250h"] = 7, ["1000h"] = 8,
+--- The Breakdown tab's range buttons: each covers exactly the span its caption names (key = number + m or h).
+analytics.BREAKDOWN_RANGES = {
+	{ key = "1m", ticks = 3600 },
+	{ key = "10m", ticks = 36000 },
+	{ key = "1h", ticks = 216000 },
+	{ key = "10h", ticks = 2160000 },
+	{ key = "50h", ticks = 10800000 },
 }
 
 local SURFACE_NAME = "cybersyn_analytics"
 
----Create a new interval set (8 intervals for one graph)
----@return table[] intervals
+---@return table[] intervals the Utilization chart's interval set, empty
 local function new_interval_set()
 	return charts.create_time_series(interval_defs)
 end
 
----Initialize analytics data structure
+---Drops every chart and chunk the save holds and restarts chunk allocation. Versions with another utilization shape
+---created a new surface_data on every tab build, so the stored cursor can point at chunks still in use.
+---@param map_data MapData
+local function reset_charts(map_data)
+	local data = map_data.analytics
+	for _, set in pairs({ data.train_utilization, data.fulfillment_times, data.total_delivery_times,
+		{ data.breakdown_interval } }) do
+		for _, interval in pairs(set) do
+			if interval.line_ids then charts.destroy_render_objects(interval.line_ids) end
+			analytics.destroy_chart(interval)
+		end
+	end
+	data.surface_data = charts.create_surface(SURFACE_NAME)
+	data.breakdown_interval = nil
+end
+
+---Brings a save's analytics to the current shape, then creates what is missing (analytics.init).
+---@param map_data MapData
+function analytics.migrate(map_data)
+	local data = map_data.analytics
+	if data then
+		local series = data.train_utilization
+		if not (series and #series == #interval_defs and series[1].name == interval_defs[1].name) then
+			reset_charts(map_data)
+			data.train_utilization = new_interval_set()
+		end
+		-- Series and per-item averages no tab reads.
+		data.failed_dispatches, data.last_failure_tick = nil, nil
+		data.fulfillment_times, data.total_delivery_times = nil, nil
+		data.fulfillment_ema, data.total_time_ema, data.delivery_counts, data.delivery_starts = nil, nil, nil, nil
+	end
+	analytics.init(map_data)
+end
+
+---Creates whatever analytics state is missing.
 ---@param map_data MapData
 function analytics.init(map_data)
-	-- Create the chart surface using the library
-	local surface_data = charts.create_surface(SURFACE_NAME)
-
-	if map_data.analytics then
-		-- Already initialized, update surface reference
-		map_data.analytics.surface = surface_data.surface
-		map_data.analytics.surface_data = surface_data
-		-- Ensure fields exist for backwards compatibility
-		if not map_data.analytics.fulfillment_ema then
-			map_data.analytics.fulfillment_ema = {}
+	local data = map_data.analytics
+	if data then
+		-- The stored surface_data carries the chunk allocation cursor: a fresh one would place every new chunk at {0,0},
+		-- on top of the charts already there.
+		local surface_data = data.surface_data
+		if not (surface_data and surface_data.surface and surface_data.surface.valid) then
+			surface_data = charts.create_surface(SURFACE_NAME)
+			data.surface_data = surface_data
 		end
-		if not map_data.analytics.total_time_ema then
-			map_data.analytics.total_time_ema = {}
-		end
-		if not map_data.analytics.delivery_counts then
-			map_data.analytics.delivery_counts = {}
-		end
-		if not map_data.analytics.delivery_phases then
-			map_data.analytics.delivery_phases = {}
-		end
-		if not map_data.analytics.completed_deliveries then
-			map_data.analytics.completed_deliveries = {}
-		end
-		if not map_data.analytics.active_failures then
-			map_data.analytics.active_failures = {}
-		end
-		-- Clean up old data structures if present
-		map_data.analytics.failed_dispatches = nil
-		map_data.analytics.last_failure_tick = nil
+		data.surface = surface_data.surface
+		data.train_utilization = data.train_utilization or new_interval_set()
+		data.delivery_phases = data.delivery_phases or {}
+		data.completed_deliveries = data.completed_deliveries or {}
+		data.active_failures = data.active_failures or {}
 		return
 	end
 
+	local surface_data = charts.create_surface(SURFACE_NAME)
 	map_data.analytics = {
 		surface = surface_data.surface,
 		surface_data = surface_data,
 		train_utilization = new_interval_set(),
-		fulfillment_times = new_interval_set(),
-		total_delivery_times = new_interval_set(),
-		delivery_starts = {},
-		fulfillment_ema = {},
-		total_time_ema = {},
-		delivery_counts = {},
 		delivery_phases = {},
 		completed_deliveries = {},
 		active_failures = {},
@@ -148,7 +154,7 @@ function analytics.is_enabled()
 		return false
 	end
 	local setting = settings.global["cybersyn-enable-analytics"]
-	return setting and setting.value
+	return setting and setting.value --[[@as boolean]]
 end
 
 ---Check if the charts library is available
@@ -181,6 +187,58 @@ function analytics.interval_register_gui(map_data, interval, player, gui, option
 	return chunk
 end
 
+---Brings a tab's graph frame and camera to gw x gh, registers the player as a viewer of `interval` and aims the camera
+---at its chunk.
+---@param map_data MapData
+---@param interval table
+---@param player LuaPlayer
+---@param refs table the tab's refs, kept as the player's viewer entry
+---@param frame LuaGuiElement?
+---@param camera LuaGuiElement?
+---@param gw int
+---@param gh int
+---@param y_bias number the tab's vertical offset, in tiles, tuned by eye
+---@return boolean? resized
+---@return table? camera_info nil while the interval has no chunk
+function analytics.sync_chart_view(map_data, interval, player, refs, frame, camera, gw, gh, y_bias)
+	local data = map_data.analytics
+	local resized = frame and frame.valid and (frame.style.minimal_width ~= gw or frame.style.minimal_height ~= gh)
+	if resized then
+		for _, e in ipairs({ frame, camera }) do
+			if e and e.valid then
+				e.style.width, e.style.height = gw, gh
+				e.style.minimal_width, e.style.minimal_height = gw, gh
+				e.style.maximal_width, e.style.maximal_height = gw, gh
+			end
+		end
+		if interval.chunk and data.surface_data then
+			charts.ensure_tile_coverage(data.surface_data, interval.chunk, { viewport_width = gw, viewport_height = gh })
+		end
+	end
+	-- Keeps the camera off the player's own surface even when no chunk could be allocated.
+	if camera and data.surface then camera.surface_index = data.surface.index end
+	-- The interval's own viewer table decides, not a per-player flag: a flag outlives a window rebuilt by reset_player
+	-- and an interval replaced by analytics.migrate.
+	if interval.guis[player.index] then
+		interval.guis[player.index] = refs
+	else
+		analytics.interval_register_gui(map_data, interval, player, refs, { viewport_width = gw, viewport_height = gh })
+	end
+	local chunk = interval.chunk
+	if not (chunk and camera and charts) then return resized, nil end
+	-- zoom = scale / density puts one tile on 32 logical px on any display (Windows density 1.0-1.75, Mac 2.0). The
+	-- library centres the camera on a 900x700 viewport (it is not told the size); the offsets move it onto the graph's
+	-- centre.
+	local display_scale = player.display_scale or 1.0
+	return resized, charts.setup_camera_widget(camera, data.surface, chunk, {
+		widget_width = gw,
+		widget_height = gh,
+		display_scale = display_scale,
+		position_offset = { x = (gw - 900) / 64 - 0.125, y = (gh - 700) / 64 + y_bias },
+		zoom_override = display_scale / (player.display_density_scale or 1.0),
+	})
+end
+
 ---Unregister a GUI from viewing an interval
 ---@param map_data MapData
 ---@param interval table
@@ -190,23 +248,63 @@ function analytics.interval_unregister_gui(map_data, interval, player)
 	interval.viewer_count = interval.viewer_count - 1
 end
 
----Render a graph to its chunk using the library
+---Draws one Utilization interval as a factorio-charts interactive line graph kept on the interval (interval.chart),
+---so the crosshair can find the drawing. `id` must be the same on every peer and across save/load: the hover buttons
+---carry it and the library's registry is rebuilt from storage in on_load.
 ---@param map_data MapData
----@param intervals table[]
----@param interval_index number
----@param selected_series table?
----@param fixed_range table?
----@param label_format string?
----@return table? ordered_sums Series ordered by sum
----@return table? hit_regions Hit regions for interaction
-function analytics.render_graph(map_data, intervals, interval_index, selected_series, fixed_range, label_format, viewport_width, viewport_height)
-	return charts.render_time_series(map_data.analytics.surface, intervals, interval_index, {
-		selected_series = selected_series,
-		y_range = fixed_range,
-		label_format = label_format,
-		viewport_width = viewport_width,
-		viewport_height = viewport_height,
-	})
+---@param interval table one interval of map_data.analytics.train_utilization
+---@param id string
+---@param options table line graph options (selected_series, y_range, label_format, x_axis, camera_zoom, viewport_*)
+---@param callbacks table? {format_tooltip, on_cell_hover, on_cell_leave} registered with the state
+---@return table? state
+function analytics.render_chart(map_data, interval, id, options, callbacks)
+	local chunk = interval.chunk
+	if not chunk then return nil end
+	local opts = { id = id, data = interval.data, index = interval.index, length = interval.length,
+		counts = interval.counts, sum = interval.sum, ttl = math.max(interval.ticks * 2, 360) }
+	for k, v in pairs(options) do opts[k] = v end
+	if type(opts.x_axis) == "table" and not opts.x_axis.ticks_per_point then
+		local x_axis = { ticks_per_point = interval.ticks }
+		for k, v in pairs(opts.x_axis) do x_axis[k] = v end
+		opts.x_axis = x_axis
+	end
+	local state = interval.chart
+	if state and (state.chunk ~= chunk or state.id ~= id) then
+		charts.interactive.destroy(state)
+		state = nil
+	end
+	if state then
+		charts.interactive.update_line_graph(state, opts)
+	else
+		state = charts.interactive.create_line_graph(map_data.analytics.surface, chunk, opts)
+		interval.chart = state
+	end
+	charts.interactive.register(state, callbacks)
+	return state
+end
+
+---Removes an interval's interactive chart (lines, every crosshair and its registry entry).
+---@param interval table
+function analytics.destroy_chart(interval)
+	local state = interval.chart
+	if state and charts then charts.interactive.destroy(state) end
+	interval.chart = nil
+end
+
+---Gives every chart chunk the save holds the factorio-charts 1.3.0 background (black, no lights): chunks allocated
+---by an older library keep their lit lab tiles otherwise. Idempotent.
+---@param map_data MapData
+function analytics.restyle_chunks(map_data)
+	local data = map_data.analytics
+	local restyle = charts and charts.surface and charts.surface.restyle_chunk
+	if not (restyle and data and data.surface_data and data.surface_data.surface and data.surface_data.surface.valid) then
+		return
+	end
+	for _, interval in ipairs(data.train_utilization or {}) do
+		if interval.chunk then restyle(data.surface_data, interval.chunk) end
+	end
+	local breakdown = data.breakdown_interval
+	if breakdown and breakdown.chunk then restyle(data.surface_data, breakdown.chunk) end
 end
 
 ---Record delivery start for time tracking
@@ -221,12 +319,6 @@ function analytics.record_delivery_start(map_data, train_id, item_hash, fulfillm
 
 	local data = map_data.analytics
 	local current_tick = game.tick
-
-	data.delivery_starts[train_id] = {
-		item_hash = item_hash,
-		dispatch_tick = current_tick,
-		fulfillment_time = fulfillment_time,
-	}
 
 	if not data.delivery_phases then data.delivery_phases = {} end
 	data.delivery_phases[train_id] = {
@@ -244,79 +336,45 @@ function analytics.record_delivery_start(map_data, train_id, item_hash, fulfillm
 	end
 end
 
-local EMA_ALPHA = 0.2
-
 ---Record delivery completion for time tracking
 ---@param map_data MapData
 ---@param train_id uint
 function analytics.record_delivery_complete(map_data, train_id)
 	if not analytics.is_enabled() then return end
-	if not map_data.analytics then return end
-
 	local data = map_data.analytics
-	local start_info = data.delivery_starts[train_id]
-	if not start_info then return end
+	if not data then return end
+	local phases = data.delivery_phases and data.delivery_phases[train_id]
+	if not phases then return end
+	local item_hash = phases.item_hash
 
-	if not data.total_time_ema then data.total_time_ema = {} end
-	if not data.fulfillment_ema then data.fulfillment_ema = {} end
-	if not data.delivery_counts then data.delivery_counts = {} end
-
-	local item_hash = start_info.item_hash
-	local total_time = (game.tick - start_info.dispatch_tick) / 60
-	local fulfill_time_sec = start_info.fulfillment_time and (start_info.fulfillment_time / 60) or nil
-
-	data.delivery_counts[item_hash] = (data.delivery_counts[item_hash] or 0) + 1
-
-	local old_total_ema = data.total_time_ema[item_hash]
-	if old_total_ema then
-		data.total_time_ema[item_hash] = EMA_ALPHA * total_time + (1 - EMA_ALPHA) * old_total_ema
-	else
-		data.total_time_ema[item_hash] = total_time
-	end
-
-	if fulfill_time_sec then
-		local old_fulfill_ema = data.fulfillment_ema[item_hash]
-		if old_fulfill_ema then
-			data.fulfillment_ema[item_hash] = EMA_ALPHA * fulfill_time_sec + (1 - EMA_ALPHA) * old_fulfill_ema
-		else
-			data.fulfillment_ema[item_hash] = fulfill_time_sec
-		end
-	end
-
-	data.delivery_starts[train_id] = nil
-
-	if not data.delivery_phases then data.delivery_phases = {} end
 	if not data.completed_deliveries then data.completed_deliveries = {} end
 
-	local phases = data.delivery_phases[train_id]
-	if phases then
-		local current_tick = game.tick
-		local completed = {
-			complete_tick = current_tick,
-			wait = phases.dispatch_tick and phases.request_tick and
-				((phases.dispatch_tick - phases.request_tick) / 60) or 0,
-			travel_to_p = phases.arrive_p_tick and phases.dispatch_tick and
-				((phases.arrive_p_tick - phases.dispatch_tick) / 60) or 0,
-			loading = phases.leave_p_tick and phases.arrive_p_tick and
-				((phases.leave_p_tick - phases.arrive_p_tick) / 60) or 0,
-			travel_to_r = phases.arrive_r_tick and phases.leave_p_tick and
-				((phases.arrive_r_tick - phases.leave_p_tick) / 60) or 0,
-			unloading = phases.arrive_r_tick and
-				((current_tick - phases.arrive_r_tick) / 60) or 0,
-		}
+	local current_tick = game.tick
+	local completed = {
+		complete_tick = current_tick,
+		wait = phases.dispatch_tick and phases.request_tick and
+			((phases.dispatch_tick - phases.request_tick) / 60) or 0,
+		travel_to_p = phases.arrive_p_tick and phases.dispatch_tick and
+			((phases.arrive_p_tick - phases.dispatch_tick) / 60) or 0,
+		loading = phases.leave_p_tick and phases.arrive_p_tick and
+			((phases.leave_p_tick - phases.arrive_p_tick) / 60) or 0,
+		travel_to_r = phases.arrive_r_tick and phases.leave_p_tick and
+			((phases.arrive_r_tick - phases.leave_p_tick) / 60) or 0,
+		unloading = phases.arrive_r_tick and
+			((current_tick - phases.arrive_r_tick) / 60) or 0,
+	}
 
-		if not data.completed_deliveries[item_hash] then
-			data.completed_deliveries[item_hash] = {}
-		end
-		local completed_list = data.completed_deliveries[item_hash]
-		table.insert(completed_list, completed)
-
-		while #completed_list > 50 do
-			table.remove(completed_list, 1)
-		end
-
-		data.delivery_phases[train_id] = nil
+	if not data.completed_deliveries[item_hash] then
+		data.completed_deliveries[item_hash] = {}
 	end
+	local completed_list = data.completed_deliveries[item_hash]
+	table.insert(completed_list, completed)
+
+	while #completed_list > 50 do
+		table.remove(completed_list, 1)
+	end
+
+	data.delivery_phases[train_id] = nil
 end
 
 ---Record train arriving at provider
@@ -374,7 +432,9 @@ local FAILURE_STALE_TICKS = 3600   -- Consider failure resolved if not updated f
 ---@param failure_reason number 0=no provider stock, 1=no train, 2=capacity, 3=layout
 ---@param wait_so_far number seconds the request has been waiting (cumulative)
 ---@param p_station_id uint? provider station id if one was found
-function analytics.record_failed_dispatch(map_data, r_station_id, item_hash, failure_reason, wait_so_far, p_station_id)
+---@param reason int? REASON_* the diagnostics recorded for this evaluation (nil when a provider-side failure is not
+---  classified because diagnostics are off)
+function analytics.record_failed_dispatch(map_data, r_station_id, item_hash, failure_reason, wait_so_far, p_station_id, reason)
 	if not analytics.is_enabled() then return end
 	if not map_data.analytics then return end
 
@@ -394,6 +454,7 @@ function analytics.record_failed_dispatch(map_data, r_station_id, item_hash, fai
 		-- Update existing active failure
 		existing.last_tick = current_tick
 		existing.failure_reason = failure_reason  -- Reason might change
+		existing.reason = reason
 		existing.p_station_id = p_station_id
 		-- Keep original request_start_tick so bar shows full wait time
 	else
@@ -406,6 +467,7 @@ function analytics.record_failed_dispatch(map_data, r_station_id, item_hash, fai
 			request_start_tick = request_start_tick,  -- When the request originally started
 			last_tick = current_tick,
 			failure_reason = failure_reason,
+			reason = reason,
 			p_station_id = p_station_id,
 		}
 	end
@@ -446,10 +508,19 @@ function analytics.get_active_failures(map_data, oldest_tick)
 			-- Use request_start_tick for full wait duration, fall back to last_tick for old entries
 			local start = failure.request_start_tick or failure.start_tick or failure.last_tick
 			local duration_seconds = (current_tick - start) / 60
+			-- The reason the Unserved chip shows (flap-confirmed) when diagnostics hold this request, so both tabs
+			-- name it the same; the per-evaluation reason only without diagnostics.
+			local reason = failure.reason
+			local d = storage.diag
+			local ix = d and d.item_ix[failure.item_hash]
+			local by_item = ix and d.unserved[failure.r_station_id]
+			local e = by_item and by_item[ix]
+			if e then reason = e.reason end
 			results[#results + 1] = {
 				item_hash = failure.item_hash,
 				r_station_id = failure.r_station_id,
 				failure_reason = failure.failure_reason,
+				reason = reason,
 				duration = duration_seconds,
 				request_start_tick = start,
 				last_tick = failure.last_tick,
@@ -465,71 +536,50 @@ function analytics.get_active_failures(map_data, oldest_tick)
 	return results
 end
 
-local WORKING_STATUSES = {
-	[1] = true, [2] = true, [3] = true, [4] = true,
-}
+-- Scratch counts by layout id, empty between calls, and the series name of each layout id: a sample runs every
+-- SAMPLE_TICKS over every train, and only the sample itself is kept (by the chart).
+local sample_working, sample_total, layout_keys = {}, {}, {}
 
----Called each tick to sample analytics data
----@param map_data MapData
-function analytics.tick(map_data)
-	if not analytics.is_enabled() then return end
-	if not map_data.analytics then return end
-
-	local data = map_data.analytics
-
-	local working_counts = {}
-	local total_counts = {}
-
-	for train_id, train in pairs(map_data.trains) do
+---One utilization sample: per train layout (keyed by its id as a string, the chart's series name), the share of its
+---trains on a delivery now, in percent.
+---@param trains {[uint]: Train}
+---@return {[string]: number}
+function analytics.utilization_sample(trains)
+	local working, total = sample_working, sample_total
+	for _, train in pairs(trains) do
 		local layout_id = train.layout_id
 		if layout_id then
-			local key = tostring(layout_id)
-			total_counts[key] = (total_counts[key] or 0) + 1
-			if WORKING_STATUSES[train.status] then
-				working_counts[key] = (working_counts[key] or 0) + 1
+			total[layout_id] = (total[layout_id] or 0) + 1
+			if STATUS_ON_DELIVERY[train.status] then
+				working[layout_id] = (working[layout_id] or 0) + 1
 			end
 		end
 	end
-
-	local utilization_value = {}
-	for layout_id, total in pairs(total_counts) do
-		local working = working_counts[layout_id] or 0
-		local utilization = (working / total) * 100
-		utilization_value[layout_id] = utilization
-	end
-
-	if next(utilization_value) then
-		charts.add_datapoint(data.train_utilization, utilization_value)
-	end
-
-	if data.fulfillment_ema and next(data.fulfillment_ema) then
-		local fulfillment_value = {}
-		for item_hash, ema in pairs(data.fulfillment_ema) do
-			fulfillment_value[item_hash] = ema
+	local sample = {}
+	for layout_id, n in pairs(total) do
+		local key = layout_keys[layout_id]
+		if not key then
+			key = tostring(layout_id)
+			layout_keys[layout_id] = key
 		end
-		charts.add_datapoint(data.fulfillment_times, fulfillment_value)
+		sample[key] = (working[layout_id] or 0) / n * 100
+		total[layout_id], working[layout_id] = nil, nil
 	end
-
-	if data.total_time_ema and next(data.total_time_ema) then
-		local total_value = {}
-		for item_hash, ema in pairs(data.total_time_ema) do
-			total_value[item_hash] = ema
-		end
-		charts.add_datapoint(data.total_delivery_times, total_value)
-	end
+	return sample
 end
 
----Get interval definitions
----@return table[]
-function analytics.get_interval_defs()
-	return interval_defs
-end
-
----Get interval by name
----@param name string
----@return number
-function analytics.get_interval_index(name)
-	return interval_map[name] or 1
+---Samples train utilization into the chart's time series; called every SAMPLE_TICKS game ticks.
+---@param map_data MapData
+function analytics.tick(map_data)
+	if not analytics.is_enabled() then return end
+	-- Turning the setting on mid-game, or a save without samples, must start the chart without waiting for
+	-- a tab to open.
+	local data = map_data.analytics
+	if not (data and data.train_utilization) then analytics.init(map_data) end
+	local sample = analytics.utilization_sample(map_data.trains)
+	if next(sample) then
+		charts.add_datapoint(map_data.analytics.train_utilization, sample)
+	end
 end
 
 ---Render a stacked bar chart for delivery breakdown using the library
@@ -542,6 +592,7 @@ end
 ---@param overlay_options table? {camera_position, camera_zoom, widget_size, get_tooltip}
 ---@return table? hit_regions Hit regions for interaction (if no overlay_options)
 ---@return table? button_configs Button configs with tooltips (if overlay_options provided)
+---@return table? metadata the library's graph geometry and axis top (graph_left/right/bottom/height, max_total), with overlay_options
 function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phase_colors, phase_order, hatched_phases, viewport_width, viewport_height, overlay_options)
 	if not interval.chunk then
 		return nil
@@ -584,7 +635,7 @@ function analytics.render_stacked_bar_chart(map_data, interval, deliveries, phas
 			interval.line_ids = line_ids
 		end
 
-		return button_configs
+		return button_configs, metadata
 	end
 
 	-- Legacy path: use metadata-returning version for interaction support

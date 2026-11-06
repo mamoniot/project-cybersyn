@@ -13,6 +13,7 @@ combinator_entity.radius_visualisation_specification = {
 }
 combinator_entity.active_energy_usage = "10kW"
 combinator_entity.fast_replaceable_group = COMBINATOR_NAME
+table.insert(combinator_entity.flags, "get-by-unit-number")
 
 if mods["nullius"] then
 	combinator_entity.localised_name = { "entity-name.cybersyn-combinator" }
@@ -54,9 +55,11 @@ combinator_entity.modulo_symbol_sprites = create_combinator_display(CYBERSYN_DIS
 combinator_entity.power_symbol_sprites = create_combinator_display(CYBERSYN_DISPLAYS, 0, 1)
 combinator_entity.left_shift_symbol_sprites = create_combinator_display(FACTORIO_DISPLAYS, 1, 1)  -- green '>'
 combinator_entity.right_shift_symbol_sprites = create_combinator_display(CYBERSYN_DISPLAYS, 2, 1)
+combinator_entity.and_symbol_sprites = create_combinator_display(CYBERSYN_DISPLAYS, 3, 1)
+combinator_entity.or_symbol_sprites = create_combinator_display(CYBERSYN_DISPLAYS, 0, 2)
 combinator_entity.multiply_symbol_sprites = combinator_entity.divide_symbol_sprites
 
-combinator_out_entity = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"], COMBINATOR_OUT_NAME) --[[@as data.ConstantCombinatorPrototype]]
+combinator_out_entity = flib.copy_prototype(data.raw["constant-combinator"]["constant-combinator"], COMBINATOR_OUT_NAME) --[[@as ConstantCombinatorPrototype]]
 combinator_out_entity.icon = nil
 combinator_out_entity.icon_size = nil
 combinator_out_entity.next_upgrade = nil
