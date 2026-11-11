@@ -850,6 +850,7 @@ local function row_view(tr, ctx, alerts, filter_item, fuel, w)
 	local now = ctx.now
 	local state = tr.state and STATE_NAME[tr.state]
 	local in_state = now - (tr.state_since or now)
+	local refuel_age = logic.age(now, tr.refuel_tick)
 	local residue = tr.status == STATUS_D and next(tr.manifest_hashes) ~= nil
 	local sc = logic.state_chip(state, tr.state_since or now, now,
 		residue and "residue" or (tr.status == STATUS_F and "refuel" or nil))
@@ -878,7 +879,9 @@ local function row_view(tr, ctx, alerts, filter_item, fuel, w)
 		chip_sig = chip and (chip.key .. "|" .. chip.style) or "",
 		state = state,
 		in_state = logic.short_duration(in_state),
-		refuel = logic.age_caption(now, tr.refuel_tick),
+		in_state_sig = logic.short_duration_sig(in_state),
+		refuel = refuel_age and logic.short_duration(refuel_age),
+		refuel_age_sig = refuel_age and logic.short_duration_sig(refuel_age) or "never",
 		refuel_overdue = has_refueler(tr, ctx.to_refuelers) and logic.not_refuelled(now, tr.refuel_tick, ctx.hours, tr.refuel_from),
 		fuel = fuel,
 		capacity = capacity,
@@ -988,7 +991,7 @@ end
 --- @param view table
 --- @return string
 local function refuel_sig(view)
-	return tostring(view.refuel) .. (view.refuel_overdue and "!" or "")
+	return view.refuel_age_sig .. (view.refuel_overdue and "!" or "")
 end
 
 --- The memo update_row compares against, as a row built from `view` shows it.
@@ -999,7 +1002,7 @@ end
 local function row_memo(view, color, w)
 	return {
 		sig = view.sig, net = view.net_sig, ship = view.ship_sig, color = color, chip = view.chip_sig,
-		in_state = view.in_state, refuel = refuel_sig(view), fuel = view.fuel, wsig = w.sig, cap = view.capacity,
+		in_state = view.in_state_sig, refuel = refuel_sig(view), fuel = view.fuel, wsig = w.sig, cap = view.capacity,
 		lay = view.layout_sig,
 	}
 end
@@ -1200,11 +1203,11 @@ local function update_row(row, view, m, color, w, budget)
 		end
 		m.chip = view.chip_sig
 	end
-	if m.in_state ~= view.in_state then
+	if m.in_state ~= view.in_state_sig then
 		row.children[7].caption = view.in_state
 		-- The icon's tooltip carries the same age.
 		if view.chip and not chip_changed then row.children[6].children[2].tooltip = state_tooltip(view) end
-		m.in_state = view.in_state
+		m.in_state = view.in_state_sig
 	end
 	local rsig = refuel_sig(view)
 	if m.refuel ~= rsig then

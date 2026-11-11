@@ -1,6 +1,7 @@
 -- The pure rules of the Stations, Trains and Inventory tabs (scripts/gui/tab-logic.lua).
 
 local H = require("harness")
+local D = H.durations
 
 local function logic()
 	return H.load("scripts.gui.tab-logic")
@@ -182,7 +183,7 @@ test("state_chip: one wording, icon and colour; quiet states uncoloured, a long 
 	-- Caption and tooltip: the [cybersyn-diag] train-state-* set, the age after a middle dot.
 	local c = l.state_chip("wait_signal", 1000, 1000 + 384 * 60)
 	assert_eq(c.caption, { "cybersyn-diag.train-state-wait-signal" })
-	assert_eq(c.tooltip, { "", { "cybersyn-diag.train-state-wait-signal" }, " · ", "6m 24s" })
+	assert_eq(D(c.tooltip), { "", { "cybersyn-diag.train-state-wait-signal" }, " · ", "6m 24s" })
 	assert_eq(l.state_chip("manual_control_stop").tooltip, { "cybersyn-diag.train-state-manual-control-stop" })
 end)
 
@@ -251,11 +252,11 @@ end)
 
 test("short_duration: two units at most; util re-exports it", function()
 	local l = logic()
-	assert_eq(l.short_duration(0), "0s")
-	assert_eq(l.short_duration(42 * 60), "42s")
-	assert_eq(l.short_duration(185 * 60), "3m 05s")
-	assert_eq(l.short_duration(3900 * 60), "1h 05m")
-	assert_eq(l.short_duration(183600 * 60), "2d 03h")
+	assert_eq(D(l.short_duration(0)), "0s")
+	assert_eq(D(l.short_duration(42 * 60)), "42s")
+	assert_eq(D(l.short_duration(185 * 60)), "3m 05s")
+	assert_eq(D(l.short_duration(3900 * 60)), "1h 05m")
+	assert_eq(D(l.short_duration(183600 * 60)), "2d 03h")
 end)
 
 test("in_trouble: every state with a red or orange icon, a signal from 10 s", function()
@@ -307,7 +308,7 @@ test("fit_compositions: up to max as icon runs, the rest as +n, at least one", f
 	assert_eq({ l.fit_compositions(py, 80, 2) }, { 1, 2 }, "one at least")
 end)
 
-test("age, not_refuelled and age_caption", function()
+test("age and not_refuelled", function()
 	local l = logic()
 	assert_eq(l.age(1000, nil), nil)
 	assert_eq(l.age(1000, 400), 600)
@@ -322,8 +323,6 @@ test("age, not_refuelled and age_caption", function()
 	assert_true(l.not_refuelled(216002, nil, 1, 1), "past its grace")
 	assert_false(l.not_refuelled(300000, nil, 1, 100000), "a train registered late gets its own hour")
 	assert_true(l.not_refuelled(300000, 1, 1, 299999), "a refuel tick wins over refuel_from")
-	assert_eq({ l.age_caption(1000, nil) }, { nil, nil })
-	assert_eq({ l.age_caption(1000, 100) }, { "15s", 900 })
 end)
 
 test("fuel_percent: averaged over burner locomotives, nil when electric", function()
@@ -445,22 +444,22 @@ end)
 
 test("duration axis: gridlines on whole durations that format exactly, at most five above 0", function()
 	local l = logic()
-	assert_eq(l.duration_label(0), "0s")
-	assert_eq(l.duration_label(30), "30s")
-	assert_eq(l.duration_label(60), "1m")
-	assert_eq(l.duration_label(90), "1m 30s")
-	assert_eq(l.duration_label(5400), "1h 30m")
-	assert_eq(l.duration_label(7200), "2h")
+	assert_eq(D(l.duration_label(0)), "0s")
+	assert_eq(D(l.duration_label(30)), "30s")
+	assert_eq(D(l.duration_label(60)), "1m")
+	assert_eq(D(l.duration_label(90)), "1m 30s")
+	assert_eq(D(l.duration_label(5400)), "1h 30m")
+	assert_eq(D(l.duration_label(7200)), "2h")
 	local function labels(max)
 		local out = {}
 		for i, t in ipairs(l.duration_ticks(max)) do out[i] = t.label end
 		return out
 	end
 	-- A chart of 98 s of bars has an axis top of 108 s; the library's own labels read 73 s as "1m" and 98 s as "2m".
-	assert_eq(labels(108), { "0s", "30s", "1m", "1m 30s" })
-	assert_eq(labels(132), { "0s", "30s", "1m", "1m 30s", "2m" })
-	assert_eq(labels(11), { "0s", "5s", "10s" })
-	assert_eq(labels(4000), { "0s", "15m", "30m", "45m", "1h" })
+	assert_eq(D(labels(108)), { "0s", "30s", "1m", "1m 30s" })
+	assert_eq(D(labels(132)), { "0s", "30s", "1m", "1m 30s", "2m" })
+	assert_eq(D(labels(11)), { "0s", "5s", "10s" })
+	assert_eq(D(labels(4000)), { "0s", "15m", "30m", "45m", "1h" })
 	for _, max in ipairs({ 0.5, 1, 7, 59, 61, 100, 599, 601, 3599, 3601, 40000, 200000 }) do
 		local ticks = l.duration_ticks(max)
 		assert_true(#ticks >= 1 and #ticks - 1 <= l.DURATION_LINES, "lines at " .. max .. ": " .. #ticks)
@@ -470,10 +469,10 @@ test("duration axis: gridlines on whole durations that format exactly, at most f
 			assert_eq(t.value, (i - 1) * step, "evenly spaced at " .. max)
 			-- Exact: the label parses back to the value.
 			local h, m, s = 0, 0, 0
-			for n, u in string.gmatch(t.label, "(%d+)([hms])") do
+			for n, u in string.gmatch(D(t.label), "(%d+)([hms])") do
 				if u == "h" then h = tonumber(n) elseif u == "m" then m = tonumber(n) else s = tonumber(n) end
 			end
-			assert_eq(h * 3600 + m * 60 + s, t.value, "label " .. t.label .. " at " .. max)
+			assert_eq(h * 3600 + m * 60 + s, t.value, "label " .. D(t.label) .. " at " .. max)
 		end
 	end
 end)
@@ -534,40 +533,65 @@ end)
 
 test("format_duration: below a second, nil and negative read 0s", function()
 	local u = logic()
-	assert_eq(u.format_duration(nil), "0s")
-	assert_eq(u.format_duration(-100), "0s")
-	assert_eq(u.format_duration(0), "0s")
-	assert_eq(u.format_duration(59), "0s")
+	assert_eq(D(u.format_duration(nil)), "0s")
+	assert_eq(D(u.format_duration(-100)), "0s")
+	assert_eq(D(u.format_duration(0)), "0s")
+	assert_eq(D(u.format_duration(59)), "0s")
 end)
 
 test("format_duration: seconds, minutes, hours with unpadded fields", function()
 	local u = logic()
-	assert_eq(u.format_duration(60), "1s")
-	assert_eq(u.format_duration(90), "1s")
-	assert_eq(u.format_duration(3599), "59s")
-	assert_eq(u.format_duration(3600), "1m 0s")
-	assert_eq(u.format_duration(185 * 60), "3m 5s")
-	assert_eq(u.format_duration(3662 * 60), "1h 1m 2s")
-	assert_eq(u.format_duration(3600 * 60), "1h 0m 0s")
+	assert_eq(D(u.format_duration(60)), "1s")
+	assert_eq(D(u.format_duration(90)), "1s")
+	assert_eq(D(u.format_duration(3599)), "59s")
+	assert_eq(D(u.format_duration(3600)), "1m 0s")
+	assert_eq(D(u.format_duration(185 * 60)), "3m 5s")
+	assert_eq(D(u.format_duration(3662 * 60)), "1h 1m 2s")
+	assert_eq(D(u.format_duration(3600 * 60)), "1h 0m 0s")
 	-- No day unit: hours keep counting.
-	assert_eq(u.format_duration(90000 * 60), "25h 0m 0s")
+	assert_eq(D(u.format_duration(90000 * 60)), "25h 0m 0s")
 end)
 
 test("short_duration: two units at most, second unit zero-padded", function()
 	local u = logic()
-	assert_eq(u.short_duration(nil), "0s")
-	assert_eq(u.short_duration(-5), "0s")
-	assert_eq(u.short_duration(119.9), "1s")
-	assert_eq(u.short_duration(42 * 60), "42s")
-	assert_eq(u.short_duration(59 * 60), "59s")
-	assert_eq(u.short_duration(60 * 60), "1m 00s")
-	assert_eq(u.short_duration(185 * 60), "3m 05s")
-	assert_eq(u.short_duration(3599 * 60), "59m 59s")
-	assert_eq(u.short_duration(3600 * 60), "1h 00m")
-	assert_eq(u.short_duration(3900 * 60), "1h 05m")
-	assert_eq(u.short_duration(3959 * 60), "1h 05m")
-	assert_eq(u.short_duration(86340 * 60), "23h 59m")
-	assert_eq(u.short_duration(86400 * 60), "1d 00h")
-	assert_eq(u.short_duration(183600 * 60), "2d 03h")
-	assert_eq(u.short_duration(1000 * 86400 * 60), "1000d 00h")
+	assert_eq(D(u.short_duration(nil)), "0s")
+	assert_eq(D(u.short_duration(-5)), "0s")
+	assert_eq(D(u.short_duration(119.9)), "1s")
+	assert_eq(D(u.short_duration(42 * 60)), "42s")
+	assert_eq(D(u.short_duration(59 * 60)), "59s")
+	assert_eq(D(u.short_duration(60 * 60)), "1m 00s")
+	assert_eq(D(u.short_duration(185 * 60)), "3m 05s")
+	assert_eq(D(u.short_duration(3599 * 60)), "59m 59s")
+	assert_eq(D(u.short_duration(3600 * 60)), "1h 00m")
+	assert_eq(D(u.short_duration(3900 * 60)), "1h 05m")
+	assert_eq(D(u.short_duration(3959 * 60)), "1h 05m")
+	assert_eq(D(u.short_duration(86340 * 60)), "23h 59m")
+	assert_eq(D(u.short_duration(86400 * 60)), "1d 00h")
+	assert_eq(D(u.short_duration(183600 * 60)), "2d 03h")
+	assert_eq(D(u.short_duration(1000 * 86400 * 60)), "1000d 00h")
+end)
+
+test("duration sigs change exactly when the text a player reads does", function()
+	local l = logic()
+	local function check(fmt, sig, ticks_list)
+		for i = 2, #ticks_list do
+			local a, b = ticks_list[i - 1], ticks_list[i]
+			assert_eq(D(fmt(a)) == D(fmt(b)), sig(a) == sig(b), "ticks " .. a .. " and " .. b)
+		end
+	end
+	local ticks = {}
+	for _, t in ipairs({ 0, 59, 60, 61 * 60, 3599 * 60, 3600 * 60, 3661 * 60, 86399 * 60, 86400 * 60, 90061 * 60 }) do
+		for d = -61, 61, 61 do ticks[#ticks + 1] = math.max(t + d, 0) end
+	end
+	table.sort(ticks)
+	check(l.short_duration, l.short_duration_sig, ticks)
+	check(l.format_duration, l.format_duration_sig, ticks)
+end)
+
+test("durations use the engine's unit symbols, and a day symbol every shipped locale can translate", function()
+	local l = logic()
+	assert_eq(l.short_duration(185 * 60), { "", { "time-symbol-minutes-short", 3 }, " ", { "time-symbol-seconds-short", "05" } })
+	assert_eq(l.short_duration(86400 * 60)[2], { "cybersyn-gui.time-symbol-days-short", 1 })
+	assert_eq(H.locale("en")["cybersyn-gui"]["time-symbol-days-short"], "__1__d")
+	assert_eq(H.locale("ru")["cybersyn-gui"]["time-symbol-days-short"], "__1__д")
 end)
