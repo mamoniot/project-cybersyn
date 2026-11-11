@@ -71,9 +71,9 @@ end
 --- a lower bound rather than a measurement.
 --- @param ticks number
 --- @param inherited boolean
---- @return string
+--- @return LocalisedString
 function text.wait_caption(ticks, inherited)
-	return (inherited and text.INHERITED or "") .. logic.short_duration(ticks)
+	return { "", inherited and text.INHERITED or "", logic.short_duration(ticks) }
 end
 
 --- The "why" line's parameters: __1__ = a, __2__ = b, __3__ = network, __4__..__6__ = the train-filter split.

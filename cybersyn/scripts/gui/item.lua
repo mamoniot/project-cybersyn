@@ -740,15 +740,18 @@ local ENTRY = { providers = provider_entry, requesters = requester_entry, trains
 --- @param view int rows of the unscrolled viewport
 --- @param from int? first row below the viewport to write in this update
 --- @param now uint
+--- @param sigs table<int, string> what each wait cell was last written for
 --- @return int? where the next update continues below the viewport
-local function wait_clock(tbl, rows, n, view, from, now)
+local function wait_clock(tbl, rows, n, view, from, now, sigs)
 	local function write(i)
 		local start = rows[i] and rows[i].wait_start
 		if not start then return end
 		local cell = tbl[wait_name(i)]
-		local caption = logic.short_duration(now - start)
-		if cell and cell.caption ~= caption then
-			cell.caption = caption
+		-- The start is part of the sig: a re-sort puts another row's wait in this cell.
+		local sig = start .. ":" .. logic.short_duration_sig(now - start)
+		if cell and sigs[i] ~= sig then
+			sigs[i] = sig
+			cell.caption = logic.short_duration(now - start)
 			cell.tooltip = { "cybersyn-gui.waiting-for", logic.format_duration(now - start) }
 		end
 	end
@@ -1076,7 +1079,7 @@ function item.build(map_data, player_data, hash)
 		local shown = state.shown
 		if t == "requesters" and shown and tbl and tbl.valid then
 			state.clock = wait_clock(tbl, shown, math.min(state.keys and #state.keys or 0, state.shown_n), alloc.requesters,
-				state.clock, ctx.now)
+				state.clock, ctx.now, get_or_create(state, "clock_sigs"))
 		end
 		local empty = refs["item_" .. t .. "_empty_flow"]
 		local show_empty = shown ~= nil and #shown == 0

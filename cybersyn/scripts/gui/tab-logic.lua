@@ -243,33 +243,74 @@ logic.STATE_SPRITE = {
 --- Used for "refuel" where a mod removes or hides the base signal-fuel.
 logic.REFUEL_FALLBACK = "utility/fuel_icon"
 
+-- The engine's own short unit symbols are translated in every shipped language; it has none for days.
+local SEC, MIN, HOUR, DAY = "time-symbol-seconds-short", "time-symbol-minutes-short", "time-symbol-hours-short",
+	"cybersyn-gui.time-symbol-days-short"
+
+local function pad(n) return string.format("%02d", n) end
+
+local function pair(unit_a, a, unit_b, b)
+	return { "", { unit_a, a }, " ", { unit_b, b } }
+end
+
 --- Two units at most, so it fits a narrow value column and one duration reads the same in every tab: "42s", "3m 05s",
 --- "1h 05m", "2d 03h". Lives here rather than in util so the pure modules can format durations without the game API.
 --- @param ticks number
---- @return string
+--- @return LocalisedString
 function logic.short_duration(ticks)
 	local s = math.floor(math.max(ticks or 0, 0) / 60)
-	if s < 60 then return s .. "s" end
+	if s < 60 then return { SEC, s } end
 	local m = math.floor(s / 60)
-	if m < 60 then return string.format("%dm %02ds", m, s % 60) end
+	if m < 60 then return pair(MIN, m, SEC, pad(s % 60)) end
 	local h = math.floor(m / 60)
-	if h < 24 then return string.format("%dh %02dm", h, m % 60) end
-	return string.format("%dd %02dh", math.floor(h / 24), h % 24)
+	if h < 24 then return pair(HOUR, h, MIN, pad(m % 60)) end
+	return pair(DAY, math.floor(h / 24), HOUR, pad(h % 24))
+end
+
+--- A plain string that changes exactly when short_duration's caption does: LocalisedStrings cannot be compared, and
+--- row sigs are built by concatenation.
+--- @param ticks number
+--- @return string
+function logic.short_duration_sig(ticks)
+	local s = math.floor(math.max(ticks or 0, 0) / 60)
+	if s < 60 then return tostring(s) end
+	local m = math.floor(s / 60)
+	if m < 60 then return m .. ":" .. s % 60 end
+	local h = math.floor(m / 60)
+	if h < 24 then return h .. "h" .. m % 60 end
+	return math.floor(h / 24) .. "d" .. h % 24
 end
 
 --- Full precision for tooltips: "1h 2m 3s", "2m 3s" or "3s".
 --- @param ticks number
---- @return string
+--- @return LocalisedString
 function logic.format_duration(ticks)
 	local seconds = math.floor(math.max(ticks or 0, 0) / 60)
 	local minutes = math.floor(seconds / 60)
 	local hours = math.floor(minutes / 60)
 	if hours > 0 then
-		return string.format("%dh %dm %ds", hours, minutes % 60, seconds % 60)
+		return { "", { HOUR, hours }, " ", { MIN, minutes % 60 }, " ", { SEC, seconds % 60 } }
 	elseif minutes > 0 then
-		return string.format("%dm %ds", minutes, seconds % 60)
+		return pair(MIN, minutes, SEC, seconds % 60)
 	end
-	return string.format("%ds", seconds)
+	return { SEC, seconds }
+end
+
+--- Fractional seconds for the Delivery breakdown's phase times: "4.5s", "2m 30s", "1h 5m" (factorio-charts'
+--- time_detailed, with the engine's unit symbols).
+--- @param seconds number
+--- @return LocalisedString
+function logic.seconds_detailed(seconds)
+	if seconds < 60 then return { SEC, string.format("%.1f", seconds) } end
+	if seconds < 3600 then return pair(MIN, math.floor(seconds / 60), SEC, string.format("%.0f", seconds % 60)) end
+	return pair(HOUR, math.floor(seconds / 3600), MIN, math.floor(seconds % 3600 / 60))
+end
+
+--- A plain string that changes exactly when format_duration's text does.
+--- @param ticks number
+--- @return string
+function logic.format_duration_sig(ticks)
+	return tostring(math.floor(math.max(ticks or 0, 0) / 60))
 end
 
 --- @class StateChip
@@ -496,17 +537,6 @@ function logic.chip_change_tick(now, state, state_since, refuel_since, hours, ha
 		if at > now and (not t or at < t) then t = at end
 	end
 	return t
-end
-
---- A duration caption with "never" for no tick: the Last refuel and Last delivery cells.
---- @param now number
---- @param tick number?
---- @return string|nil caption nil = never
---- @return number? age
-function logic.age_caption(now, tick)
-	local age = logic.age(now, tick)
-	if not age then return nil, nil end
-	return logic.short_duration(age), age
 end
 
 --- Fuel of a train as a percentage of what its burners hold when full, averaged over the locomotives that burn
@@ -740,23 +770,28 @@ logic.DURATION_LINES = 5
 --- "0s", "30s", "1m", "1m 30s", "2h", "1h 30m": whole seconds, zero parts left out, so a gridline says exactly where it
 --- sits.
 --- @param seconds number
---- @return string
+--- @return LocalisedString
 function logic.duration_label(seconds)
 	local s = math.floor(seconds + 0.5)
-	if s <= 0 then return "0s" end
+	if s <= 0 then return { SEC, 0 } end
 	local h, m = math.floor(s / 3600), math.floor(s % 3600 / 60)
 	s = s % 60
-	local parts = {}
-	if h > 0 then parts[#parts + 1] = h .. "h" end
-	if m > 0 then parts[#parts + 1] = m .. "m" end
-	if s > 0 then parts[#parts + 1] = s .. "s" end
-	return table.concat(parts, " ")
+	local out = { "" }
+	local function add(unit, v)
+		if v == 0 then return end
+		if #out > 1 then out[#out + 1] = " " end
+		out[#out + 1] = { unit, v }
+	end
+	add(HOUR, h)
+	add(MIN, m)
+	add(SEC, s)
+	return out
 end
 
 --- The gridlines of a duration axis whose top is `max_seconds`: 0 and every multiple of the smallest step that leaves
 --- at most DURATION_LINES lines above 0 and none above the top.
 --- @param max_seconds number
---- @return {value: number, label: string}[]
+--- @return {value: number, label: LocalisedString}[]
 function logic.duration_ticks(max_seconds)
 	local steps = logic.DURATION_STEPS
 	local step = steps[#steps]

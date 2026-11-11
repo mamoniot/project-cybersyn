@@ -1138,8 +1138,10 @@ local function registry_model(row, ctx)
 		dl_sig = "-",
 		wait_caption = "",
 		wait_sig = "-",
+		wait_tip_sig = "-",
 		last_caption = "",
 		last_sig = "-",
+		last_tip_sig = "-",
 	}
 	m.name_sig = row.name .. "\1" .. kind .. f.id
 	m.name_tooltip = function()
@@ -1402,22 +1404,24 @@ local function row_model(row, ctx)
 	local start = row_wait_start(row)
 	if start then
 		m.wait_caption = logic.short_duration(now - start)
-		m.wait_sig = m.wait_caption
+		m.wait_sig = logic.short_duration_sig(now - start)
 	else
 		m.wait_caption, m.wait_sig = NONE_CAPTION, ""
 	end
 	m.wait_full = start and logic.format_duration(now - start) or nil
+	m.wait_tip_sig = start and logic.format_duration_sig(now - start) or m.wait_sig
 
 	local age = collector.delivery_age(st)
 	if age and never_dispatched(st) then
 		m.last_caption, m.last_sig, m.last_never = NEVER_CAPTION, "never", true
 	elseif age then
 		m.last_caption = logic.short_duration(age)
-		m.last_sig = m.last_caption
+		m.last_sig = logic.short_duration_sig(age)
 	else
 		m.last_caption, m.last_sig = NONE_CAPTION, ""
 	end
 	m.last_full = age and logic.format_duration(age) or nil
+	m.last_tip_sig = age and logic.format_duration_sig(age) or m.last_sig
 	return m
 end
 
@@ -1720,7 +1724,7 @@ local function update_row(row, inv, m, cell, item, hold, minute, sigs, w)
 		r.last.caption = m.last_caption
 		cell.last_sig = m.last_sig
 	end
-	local wait_tip, last_tip = m.wait_full or m.wait_sig, (m.last_full or m.last_sig)
+	local wait_tip, last_tip = m.wait_tip_sig, m.last_tip_sig
 	if cell.wait_tip ~= wait_tip then
 		r.wait.tooltip = wait_tooltip(m)
 		cell.wait_tip = wait_tip
@@ -2178,8 +2182,8 @@ function stations_tab.build(map_data, player_data)
 					slots = slots, slot_sigs = inv and slot_sigs(inv, item, minute) or NO_SLOTS, name_sig = m.name_sig,
 					marker_sig = m.marker_sig,
 					status = m.status_sig, color = color, status_tip_sig = m.status_tip_sig, net_sig = m.net_sig,
-					dl_sig = m.dl_sig, wait_sig = m.wait_sig, last_sig = m.last_sig, wait_tip = m.wait_full or m.wait_sig,
-					last_tip = m.last_full or m.last_sig,
+					dl_sig = m.dl_sig, wait_sig = m.wait_sig, last_sig = m.last_sig, wait_tip = m.wait_tip_sig,
+					last_tip = m.last_tip_sig,
 				}
 				return def
 			end,

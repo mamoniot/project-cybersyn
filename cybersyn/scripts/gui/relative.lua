@@ -104,6 +104,10 @@ local function short_age(ticks)
 	return logic.short_duration(rtext.age_step(ticks))
 end
 
+local function short_age_sig(ticks)
+	return logic.short_duration_sig(rtext.age_step(ticks))
+end
+
 local function label(caption, extra)
 	local def = { type = "label", caption = caption }
 	if extra then
@@ -1531,7 +1535,7 @@ local function render_events(state, body, kind, id, shown)
 			end
 			for i, ev in ipairs(rows) do
 				if i > shown then break end
-				shown_ages[i] = short_age(now - ev.tick)
+				shown_ages[i] = short_age_sig(now - ev.tick)
 				local row = line(event_caption(ev, now, d), { "cybersyn-gui.relative-event-tooltip",
 					logic.format_duration(ev.tick), tostring(ev.seq) }, sev_color(ev.sev))
 				row.name = "ev" .. i
@@ -1547,7 +1551,7 @@ local function render_events(state, body, kind, id, shown)
 		-- An age past the hour reads in minutes, so most of an old stop's rows keep their caption.
 		for i, ev in ipairs(rows) do
 			if i > shown then break end
-			local age = short_age(now - ev.tick)
+			local age = short_age_sig(now - ev.tick)
 			local row = shown_ages[i] ~= age and flow and flow["ev" .. i]
 			if row then
 				shown_ages[i] = age
@@ -1720,6 +1724,7 @@ local function render_train_head(state, body, m)
 	-- Time in state as the Trains row beside the pane shows it (logic.short_duration of the exact age): one rule.
 	local since = m.state_since and (now - m.state_since) or -1
 	local since_caption = since >= 0 and logic.short_duration(since) or ""
+	local since_sig = since >= 0 and logic.short_duration_sig(since) or ""
 	local kind, target = status_target(m)
 	local sig = table.concat({ m.status or -1, kind, tostring(target), tostring(target and stop_name(kind, target)) }, "|")
 	-- A moving train changes state at every signal: the state and its age are rewritten in place.
@@ -1727,7 +1732,7 @@ local function render_train_head(state, body, m)
 	local sc = train_state_chip(m, now)
 	local state_now = sc.key .. "|" .. tostring(sc.style)
 	if state.sigs["head"] == sig then
-		if ages.head ~= state_now or ages.head_since ~= since_caption then
+		if ages.head ~= state_now or ages.head_since ~= since_sig then
 			local row = body.head and body.head.state_row
 			if row then
 				if ages.head ~= state_now then
@@ -1737,10 +1742,10 @@ local function render_train_head(state, body, m)
 				row.in_state.caption = since >= 0 and { "cybersyn-gui.relative-in-state", since_caption } or ""
 				row.in_state.tooltip = m.state_since and logic.format_duration(since) or ""
 			end
-			ages.head, ages.head_since = state_now, since_caption
+			ages.head, ages.head_since = state_now, since_sig
 		end
 	else
-		ages.head, ages.head_since = state_now, since_caption
+		ages.head, ages.head_since = state_now, since_sig
 		section(state, body, "head", sig, function()
 			local key = TRAIN_STATUS_KEY[m.status]
 			local status = key and { key } or { "cybersyn-gui.trains-custom-status", tostring(m.status) }

@@ -636,4 +636,39 @@ function harness.locale_text(loc, file)
 	return table.concat(parts) .. "\n"
 end
 
+local UNIT_SYMBOLS = { ["time-symbol-seconds-short"] = "s", ["time-symbol-minutes-short"] = "m",
+	["time-symbol-hours-short"] = "h", ["cybersyn-gui.time-symbol-days-short"] = "d" }
+
+-- English text of a duration LocalisedString, nil for anything else: a unit symbol, or a "" concatenation of unit
+-- symbols and plain strings.
+local function duration_text(v)
+	if type(v) ~= "table" then return nil end
+	local unit = UNIT_SYMBOLS[v[1]]
+	if unit then return tostring(v[2]) .. unit end
+	if v[1] ~= "" then return nil end
+	local parts, any = {}, false
+	for i = 2, #v do
+		local x = v[i]
+		if type(x) == "string" then
+			parts[#parts + 1] = x
+		else
+			local t = duration_text(x)
+			if not t then return nil end
+			parts[#parts + 1], any = t, true
+		end
+	end
+	return any and table.concat(parts) or nil
+end
+
+--- `v` with every duration LocalisedString in it replaced by its English text ("3m 05s"), so a test can state the
+--- duration a player reads instead of the nested unit symbols.
+function harness.durations(v)
+	if type(v) ~= "table" then return v end
+	local text = duration_text(v)
+	if text then return text end
+	local out = {}
+	for k, x in pairs(v) do out[k] = harness.durations(x) end
+	return out
+end
+
 return harness

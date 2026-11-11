@@ -1,6 +1,7 @@
 -- Captions and the four-line chip tooltip of the Overview's Unserved table (scripts/gui/unserved-text.lua).
 
 local H = require("harness")
+local D = H.durations
 
 local function text()
 	return H.load("scripts.gui.unserved-text")
@@ -38,8 +39,8 @@ end)
 
 test("wait_caption: ≥ only for entries older than the diagnostics state", function()
 	local t = text()
-	assert_eq(t.wait_caption(600, false), "10s")
-	assert_eq(t.wait_caption(600, true), "≥10s")
+	assert_eq(D(t.wait_caption(600, false)), "10s")
+	assert_eq(D(t.wait_caption(600, true)), "≥10s")
 end)
 
 test("why: a and b as numbers, masks raw, surfaces by name, the train split", function()
@@ -66,7 +67,7 @@ test("chip_tooltip: four lines, asked / why / fix / since, with the since-load w
 	assert_eq(tip[3], "\n")
 	assert_eq(tip[4], { "cybersyn-gui.unserved-why", { "cybersyn-diag.why-no-provider", "0", "0", "A", "0", "0", "0" } })
 	assert_eq(tip[6], { "cybersyn-gui.unserved-fix", { "cybersyn-diag.fix-no-provider", "A" } })
-	assert_eq(tip[8], { "cybersyn-gui.unserved-since-load", "7m 40s", "41" })
+	assert_eq(D(tip[8]), { "cybersyn-gui.unserved-since-load", "7m 40s", "41" })
 	assert_eq(#tip, 8)
 end)
 
@@ -78,13 +79,13 @@ test("chip_tooltip: no amount when the snapshot does not know it; read age appen
 	})
 	assert_eq(tip[2], { "cybersyn-gui.unserved-asked-no-amount", "I", "R" })
 	assert_eq(tip[4][2][1], "cybersyn-diag.why-p-reserved")
-	assert_eq(tip[8], { "", { "cybersyn-gui.unserved-since", "2s", "2" }, " · ", { "cybersyn-gui.read-ago", "20s" } })
+	assert_eq(D(tip[8]), { "", { "cybersyn-gui.unserved-since", "2s", "2" }, " · ", { "cybersyn-gui.read-ago", "20s" } })
 end)
 
 test("read_ago and read_step: rounded down to 10 s so tooltips are not rebuilt every update", function()
 	local t = text()
 	assert_eq(t.read_ago(30), { "cybersyn-gui.read-just-now" })
-	assert_eq(t.read_ago(1199), { "cybersyn-gui.read-ago", "10s" })
+	assert_eq(D(t.read_ago(1199)), { "cybersyn-gui.read-ago", "10s" })
 	assert_eq(t.read_step(599), 0)
 	assert_eq(t.read_step(600), 1)
 	assert_eq(t.read_step(nil), -1)

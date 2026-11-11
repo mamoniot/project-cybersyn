@@ -2,6 +2,7 @@
 -- the log with (diag.last_for_step).
 
 local H = require("harness")
+local D = H.durations
 
 local function rt()
 	return H.load("scripts.gui.relative-text")
@@ -143,9 +144,9 @@ end)
 
 test("event_row: rounded age, kind, and the detail each kind needs", function()
 	local t = rt()
-	assert_eq(t.event_row({ tick = 0, kind = DIAG_KIND_UNSERVED_REASON, code = REASON_R_LAYOUT, a = 0, b = 0 }, 1250),
+	assert_eq(D(t.event_row({ tick = 0, kind = DIAG_KIND_UNSERVED_REASON, code = REASON_R_LAYOUT, a = 0, b = 0 }, 1250)),
 		{ "", "20s", "  ", { "cybersyn-diag.kind-unserved-reason" }, " · ", { "cybersyn-diag.chip-r-layout" } })
-	assert_eq(t.event_row({ tick = 100, kind = DIAG_KIND_SERVED, code = REASON_R_LAYOUT, a = 60, b = 0 }, 100),
+	assert_eq(D(t.event_row({ tick = 100, kind = DIAG_KIND_SERVED, code = REASON_R_LAYOUT, a = 60, b = 0 }, 100)),
 		{ "", "0s", "  ", { "cybersyn-diag.kind-served" } })
 	assert_eq(t.event_detail({ kind = DIAG_KIND_SHORT_LOAD, code = 0, a = 2000, b = 1900 }),
 		{ "cybersyn-gui.relative-event-cargo", "2,000", "1,900" })

@@ -1,6 +1,7 @@
 -- Characterization tests for scripts/gui/util.lua.
 
 local H = require("harness")
+local D = H.durations
 
 local function util()
 	return H.load("scripts.gui.util")
@@ -180,7 +181,7 @@ test("slot_table_build_from_station: provided green, active requests red, below 
 		"copper-ore|rare orange -10",
 		"iron-ore red -7",
 	})
-	assert_eq(defs[3], {
+	assert_eq(D(defs[3]), {
 		type = "sprite-button",
 		sprite = "item/stone",
 		elem_tooltip = { type = "item-with-quality", name = "stone", quality = "normal" },

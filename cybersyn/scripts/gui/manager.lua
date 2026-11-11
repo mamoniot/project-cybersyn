@@ -534,13 +534,15 @@ function manager.update_status(player_data)
 	if stale then
 		local age = render_tick and logic.format_duration(game.tick - render_tick) or "-"
 		local data_age = data_tick and logic.format_duration(game.tick - data_tick) or "-"
+		local age_sig = render_tick and logic.format_duration_sig(game.tick - render_tick) or "-"
+		local data_age_sig = data_tick and logic.format_duration_sig(game.tick - data_tick) or "-"
 		local held = false
 		local cur = player_data.hover
 		if not player_data.paused and cur and hover.hold_active(player_data, cur.scope) then
 			local state = player_data.gui_state and player_data.gui_state[cur.scope]
 			held = state ~= nil and state.dirty == true
 		end
-		local sig = age .. "|" .. data_age .. "|" .. (player_data.paused and "p" or "") .. (held and "h" or "")
+		local sig = age_sig .. "|" .. data_age_sig .. "|" .. (player_data.paused and "p" or "") .. (held and "h" or "")
 		if player_data.cache.status_sig ~= sig then
 			player_data.cache.status_sig = sig
 			label.tooltip = { "", { "cybersyn-gui.updated-tooltip" }, "\n", { "cybersyn-gui.data-age", data_age } }

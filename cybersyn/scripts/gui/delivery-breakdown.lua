@@ -185,7 +185,7 @@ end
 ---@param phase_stats table? Optional phase statistics
 ---@return LocalisedString tooltip Formatted tooltip text
 local function get_segment_tooltip(bar_idx, phase, duration, delivery, phase_stats)
-	local fmt_time = charts and charts.format_time_detailed or function(d) return string.format("%.1fs", d) end
+	local fmt_time = logic.seconds_detailed
 	-- Show item icon and name when available (most useful when no item filter is set)
 	local head = delivery.item_hash and item_head(delivery.item_hash) or nil
 	-- A stuck request's bar is labelled with the reason the dispatcher recorded for it.
@@ -411,8 +411,6 @@ function delivery_breakdown_tab.create()
 	}
 end
 
--- Use charts.format_time_detailed() from factorio-charts library
-
 ---Single-pass gather, filter by time range, and calculate stats
 ---@param map_data MapData Map data containing analytics
 ---@param data table Analytics data
@@ -552,7 +550,7 @@ local function stats_rows(stats)
 	local rows = {}
 	local delivery_count = stats.delivery_count or 0
 	local fail_count = stats.fail_count or 0
-	local t = charts and charts.format_time_detailed or function(d) return string.format("%.1fs", d) end
+	local t = logic.seconds_detailed
 	if delivery_count > 0 then
 		local avg_total = (stats.total_wait + stats.total_travel_p + stats.total_loading +
 			stats.total_travel_r + stats.total_unloading) / delivery_count
@@ -573,7 +571,7 @@ local function stats_rows(stats)
 			return (a.reason or -1) < (b.reason or -1)
 		end)
 		for _, by in ipairs(reasons) do
-			rows[#rows + 1] = { failure_label(by.reason), string.format("%s (%d)", t(by.max), by.count), indent = true }
+			rows[#rows + 1] = { failure_label(by.reason), { "", t(by.max), " (", tostring(by.count), ")" }, indent = true }
 		end
 	end
 	return rows

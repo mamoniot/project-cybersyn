@@ -3,6 +3,7 @@
 -- aggregation, age and message text, chat tags; plus every locale key the Log builds, in every locale.
 
 local H = require("harness")
+local D = H.durations
 
 local diag, model
 
@@ -490,13 +491,13 @@ end)
 test("age: two units in the column, the absolute tick in the tooltip, the range for a collapsed row", function()
 	setup()
 	local one, four = { tick = 60, first_tick = 60, n = 1 }, { tick = 120, first_tick = 60, n = 4 }
-	assert_eq(model.age_caption(7260, one), "2m 00s")
-	assert_eq(model.age_caption(60, one), "0s")
-	assert_eq(model.age_caption(60 + 59 * 60, one), "59s")
-	assert_eq(model.age_caption(60 + 3 * 86400 * 60, one), "3d 00h")
-	assert_eq(model.age_tooltip(one), { "cybersyn-gui.log-age-tooltip", "60", "1s" })
-	assert_eq(model.age_caption(216000 + 120, four), "1h 00m")
-	assert_eq(model.age_tooltip(four),
+	assert_eq(D(model.age_caption(7260, one)), "2m 00s")
+	assert_eq(D(model.age_caption(60, one)), "0s")
+	assert_eq(D(model.age_caption(60 + 59 * 60, one)), "59s")
+	assert_eq(D(model.age_caption(60 + 3 * 86400 * 60, one)), "3d 00h")
+	assert_eq(D(model.age_tooltip(one)), { "cybersyn-gui.log-age-tooltip", "60", "1s" })
+	assert_eq(D(model.age_caption(216000 + 120, four)), "1h 00m")
+	assert_eq(D(model.age_tooltip(four)),
 		{ "cybersyn-gui.log-age-range-tooltip", "60", "120", "1s", "2s", "4" })
 end)
 
@@ -520,7 +521,7 @@ test("message: cargo reads loaded 18k of 24k, edits name the player, acknowledge
 		{ "cybersyn-diag.msg-schedule-edited", "Ozzy" })
 	assert_eq(model.message(g(DIAG_KIND_SCHEDULE_EDITED, { a = 1, b = 5 }), ctx),
 		{ "cybersyn-diag.msg-schedule-edited-group", "Daniel", "5" })
-	assert_eq(model.message(g(DIAG_KIND_ACKNOWLEDGED, { code = DIAG_ACK_REQUEST, station2 = 1, a = 600 + 3600 }), ctx),
+	assert_eq(D(model.message(g(DIAG_KIND_ACKNOWLEDGED, { code = DIAG_ACK_REQUEST, station2 = 1, a = 600 + 3600 }), ctx)),
 		{ "cybersyn-diag.msg-acknowledged", { "cybersyn-diag.ack-kind-request" }, "Daniel", "1m 0s" })
 	assert_eq(model.message(g(DIAG_KIND_ACKNOWLEDGED, { code = DIAG_ACK_LINT, station2 = 2, a = 0 }), ctx),
 		{ "cybersyn-diag.msg-acknowledged-reason", { "cybersyn-diag.ack-kind-lint" }, "Ozzy" })
@@ -528,14 +529,14 @@ test("message: cargo reads loaded 18k of 24k, edits name the player, acknowledge
 		{ "cybersyn-diag.msg-unserved-reason", { "chip", REASON_P_BELOW_THRESHOLD }, "5/9" })
 	assert_eq(model.message(g(DIAG_KIND_ALERT, { code = DIAG_ALERT_STUCK }), ctx),
 		{ "cybersyn-diag.msg-alert", { "cybersyn-diag.alert-stuck" } })
-	assert_eq(model.message(g(DIAG_KIND_TRAIN_STATE, { code = defines.train_state.wait_signal, a = 1200 }), ctx),
+	assert_eq(D(model.message(g(DIAG_KIND_TRAIN_STATE, { code = defines.train_state.wait_signal, a = 1200 }), ctx)),
 		{ "cybersyn-diag.msg-train-state-wait-signal", "20s" })
 	assert_eq(model.message(g(DIAG_KIND_MANUAL_ACTION, { a = ACTION_FIX_PRIORITIES, station2 = 0 }), ctx),
 		{ "cybersyn-diag.msg-manual-action", { "cybersyn-diag.action-fix-priorities" }, { "cybersyn-diag.log-server" } })
 	assert_eq(model.message(g(DIAG_KIND_LINT, { code = DIAG_LINT_CLEARED, a = LINT_CAPACITY }), ctx),
 		{ "cybersyn-diag.msg-lint-cleared", { "cybersyn-diag.lint-capacity" } })
 	-- The plural is chosen on a plain number: "8,646" would print the raw __plural_for_parameter__ token.
-	assert_eq(model.message(g(DIAG_KIND_SERVED, { code = REASON_P_BELOW_THRESHOLD, a = 600, b = 8646 }), ctx),
+	assert_eq(D(model.message(g(DIAG_KIND_SERVED, { code = REASON_P_BELOW_THRESHOLD, a = 600, b = 8646 }), ctx)),
 		{ "cybersyn-diag.msg-served", "10s", "8,646", { "chip", REASON_P_BELOW_THRESHOLD }, "8646" })
 end)
 

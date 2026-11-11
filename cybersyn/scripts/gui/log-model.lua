@@ -1008,7 +1008,7 @@ end
 --- The age column: two units at most.
 --- @param now uint
 --- @param g LogGroup
---- @return string
+--- @return LocalisedString
 function model.age_caption(now, g)
 	return logic.short_duration(now - g.tick)
 end

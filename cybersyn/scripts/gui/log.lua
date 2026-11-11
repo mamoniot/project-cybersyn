@@ -755,10 +755,10 @@ local function row_write(elem, entry, age, still)
 		write_cells(cells, g, m, now, key, entry.x, entry.child)
 	end
 	if age or moved or not m.a then
-		local caption = model.age_caption(now, g)
-		if m.a ~= caption then
-			cells[1].caption = caption
-			m.a = caption
+		local sig = logic.short_duration_sig(now - g.tick)
+		if m.a ~= sig then
+			cells[1].caption = model.age_caption(now, g)
+			m.a = sig
 		end
 	end
 end
@@ -1062,18 +1062,18 @@ local function header_line(d)
 	local now = game.tick
 	local _, ticks = diag.horizon()
 	local covering = logic.short_duration(ticks)
-	local mode, basic_covering = { "cybersyn-gui.log-mode-basic" }, ""
+	local mode, basic_sig = { "cybersyn-gui.log-mode-basic" }, ""
 	local rb, rf = model.rings(d)
 	if rf then
 		local basic_start = rb.count > 0 and rb.tick[diag.ring_at(rb, 0)] or now
-		basic_covering = logic.short_duration(now - basic_start)
-		mode = { "cybersyn-gui.log-mode-full-reach", basic_covering }
+		basic_sig = logic.short_duration_sig(now - basic_start)
+		mode = { "cybersyn-gui.log-mode-full-reach", logic.short_duration(now - basic_start) }
 	end
 	local per_cycle, cycle_ticks = cycle_figures()
 	local per = per_cycle and format.number(per_cycle) or "–"
 	-- The plurals take the plain numbers: a grouped one ("1,234") is not a number to the locale engine.
 	return { "cybersyn-gui.log-header", covering, mode, tostring(cycle_ticks), per, tostring(per_cycle or 0) },
-		covering .. "|" .. basic_covering .. "|" .. cycle_ticks .. "|" .. per
+		logic.short_duration_sig(ticks) .. "|" .. basic_sig .. "|" .. cycle_ticks .. "|" .. per
 end
 
 --- @param player_data PlayerData
@@ -1253,7 +1253,7 @@ function log_tab.build(map_data, player_data)
 		render_summary(player_data, ss, done)
 		if done then
 			local age = logic.short_duration(game.tick - ss.as_of_tick)
-			status_sig = "sum" .. ss.scanned .. "|" .. age
+			status_sig = "sum" .. ss.scanned .. "|" .. logic.short_duration_sig(game.tick - ss.as_of_tick)
 			status = { "cybersyn-gui.log-summary-status", format.number(ss.scanned), age, tostring(ss.scanned) }
 			if not any then empty_sig, empty_caption = "sum-empty", { "cybersyn-gui.log-empty" } end
 		else
