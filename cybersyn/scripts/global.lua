@@ -213,6 +213,7 @@
 ---@field public network_mask int
 ---@field public warmup_time double
 ---@field public stuck_train_time double
+---@field public departure_check_distance double
 ---@field public fuel_threshold double
 ---@field public allow_cargo_in_depot boolean
 ---@field public alert_unexpected_cargo boolean

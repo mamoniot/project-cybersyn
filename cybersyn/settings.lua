@@ -114,6 +114,15 @@ data:extend({
 		maximum_value = 2147483647,
 	},
 	{
+		type = "double-setting",
+		name = "cybersyn-departure-check-distance",
+		order = "cba",
+		setting_type = "runtime-global",
+		default_value = 4,
+		minimum_value = 0,
+		maximum_value = 100,
+	},
+	{
 		type = "bool-setting",
 		name = "cybersyn-allow-cargo-in-depot",
 		order = "cc",

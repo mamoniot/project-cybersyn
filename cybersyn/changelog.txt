@@ -1,4 +1,9 @@
 ---------------------------------------------------------------------------------------------------
+Version: 2.2.3
+Date: 2026-11-18
+  Features:
+    - New map setting "Departure check distance" (default 4): controlls test for missdirected train. If you are using some cursed station setups and trains leave station just as they arrived you may need to raise that value
+---------------------------------------------------------------------------------------------------
 Version: 2.2.2
 Date: 2026-10-29
   Changes:
