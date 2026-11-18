@@ -755,7 +755,7 @@ function on_train_changed(event)
 		local train = map_data.trains[train_id]
 		if train then
 			local path = train_e.path
-			if path and path.total_distance > 4 then
+			if path and path.total_distance > mod_settings.departure_check_distance then
 				-- Check if train has been misdirected along a long rail path due to
 				-- the priority of the station at the end.
 				local last_rail = path.rails[#path.rails]
